@@ -2,18 +2,27 @@
 
 ## Current status
 
-Day 5 (the frontend skeleton — React + Vite + TypeScript, design tokens, app
-shell, onboarding gate, crisis dialog, API client) is complete and verified:
-**73 frontend tests pass** (Vitest + Testing Library, jsdom), `tsc --noEmit`,
-ESLint and Prettier are clean, the production build succeeds, and the backend
-suite grew to **289 tests at 100% coverage** with the new public
-`GET /api/v1/crisis/resources` endpoint. Everything is verified against a live
-backend + frontend with `curl` (no browser binary exists in this sandbox — see
-Known issues).
+Day 6 (the NLP service - emotion and sentiment) is complete and verified:
+**630 backend tests pass at 100 % coverage** (2381 statements) and **73 frontend
+tests** still pass, with `ruff`, `ruff format`, `mypy` (strict) and `eslint` all
+clean. The service runs behind one interface (`EmotionAnalyzer`), puts a
+Hugging Face model first and two lexicon analyzers behind it, and degrades
+instead of failing. The dev endpoint, the cache and the log redaction were all
+verified against a **live server** with `curl` - including a 10,000-character
+message, an empty one, `APP_ENV=production` (404), and a grep of the server logs
+proving no request text reaches a log line.
 
-Work is on `day-05-frontend-skeleton-react-vite` — the branch name that was
-asked for, committed in small steps. Days 1–3 are merged on `main`; the Day 4
-PR is still open and unmerged.
+What could **not** be verified here: the real checkpoint never downloads
+(`huggingface.co` is not reachable from this sandbox), so the 5 `@pytest.mark.model`
+tests fail with `LocalEntryNotFoundError` by design. The pipeline integration is
+still covered for real - `tests/integration/test_nlp_hf_pipeline.py` builds a tiny
+local model offline and runs the genuine `transformers` code path. See "Known
+issues" for the short list of things to run locally.
+
+Work is on `arena/284986a6-manovia` - the branch this Arena session is pinned to,
+**not** the requested `day-06-nlp-service-emotion-sentiment`; the session cannot
+create or push to another branch name. Days 1-3 are merged on `main`; the Day 4
+and Day 5 PRs are still open and unmerged.
 
 ## Completed
 
@@ -102,6 +111,187 @@ PR is still open and unmerged.
 
 **Also changed**: `.gitignore` gained `*.tsbuildinfo`; the root `Makefile` gained `frontend-dev` / `frontend-test` / `frontend-lint` / `frontend-format` and now runs both halves for `make test` / `make lint` / `make format`; `frontend/README.md` replaced its placeholder; `backend/README.md` documents the crisis endpoint; `README.md` documents both quick starts.
 
+### Day 6 (branch `arena/284986a6-manovia`) - NLP service (emotion and sentiment)
+
+**The contract** (`app/services/nlp/base.py`): `EmotionAnalyzer.analyze(text, lang)
+-> EmotionResult{primary, scores, valence, arousal}` plus provenance (`analyzer`,
+`model`, `language`, `truncated`, `confidence`, `cached`). The internal taxonomy
+is nine labels - `joy, sadness, anger, fear, anxiety, shame, loneliness, calm,
+neutral` - each with one hand-set `(valence, arousal)` anchor in
+`EMOTION_DIMENSIONS`, so valence/arousal are *derived*, never invented per
+analyzer. `scores` is always a normalised distribution even when the model
+underneath is multi-label; the largest raw probability is kept separately as
+`confidence`. Results are validated hard (unknown label, out-of-range valence,
+`primary` disagreeing with `scores` all raise), and `is_informative` distinguishes
+"a confident neutral" from "I found nothing".
+
+**`HFEmotionAnalyzer`** (`hf.py`): a `text-classification` pipeline over
+`EMOTION_MODEL_ID`, multi-label (`top_k=None`), `device=-1` (CPU),
+`truncation=True` + `EMOTION_MAX_LENGTH`, batched at `EMOTION_BATCH_SIZE`, and
+pre-cut by character count so a 10,000-character paste cannot blow up
+tokenisation. Loading is lazy and thread-safe (double-checked lock) and a failure
+is **remembered**, so a bad model id costs one warning rather than one failed
+import per request. `LABEL_MAP` folds a checkpoint's labels into the taxonomy -
+GoEmotions (27), Ekman (7) and `positive`/`negative` are all covered - taking the
+**max** per emotion rather than the sum (summing `sadness` + `grief` would invent
+confidence). Unmapped labels are dropped and warned about once.
+`transformers`/`torch` are imported *inside* the loader and ship as an optional
+`nlp` extra, so the suite and CI never need them.
+
+**The fallbacks**: `KeywordFallbackAnalyzer` (a nine-label lexicon - English,
+romanised Hindi, Banglish, and Devanagari/Bengali script - with negation,
+intensifiers and emphasis; `confidence` capped at 0.6 because a keyword hit is not
+a probability) and `SentimentAnalyzer` (the legacy chatbot's polarity idea: two
+weighted lists, a running score, `tanh`-squashed into `[-1, 1]`, with negation and
+"but"-contrast). Shared pragmatics live once in `lexicon.py`. Keyword runs first
+because it can name all nine emotions; sentiment runs second because it can only
+band polarity but catches words the emotion lexicon misses.
+
+**Language** (`language.py`): script detection (Devanagari/Bengali) beats
+everything, then weighted **Hinglish** heuristics (104 romanised-Hindi markers, so
+"exam kal hai, bahut dar lag raha hai" reads as `hi` with `hinglish=true`), then
+`langdetect` folded to `en`/`hi`/`bn`/`other` with a pinned seed for determinism.
+Plain-ASCII prose that langdetect misreads as Italian is assumed English with
+confidence capped at 0.5 - an assumption, never presented as a detection.
+
+**Cache** (`cache.py`): a thread-safe LRU keyed by
+`sha256(variant | lang | whitespace-collapsed text)`. The plaintext is stored
+nowhere; `describe()` returns counters only. The model id is part of the key, so
+swapping checkpoints cannot serve stale answers; case is preserved because
+shouting is a signal.
+
+**Degradation** (`chain.py`): `AnalyzerChain` puts the model first and the lexicons
+behind it, falling through on failure **or** on a zero-confidence neutral, and
+never raises - if everything fails the caller gets a neutral result with
+`analyzer="unavailable"` (deliberately not cached, so a transient outage is not
+sticky). `ModelHealth` is a circuit breaker (`EMOTION_FAILURE_THRESHOLD` failures
+opens it for `EMOTION_COOLDOWN_SECONDS`) plus a latency governor (EMA above
+`EMOTION_SLOW_MS` stops routing to the model). Both were corrected during
+verification: the sample that pays for the model *load* is excluded
+(`EmotionAnalyzer.is_warm`), and the slow rule needs at least 3 samples, so one
+slow call cannot switch the model off.
+
+**Endpoint** (`app/api/v1/dev.py`): `POST /api/v1/dev/analyze` runs one string
+through the chain in a worker thread and returns the result plus which analyzer
+answered; `GET /api/v1/dev/analyze/state` exposes chain health and cache counters.
+Mounted **only** when `APP_ENV != production` (so it is 404 *and* absent from the
+OpenAPI schema there), with an in-endpoint re-check as defence in depth. The log
+line carries a 16-hex fingerprint and a length, never the text; `text`, `prompt`
+and `query` were added to the log blocklist.
+
+**Config** (`EMOTION_ANALYZER`, `EMOTION_MODEL_ID`, `EMOTION_DEVICE`,
+`EMOTION_MAX_LENGTH`, `EMOTION_BATCH_SIZE`, `EMOTION_CACHE_SIZE`,
+`EMOTION_FAILURE_THRESHOLD`, `EMOTION_COOLDOWN_SECONDS`, `EMOTION_SLOW_MS`), all
+validated at startup - a typo in `EMOTION_ANALYZER` fails loudly instead of
+silently meaning "no analyzer". Documented in `.env.example`, `backend/README.md`
+and [ADR 0006](docs/adr/0006-emotion-model.md).
+
+**Tests** (630 backend, 100 % coverage of `app/`; 341 new):
+`tests/unit/test_nlp_{base,lexicon,keyword,sentiment,language,cache,fake,hf,chain,factory}.py`,
+emotion settings in `tests/unit/test_config.py`,
+`tests/integration/test_dev_analyze.py` (29),
+`tests/integration/test_nlp_hf_pipeline.py` (the real `transformers` pipeline
+against a tiny locally-built model, no download), and
+`tests/integration/test_nlp_model.py` (the one `@pytest.mark.model` test,
+deselected by default via `addopts = "-ra -m 'not model'"`).
+
+## Verification (Day 6 — real command output)
+
+Everything below was run for real in this sandbox (Python 3.11.2, Node 22.22.3,
+npm 10.9.8, `torch` 2.14.1 + `transformers` 5.19.0 installed for the pipeline
+checks). `huggingface.co` is **not** reachable from it, so no real checkpoint was
+ever downloaded.
+
+- **Install** - `pip install --user -e ".[dev]"` (fastapi 0.143.0, pydantic 2.14.0,
+  sqlalchemy 2.1.4, pytest 9.1.1), then `langdetect` 1.0.9, then
+  `torch` + `transformers` for the pipeline test. `cd frontend && npm install` ->
+  334 packages.
+- **`make test` with `HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`** - exit 0.
+  Backend: **627 passed, 5 deselected in 38.6 s, coverage TOTAL 2368 stmts / 0 miss
+  / 100 %**. Frontend: **12 files / 73 tests passed** in 12.0 s. (Re-run after the
+  latency fix below: **630 passed, 5 deselected, TOTAL 2381 / 0 / 100 %**.)
+- **`make lint`** - `ruff check .` all checks passed; `ruff format --check .` 111
+  files already formatted; `mypy app tests` (strict) "Success: no issues found in
+  107 source files"; `npm --prefix frontend run lint` (`eslint .`) clean.
+- **`pytest -m model -q`** - **5 failed, 627 deselected in 28.5 s**. Root cause
+  from the traceback: `huggingface_hub.errors.LocalEntryNotFoundError: An error
+  happened while trying to locate the file on the Hub and we cannot find the
+  requested files in the local cache.` The analyzer logged exactly what it should:
+  `{"model_id": "SamLowe/roberta-base-go_emotions", "error_type": "OSError",
+  "fallback": "lexicon", "event": "emotion_model_unavailable"}`. **These 5 must be
+  re-run where the hub is reachable** (`pip install -e ".[dev,nlp]"`).
+- **The fallback path, verified live instead** - `tests/integration/test_nlp_hf_pipeline.py`
+  builds a 1-layer DistilBERT with a hand-written vocabulary in a temp dir and runs
+  the genuine `transformers.pipeline(...)` through `HFEmotionAnalyzer`
+  (`_build_pipeline`, `device=-1`, `truncation`, `top_k=None`, batching, empty-text
+  short-circuit, concurrent single load, bad path -> `ModelUnavailableError`):
+  **6 passed, offline**.
+- **Live server, the six requested cases** (`uvicorn app.main:app`, `curl`,
+  `EMOTION_ANALYZER=keyword`):
+
+  | text | primary | valence | arousal | analyzer | lang |
+  | --- | --- | --- | --- | --- | --- |
+  | "I got the job and I can't stop smiling" | `joy` | +0.800 | 0.60 | keyword | en |
+  | "I feel so alone lately" | `loneliness` | -0.600 | 0.30 | keyword | en |
+  | "exam kal hai, bahut dar lag raha hai" | `fear` | -0.600 | 0.70 | keyword | hi / hinglish |
+  | "I am fine" | `calm` | +0.400 | 0.20 | keyword | en |
+  | "" (empty) | `neutral` | 0.000 | 0.30 | chain | other |
+  | 10,000 x "x" | `neutral` | 0.000 | 0.30 | keyword | other |
+
+  No crashes. All six returned HTTP 200 with a full nine-label `scores` map.
+- **Latency, 20 sequential calls** (unique text each call, so no cache hits):
+
+  | path | p50 | p95 | min | max | mean |
+  | --- | --- | --- | --- | --- | --- |
+  | model (`hf`, tiny local 2-layer model) | **4.8 ms** | **7.1 ms** | 4.4 | 7.5 | 5.0 |
+  | fallback (`keyword` lexicon) | **2.6 ms** | **3.6 ms** | 2.4 | 3.9 | 2.8 |
+  | cache hit (same text x20) | 3.4 ms | 3.5 ms | - | - | - |
+
+  Cold start dominates everything else: the first request against a cold model took
+  **4479 ms** (lazy load + inference). **These are not the production model's
+  numbers** - the local model is a 2-layer/64-dim stub with random weights, built
+  because the real checkpoint cannot be downloaded. Re-measure p95 against
+  `SamLowe/roberta-base-go_emotions` (125M params) before trusting
+  `EMOTION_SLOW_MS=1500`.
+- **`APP_ENV=production`** - `POST /api/v1/dev/analyze` -> **HTTP 404**
+  `{"error":{"code":"not_found",...}}`; `GET /api/v1/dev/analyze/state` -> **404**;
+  the route is **absent from `/openapi.json`** (13 paths, none containing `dev`);
+  `GET /api/v1/health` still 200. Asserted in tests too
+  (`test_the_route_does_not_exist_in_production`,
+  `test_the_route_is_absent_from_the_production_schema`).
+- **Log grep over both live servers** (200 lines) - occurrences of "I got the job",
+  "stop smiling", "I feel so alone", "alone lately", "exam kal hai", "bahut dar
+  lag", "I am fine", "xxxxxxxxxx", "anxious about thing": **all 0**. The only
+  `text`-prefixed fields anywhere are `text_sha` (92) and `text_length` (92); the
+  events emitted are `http_request` (96), `emotion_analyzed` (92),
+  `emotion_analyzer_configured` (2), `emotion_model_loaded` (1). Also asserted
+  in-test with a sentinel (`test_the_text_is_never_logged`).
+- **Two failures were found during verification and fixed at the root**, each with a
+  regression test (no test was weakened or deleted):
+  1. **The tokenizer split Indic words at combining marks.** `\w` matches
+     Devanagari/Bengali *letters* but not their vowel signs (Unicode Mn), so
+     "अकेला" tokenised as "अक" + "ल" and **no** Hindi or Bengali lexicon term could
+     ever match. Fixed by including the mark ranges in the word pattern;
+     `test_devanagari_words_stay_whole`, `test_bengali_words_stay_whole` and the
+     `test_indic_scripts` parametrization are the guards.
+  2. **The cold model load poisoned the latency governor.** The first call's 4479 ms
+     seeded the EMA above `EMOTION_SLOW_MS`, so every later request went to the
+     keyword fallback for the life of the process (chain state showed
+     `ema_ms=3604.9, skipped_slow=24, degraded=24` against a healthy model). Fixed by
+     excluding the load sample (`EmotionAnalyzer.is_warm`) and requiring 3 samples
+     before the slow rule engages. Re-measured: `samples=24, ema_ms=1.9,
+     skipped_slow=0, degraded=0`. Guards:
+     `test_a_cold_start_is_not_measured_as_inference`,
+     `test_one_slow_call_does_not_switch_the_model_off`.
+- Three further bugs were caught by the new tests during development, not by the
+  live run: `polarity()` matched signed keys the tokenizer never produces (the whole
+  sentiment lexicon was dead, and injected lexicons were ignored entirely); `scan()`
+  reported "up" as a separate hit after matching "fed up"; and one lexicon entry was
+  mixed-script (Devanagari SHA + Bengali matras) so it matched nothing. Two dead
+  3-word lexicon entries were removed because the scanner only builds bigrams -
+  `test_phrases_are_at_most_two_words` now enforces that.
+
+
 ## Verification (Day 5 — real command output)
 
 Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Python 3.11).
@@ -158,10 +348,24 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0003 — Data layer: models, migrations, encryption at rest, and repositories](docs/adr/0003-data-layer-models-migrations-and-encryption.md): typed models + naming convention, portable types (no native enums), UTC timestamps with dual defaults, erasure-as-one-`DELETE` via cascade (+ the SQLite pragma), encryption at the repository boundary with one deployment key today and per-user keys later, metadata-in-the-clear/words-encrypted split, async sessions with thin never-commit repositories, hand-reviewed migrations with drift as a test failure, readiness = connectivity (not migration state).
 - [0004 — Authentication, anonymous mode, and consent](docs/adr/0004-authentication-and-consent.md): argon2id + length-only password policy, fixed-HS256 access/refresh JWTs with hashed storage and rotation-family reuse detection, consent documents as versioned content enforced at the *current* version by `require_consent`, in-house sliding-window rate limiting + per-account lockout with backoff, `ApiError` curated codes in the Day 2 envelope.
 - [0005 — Frontend skeleton: tokens, the API client, and the accessibility floor](docs/adr/0005-frontend-skeleton.md): CSS-variable design tokens with a `data-theme` switch (no `dark:` classes, no literal colours in components), contrast enforced by a test on the tokens, one API client with single-flight token refresh and one replay, onboarding as a gate rather than a guarded route, one modal primitive owning the focus contract, one navigation rendered as rail or bottom bar by a media query, and a deliberately public crisis endpoint.
+- [0006 — Emotion model: choice, mapping, and licence](docs/adr/0006-emotion-model.md): `EMOTION_MODEL_ID` as the single place a checkpoint is named (default `SamLowe/roberta-base-go_emotions`, MIT), one nine-label internal taxonomy with a `LABEL_MAP` that takes the **max** per emotion rather than the sum, lazy thread-safe CPU loading with `transformers`/`torch` as an optional extra, degradation on both failure *and* sustained slowness, and the licence position (model MIT verified from three independent mirrors; the GoEmotions **dataset** licence still to be confirmed by hand). Numbered 0006 because the brief's requested `0002-emotion-model.md` was already taken on `main` by the backend-skeleton ADR.
+- Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
 ## Known issues
 
+- **Day 6's branch is not the requested one.** The brief asked for `day-06-nlp-service-emotion-sentiment`; this Arena session is pinned to `arena/284986a6-manovia` and cannot create or push to another branch name. Same situation as Days 1-3 and Day 4.
+- **The real emotion model was never downloaded or run here.** `huggingface.co` is unreachable from this sandbox, so `pytest -m model -q` fails all 5 with `LocalEntryNotFoundError`. **Run locally**: `pip install -e ".[dev,nlp]" && pytest -m model -q`. The pipeline *integration* is covered offline by `test_nlp_hf_pipeline.py` (a tiny locally-built checkpoint through the real `transformers` code path), so what is unverified is the specific checkpoint, not the plumbing.
+- **The Day 6 latency numbers are not the production model's.** The "model path" p50 4.8 ms / p95 7.1 ms came from a 2-layer, 64-dim stub with random weights, because nothing else was loadable. `SamLowe/roberta-base-go_emotions` is 125M params; expect a materially higher p95 on CPU. Re-measure before trusting `EMOTION_SLOW_MS=1500`, and expect a multi-second cold start on first request (no pre-warm at startup today).
+- **Accuracy is unmeasured - this is the biggest Day 6 gap.** No eval set or harness exists yet (`evals/` holds `datasets/` and `reports/` directories only). The six verification cases were checked for *plausibility*, not correctness, and the lexicons are hand-written by one person with no held-out data. Do not treat any emotion label as validated.
+- **The default model is English-only.** Hindi and Bengali text is detected and routed, but the model reads it as noise; those messages are effectively served by the lexicon fallbacks (which do carry romanised Hindi, Banglish and Indic-script terms). A multilingual checkpoint is the real fix and is in the parking lot.
+- **`loneliness` has no head in GoEmotions**, so it can only come from the lexicons - "nobody has called in weeks" is caught by a word list or not at all. `shame` and `anxiety` map thinly from `embarrassment`/`remorse` and `nervousness`.
+- **`langdetect` is confidently wrong on short text** - it reads "I am fine" as Italian with probability 1.0. Plain-ASCII prose that it fails on is therefore assumed English with confidence capped at 0.5. That is a deliberate trade for a product that speaks en/hi/bn, but it means short French/German messages are labelled `en`.
+- **The legacy `chatbot-1/` source is still not in the repository**, so `SentimentAnalyzer` ports the *idea* (two weighted lists, a running score, a squashed `[-1,1]` result) rather than the code. Re-diff against the real source when it arrives.
+- **The analysis cache and the circuit breaker are per-process.** Behind several workers each has its own cache and its own view of model health, and a restart clears both. Correct but wasteful; a shared store would have to be keyed the same way (never by the text).
+- **`torch` is installed from PyPI, which ships the CUDA-enabled wheel (~5.7 GB here).** A CPU-only deployment should use the extra index from pytorch.org; nothing in the code needs CUDA (`device=-1`), but the install size is a real deploy cost.
+- **`transformers` 5.x is what was tested, not the `>=4.44` floor declared in the `nlp` extra.** `_normalize_batch` accepts all three output shapes the pipeline can produce, but 4.x was not exercised.
+- **The dev endpoint is unauthenticated** outside production, by design (it is a debugging surface). Anything that reaches a non-production deployment over a network can analyze arbitrary text through it, and it is rate limited only by the global budget.
 - **Day 5's branch is the requested one, Days 1–4's were not**: Day 5 work is on `day-05-frontend-skeleton-react-vite`, the name that was asked for. Days 1–3 used `arena/*` session branches (the Arena session was pinned to those names) and Day 4's PR therefore comes from `arena/3a05341b-manovia`.
 - **No browser-level test anywhere in this sandbox**: there is no browser binary and none can be downloaded (no CDN access), so Playwright / `@axe-core/playwright` cannot run. The frontend is verified with `jest-axe` on the jsdom-rendered tree plus `curl` against the live dev server. **Check by hand in a real browser before trusting Day 5's UI**: the dark palette, the onboarding step transitions, the help modal's focus trap and Escape handling, the theme switcher, the responsive navigation at 768px, and a real screen-reader pass over the help dialog.
 - `jest-axe` disables colour-contrast rules in jsdom (it cannot compute styles there), so contrast is asserted arithmetically by `src/styles/tokens.test.ts` on the token values — not by an axe audit. The test is the enforcement point.
@@ -206,9 +410,16 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - LLM provider interface with offline fakes; full-text search strategy for encrypted fields; CI workflow running `make lint`, `make test`, `make migrate-check` (and a PostgreSQL service job for the migration round trip); Docker compose; evals harness; a PWA/offline story for the crisis dialog (a cached copy of the helplines so it works with no network).
 - Frontend error-boundary and offline states: today a failed request surfaces as a toast-level message; a global boundary with a retry affordance and a "you are offline" variant are not built.
 - Restore the legacy `chatbot-1/` source under `legacy/` when supplied; add the 49-day plan to `docs/plan/` when available.
+- **An emotion eval harness**: a labelled set (English, Hinglish, Bengali) under `evals/datasets/`, a runner that reports per-label precision/recall for each analyzer, and a threshold the CI can fail on. Without it every claim about accuracy is a guess.
+- **A multilingual emotion checkpoint** for Hindi and Bengali, or a language-routed pair of models; plus a code-mixed (Hinglish) eval slice, which no public model handles well.
+- **Model pre-warm at startup** (behind a setting) so the first user message does not pay the multi-second load, and a `warm` flag in `/api/v1/ready`.
+- **Per-user or per-session emotion context**: today every message is analyzed in isolation, so "still" / "again" / "worse than yesterday" carry nothing. A short-window aggregate is what mood tracking actually needs.
+- Batch analysis endpoint / `analyze_many` exposure for backfill jobs, and a shared (Redis) analysis cache behind the existing `AnalysisCache` interface.
+- Streaming or async model loading so a slow first load cannot hold a worker thread, plus a hard inference deadline (today the latency governor reacts *after* slow calls, it cannot interrupt one).
+- Extend the log-redaction blocklist test to every new request-body shape, and a CI job that greps a captured log for a planted sentinel.
 
-## Next steps (Day 6 — first three)
+## Next steps (Day 7 — first three)
 
-1. **Chat core with the safety gates first**: the deterministic crisis rules that run **before** any LLM call (AGENTS.md rule 1) as a pure module with unit tests over fixture messages — no network. (The helpline content module and its public endpoint shipped early with Day 5, because the frontend needed something real to display; the rules are still the Day 6 headline.)
-2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real provider stub and a `FakeCompleter` for offline tests, config-selected via `LLM_PROVIDER` (already in `.env.example`); plus the output-safety check every completion must pass (AGENTS.md rule 4).
-3. **Message send on top of Day 4**: `POST /api/v1/chat/sessions/{id}/messages` behind `require_consent(ai_disclosure, terms)` and `get_current_user`, storing text through `ChatRepository.add_message` (encrypted), emitting `SafetyEvent` rows, and asserting in tests that no raw message text reaches the logs at any level (AGENTS.md rule 5) — then wire the frontend's chat page to it and replace the placeholder.
+1. **Crisis and self-harm rules that run BEFORE any LLM call** (AGENTS.md rule 1): a pure, deterministic module over `app/content/` phrase sets with a risk tier 0-3, unit-tested against fixture messages with no network. It must be callable with no model, no database and no LLM, because it has to work when everything else is down. The helpline content and its public endpoint shipped with Day 5; the rules are still the headline.
+2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real provider stub and a `FakeCompleter` for offline tests, selected by `LLM_PROVIDER` (already in `.env.example`) - built the same way as `app/services/nlp/` (interface first, fake second, real provider optional), plus the output-safety check every completion must pass (AGENTS.md rule 4).
+3. **Message send**: `POST /api/v1/chat/sessions/{id}/messages` behind `require_consent(ai_disclosure, terms)` and `get_current_user`, storing text through `ChatRepository.add_message` (encrypted), running the crisis rules first, attaching the Day 6 `EmotionResult` to `messages.emotion`, emitting `SafetyEvent` rows, and asserting in tests that no raw message text reaches the logs at any level. Then wire the frontend's chat page to it and replace the placeholder.

@@ -2,9 +2,10 @@
 
 FastAPI backend for Manovia: environment-based configuration, structured JSON
 logging with request IDs and log redaction, a consistent error envelope, security
-headers, CORS, liveness/readiness endpoints, and the Day 3 data layer (SQLAlchemy
-2 models, Alembic migrations, async sessions, thin repositories, and field
-encryption for personal text).
+headers, CORS, liveness/readiness endpoints, the Day 3 data layer (SQLAlchemy 2
+models, Alembic migrations, async sessions, thin repositories, and field
+encryption for personal text), and the Day 6 NLP service (emotion and
+sentiment analysis behind one interface, with lexicon fallbacks).
 
 ## Setup
 
@@ -56,12 +57,65 @@ Local development works with no configuration at all: `DATABASE_URL` defaults to
   `app/content/helplines.json`, **public** (no auth, no consent gate — someone in
   trouble has not signed in), validated on load with a `last_verified` date
   (AGENTS.md safety rule 6)
+- `app/services/nlp/` — the emotion and sentiment service:
+  `base.py` (the `EmotionAnalyzer` contract, the nine-label taxonomy and the
+  valence/arousal anchors), `hf.py` (the Hugging Face model: lazy thread-safe
+  load, batching, truncation, and `LABEL_MAP`), `keyword.py` and `sentiment.py`
+  (the lexicon fallbacks), `lexicon.py` (shared negation/intensifier rules),
+  `language.py` (`en`/`hi`/`bn`/`other` plus Hinglish heuristics), `cache.py`
+  (an LRU keyed by a hash of the text, never the text), `chain.py` (the
+  fallback chain, circuit breaker and latency governor), `fake.py` (the
+  deterministic test double) and `__init__.py` (`build_analyzer()`)
+- `app/api/v1/dev.py` — `POST /api/v1/dev/analyze` and
+  `GET /api/v1/dev/analyze/state`. **Dev-only**: mounted only when
+  `APP_ENV != production`, so in production the route does not exist (404) and is
+  absent from the OpenAPI schema. Logs a SHA-256 fingerprint and a length, never
+  the text (AGENTS.md safety rule 5)
 - `app/content/` — the two shipped content files and their loaders:
   `consent_documents.json` (+ `documents.py`) and `helplines.json` (+ `crisis.py`)
 - `alembic/` — migration environment (`env.py` reads `DATABASE_URL` through
   `Settings`) and `versions/0001_initial_schema.py`
 - `tests/unit`, `tests/integration` — pytest suites; integration tests run against a
   real SQLite file, fully offline
+
+## NLP service (Day 6)
+
+```bash
+pip install -e ".[dev,nlp]"   # the nlp extra adds transformers + torch
+```
+
+The extra is **optional**: without it the module still imports and the lexicon
+analyzers answer. `EMOTION_ANALYZER` picks what leads the chain (`auto` / `hf` /
+`keyword` / `sentiment` / `fake`); the lexicons are always attached as fallbacks,
+and `EMOTION_MODEL_ID` names the checkpoint. See
+[`docs/adr/0006-emotion-model.md`](../docs/adr/0006-emotion-model.md) for the
+model choice, the label mapping and the licence.
+
+```bash
+curl -s -X POST localhost:8000/api/v1/dev/analyze \
+  -H 'content-type: application/json' \
+  -d '{"text":"exam kal hai, bahut dar lag raha hai"}' | python3 -m json.tool
+```
+
+```json
+{
+  "primary": "fear",
+  "valence": -0.6,
+  "arousal": 0.7,
+  "analyzer": "keyword",
+  "language": {"lang": "hi", "confidence": 1.0, "hinglish": true, "script": "latin"},
+  "cached": false,
+  "duration_ms": 0.3
+}
+```
+
+`analyzer` says which of the chain answered - `hf`, `keyword`, `sentiment`,
+`fake`, or `unavailable` if everything failed - so a silent degradation is
+visible in the response rather than in a guess.
+
+The real model needs the hub; the offline suite covers the pipeline anyway by
+building a tiny local checkpoint (`tests/integration/test_nlp_hf_pipeline.py`).
+Run the real one with `pytest -m model -q`.
 
 ## Schema notes
 
