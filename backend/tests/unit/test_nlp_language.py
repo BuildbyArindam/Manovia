@@ -142,6 +142,12 @@ class TestDetectLanguage:
         assert info.script == "none"
         assert info.hinglish is False
 
+    def test_a_very_short_string_is_too_short_to_judge(self) -> None:
+        """Two letters carry no statistical signal at all."""
+        info = detect_language("hi")
+        assert info.lang == "other"
+        assert info.confidence == 0.0
+
     def test_punctuation_only_is_other(self) -> None:
         assert detect_language("!!! ??? ...").lang == "other"
 

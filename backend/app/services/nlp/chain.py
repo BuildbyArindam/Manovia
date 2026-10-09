@@ -76,11 +76,9 @@ class ModelHealth:
     def _state_locked(self) -> str:
         if self._failures < self._failure_threshold:
             return "closed"
-        opened = self._opened_at
-        if opened is None:
-            return "open"
-        elapsed = self._clock() - opened
-        return "half_open" if elapsed >= self._cooldown_seconds else "open"
+        # record_failure always stamps both; a missing stamp means "just now".
+        opened = self._opened_at if self._opened_at is not None else self._clock()
+        return "half_open" if self._clock() - opened >= self._cooldown_seconds else "open"
 
     def allow(self) -> bool:
         """Should the primary analyzer be tried for this request?"""
@@ -163,9 +161,17 @@ class AnalyzerChain(EmotionAnalyzer):
 
     @property
     def degraded_count(self) -> int:
-        """Requests that could not be served by the primary analyzer."""
+        """Requests the primary analyzer could not serve.
+
+        Counted once per *request*, however many analyzers it fell through:
+        the number is meant to be a rate, not a tally of attempts.
+        """
         with self._lock:
             return self._degraded
+
+    def _mark_degraded(self) -> None:
+        with self._lock:
+            self._degraded += 1
 
     def _variant(self) -> str:
         """Cache namespace: a model swap must not serve the old model's answer."""
@@ -187,6 +193,7 @@ class AnalyzerChain(EmotionAnalyzer):
             return empty
 
         first_neutral: EmotionResult | None = None
+        degraded = False
         for index, analyzer in enumerate(self._candidates):
             if index == 0 and self._gate_primary and not self._health.allow():
                 continue
@@ -196,8 +203,7 @@ class AnalyzerChain(EmotionAnalyzer):
             except Exception as exc:  # degrade, never propagate
                 if index == 0:
                     self._health.record_failure()
-                with self._lock:
-                    self._degraded += 1
+                degraded = True
                 structlog.get_logger().warning(
                     "emotion_analyzer_failed",
                     analyzer=analyzer.name,
@@ -211,9 +217,8 @@ class AnalyzerChain(EmotionAnalyzer):
             elapsed_ms = (time.perf_counter() - started) * 1000.0
             if index == 0:
                 self._health.record_success(elapsed_ms)
-            elif index > 0:
-                with self._lock:
-                    self._degraded += 1
+            else:
+                degraded = True
 
             if not result.is_informative:
                 # "I looked and found nothing" - give the next analyzer a turn,
@@ -222,6 +227,8 @@ class AnalyzerChain(EmotionAnalyzer):
                 first_neutral = first_neutral or result
                 continue
 
+            if degraded:
+                self._mark_degraded()
             if cache is not None and key is not None:
                 cache.set(key, result)
             return result
@@ -230,13 +237,14 @@ class AnalyzerChain(EmotionAnalyzer):
             # Nobody had an opinion. Report the primary's honest "neutral"
             # rather than inventing one, and cache it: the answer will not
             # change until the model or the lexicon does.
+            if degraded:
+                self._mark_degraded()
             if cache is not None and key is not None:
                 cache.set(key, first_neutral)
             return first_neutral
 
         # Every analyzer failed. Not cached: this must not become sticky.
-        with self._lock:
-            self._degraded += 1
+        self._mark_degraded()
         return neutral_result(analyzer="unavailable", model=self.model_id, language=lang)
 
     def describe(self) -> dict[str, object]:

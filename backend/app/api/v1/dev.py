@@ -140,10 +140,9 @@ async def analyzer_state(request: Request) -> dict[str, object]:
     """Chain health, cache counters and the detected model. No text, no keys."""
     _require_dev(request)
     analyzer = request.app.state.emotion_analyzer
-    describe = getattr(analyzer, "describe", None)
-    if callable(describe):
-        state: dict[str, object] = dict(describe())
-    else:
-        state = {"analyzer": analyzer.name, "model": analyzer.model_id}
+    # describe() is part of the EmotionAnalyzer contract: counters, chain shape
+    # and cache stats, and never a key or a piece of text.
+    state: dict[str, object] = dict(analyzer.describe())
+    # Only a chain has a loadable primary; anything else simply has no model.
     state["loaded"] = bool(getattr(getattr(analyzer, "primary", analyzer), "is_loaded", False))
     return state

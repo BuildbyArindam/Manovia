@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Any, ClassVar
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -227,7 +227,9 @@ class EmotionAnalyzer(ABC):
     """
 
     #: Short stable name, used in responses, logs and the analysis cache key.
-    name: ClassVar[str] = "abstract"
+    #: A plain attribute, not a ClassVar: production analyzers set it per
+    #: class, but a test double needs to set it per instance.
+    name: str = "abstract"
 
     @abstractmethod
     def analyze(self, text: str, lang: str | None = None) -> EmotionResult:

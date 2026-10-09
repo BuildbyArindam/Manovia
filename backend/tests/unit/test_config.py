@@ -159,3 +159,66 @@ def test_absurd_auth_settings_are_refused_at_startup() -> None:
     for kwargs in cases:
         with pytest.raises(ValidationError):
             Settings(_env_file=None, **kwargs)
+
+
+def test_day_6_emotion_defaults() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.emotion_analyzer == "auto"
+    # A model id must be configured, never hard-coded in a call site.
+    assert settings.emotion_model_id
+    assert settings.emotion_device == "cpu"
+    assert settings.emotion_max_length == 256
+    assert settings.emotion_batch_size == 8
+    assert settings.emotion_cache_size == 512
+    assert settings.emotion_failure_threshold == 2
+    assert settings.emotion_cooldown_seconds == 60.0
+    assert settings.emotion_slow_ms == 1500.0
+
+
+def test_a_lexicon_only_setup_does_not_need_a_model_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EMOTION_ANALYZER", "keyword")
+    monkeypatch.setenv("EMOTION_MODEL_ID", "")
+    settings = Settings(_env_file=None)
+    assert settings.emotion_analyzer == "keyword"
+    assert settings.emotion_model_id == ""
+
+
+@pytest.mark.parametrize("choice", ["auto", "hf", "keyword", "sentiment", "fake"])
+def test_every_documented_analyzer_choice_is_accepted(choice: str) -> None:
+    settings = Settings(_env_file=None, emotion_analyzer=choice)
+    assert settings.emotion_analyzer == choice
+
+
+def test_an_unknown_analyzer_choice_is_refused_at_startup() -> None:
+    """A typo must fail loudly, not silently mean no analyzer."""
+    with pytest.raises(ValidationError, match="EMOTION_ANALYZER"):
+        Settings(_env_file=None, emotion_analyzer="magic")
+
+
+def test_a_model_choice_without_a_model_id_is_refused() -> None:
+    with pytest.raises(ValidationError, match="EMOTION_MODEL_ID"):
+        Settings(_env_file=None, emotion_analyzer="hf", emotion_model_id="  ")
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "emotion_max_length",
+        "emotion_batch_size",
+        "emotion_cache_size",
+        "emotion_failure_threshold",
+        "emotion_cooldown_seconds",
+        "emotion_slow_ms",
+    ],
+)
+def test_absurd_emotion_settings_are_refused_at_startup(field: str) -> None:
+    bad: dict[str, Any] = {
+        "emotion_max_length": 1,
+        "emotion_batch_size": 0,
+        "emotion_cache_size": -1,
+        "emotion_failure_threshold": 0,
+        "emotion_cooldown_seconds": -5.0,
+        "emotion_slow_ms": 0.0,
+    }
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **{field: bad[field]})

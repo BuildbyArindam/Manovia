@@ -376,14 +376,18 @@ class TestInference:
         assert "I am happy" not in str(logs)
 
     @pytest.mark.parametrize(
-        "raw",
+        ("texts", "raw"),
         [
-            {"label": "joy", "score": 0.9},  # top_k=1, single text
-            [{"label": "joy", "score": 0.9}],  # top_k=None, single text
-            [[{"label": "joy", "score": 0.9}]],  # batch of one
+            (["a"], {"label": "joy", "score": 0.9}),  # top_k=1, single text
+            (["a"], [{"label": "joy", "score": 0.9}]),  # top_k=None, single text
+            (["a"], [[{"label": "joy", "score": 0.9}]]),  # batch of one
+            # A batch where the pipeline hands back one dict per text.
+            (["a", "b"], [{"label": "joy", "score": 0.9}] * 2),
+            (["a", "b"], [[{"label": "joy", "score": 0.9}]] * 2),  # batch of two
         ],
     )
-    def test_single_label_and_batch_shapes_are_all_accepted(self, raw: Any) -> None:
+    def test_every_pipeline_output_shape_is_accepted(self, texts: list[str], raw: Any) -> None:
         analyzer = HFEmotionAnalyzer("m", pipeline_factory=lambda *a, **k: lambda b: raw)
-        result = analyzer.analyze("I am happy")
-        assert result.primary == "joy"
+        results = analyzer.analyze_many(texts)
+        assert len(results) == len(texts)
+        assert all(result.primary == "joy" for result in results)
