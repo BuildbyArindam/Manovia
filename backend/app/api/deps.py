@@ -18,7 +18,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.content import ConsentDocuments, load_consent_documents
+from app.content import ConsentDocuments, HelplineContent, load_consent_documents, load_helplines
 from app.core.errors import ApiError
 from app.core.lockout import LoginLockout
 from app.core.tokens import ACCESS_TOKEN_TYPE, TokenError, TokenExpiredError, TokenService
@@ -58,9 +58,15 @@ def get_consent_documents() -> ConsentDocuments:
     return load_consent_documents()
 
 
+def get_helplines() -> HelplineContent:
+    """The shipped, human-verified helpline set."""
+    return load_helplines()
+
+
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 ConsentDocumentsDep = Annotated[ConsentDocuments, Depends(get_consent_documents)]
+HelplinesDep = Annotated[HelplineContent, Depends(get_helplines)]
 LockoutDep = Annotated[LoginLockout, Depends(get_login_lockout)]
 
 

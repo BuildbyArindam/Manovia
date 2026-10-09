@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.consent import router as consent_router
+from app.api.v1.crisis import router as crisis_router
 from app.api.v1.health import router as health_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
@@ -106,6 +107,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(consent_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
+    app.include_router(crisis_router, prefix="/api/v1")
 
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
