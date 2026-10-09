@@ -100,6 +100,21 @@ def test_settings_read_values_from_dotenv_file(
     assert settings.database_url == "postgresql+asyncpg://manovia@db:5432/manovia"
 
 
+def test_a_local_dotenv_file_never_reaches_a_test() -> None:
+    """Regression guard for the test harness itself.
+
+    The repository may contain a real ``.env`` (backend/.env or ../.env) while
+    the suite runs, and several callers construct ``Settings()`` directly. If the
+    isolation in ``tests/conftest.py`` were dropped, those values would leak in
+    and a green run would stop meaning "the code works" — so this test asserts
+    the plain defaults a developer's file cannot provide.
+    """
+    settings = Settings()
+    assert settings.field_encryption_key is None
+    assert settings.secret_key is None
+    assert settings.app_env == "development"
+
+
 def test_get_settings_caches_per_process(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "test")
     get_settings.cache_clear()

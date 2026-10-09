@@ -39,9 +39,17 @@ _ENV_KEYS = (
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Remove every app environment variable so tests never read local config."""
+    """Isolate every test from the developer's configuration.
+
+    Two sources have to be neutralised: the process environment (deleted) and
+    the ``.env`` files ``Settings`` would otherwise read (disabled). Code that
+    builds its own ``Settings()`` — the readiness endpoint, ``alembic/env.py``,
+    the seed script — would otherwise pick up a local ``.env`` and quietly change
+    what a test proves.
+    """
     for key in _ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
 
 
 @pytest.fixture(autouse=True)
