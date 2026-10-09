@@ -36,6 +36,7 @@ def test_every_model_is_registered_with_a_table() -> None:
         "journal_entries",
         "assessment_results",
         "safety_events",
+        "refresh_tokens",
     }
 
 

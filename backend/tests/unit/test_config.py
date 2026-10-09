@@ -1,6 +1,7 @@
 """Unit tests for application settings."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -123,3 +124,38 @@ def test_get_settings_caches_per_process(monkeypatch: pytest.MonkeyPatch) -> Non
     assert get_settings() is first  # cached: later env changes are not picked up
     get_settings.cache_clear()
     assert get_settings().app_env == "development"
+
+
+def test_day_4_auth_defaults() -> None:
+    settings = Settings(_env_file=None)
+    # Password policy: length only (NIST SP 800-63B), no composition rules.
+    assert settings.password_min_length == 10
+    assert settings.password_max_length == 256
+    # 15-minute access tokens, week-long rotating refresh tokens.
+    assert settings.jwt_access_minutes == 15
+    assert settings.jwt_refresh_days == 7
+    # Strict on auth, moderate globally, on by default.
+    assert settings.rate_limit_enabled is True
+    assert settings.rate_limit_auth_per_minute == 10
+    assert settings.rate_limit_global_per_minute == 120
+    # Lock after 5 failures for 15 minutes, doubling to a 1-hour cap.
+    assert settings.login_max_failures == 5
+    assert settings.login_lockout_seconds == 900
+    assert settings.login_lockout_max_seconds == 3600
+
+
+def test_absurd_auth_settings_are_refused_at_startup() -> None:
+    cases: list[dict[str, Any]] = [
+        {"password_min_length": 0},
+        {"password_min_length": 20, "password_max_length": 10},
+        {"jwt_access_minutes": 0},
+        {"jwt_refresh_days": 0},
+        {"rate_limit_auth_per_minute": 0},
+        {"rate_limit_global_per_minute": 0},
+        {"login_max_failures": 0},
+        {"login_lockout_seconds": 0},
+        {"login_lockout_seconds": 100, "login_lockout_max_seconds": 50},
+    ]
+    for kwargs in cases:
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None, **kwargs)

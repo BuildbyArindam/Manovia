@@ -34,6 +34,9 @@ SEEDED_COUNTS = {
     "journal_entries": 1,
     "assessment_results": 1,
     "safety_events": 2,
+    # Session state, not user content: rows appear only when the demo account
+    # signs in through POST /api/v1/auth/login (Day 4).
+    "refresh_tokens": 0,
 }
 
 
@@ -56,17 +59,21 @@ def test_the_script_is_documented_and_importable() -> None:
     assert callable(module.seed) and callable(module.main)
 
 
-def test_demo_password_hash_is_self_describing() -> None:
+def test_demo_password_hash_is_the_real_argon2_hasher() -> None:
     module = _load()
     digest = module.demo_password_hash("manovia-demo")
-    algorithm, salt, derived = digest.split("$")
-    assert algorithm == "scrypt"
-    assert len(salt) == 32 and len(derived) == 64
+    assert digest.startswith("$argon2id$")
     assert module.demo_password_hash("manovia-demo") != digest, "the salt must be random"
     assert "manovia-demo" not in digest
+    # The hash verifies with the same hasher the login endpoint uses.
+    from app.core.passwords import get_password_hasher
+
+    hasher = get_password_hasher()
+    assert hasher.verify(digest, "manovia-demo")
+    assert not hasher.verify(digest, "not-the-demo-password")
 
 
-async def test_seed_creates_one_demo_user_with_a_row_in_every_table(
+async def test_seed_creates_one_demo_user_with_a_row_in_every_content_table(
     database: Database, cipher: FieldCipher, session: AsyncSession
 ) -> None:
     module = _load()
@@ -102,7 +109,7 @@ async def test_the_seeded_words_are_not_readable_in_the_file(
     finally:
         connection.close()
     assert isinstance(blob, (bytes, bytearray)) and b"slept" not in bytes(blob)
-    assert users == "scrypt$"
+    assert users == "$argon2"
 
 
 async def test_seed_is_idempotent_and_fresh_rebuilds_the_demo_user(
