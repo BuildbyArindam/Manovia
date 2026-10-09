@@ -5,7 +5,7 @@ A privacy-first, safety-first mental wellbeing self-help companion—not therapy
 > **Important:** Manovia is not a substitute for professional care. If you are in crisis, call your local emergency number now.
 
 [![CI](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml/badge.svg)](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml)
-[![Backend coverage](https://img.shields.io/badge/backend%20coverage-100%25-brightgreen.svg)](#testing)
+![Backend coverage](https://img.shields.io/badge/backend%20coverage-100%25-brightgreen.svg)
 
 ## Features
 

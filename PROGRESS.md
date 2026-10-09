@@ -2,27 +2,32 @@
 
 ## Current status
 
-Day 6 (the NLP service - emotion and sentiment) is complete and verified:
-**630 backend tests pass at 100 % coverage** (2381 statements) and **73 frontend
-tests** still pass, with `ruff`, `ruff format`, `mypy` (strict) and `eslint` all
-clean. The service runs behind one interface (`EmotionAnalyzer`), puts a
-Hugging Face model first and two lexicon analyzers behind it, and degrades
-instead of failing. The dev endpoint, the cache and the log redaction were all
-verified against a **live server** with `curl` - including a 10,000-character
-message, an empty one, `APP_ENV=production` (404), and a grep of the server logs
-proving no request text reaches a log line.
+Day 7 (integration, CI and dockerisation) is complete and verified as far as
+this sandbox allows: **623 backend tests pass at 99.96 % coverage** (2381
+statements; the one missed line is the lazy-load retry guard in `hf.py`, only
+reachable with the `nlp` extra installed — the full-environment figure stays
+100 %) and **73 frontend tests** still pass, with `ruff`, `ruff format`,
+`mypy` (strict), `eslint`, `tsc --noEmit` and the production `vite build` all
+clean. The repo now has a four-job GitHub Actions pipeline, Docker images for
+both halves, a compose dev stack with dev-only auto-migrations, an end-to-end
+smoke script, and a real CI badge in the README.
 
-What could **not** be verified here: the real checkpoint never downloads
-(`huggingface.co` is not reachable from this sandbox), so the 5 `@pytest.mark.model`
-tests fail with `LocalEntryNotFoundError` by design. The pipeline integration is
-still covered for real - `tests/integration/test_nlp_hf_pipeline.py` builds a tiny
-local model offline and runs the genuine `transformers` code path. See "Known
-issues" for the short list of things to run locally.
+What could **not** be verified here: **Docker does not exist in this sandbox**
+(`docker`/`docker compose`/`gitleaks`/`actionlint` are absent and their release
+binaries cannot be downloaded — network egress is restricted), so image builds,
+the compose stack, container health/`whoami` checks and `docker compose logs`
+are statically reviewed only. Every check that *can* run here ran for real —
+including the smoke test's full request sequence against a live uvicorn +
+production `vite preview` (`SMOKE PASS`, exit 0, plus three verified failure
+modes). The short list of commands to run on a Docker machine is in
+"Verification (Day 7)" below.
 
-Work is on `arena/284986a6-manovia` - the branch this Arena session is pinned to,
-**not** the requested `day-06-nlp-service-emotion-sentiment`; the session cannot
-create or push to another branch name. Days 1-3 are merged on `main`; the Day 4
-and Day 5 PRs are still open and unmerged.
+Work is on `arena/729849e3-manovia` — the branch this Arena session is pinned
+to, **not** the requested `day-07-integration-ci-dockerisation`; the session
+cannot create or push to another branch name. The pull request will therefore
+come from the session branch with `day-07-integration-ci-dockerisation` as
+its base, matching how previous days landed. Days 1-6 are merged on `main`
+(PRs #1-#7).
 
 ## Completed
 
@@ -195,6 +200,169 @@ against a tiny locally-built model, no download), and
 `tests/integration/test_nlp_model.py` (the one `@pytest.mark.model` test,
 deselected by default via `addopts = "-ra -m 'not model'"`).
 
+### Day 7 (branch `arena/729849e3-manovia`) — integration, CI and dockerisation
+
+**CI** (`.github/workflows/ci.yml`): one workflow, four jobs, mirroring the
+local `make lint` / `make test` contract exactly. `backend` — ruff check, ruff
+format --check, mypy strict, `pytest --cov=app --cov-fail-under=80` (the
+briefed floor; the suite measures well above it). `frontend` — ESLint,
+`tsc --noEmit`, Vitest, production `vite build`. `secrets-scan` — gitleaks over
+full history, **blocking**. `dependency-audit` — pip-audit +
+`npm audit --omit=dev`, **report-only** (`continue-on-error: true`) until the
+triaged advisory backlog is worked down (ADR 0007). Dependencies are cached via
+`setup-python`/`setup-node` keyed on `pyproject.toml`/`package-lock.json`;
+runs trigger on pushes to `main` and every PR, with per-ref concurrency
+cancellation and `contents: read` permissions only. The companion
+`.github/workflows/README.md` documents it.
+
+**Images** (`backend/Dockerfile`, `frontend/Dockerfile`, `docker/nginx.conf`,
+`.dockerignore`): the API image is multi-stage (wheels into a venv in a slim
+builder; a BuildKit pip cache keeps rebuilds fast), runs as non-root `app`,
+healthchecks `/api/v1/health` (liveness — a postgres blip must not
+restart-loop the API) via python's urllib (the slim image has no curl), and
+serves uvicorn with `--no-access-log` (AGENTS.md rule 5, same as `make dev`).
+The web image builds with `npm ci` + `npm run build` (which typechecks) and
+serves the bundle via nginx with hashed-asset caching, SPA fallback, security
+headers, and a same-origin `/api` proxy to the api service — no CORS, no
+localhost calls from the browser. `.dockerignore` keeps `.env*`, `.git`,
+caches and `node_modules` out of both build contexts. The `nlp` extra is
+deliberately absent from the API image (ADR 0007 §3): compose sets
+`EMOTION_ANALYZER=keyword`, so the lexicon analyzers answer instead of paying a
+doomed multi-GB model load.
+
+**Compose stack** (`docker-compose.yml`): `api` + `web` + `postgres:16-alpine`
+with `.env` interpolation and labelled dev-only defaults — a placeholder
+`SECRET_KEY` and an all-zero-bytes Fernet key (valid format, zero entropy,
+impossible to mistake for a real secret), so `make up` works with no `.env` at
+all. Postgres is never host-published and `api` waits on its `pg_isready`
+healthcheck. `make up` / `make down` / `make smoke` are real targets now; only
+`make eval` remains a placeholder.
+
+**Dev-only auto-migration** (`backend/docker-entrypoint.sh`, task 3): the entrypoint
+runs `alembic upgrade head` only when `APP_ENV=development` **and**
+`RUN_MIGRATIONS=true`, then `exec`s the server. The guard lives in the image,
+not the compose file, so production posture (migrations as a deliberate,
+separate, observable step) travels with the image itself.
+
+**Smoke test** (`scripts/smoke.sh`, task 4): starts the stack (skippable via
+`SMOKE_SKIP_COMPOSE=1`), waits for `/api/v1/ready` with a timeout, creates a
+guest (`POST /auth/guest` → 201), records consents at the fetched current
+document versions (`POST /consent` → 201), and checks the frontend returns
+HTTP 200. Never prints tokens or payloads; a dead service surfaces as a
+curated `SMOKE FAIL` line with exit 1 (both verified for real, see
+Verification). URL/timeout/compose-command overrides are env vars.
+
+**README** (task 5): the CI badge now points at the real workflow; the coverage
+badge carries the measured backend figure; the quick start leads with
+`cp .env.example .env` (optional) → `make up` → `make smoke` → `make down`,
+keeps the no-Docker path, and documents that the dev container auto-migrates.
+
+**Week-1 code review** (task 6): reviewed the security-sensitive core
+(`crypto`, `tokens`, `passwords`, `middleware`, `ratelimit`, `lockout`,
+`logging`, `errors`, `config`, `db/session`, `services/nlp/hf`, `alembic/env`,
+plus a TODO/FIXME sweep across backend+frontend — none found) against the AGENTS.md
+rules. The **top five technical debts** are recorded at the head of "Known
+issues" below. The sub-15-minute ones were fixed today: the README's stale
+Day 1 claim that log redaction is "not implemented", the workflows README
+placeholder, the stale quick-start/roadmap (Docker targets listed as
+placeholders), the missing `POSTGRES_*` section in `.env.example`, and
+smoke.sh's bare `curl` exit codes on connection failure.
+
+## Verification (Day 7 — real command output)
+
+Everything below was run for real in this sandbox (Python 3.11.2, Node 22.22.3,
+npm 10.9.8; backend deps in `backend/.venv`; **no Docker, gitleaks or
+actionlint available**). Nothing is claimed from documentation.
+
+`make lint` (repo root, venv on PATH):
+
+    ruff check .            -> All checks passed!
+    ruff format --check .   -> 111 files already formatted
+    mypy app tests          -> Success: no issues found in 107 source files
+    npm run lint (eslint .) -> clean (no output)
+
+`make test` (repo root):
+
+    pytest --cov=app --cov-report=term-missing
+      -> 623 passed, 2 skipped in 26.50s
+         (skips: the two nlp-extra integration tests — transformers is not
+          installed here; the 5 `-m model` tests are deselected by addopts)
+         TOTAL 2381 statements, 1 missed = 99.96%
+      pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+      -> Required test coverage of 80% reached. Total coverage: 99.96%
+    npm run test:run -> Test Files 12 passed (12), Tests 73 passed (73)
+    npm run typecheck (tsc --noEmit) -> clean
+    npm run build -> vite v7.3.7, 104 modules, dist/assets/index-*.js
+      236.79 kB (75.28 kB gzip), built in 2.36s
+
+Dependency audits (the CI job's exact commands, run locally):
+
+    pip-audit -> "No known vulnerabilities found"
+      (first run flagged only the sandbox venv's *build tool* setuptools
+       66.1.1 — not a runtime dependency; clean after
+       `pip install --upgrade setuptools`. Alpine/python:3.12-slim CI images
+       ship a current setuptools, so this is a sandbox artefact.)
+    npm ci --omit=dev && npm audit --omit=dev -> 2 moderate, both in
+      react-router (GHSA-wrjc-x8rr-h8h6 open redirect, GHSA-337j-9hxr-rhxg SSR
+      hydration) — the same two advisories triaged on Day 5: neither is
+      reachable in this SPA, and the fix is the deliberately-avoided semver
+      major react-router 7. This is exactly why the audit job is report-only.
+
+Smoke script — run for real against a live bare-metal stack (uvicorn on :8000
+with a migrated sqlite DB + `vite preview` on :4173 serving the production
+build; `SMOKE_SKIP_COMPOSE=1` skips only the compose start):
+
+    ==> Waiting for API readiness at http://127.0.0.1:8000/api/v1/ready ...
+        API ready (HTTP 200)
+    ==> Creating a guest account
+    ==> Recording consents at the current document versions
+    ==> Checking the frontend at http://127.0.0.1:4173/
+    SMOKE PASS: API ready, guest created, consent recorded, frontend HTTP 200
+    EXIT=0
+
+    Failure modes verified: API down -> "SMOKE FAIL: API never reported
+    ready" exit 1; web down -> "SMOKE FAIL: frontend returned HTTP 000"
+    exit 1. Tokens never printed.
+    bash -n and sh -n: clean for smoke.sh and docker-entrypoint.sh.
+
+API logs during the smoke runs (the sandbox stand-in for
+`docker compose logs api | tail -30`): structlog JSON lines only —
+startup warnings naming *missing keys by name* (`field_encryption_key_missing`,
+`secret_key_missing_ephemeral_token_signing` — no values), `event: http_request`
+lines carrying method + **path only** + status + request_id. No query strings,
+no tokens, no user text, no stack traces, no SQL.
+
+Workflow YAML validation: `actionlint` could not be downloaded (egress
+restriction, the release host is blocked), so the brief's fallback ran —
+PyYAML parse + structural assertions (valid mapping; triggers `push:[main]` +
+`pull_request`; concurrency group; `contents: read`; every job has `runs-on`
+and every step `uses` or `run`). Jobs: `backend` (7 steps),
+`frontend` (7 steps), `secrets-scan` (2 steps), `dependency-audit` (5 steps,
+continue-on-error = report only). The first true lint of the workflow is its
+first Actions run.
+
+### Docker — run these on a machine with Docker (impossible in this sandbox)
+
+    docker compose build                       # both images
+    make up                                    # or: docker compose up -d --build
+    make smoke                                 # or: ./scripts/smoke.sh
+    docker compose ps                          # api/web/postgres healthy
+    docker compose exec api whoami             # must print: app (never root)
+    docker compose logs api | tail -30         # JSON lines, no traces/secrets/text
+    docker compose down -v                     # stop and wipe the dev volume
+
+### PASS/FAIL table (Message 2 checklist)
+
+| # | Check                                              | Result |
+|---|----------------------------------------------------|--------|
+| 1 | `make lint && make test` clean                     | **PASS** |
+| 2 | compose build/up + `scripts/smoke.sh`              | **BLOCKED (no Docker)** — smoke logic + failure modes PASS against the bare-metal equivalent; see commands above |
+| 3 | `compose ps` healthy; `exec api whoami` != root    | **BLOCKED (no Docker)** — Dockerfile evidence: `USER app`, non-root build; healthcheck present on both images |
+| 4 | `compose logs api` — no traces/secrets/user text   | **PASS (equivalent)** — live uvicorn logs during smoke inspected, clean (see above) |
+| 5 | `docker compose down -v`                           | **BLOCKED (no Docker)** |
+| 6 | Workflow YAML valid; jobs listed                   | **PASS (fallback)** — PyYAML structural validation, 4 jobs listed; actionlint unavailable |
+| 7 | Top-5 Week-1 debts recorded                        | **PASS** — at the head of "Known issues"; sub-15-min ones fixed today |
+
 ## Verification (Day 6 — real command output)
 
 Everything below was run for real in this sandbox (Python 3.11.2, Node 22.22.3,
@@ -349,10 +517,88 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0004 — Authentication, anonymous mode, and consent](docs/adr/0004-authentication-and-consent.md): argon2id + length-only password policy, fixed-HS256 access/refresh JWTs with hashed storage and rotation-family reuse detection, consent documents as versioned content enforced at the *current* version by `require_consent`, in-house sliding-window rate limiting + per-account lockout with backoff, `ApiError` curated codes in the Day 2 envelope.
 - [0005 — Frontend skeleton: tokens, the API client, and the accessibility floor](docs/adr/0005-frontend-skeleton.md): CSS-variable design tokens with a `data-theme` switch (no `dark:` classes, no literal colours in components), contrast enforced by a test on the tokens, one API client with single-flight token refresh and one replay, onboarding as a gate rather than a guarded route, one modal primitive owning the focus contract, one navigation rendered as rail or bottom bar by a media query, and a deliberately public crisis endpoint.
 - [0006 — Emotion model: choice, mapping, and licence](docs/adr/0006-emotion-model.md): `EMOTION_MODEL_ID` as the single place a checkpoint is named (default `SamLowe/roberta-base-go_emotions`, MIT), one nine-label internal taxonomy with a `LABEL_MAP` that takes the **max** per emotion rather than the sum, lazy thread-safe CPU loading with `transformers`/`torch` as an optional extra, degradation on both failure *and* sustained slowness, and the licence position (model MIT verified from three independent mirrors; the GoEmotions **dataset** licence still to be confirmed by hand). Numbered 0006 because the brief's requested `0002-emotion-model.md` was already taken on `main` by the backend-skeleton ADR.
+- [0007 — CI pipeline, Docker packaging, and containerised dev stack](docs/adr/0007-ci-and-docker.md): one workflow whose blocking checks mirror `make lint`/`make test` (80 % coverage gate as tripwire, secrets scan blocks, dependency audit report-only until the triaged advisory backlog clears); dev-only auto-migrations guarded in the API image's *entrypoint* (`APP_ENV=development` + `RUN_MIGRATIONS=true`), so production posture travels with the image; the API image ships without the `nlp` extra and compose runs `EMOTION_ANALYZER=keyword`; same-origin `/api` proxy in the web container (no CORS in the container path); labelled dev-only compose defaults including an all-zero-bytes Fernet key; liveness (not readiness) as the container healthcheck; the API runs as non-root `app`.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
 ## Known issues
+
+### Top 5 technical debts — Week 1 code review (Day 7)
+
+Ranked by blast radius; each was confirmed by reading the code, not inferred
+from notes. Full background on most of these is in the per-day entries below.
+
+1. **Emotion accuracy is unmeasured (no eval harness).** `evals/` holds empty
+   `datasets/`/`reports/` directories only; every label so far was
+   plausibility-checked by hand against six messages, and the lexicons are
+   single-author with no held-out data. Everything downstream (mood tracking,
+   the upcoming crisis rules) consumes this output. The eval harness is in the
+   parking lot; until it lands, no emotion label is validated.
+2. **Per-process state silently scales wrong.** Rate limiting, login lockout,
+   the analysis cache and the NLP circuit breaker are all in-memory
+   (`InMemoryRateLimiter`, `LoginLockout`, `AnalysisCache`, per-chain breaker
+   state): a second uvicorn worker or pod doubles real budgets and forks model
+   health state, and `X-Forwarded-For` is deliberately untrusted — so clients
+   behind a proxy (including Day 7's nginx web container) share one budget.
+   Needs a shared store behind the existing interfaces plus a trusted-proxy
+   setting; interfaces were designed for it.
+3. **PostgreSQL has never actually run in any verification.** Every test uses
+   SQLite; postgres behaviour is asserted only by compiling DDL for the
+   dialect. `create_db_engine` sets no `pool_pre_ping`/pool sizing, and
+   `/ready` checks connectivity, not migration level. Day 7's compose stack is
+   the first place postgres really runs — and this sandbox has no Docker to
+   prove it. A postgres service job in CI + the local commands above close
+   this.
+4. **Model supply chain and ops.** `EMOTION_MODEL_ID` pins no revision hash
+   (`hf.py` `_build_pipeline` takes the moving default branch), PyPI's torch
+   wheel is CUDA-enabled (~5.7 GB in Day 6's environment), there is no startup
+   pre-warm so the first request pays the load, and the 5 `-m model` tests
+   need network. The API image sidesteps size/network today by shipping
+   without the `nlp` extra (ADR 0007 §3); the pin/CPU-wheel/pre-warm decisions
+   are still owed before the model serves real users.
+5. **Refresh tokens are XSS-readable in `localStorage`.** Deliberate Day 5
+   trade (ADR 0005, noted in `src/lib/api.ts`): the API speaks
+   `Authorization: Bearer`, so tokens live in web storage. The correct shape
+   before a broad launch is an httpOnly refresh cookie + CSRF handling; it is
+   a backend change, parked until the auth surface next opens.
+
+Fixed from the review the same day (all < 15 min): README's stale Day 1 claim
+that redaction is "not implemented in this scaffold" (it has been real since
+Day 2, live-verified Day 6); the workflows-README placeholder; the stale
+quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
+`.env.example`; smoke.sh exiting with bare `curl` codes instead of curated
+`SMOKE FAIL` messages on connection failure.
+
+### Day 7 operational notes
+
+- **Day 7's branch is not the requested one**, same as most earlier days: the
+  Arena session is pinned to `arena/729849e3-manovia`; the PR opens from there
+  with `day-07-integration-ci-dockerisation` as its base.
+- **Docker, gitleaks and actionlint do not exist in this sandbox** and their
+  release binaries cannot be fetched (egress restriction). Image builds, the
+  compose lifecycle, container health/`whoami`/logs checks and the CI
+  secrets-scan are therefore unverified here; the exact local commands are
+  listed in "Verification (Day 7)". Everything else ran for real.
+- **The nginx master process runs as root** in the standard `nginx:1.27-alpine`
+  image (workers run as `nginx`). The API container — the one holding secrets
+  and data access — is the mandated non-root one (`USER app`); an unprivileged
+  nginx variant is a later hardening option.
+- **Clients of the web container share one rate-limit budget** because the API
+  sees the proxy's address and `X-Forwarded-For` is untrusted (debt #2).
+  Fine for the dev topology; wrong for a shared deployment.
+- **The CI workflow's first real validation is its first run.** YAML parsing
+  and structural checks passed here, but actionlint semantics (expression
+  typing, action input schemas) only run on GitHub. Watch the Actions tab on
+  the first push and expect to tweak the audit job's pip resolution if the
+  runner's image differs from this sandbox.
+- **The coverage badge reads 100 %** — the full-environment figure (Day 6,
+  `nlp` extra installed). Sandbox/CI runs without the extra measure 99.96 %
+  (one lazy-load guard line in `hf.py` uncovered). The enforced gate is 80 %;
+  both figures are far above it.
+- The frontend production build emits an informational chunk-size note for the
+  ~237 kB JS bundle (75 kB gzip); code-splitting by route is a later
+  optimisation, not a correctness issue today.
+
 
 - **Day 6's branch is not the requested one.** The brief asked for `day-06-nlp-service-emotion-sentiment`; this Arena session is pinned to `arena/284986a6-manovia` and cannot create or push to another branch name. Same situation as Days 1-3 and Day 4.
 - **The real emotion model was never downloaded or run here.** `huggingface.co` is unreachable from this sandbox, so `pytest -m model -q` fails all 5 with `LocalEntryNotFoundError`. **Run locally**: `pip install -e ".[dev,nlp]" && pytest -m model -q`. The pipeline *integration* is covered offline by `test_nlp_hf_pipeline.py` (a tiny locally-built checkpoint through the real `transformers` code path), so what is unverified is the specific checkpoint, not the plumbing.
@@ -417,9 +663,31 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - Batch analysis endpoint / `analyze_many` exposure for backfill jobs, and a shared (Redis) analysis cache behind the existing `AnalysisCache` interface.
 - Streaming or async model loading so a slow first load cannot hold a worker thread, plus a hard inference deadline (today the latency governor reacts *after* slow calls, it cannot interrupt one).
 - Extend the log-redaction blocklist test to every new request-body shape, and a CI job that greps a captured log for a planted sentinel.
+- **(Day 7)** A model-bearing API image variant (separate Dockerfile target or the `nlp` extra with the CPU-only torch index), with the revision pin / pre-warm decisions from debt #4.
+- **(Day 7)** A postgres service job in CI running the migration round trip and repo tests against the real engine (closes the remainder of debt #3), plus a compose-based smoke job once the stack is proven on a maintainer machine.
+- **(Day 7)** Flip `dependency-audit` to blocking (`continue-on-error: false`) once the triaged advisory backlog is cleared; review the two react-router advisories when react-router 7 is adopted.
+- **(Day 7)** Unprivileged nginx image or a `nginxinc/nginx-unprivileged` base for the web container; route-based code-splitting when the bundle justifies it.
+- **(Day 7)** Production migration runbook (one-shot `alembic upgrade head` container) and a `/ready` migration-level check once deploys exist.
 
-## Next steps (Day 7 — first three)
+## Next steps (Day 8 — first three)
 
-1. **Crisis and self-harm rules that run BEFORE any LLM call** (AGENTS.md rule 1): a pure, deterministic module over `app/content/` phrase sets with a risk tier 0-3, unit-tested against fixture messages with no network. It must be callable with no model, no database and no LLM, because it has to work when everything else is down. The helpline content and its public endpoint shipped with Day 5; the rules are still the headline.
-2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real provider stub and a `FakeCompleter` for offline tests, selected by `LLM_PROVIDER` (already in `.env.example`) - built the same way as `app/services/nlp/` (interface first, fake second, real provider optional), plus the output-safety check every completion must pass (AGENTS.md rule 4).
-3. **Message send**: `POST /api/v1/chat/sessions/{id}/messages` behind `require_consent(ai_disclosure, terms)` and `get_current_user`, storing text through `ChatRepository.add_message` (encrypted), running the crisis rules first, attaching the Day 6 `EmotionResult` to `messages.emotion`, emitting `SafetyEvent` rows, and asserting in tests that no raw message text reaches the logs at any level. Then wire the frontend's chat page to it and replace the placeholder.
+**Preamble (carried from Day 7, needs my machine):** run the seven Docker
+commands listed in "Verification (Day 7)", confirm `make up` + `make smoke`
+are green, `whoami` prints `app`, and the api logs stay clean — then the
+compose stack is the default dev environment for Day 8+.
+
+1. **Crisis and self-harm rules that run BEFORE any LLM call** (AGENTS.md rule 1, the
+   headline): a pure, deterministic module over `app/content/` phrase sets with
+   risk tiers 0-3, no model/DB/LLM needed, unit-tested against fixture messages.
+   Same milestone: **human-verify `helplines.json`** against real registries and
+   refresh `last_verified` (flagged as a Day 8 task on Day 5 — the content is
+   still placeholder).
+2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real
+   provider adapter, and a `FakeCompleter` for offline tests, selected by
+   `LLM_PROVIDER` — plus the output-safety check every completion must pass
+   (AGENTS.md rule 4), built the same way as `app/services/nlp/`.
+3. **Message send**: `POST /api/v1/chat/sessions/{id}/messages` behind
+   `require_consent(ai_disclosure, terms)` and `get_current_user`, storing text
+   encrypted via `ChatRepository`, running the crisis rules **first**, attaching
+   the Day 6 `EmotionResult`, emitting `SafetyEvent` rows, with tests asserting
+   no raw message text reaches the logs. Then wire the frontend chat page to it.
