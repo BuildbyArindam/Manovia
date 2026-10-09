@@ -1,0 +1,64 @@
+# Manovia dev stack: API + web + PostgreSQL.
+#
+# Variable values come from ./.env (docker compose reads it automatically);
+# every one has a clearly-marked dev-only default so `make up` also works with
+# no .env at all. The defaults below are for throwaway local databases only —
+# never reuse them anywhere real. See .env.example for the full setting list.
+name: manovia
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-manovia}
+      # Dev-only placeholder password for a local-ephemeral database.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manovia_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-manovia}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    # Not published to the host: the only client is the api service.
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # development ⇒ the entrypoint runs `alembic upgrade head` on start and
+      # the dev-only debug routes exist. Anything else runs prod posture.
+      APP_ENV: ${APP_ENV:-development}
+      # Dev-only defaults for the local stack; real values go in ./.env.
+      SECRET_KEY: ${SECRET_KEY:-dev-only-compose-secret-not-for-production}
+      # All-zero-bytes Fernet key: valid format, zero entropy, obviously not
+      # a secret — only ever protects a throwaway local database.
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      # Inside the compose network the DSN is always built from POSTGRES_*;
+      # a DATABASE_URL in ./.env is for host-local runs, not this container.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-manovia}:${POSTGRES_PASSWORD:-manovia_dev_password}@postgres:5432/${POSTGRES_DB:-manovia}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      # The image ships without the torch/transformers extra; run the lexicon
+      # analyzers rather than paying a doomed HF model load on first request.
+      EMOTION_ANALYZER: ${EMOTION_ANALYZER:-keyword}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres-data:
