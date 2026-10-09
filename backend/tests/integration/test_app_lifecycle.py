@@ -33,6 +33,21 @@ async def test_startup_warns_and_refuses_when_no_key_is_configured(
     assert "test-secret-key" not in logged
 
 
+async def test_missing_secret_key_falls_back_to_ephemeral_token_signing(
+    settings: Settings, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without SECRET_KEY the process signs tokens with a throwaway key.
+
+    Sessions then die on restart — better than refusing to boot locally. The
+    warning names the condition but never prints the key.
+    """
+    keyless = settings.model_copy(update={"secret_key": None})
+    app = create_app(keyless)
+    assert app.state.token_service is not None
+    logged = capsys.readouterr().out
+    assert "secret_key_missing_ephemeral_token_signing" in logged
+
+
 async def test_shutdown_disposes_the_engine(
     settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
