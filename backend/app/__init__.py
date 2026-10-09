@@ -1,0 +1,1 @@
+"""Manovia backend application package."""
