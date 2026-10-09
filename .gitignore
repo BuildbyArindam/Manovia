@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node / frontend
+node_modules/
+.npm/
+.vite/
+.next/
+dist/
+
+# Local environment files (keep the safe template)
+.env
+.env.*
+!.env.example
+
+# Model and ML caches
+.cache/huggingface/
+**/.cache/huggingface/
+.cache/torch/
+**/.cache/torch/
+transformers_cache/
+hf_cache/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
