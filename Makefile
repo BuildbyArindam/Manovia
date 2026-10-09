@@ -1,8 +1,8 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed frontend-dev frontend-test frontend-lint frontend-format eval up down
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed frontend-dev frontend-test frontend-lint frontend-format eval up down smoke
 
-# Backend targets delegate to backend/; frontend targets to frontend/. The
-# frontend scaffold exists since Day 5, so both halves are wired to real
-# commands here. eval/up/down remain placeholders.
+# Backend targets delegate to backend/; frontend targets to frontend/. Docker
+# targets (up/down/smoke) drive the compose stack and were wired on Day 7;
+# eval remains a placeholder.
 
 dev:
 	$(MAKE) -C backend dev
@@ -48,5 +48,19 @@ frontend-lint:
 frontend-format:
 	npm --prefix frontend run format
 
-eval up down:
+# Docker dev stack (Day 7): api + web + postgres. `make up` builds and starts
+# everything in the background (the api container auto-migrates in dev);
+# `make smoke` runs the end-to-end smoke test against it; `make down` stops
+# the stack and keeps the database volume (use `docker compose down -v` to
+# wipe it).
+up:
+	docker compose up -d --build
+
+down:
+	docker compose down
+
+smoke:
+	./scripts/smoke.sh
+
+eval:
 	@echo "not implemented yet"
