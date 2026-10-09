@@ -206,6 +206,12 @@ class HFEmotionAnalyzer(EmotionAnalyzer):
     def is_loaded(self) -> bool:
         return self._pipeline is not None
 
+    @property
+    def is_warm(self) -> bool:
+        """False until the pipeline exists, so the load is not timed as
+        inference."""
+        return self._pipeline is not None
+
     # --- loading -----------------------------------------------------------
 
     def _build_pipeline(self) -> Any:

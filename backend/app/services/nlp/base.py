@@ -244,6 +244,17 @@ class EmotionAnalyzer(ABC):
         """The model behind this analyzer, if any (``None`` for lexicons)."""
         return None
 
+    @property
+    def is_warm(self) -> bool:
+        """Whether the next call is a *steady-state* call.
+
+        ``False`` only for a model-backed analyzer that has not loaded yet.
+        The chain uses it to keep cold-start time out of the latency average:
+        loading a model once is not evidence that inference is slow, and
+        counting it would switch the model off for good after one request.
+        """
+        return True
+
     def describe(self) -> dict[str, Any]:
         """Non-sensitive metadata for logs and the dev endpoint."""
         return {"analyzer": self.name, "model": self.model_id}

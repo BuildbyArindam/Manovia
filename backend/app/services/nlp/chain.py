@@ -44,15 +44,20 @@ class ModelHealth:
         failure_threshold: int = 2,
         cooldown_seconds: float = 60.0,
         slow_ms: float = 1500.0,
+        slow_min_samples: int = 3,
         clock: Callable[[], float] | None = None,
     ) -> None:
         if failure_threshold < 1:
             raise ValueError("failure_threshold must be at least 1")
         if cooldown_seconds < 0:
             raise ValueError("cooldown_seconds must not be negative")
+        if slow_min_samples < 1:
+            raise ValueError("slow_min_samples must be at least 1")
         self._failure_threshold = failure_threshold
         self._cooldown_seconds = cooldown_seconds
         self._slow_ms = slow_ms
+        self._slow_min_samples = slow_min_samples
+        self._samples = 0
         self._clock = clock or time.monotonic
         self._failures = 0
         self._opened_at: float | None = None
@@ -88,7 +93,9 @@ class ModelHealth:
                 self._skipped_open += 1
                 return False
             ema = self._ema_ms
-            if ema is not None and ema > self._slow_ms:
+            # A minimum sample count: one slow call must not switch the model
+            # off, or a single GC pause would do it.
+            if ema is not None and self._samples >= self._slow_min_samples and ema > self._slow_ms:
                 self._skipped_slow += 1
                 return False
             return True
@@ -101,6 +108,7 @@ class ModelHealth:
                 if self._ema_ms is None
                 else ((1 - EMA_ALPHA) * self._ema_ms + EMA_ALPHA * sample)
             )
+            self._samples += 1
             # A success after a half-open probe closes the circuit again.
             self._failures = 0
             self._opened_at = None
@@ -116,6 +124,7 @@ class ModelHealth:
                 "state": self._state_locked(),
                 "failures": self._failures,
                 "ema_ms": round(self._ema_ms, 3) if self._ema_ms is not None else None,
+                "samples": self._samples,
                 "slow_ms_threshold": self._slow_ms,
                 "skipped_open": self._skipped_open,
                 "skipped_slow": self._skipped_slow,
@@ -197,6 +206,7 @@ class AnalyzerChain(EmotionAnalyzer):
         for index, analyzer in enumerate(self._candidates):
             if index == 0 and self._gate_primary and not self._health.allow():
                 continue
+            warm_before = analyzer.is_warm
             started = time.perf_counter()
             try:
                 result = analyzer.analyze(text, lang)
@@ -216,7 +226,10 @@ class AnalyzerChain(EmotionAnalyzer):
 
             elapsed_ms = (time.perf_counter() - started) * 1000.0
             if index == 0:
-                self._health.record_success(elapsed_ms)
+                # Skip the sample that paid for the model load: it measures
+                # startup, not inference, and would trip the slow rule once.
+                if warm_before:
+                    self._health.record_success(elapsed_ms)
             else:
                 degraded = True
 

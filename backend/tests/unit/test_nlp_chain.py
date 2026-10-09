@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import pytest
@@ -173,10 +174,55 @@ class TestCircuitBreaker:
         assert health.ema_ms is not None
 
     def test_a_slow_model_is_skipped_even_though_it_never_fails(self) -> None:
-        health = ModelHealth(slow_ms=100.0)
-        health.record_success(500.0)
-        assert health.state == "closed"
+        health = ModelHealth(slow_ms=100.0, slow_min_samples=3)
+        for _ in range(3):
+            health.record_success(500.0)
+        assert health.state == "closed"  # slow is not broken
         assert health.allow() is False
+
+    def test_one_slow_call_does_not_switch_the_model_off(self) -> None:
+        """A single GC pause or a busy neighbour is not a trend."""
+        health = ModelHealth(slow_ms=100.0, slow_min_samples=3)
+        health.record_success(5000.0)
+        assert health.allow() is True  # one sample proves nothing
+        health.record_success(5000.0)
+        assert health.allow() is True  # nor do two
+        assert health.describe()["samples"] == 2
+
+    def test_a_cold_start_is_not_measured_as_inference(self) -> None:
+        """Regression: the model load happened once, and timing it as inference
+        pushed the average past the slow threshold, which switched the model
+        off for the rest of the process.
+
+        Found by the Day 6 verification run: the first call took 3861ms (load +
+        inference) and every later call reported the keyword fallback instead.
+        """
+        health = ModelHealth(slow_ms=20.0, slow_min_samples=1)
+
+        class Cold(EmotionAnalyzer):
+            name = "cold"
+            loaded = False
+
+            @property
+            def is_warm(self) -> bool:
+                return self.loaded
+
+            def analyze(self, text: str, lang: str | None = None) -> EmotionResult:
+                if not self.loaded:
+                    self.loaded = True
+                    time.sleep(0.15)  # standing in for the model load
+                return build_result({"joy": 0.9}, analyzer="cold", confidence=0.9)
+
+        chain = AnalyzerChain(Cold(), [Stub("backup", result=joy("backup"))], health=health)
+        assert chain.analyze("first").analyzer == "cold"
+        # The cold sample was discarded, so the slow rule never engaged.
+        assert health.describe()["samples"] == 0
+        assert chain.analyze("second").analyzer == "cold"
+        assert health.describe()["samples"] == 1
+
+    def test_absurd_sample_gates_are_refused(self) -> None:
+        with pytest.raises(ValueError, match="slow_min_samples"):
+            ModelHealth(slow_min_samples=0)
 
     def test_the_chain_stops_routing_to_a_model_that_keeps_failing(self) -> None:
         primary = Stub("primary", error=RuntimeError("down"))
@@ -193,19 +239,24 @@ class TestCircuitBreaker:
         assert health.describe()["skipped_open"] == 1
 
     def test_the_chain_skips_a_model_that_is_consistently_slow(self) -> None:
+        health = ModelHealth(slow_ms=5.0, slow_min_samples=3)
+
         class Slow(EmotionAnalyzer):
             name = "slow"
 
             def analyze(self, text: str, lang: str | None = None) -> EmotionResult:
-                health.record_success(5000.0)
+                time.sleep(0.03)  # genuinely slow, not a one-off spike
                 return build_result({"joy": 0.9}, analyzer="slow", confidence=0.9)
 
-        health = ModelHealth(slow_ms=100.0)
         backup = Stub("backup", result=joy("backup"))
         chain = AnalyzerChain(Slow(), [backup], health=health)
-        assert chain.analyze("first").analyzer == "slow"
-        # The average is now far past the threshold, so the next call skips it.
-        assert chain.analyze("second").analyzer == "backup"
+
+        # Three slow calls build the evidence...
+        for index in range(3):
+            assert chain.analyze(f"call {index}").analyzer == "slow"
+
+        # ...and the fourth is routed to the fallback instead.
+        assert chain.analyze("call 3").analyzer == "backup"
         assert health.describe()["skipped_slow"] == 1
 
     def test_the_primary_gate_can_be_disabled(self) -> None:
@@ -348,6 +399,7 @@ class TestHealthDescription:
         assert described["failures"] == 0
         assert described["ema_ms"] == pytest.approx(12.346)
         assert described["slow_ms_threshold"] == 250.0
+        assert described["samples"] == 1
         assert described["skipped_open"] == 0
         assert described["skipped_slow"] == 0
 
