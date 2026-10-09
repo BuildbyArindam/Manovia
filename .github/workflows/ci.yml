@@ -105,8 +105,11 @@ jobs:
     name: Dependency audit — report only
     runs-on: ubuntu-24.04
     # Report-only until the backlog is worked down (PROGRESS.md "Known
-    # issues"); a failure here must not block the pipeline yet.
-    continue-on-error: true
+    # issues"). Implemented as never-failing steps whose findings land in the
+    # job summary plus ::warning annotations — NOT continue-on-error, which
+    # still paints the PR check red even though the run is allowed to pass.
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -123,7 +126,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e . pip-audit
-          pip-audit --progress-spinner off
+          set +e
+          report=$(pip-audit --progress-spinner off 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$report"
+          {
+            echo '## pip-audit (backend)'
+            if [ "$status" -eq 0 ]; then
+              echo '✅ No known vulnerabilities found.'
+            else
+              echo "⚠️ pip-audit exited ${status} — findings below (**report only: does not block CI**)."
+              echo '```'
+              printf '%s\n' "$report"
+              echo '```'
+              echo '::warning file=backend/pyproject.toml::pip-audit reported advisories in the backend environment (report-only job — details in the job summary)'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -136,4 +156,21 @@ jobs:
         working-directory: frontend
         run: |
           npm ci --omit=dev --ignore-scripts
-          npm audit --omit=dev
+          set +e
+          report=$(npm audit --omit=dev 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$report"
+          {
+            echo '## npm audit --omit=dev (frontend)'
+            if [ "$status" -eq 0 ]; then
+              echo '✅ No known vulnerabilities found.'
+            else
+              echo "⚠️ npm audit exited ${status} — findings below (**report only: does not block CI**)."
+              echo '```'
+              printf '%s\n' "$report"
+              echo '```'
+              echo '::warning file=frontend/package.json::npm audit reported advisories in production dependencies (report-only job — details in the job summary)'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0

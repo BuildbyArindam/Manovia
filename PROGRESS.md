@@ -208,8 +208,11 @@ format --check, mypy strict, `pytest --cov=app --cov-fail-under=80` (the
 briefed floor; the suite measures well above it). `frontend` — ESLint,
 `tsc --noEmit`, Vitest, production `vite build`. `secrets-scan` — gitleaks over
 full history, **blocking**. `dependency-audit` — pip-audit +
-`npm audit --omit=dev`, **report-only** (`continue-on-error: true`) until the
-triaged advisory backlog is worked down (ADR 0007). Dependencies are cached via
+`npm audit --omit=dev`, **report-only** — the steps
+always exit 0 and findings land in the job summary plus `::warning`
+annotations (`continue-on-error` was tried first and abandoned: the gate
+stayed green but the PR check stayed red) — until the triaged advisory
+backlog is worked down (ADR 0007). Dependencies are cached via
 `setup-python`/`setup-node` keyed on `pyproject.toml`/`package-lock.json`;
 runs trigger on pushes to `main` and every PR, with per-ref concurrency
 cancellation and `contents: read` permissions only. The companion
@@ -337,9 +340,8 @@ restriction, the release host is blocked), so the brief's fallback ran —
 PyYAML parse + structural assertions (valid mapping; triggers `push:[main]` +
 `pull_request`; concurrency group; `contents: read`; every job has `runs-on`
 and every step `uses` or `run`). Jobs: `backend` (7 steps),
-`frontend` (7 steps), `secrets-scan` (2 steps), `dependency-audit` (5 steps,
-continue-on-error = report only). The first true lint of the workflow is its
-first Actions run.
+`frontend` (7 steps), `secrets-scan` (2 steps), `dependency-audit` (report-only
+steps). The first true lint of the workflow is its first Actions run.
 
 ### Docker — run these on a machine with Docker (impossible in this sandbox)
 
@@ -517,7 +519,7 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0004 — Authentication, anonymous mode, and consent](docs/adr/0004-authentication-and-consent.md): argon2id + length-only password policy, fixed-HS256 access/refresh JWTs with hashed storage and rotation-family reuse detection, consent documents as versioned content enforced at the *current* version by `require_consent`, in-house sliding-window rate limiting + per-account lockout with backoff, `ApiError` curated codes in the Day 2 envelope.
 - [0005 — Frontend skeleton: tokens, the API client, and the accessibility floor](docs/adr/0005-frontend-skeleton.md): CSS-variable design tokens with a `data-theme` switch (no `dark:` classes, no literal colours in components), contrast enforced by a test on the tokens, one API client with single-flight token refresh and one replay, onboarding as a gate rather than a guarded route, one modal primitive owning the focus contract, one navigation rendered as rail or bottom bar by a media query, and a deliberately public crisis endpoint.
 - [0006 — Emotion model: choice, mapping, and licence](docs/adr/0006-emotion-model.md): `EMOTION_MODEL_ID` as the single place a checkpoint is named (default `SamLowe/roberta-base-go_emotions`, MIT), one nine-label internal taxonomy with a `LABEL_MAP` that takes the **max** per emotion rather than the sum, lazy thread-safe CPU loading with `transformers`/`torch` as an optional extra, degradation on both failure *and* sustained slowness, and the licence position (model MIT verified from three independent mirrors; the GoEmotions **dataset** licence still to be confirmed by hand). Numbered 0006 because the brief's requested `0002-emotion-model.md` was already taken on `main` by the backend-skeleton ADR.
-- [0007 — CI pipeline, Docker packaging, and containerised dev stack](docs/adr/0007-ci-and-docker.md): one workflow whose blocking checks mirror `make lint`/`make test` (80 % coverage gate as tripwire, secrets scan blocks, dependency audit report-only until the triaged advisory backlog clears); dev-only auto-migrations guarded in the API image's *entrypoint* (`APP_ENV=development` + `RUN_MIGRATIONS=true`), so production posture travels with the image; the API image ships without the `nlp` extra and compose runs `EMOTION_ANALYZER=keyword`; same-origin `/api` proxy in the web container (no CORS in the container path); labelled dev-only compose defaults including an all-zero-bytes Fernet key; liveness (not readiness) as the container healthcheck; the API runs as non-root `app`.
+- [0007 — CI pipeline, Docker packaging, and containerised dev stack](docs/adr/0007-ci-and-docker.md): one workflow whose blocking checks mirror `make lint`/`make test` (80 % coverage gate as tripwire, secrets scan blocks, dependency audit report-only via never-failing steps + summary/annotations until the triaged advisory backlog clears); dev-only auto-migrations guarded in the API image's *entrypoint* (`APP_ENV=development` + `RUN_MIGRATIONS=true`), so production posture travels with the image; the API image ships without the `nlp` extra and compose runs `EMOTION_ANALYZER=keyword`; same-origin `/api` proxy in the web container (no CORS in the container path); labelled dev-only compose defaults including an all-zero-bytes Fernet key; liveness (not readiness) as the container healthcheck; the API runs as non-root `app`.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
@@ -586,11 +588,13 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **Clients of the web container share one rate-limit budget** because the API
   sees the proxy's address and `X-Forwarded-For` is untrusted (debt #2).
   Fine for the dev topology; wrong for a shared deployment.
-- **The CI workflow's first real validation is its first run.** YAML parsing
-  and structural checks passed here, but actionlint semantics (expression
-  typing, action input schemas) only run on GitHub. Watch the Actions tab on
-  the first push and expect to tweak the audit job's pip resolution if the
-  runner's image differs from this sandbox.
+- **The CI workflow's first real validation was its first run** (PR #8):
+  backend, frontend and secrets-scan passed; pip-audit was clean on the runner
+  too; `npm audit --omit=dev` exited 1 on the two known advisories, and —
+  because `continue-on-error` still renders the job check red — the PR showed
+  a permanent ❌. The audit steps were rebuilt to never fail (findings go to
+  the job summary + warning annotations); the replayed run went all-green.
+  Details in "Verification (Day 7)".
 - **The coverage badge reads 100 %** — the full-environment figure (Day 6,
   `nlp` extra installed). Sandbox/CI runs without the extra measure 99.96 %
   (one lazy-load guard line in `hf.py` uncovered). The enforced gate is 80 %;
@@ -665,7 +669,7 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - Extend the log-redaction blocklist test to every new request-body shape, and a CI job that greps a captured log for a planted sentinel.
 - **(Day 7)** A model-bearing API image variant (separate Dockerfile target or the `nlp` extra with the CPU-only torch index), with the revision pin / pre-warm decisions from debt #4.
 - **(Day 7)** A postgres service job in CI running the migration round trip and repo tests against the real engine (closes the remainder of debt #3), plus a compose-based smoke job once the stack is proven on a maintainer machine.
-- **(Day 7)** Flip `dependency-audit` to blocking (`continue-on-error: false`) once the triaged advisory backlog is cleared; review the two react-router advisories when react-router 7 is adopted.
+- **(Day 7)** Flip `dependency-audit` back to blocking (drop the `exit 0` guards so native exit codes flow) once the triaged advisory backlog is cleared; review the two react-router advisories when react-router 7 is adopted.
 - **(Day 7)** Unprivileged nginx image or a `nginxinc/nginx-unprivileged` base for the web container; route-based code-splitting when the bundle justifies it.
 - **(Day 7)** Production migration runbook (one-shot `alembic upgrade head` container) and a `/ready` migration-level check once deploys exist.
 

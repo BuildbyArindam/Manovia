@@ -23,12 +23,15 @@ history), and **dependency-audit** (pip-audit + `npm audit --omit=dev`).
 
 - The coverage gate is **80 %**, the briefed floor. The suite actually measures
   100 % of `app/`; the gate is a tripwire against regression, not the ambition.
-- The dependency audit is **report-only** (`continue-on-error: true`). The
-  backlog is known and triaged (PROGRESS.md "Known issues": every npm advisory
-  needs a semver major we pinned deliberately; pip-audit findings are reviewed
-  as they appear). A blocking audit today would either block everything or
-  invite rubber-stamping, so it fails loudly without failing the workflow
-  until the backlog is worked down.
+- The dependency audit is **report-only**: its steps always exit 0 and put
+  findings in the job summary plus `::warning` annotations. The first
+  implementation used `continue-on-error: true`, which keeps the workflow
+  gate green but still paints the PR check red — a permanent ❌ next to every
+  PR invites exactly the rubber-stamping "report only" was meant to avoid.
+  The backlog it guards is known and triaged (PROGRESS.md "Known issues":
+  every npm advisory needs a semver major we pinned deliberately). Flipping
+  to blocking later means letting the steps exit non-zero again — a two-line
+  change.
 - The secrets scan **blocks**. A committed secret is never an acceptable
   trade-off.
 
@@ -82,4 +85,5 @@ attempted. A model-bearing image variant (`Dockerfile` target or the
   decision on the model-bearing image, and the trusted-proxy/`X-Forwarded-For`
   story (a proxied deployment currently shares one rate-limit budget).
 - The audit job's report-only status is revisited once the advisory backlog is
-  cleared; flipping `continue-on-error` is a one-line change.
+  cleared; flipping it to blocking means removing the `exit 0` guards so the
+  native exit codes flow again.
