@@ -17,6 +17,7 @@ from app.models.enums import (
 from app.models.journal import JournalEntry
 from app.models.message import Message
 from app.models.mood import MoodEntry
+from app.models.refresh_token import RefreshToken
 from app.models.safety_event import SafetyEvent
 from app.models.user import User
 
@@ -32,6 +33,7 @@ __all__ = [
     "Message",
     "MessageRole",
     "MoodEntry",
+    "RefreshToken",
     "RiskLevel",
     "SafetyEvent",
     "SafetyEventSource",
