@@ -15,6 +15,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.crisis import router as crisis_router
+from app.api.v1.dev import router as dev_router
 from app.api.v1.health import router as health_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
@@ -31,6 +32,7 @@ from app.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
+from app.services.nlp import build_analyzer
 
 API_TITLE = "Manovia API"
 API_VERSION = "0.1.0"
@@ -83,6 +85,12 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.state.rate_limit_auth = InMemoryRateLimiter(app_settings.rate_limit_auth_per_minute)
     app.state.rate_limit_global = InMemoryRateLimiter(app_settings.rate_limit_global_per_minute)
 
+    # Emotion analysis (Day 6). Built here so one chain (and one model load,
+    # and one result cache) is shared by every request. Nothing is loaded
+    # eagerly: a bad EMOTION_MODEL_ID must not stop the app from starting, it
+    # must fall back to the lexicon analyzers on first use.
+    app.state.emotion_analyzer = build_analyzer(app_settings)
+
     # Middleware added last runs first (outermost), so the request ID wraps
     # every response, including error responses. Rate limiting sits just inside
     # the security headers so even a 429 is fully dressed; it is skipped when
@@ -108,6 +116,10 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(consent_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(crisis_router, prefix="/api/v1")
+    if not app_settings.is_production:
+        # Dev-only surface: in production the route does not exist at all, so
+        # it is absent from the schema and a request gets the generic 404.
+        app.include_router(dev_router, prefix="/api/v1")
 
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)

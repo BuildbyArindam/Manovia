@@ -23,6 +23,13 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
         "content",
         "body",
         "note",
+        # NLP request fields (Day 6): the dev endpoint accepts `text`, and a
+        # future prompt surface will accept `prompt`/`query`. The endpoint logs
+        # a SHA-256 fingerprint instead, but the blocklist is defence in depth
+        # for any call site that forgets.
+        "text",
+        "prompt",
+        "query",
         # Credentials and session material (Day 4).
         "password",
         "password_hash",

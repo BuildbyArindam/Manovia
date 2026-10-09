@@ -17,6 +17,12 @@ _ENV_FILES = (_BACKEND_DIR / ".env", _REPO_ROOT / ".env")
 # asserted to match app.db.session.SUPPORTED_BACKENDS in the tests.
 SUPPORTED_DB_BACKENDS: tuple[str, ...] = ("sqlite", "postgresql", "postgres")
 
+# Which emotion analyzer leads the chain (Day 6). "auto" and "hf" both put the
+# Hugging Face model first and differ only in intent; the lexicon fallbacks are
+# attached either way. "fake" is for tests. See
+# docs/adr/0006-emotion-model.md for why the model is a setting, not a constant.
+EMOTION_ANALYZER_CHOICES: tuple[str, ...] = ("auto", "hf", "keyword", "sentiment", "fake")
+
 
 class Settings(BaseSettings):
     """Runtime settings. Every value comes from the environment (see .env.example)."""
@@ -57,6 +63,30 @@ class Settings(BaseSettings):
     login_lockout_seconds: int = 900
     login_lockout_max_seconds: int = 3600
 
+    # --- Emotion and sentiment analysis (Day 6) ---
+    # Which analyzer leads the chain; lexicon fallbacks are attached either way.
+    emotion_analyzer: str = "auto"
+    # Model id only — never a hard-coded path or a local checkpoint (AGENTS.md:
+    # never hard-code model names). See docs/adr/0006-emotion-model.md.
+    emotion_model_id: str = "SamLowe/roberta-base-go_emotions"
+    # CPU-only by default: this service must run on a small container, and a
+    # GPU is a deployment decision, not a default.
+    emotion_device: str = "cpu"
+    # Token budget per text. Longer input is truncated, not rejected.
+    emotion_max_length: int = 256
+    # Small batches: CPU inference does not benefit from large ones, and a big
+    # batch would hold the worker thread for too long.
+    emotion_batch_size: int = 8
+    # In-memory LRU of analysis results, keyed by a hash of the text.
+    emotion_cache_size: int = 512
+    # Circuit breaker: after this many failures the model is skipped for
+    # emotion_cooldown_seconds instead of failing every request.
+    emotion_failure_threshold: int = 2
+    emotion_cooldown_seconds: float = 60.0
+    # If the model's latency average exceeds this, the chain stops routing to
+    # it: a stalled companion is worse than a cruder reading.
+    emotion_slow_ms: float = 1500.0
+
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> "Settings":
         if self.app_env.strip().lower() != "production":
@@ -96,6 +126,36 @@ class Settings(BaseSettings):
         lock_ok = lock_ok and self.login_lockout_max_seconds >= self.login_lockout_seconds
         if not lock_ok:
             raise ValueError("lockout windows must be positive and ordered")
+        return self
+
+    @model_validator(mode="after")
+    def _check_emotion_settings(self) -> "Settings":
+        """Fail at startup on an unusable NLP configuration.
+
+        A typo in ``EMOTION_ANALYZER`` must not silently mean "no model, no
+        fallbacks" three weeks later, and a zero token budget must not reach
+        the tokenizer.
+        """
+        choice = self.emotion_analyzer.strip().casefold()
+        if choice not in EMOTION_ANALYZER_CHOICES:
+            raise ValueError(
+                "EMOTION_ANALYZER must be one of "
+                f"{', '.join(EMOTION_ANALYZER_CHOICES)} (got {self.emotion_analyzer!r})"
+            )
+        if choice in {"auto", "hf"} and not self.emotion_model_id.strip():
+            raise ValueError("EMOTION_MODEL_ID must be set when EMOTION_ANALYZER uses the model")
+        if self.emotion_max_length < 8:
+            raise ValueError("emotion_max_length must be at least 8 tokens")
+        if self.emotion_batch_size < 1:
+            raise ValueError("emotion_batch_size must be at least 1")
+        if self.emotion_cache_size < 0:
+            raise ValueError("emotion_cache_size must be 0 or greater")
+        if self.emotion_failure_threshold < 1:
+            raise ValueError("emotion_failure_threshold must be at least 1")
+        if self.emotion_cooldown_seconds < 0:
+            raise ValueError("emotion_cooldown_seconds must not be negative")
+        if self.emotion_slow_ms <= 0:
+            raise ValueError("emotion_slow_ms must be positive")
         return self
 
     @property
