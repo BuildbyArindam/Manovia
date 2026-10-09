@@ -163,11 +163,8 @@ def test_fallback_failure_privacy(capsys: pytest.CaptureFixture[str]) -> None:
     assert secret not in logs
     assert "PRIVATE-SENTINEL" not in logs
     # Restore the logger to the real stdout before capsys closes its stream.
-    import sys
-
     with capsys.disabled():
         configure_logging("INFO")
-    assert sys.stdout is not None
     assert drop_sensitive_fields(None, "info", {"text": secret, "nested": {"text": secret}}) == {
         "nested": {}
     }
@@ -255,3 +252,53 @@ def test_config_factory(provider: str) -> None:
 def test_invalid_config(overrides: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         Settings(**overrides)
+
+
+def test_pipeline_factory_cpu_without_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+    from types import SimpleNamespace
+
+    from app.services.nlp.hf import load_pipeline
+
+    calls: list[dict[str, Any]] = []
+
+    def pipeline(task: str, **kwargs: Any) -> str:
+        assert task == "text-classification"
+        calls.append(kwargs)
+        return "fixture-pipeline"
+
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(pipeline=pipeline))
+    assert load_pipeline("fixture-id") == "fixture-pipeline"
+    assert calls == [{"model": "fixture-id", "device": -1, "framework": "pt"}]
+
+
+def test_language_detector_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from langdetect import LangDetectException  # type: ignore[import-untyped]
+
+    from app.services.nlp import language
+
+    def failed_detect() -> str:
+        raise LangDetectException(0, "fixture failure")
+
+    detector = SimpleNamespace(append=lambda _: None, detect=failed_detect)
+    factory = SimpleNamespace(langlist=["en"], create=lambda: detector)
+    monkeypatch.setattr(language, "_factory", factory)
+    assert language.detect_language("qzxwq fghjk") == "other"
+
+
+def test_missing_cpu_runtime_does_not_lookup_hub(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.nlp import hf
+
+    calls: list[str] = []
+
+    def missing_runtime(name: str) -> Any:
+        calls.append(name)
+        raise ModuleNotFoundError("fixture runtime missing")
+
+    monkeypatch.setattr(hf, "import_module", missing_runtime)
+    service = EmotionService(HFEmotionAnalyzer("fixture"))
+    assert service.analyze("happy", "en").primary == "joy"
+    assert calls == ["torch"]

@@ -228,3 +228,37 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
   `day-06-nlp-service-emotion-sentiment`; no work or pushes to main.
 - Legacy sentiment source absent locally and GitHub legacy path returned 404;
   no claim of a verbatim legacy port. Real-model and live verification follow.
+
+## Day 6 verification milestone
+
+- Final code run: `HF_HUB_OFFLINE=1 make test` → **356 backend tests passed**,
+  1 model deselected, **100% app coverage (1705 statements)**; **73 frontend
+  tests passed** in 12 files. `make lint` passes ruff check/format, strict mypy
+  (93 source files), and frontend ESLint. Verification script also passes ruff
+  and strict mypy. Frontend typecheck, Prettier check and production build pass
+  (104 modules, 236.79 kB JS / 75.28 kB gzip).
+- Added CPU-runtime preflight so missing torch cannot initiate hub lookups;
+  regression verifies only the runtime import occurs before graceful fallback.
+  Optional model test now checks fallback even when optional extras are missing.
+- Hugging Face config download was attempted for real: **SSLError**, TLS EOF
+  after retries. Transformers installed; torch absent. `pytest -m model -q`
+  → **1 skipped, 356 deselected**, explicitly confirming HF failure-to-fallback.
+  This is not a real-model accuracy or performance pass.
+- Live uvicorn APIs bound to 0.0.0.0: fallback :8000, failing HF :8001,
+  production :8002 (throwaway secrets generated locally; no committed secrets).
+  Six requested samples all return HTTP 200 on both dev paths:
+  job → joy / +0.900; alone → loneliness / -0.700;
+  Hinglish exam → fear / -0.800; fine, empty and 10k → neutral / 0.000.
+  10,001 characters → 422. Production diagnostic POST → 404; tests also
+  verify the route is absent from production OpenAPI.
+- Final 20 sequential warmed, **uncached HTTP** calls (cache size 0,
+  explicit en, p50 median / p95 nearest-rank): fallback **1.683 / 1.994 ms**;
+  failed HF → fallback **1.715 / 2.249 ms**. No real-model timings available.
+- Separate cache-enabled run: two sentinel POSTs → 200; second logs only
+  `emotion_cache_hit` + SHA-256 hash. Grep of all four server logs found zero
+  raw sample/sentinel matches. Provider-error privacy tested with exceptions
+  containing raw text; redaction also removes nested `text` fields.
+- Reproduction script: `scripts/verify_day6_nlp.py`; use `--expect-fallback`
+  for exact lexicon assertions, omit for real-model accuracy observations.
+- Prettier initially failed on existing frontend README table/emphasis style;
+  formatting-only correction made, then full format check/build rerun clean.

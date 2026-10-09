@@ -1,6 +1,7 @@
 """Optional CPU-only Hugging Face multi-label adapter, serialized lazy initialization."""
 
 from collections.abc import Callable
+from importlib import import_module
 from threading import Lock
 from typing import Any
 
@@ -41,8 +42,9 @@ LABEL_MAP: dict[str, Emotion] = {
 
 
 def load_pipeline(model_id: str) -> Any:
-    from transformers import pipeline  # type: ignore[import-not-found]
-
+    # Fail before any hub lookup when the optional CPU runtime is absent.
+    import_module("torch")
+    pipeline = import_module("transformers").pipeline
     return pipeline("text-classification", model=model_id, device=-1, framework="pt")
 
 
