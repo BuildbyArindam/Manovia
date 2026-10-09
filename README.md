@@ -4,8 +4,8 @@ A privacy-first, safety-first mental wellbeing self-help companion—not therapy
 
 > **Important:** Manovia is not a substitute for professional care. If you are in crisis, call your local emergency number now.
 
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey.svg)](#)
-[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey.svg)](#)
+[![CI](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml/badge.svg)](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml)
+[![Backend coverage](https://img.shields.io/badge/backend%20coverage-100%25-brightgreen.svg)](#testing)
 
 ## Features
 
@@ -17,7 +17,27 @@ Manovia is a monorepo: a FastAPI backend, a React + Vite + TypeScript frontend, 
 
 ## Quick start
 
-Both halves are wired up. From the repository root:
+### With Docker (the easy way)
+
+Docker Desktop (or Docker Engine + the compose plugin) is the only prerequisite:
+
+```bash
+cp .env.example .env     # optional: the stack runs on dev-only defaults without it
+make up                  # build and start api + web + postgres in the background
+make smoke               # end-to-end smoke test: readiness, guest, consent, web 200
+docker compose logs -f   # follow the logs (Ctrl-C to detach)
+make down                # stop the stack (wipe the DB with: docker compose down -v)
+```
+
+Once `make up` reports the services started: web on <http://localhost:3000>,
+API on <http://localhost:8000> (interactive docs at `/docs`). In development
+the API container runs `alembic upgrade head` on every start, so a fresh stack
+lands on a migrated database (see `backend/docker-entrypoint.sh`; it never
+auto-migrates outside `APP_ENV=development`).
+
+### Without Docker (local toolchain)
+
+Python 3.11+ and Node 20.19+:
 
 ```bash
 # Backend — API on http://localhost:8000 (interactive docs at /docs)
@@ -34,6 +54,9 @@ npm run dev
 
 | Command                       | What it does                                        |
 | ----------------------------- | --------------------------------------------------- |
+| `make up`                     | Build and start the Docker dev stack                |
+| `make down`                   | Stop the Docker dev stack (keeps the DB volume)     |
+| `make smoke`                  | Run `scripts/smoke.sh` against the stack            |
 | `make dev`                    | Backend API on :8000                                |
 | `make frontend-dev`           | Frontend dev server on :5173 (proxies `/api`)       |
 | `make test`                   | Backend pytest + frontend Vitest                    |
@@ -43,8 +66,7 @@ npm run dev
 | `make seed`                   | Create the demo user and its rows                   |
 
 The frontend's own commands live in [frontend/README.md](frontend/README.md).
-The evaluation and Docker targets (`make eval`, `make up`, `make down`) are still
-placeholders.
+Only the evaluation target (`make eval`) is still a placeholder.
 
 ## Safety
 
@@ -52,12 +74,14 @@ Manovia is a self-help companion, not therapy, a diagnostic tool, or a crisis se
 
 ## Privacy
 
-The design requires environment-based configuration, no raw message text in INFO-level logs, and no identifiers sent to LLM providers. These controls are architectural requirements and are not implemented in this scaffold.
+Configuration comes only from environment variables (see `.env.example`); secrets are never committed. Message text, journal entries and mood notes are encrypted at rest (Fernet, per-field) and the structured logger recursively drops raw user text (`message_text`, `content`, `body`, `note`, credentials) — verified by an end-to-end log-redaction test. Identifiers are never sent to LLM providers.
 
 ## Roadmap
 
 - Day 1: repository structure, tooling placeholders, and agent memory.
 - Days 2–4: backend skeleton, data layer, and authentication with consent.
 - Day 5: frontend skeleton — tokens, shell, onboarding, crisis dialog, API client.
+- Day 6: NLP service — emotion and sentiment analysis behind one degradable interface.
+- Day 7: CI (backend/frontend/secrets/audit jobs), Docker images and compose stack, smoke test.
 - Next: the chat surface, behind the deterministic crisis rules that must run before any model call.
 - Later: evaluation tooling, deployment workflows, and the remaining product surfaces.
