@@ -28,8 +28,9 @@ from dataclasses import dataclass
 
 from app.services.nlp.base import EmotionResult
 
-#: Bytes of the digest used as a cache key (16 hex chars = 64 bits).
-KEY_BYTES: int = 8
+#: Hex characters kept from the digest for a log-safe fingerprint. 16 chars is
+#: 64 bits: enough that two different messages do not collide in a log window.
+FINGERPRINT_HEX_LENGTH: int = 16
 
 
 def _normalize(text: str) -> str:
@@ -37,7 +38,7 @@ def _normalize(text: str) -> str:
     return " ".join(text.split())
 
 
-def text_fingerprint(text: str, length: int = KEY_BYTES) -> str:
+def text_fingerprint(text: str, length: int = FINGERPRINT_HEX_LENGTH) -> str:
     """A short hex fingerprint of ``text``, safe to log.
 
     Not reversible in practice at this length and never used as a key on its

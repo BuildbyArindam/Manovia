@@ -45,6 +45,20 @@ _ENV_KEYS = (
     "LOGIN_MAX_FAILURES",
     "LOGIN_LOCKOUT_SECONDS",
     "LOGIN_LOCKOUT_MAX_SECONDS",
+    # NLP / emotion analysis (Day 6). EMOTION_MODEL_ID matters most: a test
+    # must never reach the network because a developer's .env named a model.
+    "EMOTION_ANALYZER",
+    "EMOTION_MODEL_ID",
+    "EMOTION_DEVICE",
+    "EMOTION_MAX_LENGTH",
+    "EMOTION_BATCH_SIZE",
+    "EMOTION_CACHE_SIZE",
+    "EMOTION_FAILURE_THRESHOLD",
+    "EMOTION_COOLDOWN_SECONDS",
+    "EMOTION_SLOW_MS",
+    # Model downloads must never happen inside the test suite.
+    "HF_HUB_OFFLINE",
+    "TRANSFORMERS_OFFLINE",
 )
 
 
@@ -81,6 +95,18 @@ def settings(clean_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://testserver")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'manovia-test.db'}")
     return Settings(_env_file=None)
+
+
+@pytest.fixture(autouse=True)
+def offline_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Belt and braces: the suite must never talk to the Hugging Face hub.
+
+    ``build_analyzer`` is lazy, so an accidental model load would only happen
+    when a test calls the dev endpoint. These two flags make any such call fail
+    fast offline instead of hanging on a DNS lookup.
+    """
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
 
 
 @pytest.fixture

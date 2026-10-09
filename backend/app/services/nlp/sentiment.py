@@ -148,9 +148,13 @@ NEGATIVE_TERMS: Final[Mapping[str, float]] = {
     "bekar": 0.8,
     "kosto": 1.0,
     "kharap": 0.8,
-    "উদাস": 1.0,
-    "কষ্ট": 1.0,
+    "कष्ट": 1.0,
+    "खराब": 0.8,
     "उदास": 1.0,
+    "दुख": 0.9,
+    "খারাপ": 0.8,
+    "কষ্ট": 1.0,
+    "উদাস": 1.0,
 }
 
 #: Contrast markers. Whatever follows them is what the person actually means
@@ -181,7 +185,11 @@ def _clause_weights(text: str) -> list[float]:
     return weights
 
 
-def polarity(text: str) -> float:
+def polarity(
+    text: str,
+    positive_terms: Mapping[str, float] = POSITIVE_TERMS,
+    negative_terms: Mapping[str, float] = NEGATIVE_TERMS,
+) -> float:
     """Sentiment polarity in ``[-1, 1]``: negative, neutral-ish, or positive.
 
     A running weighted sum of polarity terms - negation flips a term, the
@@ -191,7 +199,7 @@ def polarity(text: str) -> float:
     if not text or not text.strip():
         return 0.0
 
-    terms: dict[str, float] = {**POSITIVE_TERMS, **NEGATIVE_TERMS}
+    terms: dict[str, float] = {**positive_terms, **negative_terms}
 
     clause = _clause_weights(text)
     scale = emphasis(text)
@@ -200,11 +208,11 @@ def polarity(text: str) -> float:
     for hit in scan(text, terms):
         # A term listed in both lexicons is ambiguous; read it as negative,
         # because missing distress is worse than over-reading a flat message.
-        negative = NEGATIVE_TERMS.get(hit.term)
-        if negative is not None:
-            sign, weight = -1.0, negative
+        negative_weight = negative_terms.get(hit.term)
+        if negative_weight is not None:
+            sign, weight = -1.0, negative_weight
         else:
-            sign, weight = 1.0, POSITIVE_TERMS.get(hit.term, 0.0)
+            sign, weight = 1.0, positive_terms.get(hit.term, 0.0)
         weight *= hit.multiplier * scale
         if hit.index < len(clause):
             weight *= clause[hit.index]
@@ -254,7 +262,7 @@ class SentimentAnalyzer(EmotionAnalyzer):
         if not text or not text.strip():
             return neutral_result(analyzer=self.name, language=lang)
 
-        score = polarity(text)
+        score = polarity(text, self._positive, self._negative)
         emotion = emotion_for(score)
         if emotion == "neutral" and score == 0.0:
             return neutral_result(analyzer=self.name, language=lang)

@@ -235,10 +235,14 @@ def scan(text: str, terms: Mapping[str, float]) -> Iterator[Hit]:
     tokens = tokenize(text)
     if not tokens:
         return
+    consumed = -1
     for index, token in enumerate(tokens):
+        if index <= consumed:
+            continue
         phrase = f"{token} {tokens[index + 1]}" if index + 1 < len(tokens) else None
         if phrase is not None and phrase in terms:
             yield Hit(phrase, index, _negated(tokens, index), _multiplier(tokens, index))
+            consumed = index + 1  # "fed up" must not also report "up"
             continue
         if token in terms:
             yield Hit(token, index, _negated(tokens, index), _multiplier(tokens, index))

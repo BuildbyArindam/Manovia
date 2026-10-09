@@ -23,6 +23,8 @@ from typing import Any, Final
 
 from pydantic import BaseModel, Field
 
+from app.services.nlp.lexicon import tokenize
+
 SUPPORTED_LANGUAGES: Final[tuple[str, ...]] = ("en", "hi", "bn", "other")
 OTHER: Final[str] = "other"
 
@@ -50,24 +52,6 @@ _DetectorFactory, _LangDetectException, _detect_langs, LANGDETECT_AVAILABLE = _l
 
 _DEVANAGARI: Final = re.compile(r"[\u0900-\u097F]")
 _BENGALI: Final = re.compile(r"[\u0980-\u09FF]")
-# Word characters *plus* the combining marks that Indic scripts are written
-# with. ``\w`` alone matches Devanagari and Bengali *letters* but not their
-# vowel signs and matras (Unicode category Mn), so "अकेला" tokenises as
-# "अक" + "ल" and no Indic lexicon term can ever match. The mark ranges below
-# are what makes the Hindi/Bengali lexicons reachable at all.
-_MARKS: Final[str] = (
-    "\u0300-\u036f"  # combining diacriticals (Latin transliterations)
-    "\u0900-\u097f"  # Devanagari
-    "\u0980-\u09ff"  # Bengali
-    "\u0a00-\u0a7f"  # Gurmukhi
-    "\u0b00-\u0b7f"  # Oriya
-)
-# Both apostrophes: ASCII and the curly one word processors substitute.
-_APOSTROPHES: Final[str] = "'\u2019"
-_WORD: Final = re.compile(rf"(?:[^\W\d_]|[{_MARKS}{_APOSTROPHES}])+", re.UNICODE)
-
-# Romanised-Hindi markers. Weighted: a function word ("hai", "nahi") is weak
-# evidence on its own, a content word ("udaas", "pareshan") is strong.
 HINGLISH_MARKERS: Final[dict[str, float]] = {
     # Copula / function words: common, but also common in pidgin English.
     "hai": 0.6,
@@ -198,11 +182,6 @@ class LanguageInfo(BaseModel):
     script: str = Field(default="latin", description="latin, devanagari, bengali, other, none.")
 
 
-def tokenize(text: str) -> list[str]:
-    """Lowercased word tokens, keeping Devanagari/Bengali words intact."""
-    return [token.casefold() for token in _WORD.findall(text)]
-
-
 def hinglish_score(text: str) -> float:
     """Weighted share of tokens that are romanised-Hindi markers (0..1).
 
@@ -217,7 +196,13 @@ def hinglish_score(text: str) -> float:
 
 
 def script_of(text: str) -> str:
-    """The dominant non-Latin script in ``text``, or ``latin``/``none``."""
+    """``devanagari`` / ``bengali`` when the text is written in them.
+
+    ``latin`` means "not one of the two Indic scripts Manovia handles"; it
+    covers real Latin script and anything else (kana, Cyrillic, Hangul),
+    because the only decision it feeds is which lexicon to reach for. ``none``
+    means the text has no letters at all.
+    """
     if not text.strip():
         return "none"
     devanagari = len(_DEVANAGARI.findall(text))
