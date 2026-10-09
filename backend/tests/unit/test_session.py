@@ -5,8 +5,9 @@ from pathlib import Path
 import pytest
 from sqlalchemy import text
 
-from app.core.config import Settings
+from app.core.config import SUPPORTED_DB_BACKENDS, Settings
 from app.db.session import (
+    SUPPORTED_BACKENDS,
     Database,
     async_database_url,
     build_database,
@@ -37,6 +38,11 @@ def test_postgres_urls_gain_the_asyncpg_driver_and_keep_their_parts() -> None:
 def test_unsupported_backends_are_refused() -> None:
     with pytest.raises(ValueError, match="Unsupported DATABASE_URL backend"):
         async_database_url("mysql+pymysql://localhost/app")
+
+
+def test_configuration_and_the_engine_agree_on_supported_backends() -> None:
+    """Settings would accept a URL the engine then refuses to open — never that."""
+    assert set(SUPPORTED_BACKENDS) == set(SUPPORTED_DB_BACKENDS)
 
 
 def test_redact_url_hides_credentials() -> None:

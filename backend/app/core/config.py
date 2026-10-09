@@ -12,8 +12,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 # Support running from backend/ as well as from the repository root.
 _ENV_FILES = (_BACKEND_DIR / ".env", _REPO_ROOT / ".env")
 
-# Backends app/db/session.py can drive. The asyncio driver is selected for us.
-_SUPPORTED_DB_BACKENDS = ("sqlite", "postgresql", "postgres")
+# Backends app/db/session.py can drive (it picks the asyncio driver for us).
+# Kept here so a bad DATABASE_URL is a configuration error at startup, and
+# asserted to match app.db.session.SUPPORTED_BACKENDS in the tests.
+SUPPORTED_DB_BACKENDS: tuple[str, ...] = ("sqlite", "postgresql", "postgres")
 
 
 class Settings(BaseSettings):
@@ -53,7 +55,7 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must not be empty")
         scheme, _, _ = url.partition("://")
         backend = scheme.split("+", maxsplit=1)[0]
-        if backend not in _SUPPORTED_DB_BACKENDS:
+        if backend not in SUPPORTED_DB_BACKENDS:
             raise ValueError(
                 "DATABASE_URL must point at sqlite or postgresql "
                 f"(got {backend!r}; see .env.example for the accepted forms)"
