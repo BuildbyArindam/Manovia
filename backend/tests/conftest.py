@@ -25,6 +25,12 @@ from app.models import Base, User
 
 _ENV_KEYS = (
     "APP_ENV",
+    "EMOTION_PROVIDER",
+    "EMOTION_MODEL_ID",
+    "EMOTION_MAX_LENGTH",
+    "EMOTION_BATCH_SIZE",
+    "EMOTION_TIMEOUT_SECONDS",
+    "EMOTION_CACHE_SIZE",
     "SECRET_KEY",
     "DATABASE_URL",
     "DB_ECHO",
@@ -76,6 +82,7 @@ def isolate_cipher() -> Iterator[None]:
 def settings(clean_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Settings:
     """Valid test settings pointed at a private SQLite file in ``tmp_path``."""
     monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("EMOTION_PROVIDER", "fake")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-0123456789abcdef")
     monkeypatch.setenv("FIELD_ENCRYPTION_KEY", crypto.FernetCipher.generate_key())
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://testserver")

@@ -2,8 +2,9 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -37,6 +38,19 @@ class Settings(BaseSettings):
     field_encryption_key: str | None = None
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
     log_level: str = "INFO"
+
+    emotion_provider: Literal["hf", "fallback", "fake"] = "fallback"
+    emotion_model_id: str | None = None
+    emotion_max_length: int = Field(default=128, ge=8, le=512)
+    emotion_batch_size: int = Field(default=4, ge=1, le=32)
+    emotion_timeout_seconds: float = Field(default=1.0, gt=0, le=60)
+    emotion_cache_size: int = Field(default=256, ge=0, le=10000)
+
+    @model_validator(mode="after")
+    def _check_emotion_settings(self) -> "Settings":
+        if self.emotion_provider == "hf" and not (self.emotion_model_id or "").strip():
+            raise ValueError("EMOTION_MODEL_ID is required for EMOTION_PROVIDER=hf")
+        return self
 
     # --- Authentication and consent (Day 4) ---
     # Password policy: length only, no composition theatre (NIST SP 800-63B).

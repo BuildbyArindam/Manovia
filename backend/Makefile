@@ -9,7 +9,7 @@ dev:
 
 # Test suite with a coverage summary
 test:
-	pytest --cov=app --cov-report=term-missing
+	pytest -m "not model" --cov=app --cov-report=term-missing
 
 # Lint (ruff check + ruff format check) and type-check (mypy)
 lint:

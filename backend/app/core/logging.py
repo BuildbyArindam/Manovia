@@ -20,6 +20,7 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
     {
         # Raw user text (AGENTS.md safety rule 5).
         "message_text",
+        "text",
         "content",
         "body",
         "note",

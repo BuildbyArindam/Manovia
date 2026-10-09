@@ -212,3 +212,19 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 1. **Chat core with the safety gates first**: the deterministic crisis rules that run **before** any LLM call (AGENTS.md rule 1) as a pure module with unit tests over fixture messages — no network. (The helpline content module and its public endpoint shipped early with Day 5, because the frontend needed something real to display; the rules are still the Day 6 headline.)
 2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real provider stub and a `FakeCompleter` for offline tests, config-selected via `LLM_PROVIDER` (already in `.env.example`); plus the output-safety check every completion must pass (AGENTS.md rule 4).
 3. **Message send on top of Day 4**: `POST /api/v1/chat/sessions/{id}/messages` behind `require_consent(ai_disclosure, terms)` and `get_current_user`, storing text through `ChatRepository.add_message` (encrypted), emitting `SafetyEvent` rows, and asserting in tests that no raw message text reaches the logs at any level (AGENTS.md rule 5) — then wire the frontend's chat page to it and replace the placeholder.
+
+## Day 6 implementation milestone (2026-10-09)
+
+- Added the abstract/result contract, deterministic Fake, keyword and sentiment
+  fallback, optional lazy/serialized CPU Hugging Face batch adapter, language
+  detection with Hinglish routing, bounded worker/deadline and hash-only LRU.
+- Added the non-production-only diagnostic endpoint and configuration examples;
+  model/interpretation/privacy choices in [ADR 0002](docs/adr/0002-emotion-model.md).
+- Initial verification: `HF_HUB_OFFLINE=1 make test`: 353 backend tests pass
+  (1 model deselected), 73 frontend tests pass; `make lint` passes including mypy.
+- Regression fixes: Unicode combining marks in keyword tokens, short English
+  detection, and restoring logging after captured privacy tests. Tests retained.
+- Session branch is `arena/5c0eaea5-manovia` (platform-fixed), not the requested
+  `day-06-nlp-service-emotion-sentiment`; no work or pushes to main.
+- Legacy sentiment source absent locally and GitHub legacy path returned 404;
+  no claim of a verbatim legacy port. Real-model and live verification follow.

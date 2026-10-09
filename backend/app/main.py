@@ -15,6 +15,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.crisis import router as crisis_router
+from app.api.v1.dev import router as dev_router
 from app.api.v1.health import router as health_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
@@ -31,6 +32,7 @@ from app.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
+from app.services.nlp.service import build_emotion_service
 
 API_TITLE = "Manovia API"
 API_VERSION = "0.1.0"
@@ -102,6 +104,10 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
         allow_headers=["*"],
     )
     app.add_middleware(RequestIDMiddleware)
+
+    app.state.emotion_service = build_emotion_service(app_settings)
+    if not app_settings.is_production:
+        app.include_router(dev_router, prefix="/api/v1")
 
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
