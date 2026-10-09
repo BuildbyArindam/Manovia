@@ -1,0 +1,11 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Local environment (never commit a real value)
+.env
+.env.*
+!.env.example
