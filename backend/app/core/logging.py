@@ -12,10 +12,29 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
-# Fields that may carry raw user text. They are dropped from every log record,
-# including inside nested dictionaries and lists. This is defence in depth for
-# the "never log raw message text" rule in AGENTS.md.
-SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset({"message_text", "content", "body", "note"})
+# Fields that may carry raw user text or credentials. They are dropped from
+# every log record, including inside nested dictionaries and lists. This is
+# defence in depth for the "never log raw message text" rule in AGENTS.md and
+# for the Day 4 rule that passwords and tokens never reach the logs.
+SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
+    {
+        # Raw user text (AGENTS.md safety rule 5).
+        "message_text",
+        "content",
+        "body",
+        "note",
+        # Credentials and session material (Day 4).
+        "password",
+        "password_hash",
+        "token",
+        "token_hash",
+        "access_token",
+        "refresh_token",
+        "authorization",
+        "secret",
+        "secret_key",
+    }
+)
 
 
 def _strip_sensitive_fields(value: Any) -> Any:

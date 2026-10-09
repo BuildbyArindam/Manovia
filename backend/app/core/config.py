@@ -38,6 +38,25 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
     log_level: str = "INFO"
 
+    # --- Authentication and consent (Day 4) ---
+    # Password policy: length only, no composition theatre (NIST SP 800-63B).
+    password_min_length: int = 10
+    password_max_length: int = 256
+    # Session lifetimes: short access tokens, week-long rotating refresh tokens.
+    jwt_access_minutes: int = 15
+    jwt_refresh_days: int = 7
+    # Sliding-window request budgets per client IP: strict on /api/v1/auth/*,
+    # moderate everywhere else under /api/. Disable only for load testing.
+    rate_limit_enabled: bool = True
+    rate_limit_auth_per_minute: int = 10
+    rate_limit_global_per_minute: int = 120
+    # Account lockout: after login_max_failures consecutive failures the account
+    # is locked for login_lockout_seconds, doubling per further failure up to
+    # login_lockout_max_seconds. Clears on a successful sign-in.
+    login_max_failures: int = 5
+    login_lockout_seconds: int = 900
+    login_lockout_max_seconds: int = 3600
+
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> "Settings":
         if self.app_env.strip().lower() != "production":
@@ -60,6 +79,23 @@ class Settings(BaseSettings):
                 "DATABASE_URL must point at sqlite or postgresql "
                 f"(got {backend!r}; see .env.example for the accepted forms)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _check_auth_settings(self) -> "Settings":
+        """Fail at startup rather than at first login with nonsense limits."""
+        if self.password_min_length < 1 or self.password_max_length < self.password_min_length:
+            raise ValueError("password length bounds must be positive and ordered")
+        if self.jwt_access_minutes < 1 or self.jwt_refresh_days < 1:
+            raise ValueError("token lifetimes must be at least one unit")
+        if self.rate_limit_auth_per_minute < 1 or self.rate_limit_global_per_minute < 1:
+            raise ValueError("rate limits must be at least one request per window")
+        if self.login_max_failures < 1:
+            raise ValueError("login_max_failures must be at least 1")
+        lock_ok = self.login_lockout_seconds >= 1
+        lock_ok = lock_ok and self.login_lockout_max_seconds >= self.login_lockout_seconds
+        if not lock_ok:
+            raise ValueError("lockout windows must be positive and ordered")
         return self
 
     @property
