@@ -9,15 +9,25 @@ A privacy-first, safety-first mental wellbeing self-help companion—not therapy
 
 ## Features
 
-Day 1 is repository scaffolding only. Product features will be added with safety requirements and tests in later milestones.
+Day 1 was repository scaffolding; Day 2 added the FastAPI backend skeleton (configuration, structured logging with log redaction, request IDs, security headers, a consistent error envelope, and health/readiness endpoints). Product features will be added with safety requirements and tests in later milestones.
 
 ## Architecture
 
-Manovia is planned as a monorepo with a FastAPI backend, a React + Vite + TypeScript frontend, PostgreSQL persistence, and provider-abstracted language-model integrations. See [ADR 0001](docs/adr/0001-monorepo-and-stack.md).
+Manovia is planned as a monorepo with a FastAPI backend, a React + Vite + TypeScript frontend, PostgreSQL persistence, and provider-abstracted language-model integrations. See [ADR 0001](docs/adr/0001-monorepo-and-stack.md) and [ADR 0002](docs/adr/0002-backend-skeleton-conventions.md).
 
 ## Quick start
 
-Application commands are not implemented yet. The Day 1 `make dev` target is a placeholder and exits successfully without starting services. No application dependencies have been installed.
+Backend commands are wired up (Day 2). From the repository root:
+
+```bash
+cd backend
+pip install -e ".[dev]"   # or: uv sync
+make dev                 # API on http://localhost:8000 (interactive docs at /docs)
+make test                # pytest with a coverage summary
+make lint                # ruff + mypy
+```
+
+The root `make dev`, `make test`, `make lint`, and `make format` targets delegate to `backend/`. The frontend, evaluations, and Docker targets (`make eval`, `make up`, `make down`) are still placeholders.
 
 ## Safety
 
