@@ -1,4 +1,4 @@
-.PHONY: dev test lint format
+.PHONY: dev test lint format migrate migrate-down migrate-check revision
 
 # Development API server (install first: pip install -e ".[dev]")
 # --no-access-log: uvicorn's access log prints the full request line including
@@ -21,3 +21,20 @@ lint:
 format:
 	ruff format .
 	ruff check --fix .
+
+# Migrations. DATABASE_URL (or backend/.env) decides which database is touched;
+# alembic/env.py reads it through app.core.config.Settings.
+migrate:
+	alembic upgrade head
+
+migrate-down:
+	alembic downgrade base
+
+# Fails if a model change has no matching migration (`make lint` stays green
+# but CI must not ship drift).
+migrate-check:
+	alembic check
+
+# Usage: make revision m="add risk index to messages"
+revision:
+	alembic revision --autogenerate -m "$(m)"
