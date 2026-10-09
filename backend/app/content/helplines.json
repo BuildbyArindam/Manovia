@@ -1,0 +1,95 @@
+{
+  "last_verified": "2026-10-09",
+  "source": "PLACEHOLDER list assembled for the Day 5 frontend skeleton. Every number, URL and opening hour below must be re-verified by a person before this file is served to anyone in distress; that verification is part of the crisis-content milestone (see AGENTS.md safety rule 6).",
+  "disclaimer": "These lines are free, confidential and staffed by trained people. Manovia is not a crisis service and cannot send help to you.",
+  "resources": [
+    {
+      "id": "eu-112",
+      "region": "EU",
+      "name": "112 \u2014 European emergency number",
+      "phone": "112",
+      "sms": null,
+      "url": null,
+      "hours": "24/7",
+      "description": "The emergency number across the European Union, free from any phone.",
+      "priority": 5
+    },
+    {
+      "id": "us-988",
+      "region": "US",
+      "name": "988 Suicide & Crisis Lifeline",
+      "phone": "988",
+      "sms": null,
+      "url": "https://988lifeline.org",
+      "hours": "24/7",
+      "description": "Free, confidential support for people in distress, and for people worried about someone else.",
+      "priority": 10
+    },
+    {
+      "id": "uk-ie-samaritans",
+      "region": "UK & IE",
+      "name": "Samaritans",
+      "phone": "116 123",
+      "sms": null,
+      "url": "https://www.samaritans.org",
+      "hours": "24/7",
+      "description": "A listening ear, any time, for anything that is getting on top of you.",
+      "priority": 10
+    },
+    {
+      "id": "in-tele-manas",
+      "region": "IN",
+      "name": "Tele-MANAS",
+      "phone": "14416",
+      "sms": null,
+      "url": "https://telemanas.mohfw.gov.in",
+      "hours": "24/7",
+      "description": "India's national mental-health helpline, in several languages.",
+      "priority": 10
+    },
+    {
+      "id": "au-lifeline",
+      "region": "AU",
+      "name": "Lifeline Australia",
+      "phone": "13 11 14",
+      "sms": null,
+      "url": "https://www.lifeline.org.au",
+      "hours": "24/7",
+      "description": "Crisis support and suicide prevention, for you or for someone you care about.",
+      "priority": 10
+    },
+    {
+      "id": "ca-988",
+      "region": "CA",
+      "name": "988 Suicide Crisis Helpline",
+      "phone": "988",
+      "sms": null,
+      "url": "https://988.ca",
+      "hours": "24/7",
+      "description": "Canada's suicide crisis helpline, by call or text.",
+      "priority": 10
+    },
+    {
+      "id": "us-crisis-text-line",
+      "region": "US",
+      "name": "Crisis Text Line",
+      "phone": null,
+      "sms": "741741",
+      "url": "https://www.crisistextline.org",
+      "hours": "24/7",
+      "description": "Text HOME to 741741 to reach a trained crisis counsellor by message.",
+      "priority": 20
+    },
+    {
+      "id": "international-befrienders",
+      "region": "International",
+      "name": "Befrienders Worldwide",
+      "phone": null,
+      "sms": null,
+      "url": "https://befrienders.org",
+      "hours": "Varies by country",
+      "description": "A directory of emotional-support helplines in countries not listed here.",
+      "priority": 30
+    }
+  ]
+}
