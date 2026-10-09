@@ -343,6 +343,19 @@ and every step `uses` or `run`). Jobs: `backend` (7 steps),
 `frontend` (7 steps), `secrets-scan` (2 steps), `dependency-audit` (report-only
 steps). The first true lint of the workflow is its first Actions run.
 
+First-run outcomes, recorded from GitHub after pushing (runner logs are not
+fetchable from this sandbox — egress — so conclusions are quoted from the
+Checks API): run 1 (initial PR head) — backend **pass** (1m17s), frontend
+**pass** (33s), secrets-scan **pass** (6s), audit job **fail** (24s): the
+pip-audit side was clean on the runner too, while `npm audit --omit=dev`
+exited 1 on the two triaged advisories, and because `continue-on-error`
+keeps the workflow gate green but still paints the job check red, the PR
+showed one permanent ❌. The audit steps were rebuilt to never fail
+(findings → job summary + `::warning` annotations, commit `0781883`); run 2
+(Actions run 37996282865) concluded **success with all four jobs green** —
+backend, frontend, secrets-scan, and the report-only audit (which still
+emits its warnings and summary).
+
 ### Docker — run these on a machine with Docker (impossible in this sandbox)
 
     docker compose build                       # both images
