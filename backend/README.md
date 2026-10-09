@@ -52,6 +52,12 @@ Local development works with no configuration at all: `DATABASE_URL` defaults to
 - `app/api/deps.py` — `Depends` helpers (`get_session`, `get_database`)
 - `app/api/v1/health.py` — `GET /api/v1/health` (liveness), `GET /api/v1/ready`
   (config + database)
+- `app/api/v1/crisis.py` — `GET /api/v1/crisis/resources`: the helpline list from
+  `app/content/helplines.json`, **public** (no auth, no consent gate — someone in
+  trouble has not signed in), validated on load with a `last_verified` date
+  (AGENTS.md safety rule 6)
+- `app/content/` — the two shipped content files and their loaders:
+  `consent_documents.json` (+ `documents.py`) and `helplines.json` (+ `crisis.py`)
 - `alembic/` — migration environment (`env.py` reads `DATABASE_URL` through
   `Settings`) and `versions/0001_initial_schema.py`
 - `tests/unit`, `tests/integration` — pytest suites; integration tests run against a
