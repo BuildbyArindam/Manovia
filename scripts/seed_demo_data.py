@@ -20,8 +20,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -31,7 +29,6 @@ BACKEND_DIR = REPO_ROOT / "backend"
 
 DEMO_EMAIL = "demo@manovia.local"
 DEMO_PASSWORD = "manovia-demo"
-POLICY_VERSION = "2026-10"
 
 
 def _bootstrap_imports() -> None:
@@ -41,15 +38,16 @@ def _bootstrap_imports() -> None:
 
 
 def demo_password_hash(password: str) -> str:
-    """A local-only scrypt hash in ``scrypt$salt$hash`` form.
+    """Hash the demo password with the API's real argon2 hasher.
 
-    Real authentication (and its cost parameters) arrive with the accounts
-    milestone; this exists so the seeded account is not empty and looks the
-    part in a login test.
+    Since Day 4 the seeded account can actually sign in through
+    ``POST /api/v1/auth/login`` — the hash is produced by the same code that
+    verifies it (``app.core.passwords``).
     """
-    salt = os.urandom(16)
-    digest = hashlib.scrypt(password.encode(), salt=salt, n=2**14, r=8, p=1, dklen=32)
-    return f"scrypt${salt.hex()}${digest.hex()}"
+    _bootstrap_imports()
+    from app.core.passwords import get_password_hasher
+
+    return get_password_hasher().hash(password)
 
 
 async def seed(database_url: str | None, fresh: bool) -> dict[str, Any]:
@@ -60,6 +58,7 @@ async def seed(database_url: str | None, fresh: bool) -> dict[str, Any]:
 
     from app.core.config import Settings
     from app.core.crypto import FernetCipher, configure_cipher
+    from app.content import load_consent_documents
     from app.db.repos import (
         AssessmentRepository,
         ChatRepository,
@@ -135,8 +134,14 @@ async def seed(database_url: str | None, fresh: bool) -> dict[str, Any]:
             assessments = AssessmentRepository(session)
             safety = SafetyEventRepository(session)
 
+            # Consent rows carry the *current* document versions (the same ones
+            # GET /api/v1/consent/requirements publishes), so the demo account
+            # passes the require_consent gate.
+            documents = load_consent_documents()
             for kind in ConsentKind:
-                await consents.record(user_id=user_id, kind=kind, version=POLICY_VERSION)
+                await consents.record(
+                    user_id=user_id, kind=kind, version=documents.version_for(kind)
+                )
 
             chat = await chats.create(user_id=user_id)
             await chats.add_message(

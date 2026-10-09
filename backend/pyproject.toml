@@ -21,6 +21,10 @@ dependencies = [
     "asyncpg>=0.29.0",
     # Fernet field encryption (see app/core/crypto.py).
     "cryptography>=42.0.0",
+    # Password hashing (argon2id) for the accounts milestone (Day 4).
+    "argon2-cffi>=23.1.0",
+    # JWT access/refresh tokens (HS256, see app/core/tokens.py).
+    "pyjwt>=2.8.0",
     "httpx>=0.27.0",
     "structlog>=24.1.0",
 ]
@@ -38,11 +42,22 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+"app.content" = ["*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-ra"
+
+[tool.coverage.run]
+# SQLAlchemy's async sessions resume coroutine frames from greenlets, and
+# FastAPI runs sync dependencies/endpoints in worker threads; without these,
+# coverage silently drops line events (and under some source filters the
+# compiled SQLAlchemy cache-key module even crashes mid-run —
+# coveragepy#2324). One line each, honest numbers.
+concurrency = ["greenlet", "thread"]
 
 [tool.ruff]
 target-version = "py311"
