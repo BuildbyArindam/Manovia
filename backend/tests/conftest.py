@@ -6,8 +6,9 @@ file, and the field cipher uses a key generated for that test only. No network,
 no PostgreSQL server, no committed key material.
 """
 
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -34,6 +35,16 @@ _ENV_KEYS = (
     "FIELD_ENCRYPTION_KEY",
     "ALLOWED_ORIGINS",
     "LOG_LEVEL",
+    "PASSWORD_MIN_LENGTH",
+    "PASSWORD_MAX_LENGTH",
+    "JWT_ACCESS_MINUTES",
+    "JWT_REFRESH_DAYS",
+    "RATE_LIMIT_ENABLED",
+    "RATE_LIMIT_AUTH_PER_MINUTE",
+    "RATE_LIMIT_GLOBAL_PER_MINUTE",
+    "LOGIN_MAX_FAILURES",
+    "LOGIN_LOCKOUT_SECONDS",
+    "LOGIN_LOCKOUT_MAX_SECONDS",
 )
 
 
@@ -65,7 +76,7 @@ def isolate_cipher() -> Iterator[None]:
 def settings(clean_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Settings:
     """Valid test settings pointed at a private SQLite file in ``tmp_path``."""
     monkeypatch.setenv("APP_ENV", "test")
-    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key-0123456789abcdef")
     monkeypatch.setenv("FIELD_ENCRYPTION_KEY", crypto.FernetCipher.generate_key())
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://testserver")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'manovia-test.db'}")
@@ -126,3 +137,30 @@ async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def client_factory(
+    database: Database, settings: Settings, cipher: crypto.FieldCipher
+) -> AsyncIterator[Callable[..., httpx.AsyncClient]]:
+    """Build clients for apps with overridden settings (rate limits, lockout).
+
+    ``factory(rate_limit_auth_per_minute=3)`` creates a fresh application over
+    the same test database with those ``Settings`` fields replaced, and hands
+    back a client for it. All clients are closed when the test ends.
+    """
+
+    clients: list[httpx.AsyncClient] = []
+
+    def factory(**overrides: Any) -> httpx.AsyncClient:
+        custom = settings.model_copy(update=overrides) if overrides else settings
+        built = create_app(custom, database=database)
+        ac = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=built), base_url="http://testserver"
+        )
+        clients.append(ac)
+        return ac
+
+    yield factory
+    for ac in clients:
+        await ac.aclose()

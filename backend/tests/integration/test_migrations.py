@@ -6,6 +6,7 @@ event loop, so the migration is exercised through ``alembic.command`` in a sync
 test instead of the async ``database`` fixture.
 """
 
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -31,6 +32,7 @@ SCHEMA_TABLES = {
     "journal_entries",
     "assessment_results",
     "safety_events",
+    "refresh_tokens",
 }
 
 
@@ -57,18 +59,22 @@ def _tables(settings: Settings) -> set[str]:
 def test_the_repository_ships_one_root_revision() -> None:
     script = ScriptDirectory(str(BACKEND_DIR / "alembic"))
     revisions = list(script.walk_revisions())
-    assert [rev.revision for rev in revisions] == ["0001"]
-    assert revisions[0].down_revision is None
+    roots = [rev for rev in revisions if rev.down_revision is None]
+    assert [rev.revision for rev in roots] == ["0001"]
+    # Linear history, newest first: each revision revises the one below it.
+    for newer, older in pairwise(revisions):
+        assert newer.down_revision == older.revision
 
 
 def test_upgrade_downgrade_upgrade_on_a_fresh_database(settings: Settings) -> None:
     config = _alembic_config()
+    head = str(ScriptDirectory(str(BACKEND_DIR / "alembic")).get_current_head())
     database_file = _database_file(settings)
     assert not database_file.exists(), "the test database must start out absent"
 
     command.upgrade(config, "head")
     assert _tables(settings) >= SCHEMA_TABLES
-    assert _revision(settings) == "0001"
+    assert _revision(settings) == head
 
     command.downgrade(config, "base")
     # Only alembic's own bookkeeping survives a full downgrade.
@@ -77,7 +83,7 @@ def test_upgrade_downgrade_upgrade_on_a_fresh_database(settings: Settings) -> No
 
     command.upgrade(config, "head")
     assert _tables(settings) >= SCHEMA_TABLES
-    assert _revision(settings) == "0001"
+    assert _revision(settings) == head
 
 
 def test_upgrade_is_idempotent_and_creates_the_indexes(settings: Settings) -> None:

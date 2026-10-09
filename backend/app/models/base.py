@@ -36,6 +36,17 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def as_utc(value: datetime) -> datetime:
+    """Normalise a timestamp read back from the database to tz-aware UTC.
+
+    PostgreSQL returns ``TIMESTAMP WITH TIME ZONE`` values with ``tzinfo`` set;
+    SQLite has no timezone type and hands back naive datetimes. Comparisons in
+    application code must therefore go through this helper instead of mixing
+    naive and aware values (which raises ``TypeError``).
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
 def enum_type(enum_cls: type[StrEnum]) -> sa.Enum:
     """A ``VARCHAR`` column restricted to ``enum_cls`` values.
 

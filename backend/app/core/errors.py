@@ -1,5 +1,7 @@
 """Consistent JSON error envelope: {"error": {"code", "message", "request_id"}}."""
 
+from collections.abc import Mapping
+
 import structlog
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -17,6 +19,30 @@ class ErrorBody(BaseModel):
     request_id: str
 
 
+class ApiError(Exception):
+    """A curated, machine-readable failure raised by endpoints and dependencies.
+
+    Unlike ``HTTPException``, the code and message survive all the way into the
+    error envelope (``http_exception_handler`` maps plain HTTP exceptions to
+    generic per-status codes). Messages must be curated strings — never echo
+    exception details or user input.
+    """
+
+    def __init__(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.headers = dict(headers) if headers is not None else None
+
+
 def get_request_id(request: Request) -> str:
     """Return the request ID assigned by RequestIDMiddleware, if any."""
     request_id = getattr(request.state, "request_id", None)
@@ -26,15 +52,25 @@ def get_request_id(request: Request) -> str:
     return str(bound) if bound else "unknown"
 
 
-def error_response(*, status_code: int, code: str, message: str, request_id: str) -> JSONResponse:
+def error_response(
+    *,
+    status_code: int,
+    code: str,
+    message: str,
+    request_id: str,
+    headers: Mapping[str, str] | None = None,
+) -> JSONResponse:
     """Build an error response in the standard envelope.
 
     The request ID is also set as a response header so it is present even on
     the unhandled-exception path, which bypasses the middleware stack.
+    ``headers`` adds curated extras (e.g. ``Retry-After`` on a 429).
     """
     body = ErrorBody(code=code, message=message, request_id=request_id)
     response = JSONResponse(status_code=status_code, content={"error": body.model_dump()})
     response.headers[REQUEST_ID_HEADER] = request_id
+    for key, value in (headers or {}).items():
+        response.headers[key] = value
     return response
 
 
@@ -44,6 +80,8 @@ _HTTP_ERROR_CODES: dict[int, str] = {
     403: "forbidden",
     404: "not_found",
     405: "method_not_allowed",
+    409: "conflict",
+    429: "rate_limited",
 }
 
 # Curated messages only: exception details can contain user-controlled text
@@ -54,7 +92,28 @@ _HTTP_ERROR_MESSAGES: dict[int, str] = {
     403: "Forbidden",
     404: "Not found",
     405: "Method not allowed",
+    409: "Conflict",
+    429: "Too many requests",
 }
+
+
+async def api_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Render :class:`ApiError` in the standard envelope, with its own code."""
+    if not isinstance(exc, ApiError):
+        # Defensive: this handler is registered for ApiError only.
+        return error_response(
+            status_code=500,
+            code="internal_error",
+            message="Internal server error",
+            request_id=get_request_id(request),
+        )
+    return error_response(
+        status_code=exc.status_code,
+        code=exc.code,
+        message=exc.message,
+        request_id=get_request_id(request),
+        headers=exc.headers,
+    )
 
 
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
