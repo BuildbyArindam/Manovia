@@ -32,6 +32,7 @@ from app.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
+from app.services.chat import ChatOrchestrator, build_session_service
 from app.services.nlp import build_analyzer
 
 API_TITLE = "Manovia API"
@@ -66,6 +67,9 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     async def lifespan(created: FastAPI) -> AsyncIterator[None]:
         db: Database = created.state.db
         yield
+        orchestrator: ChatOrchestrator | None = created.state.chat_orchestrator
+        if orchestrator is not None:
+            await orchestrator.llm.aclose()
         await db.dispose()
 
     app = FastAPI(title=API_TITLE, version=API_VERSION, lifespan=lifespan)
@@ -90,6 +94,13 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     # eagerly: a bad EMOTION_MODEL_ID must not stop the app from starting, it
     # must fall back to the lexicon analyzers on first use.
     app.state.emotion_analyzer = build_analyzer(app_settings)
+
+    # Chat (Day 11). The session service is cheap and owns the ephemeral
+    # (in-memory) store. The orchestrator is built on first use instead:
+    # constructing it loads the ML artifact and the provider chain, which must
+    # not slow or fail start-up (see app.api.v1.chat.get_orchestrator).
+    app.state.chat_sessions = build_session_service(app_settings, app.state.db)
+    app.state.chat_orchestrator = None
 
     # Middleware added last runs first (outermost), so the request ID wraps
     # every response, including error responses. Rate limiting sits just inside

@@ -51,19 +51,17 @@ from datetime import date
 import structlog
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field, field_validator
-from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import EscalatorDep, HelplinesDep, MLClassifierDep, RuleEngineDep, SessionDep
 from app.content.crisis import CrisisResource
 from app.content.i18n import RenderedTemplate
 from app.db.repos import SafetyEventRepository
 from app.models.enums import SafetyEventSource
-from app.services.safety.base import AssessmentContext, RiskAssessment, text_fingerprint
-from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision, apply_decision, combine
+from app.services.safety.base import AssessmentContext, text_fingerprint
+from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision
 from app.services.safety.escalation import EscalationPlan
-from app.services.safety.ml_classifier import MLPrediction, SafetyClassifier
 from app.services.safety.normalise import DEFAULT_MAX_INPUT_CHARS
-from app.services.safety.rules import RuleEngine
+from app.services.safety.pipeline import run_ensemble
 
 router = APIRouter(prefix="/crisis", tags=["crisis"])
 
@@ -277,42 +275,6 @@ def _plan_to_out(plan: EscalationPlan, ensemble: EnsembleOut) -> AssessOut:
     )
 
 
-async def _run_ensemble(
-    text: str,
-    language: str | None,
-    engine: RuleEngine,
-    classifier: SafetyClassifier,
-    *,
-    min_confidence: float,
-    crisis_mass_floor: float,
-    suspicion_floor: float,
-) -> tuple[RiskAssessment, EnsembleDecision]:
-    """Rules first, then the ML raise cascade — both in one thread-pool hop.
-
-    Any classifier error degrades to rules-only; the endpoint must never be
-    the reason a message goes unassessed.
-    """
-
-    def _score() -> tuple[RiskAssessment, EnsembleDecision]:
-        assessment = engine.assess(text, language=language)
-        prediction: MLPrediction | None = None
-        if classifier.enabled:
-            try:
-                prediction = classifier.predict(text)
-            except Exception:  # degrade to rules-only
-                prediction = None
-        decision = combine(
-            assessment,
-            prediction,
-            min_confidence=min_confidence,
-            crisis_mass_floor=crisis_mass_floor,
-            suspicion_floor=suspicion_floor,
-        )
-        return apply_decision(assessment, decision), decision
-
-    return await run_in_threadpool(_score)
-
-
 @router.post("/assess", response_model=AssessOut)
 async def crisis_assess(
     payload: AssessIn,
@@ -331,7 +293,7 @@ async def crisis_assess(
     written (level + source, never text).
     """
     settings = request.app.state.settings
-    final_assessment, decision = await _run_ensemble(
+    final_assessment, decision = await run_ensemble(
         payload.text,
         payload.language,
         engine,

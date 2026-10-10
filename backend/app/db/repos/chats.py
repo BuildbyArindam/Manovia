@@ -103,6 +103,24 @@ class ChatRepository:
         )
         return (await self._session.execute(stmt)).scalars().all()
 
+    async def recent_messages(self, session_id: uuid.UUID, *, limit: int) -> Sequence[Message]:
+        """The newest ``limit`` messages of a session, oldest first.
+
+        This is the conversation window the chat orchestrator feeds the model:
+        the *tail* of the thread, in reading order. ``limit <= 0`` is an empty
+        window (not "everything"), so a misconfigured window can never widen.
+        """
+        if limit <= 0:
+            return []
+        stmt = (
+            select(Message)
+            .where(Message.session_id == session_id)
+            .order_by(Message.created_at.desc(), Message.id.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return list(reversed(rows))
+
     @staticmethod
     def message_text(message: Message) -> str:
         """Decrypt one stored message."""

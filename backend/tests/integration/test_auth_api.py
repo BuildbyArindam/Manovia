@@ -216,14 +216,18 @@ async def test_upgrade_preserves_everything_the_guest_created(
     headers = _auth(guest["access_token"])
     user_id = uuid.UUID(guest["user"]["id"])
 
-    # Guest data: consents, then a chat session through the gated endpoint.
-    for kind in ("ai_disclosure", "terms"):
+    # Guest data: consents, then a *saved* chat session through the gated
+    # endpoint (Day 11: a session is ephemeral unless the user opts in to
+    # history, which is what leaves a row to be orphaned by a bad upgrade).
+    for kind in ("ai_disclosure", "terms", "store_chat"):
         await client.post(
             "/api/v1/consent",
             headers=headers,
             json={"grants": [{"kind": kind, "version": "2026-10-01", "granted": True}]},
         )
-    opened = await client.post("/api/v1/chat/sessions", headers=headers)
+    opened = await client.post(
+        "/api/v1/chat/sessions", headers=headers, json={"save_history": True}
+    )
     assert opened.status_code == 201
     session_id = uuid.UUID(opened.json()["id"])
 

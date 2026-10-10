@@ -222,3 +222,37 @@ def test_absurd_emotion_settings_are_refused_at_startup(field: str) -> None:
     }
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **{field: bad[field]})
+
+
+def test_day_11_chat_defaults() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.chat_max_message_chars == 4000
+    assert settings.chat_rate_limit_per_minute == 30
+    assert settings.chat_history_turns == 10
+    assert settings.chat_ephemeral_ttl_seconds == 30 * 60, "the brief: TTL 30 minutes"
+    assert settings.chat_ephemeral_max_sessions == 5000
+    assert settings.chat_ephemeral_max_turns == 60
+
+
+def test_chat_settings_are_read_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHAT_RATE_LIMIT_PER_MINUTE", "7")
+    monkeypatch.setenv("CHAT_EPHEMERAL_TTL_SECONDS", "60")
+    settings = Settings(_env_file=None)
+    assert settings.chat_rate_limit_per_minute == 7
+    assert settings.chat_ephemeral_ttl_seconds == 60
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"chat_max_message_chars": 0},
+        {"chat_rate_limit_per_minute": 0},
+        {"chat_history_turns": -1},
+        {"chat_ephemeral_ttl_seconds": 0},
+        {"chat_ephemeral_max_sessions": 0},
+        {"chat_ephemeral_max_turns": 1},
+    ],
+)
+def test_absurd_chat_settings_are_refused_at_startup(bad: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **bad)
