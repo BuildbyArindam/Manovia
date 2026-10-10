@@ -194,9 +194,7 @@ class Settings(BaseSettings):
         if not 0.0 <= self.safety_ml_suspicion_floor <= 1.0:
             raise ValueError("safety_ml_suspicion_floor must be in [0, 1]")
         if self.safety_ml_crisis_mass_floor < self.safety_ml_suspicion_floor:
-            raise ValueError(
-                "safety_ml_crisis_mass_floor must be >= safety_ml_suspicion_floor"
-            )
+            raise ValueError("safety_ml_crisis_mass_floor must be >= safety_ml_suspicion_floor")
         return self
 
     @property

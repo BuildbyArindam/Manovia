@@ -63,6 +63,7 @@ from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision, apply_d
 from app.services.safety.escalation import EscalationPlan
 from app.services.safety.ml_classifier import MLPrediction, SafetyClassifier
 from app.services.safety.normalise import DEFAULT_MAX_INPUT_CHARS
+from app.services.safety.rules import RuleEngine
 
 router = APIRouter(prefix="/crisis", tags=["crisis"])
 
@@ -279,7 +280,7 @@ def _plan_to_out(plan: EscalationPlan, ensemble: EnsembleOut) -> AssessOut:
 async def _run_ensemble(
     text: str,
     language: str | None,
-    engine: object,
+    engine: RuleEngine,
     classifier: SafetyClassifier,
     *,
     min_confidence: float,
@@ -293,12 +294,12 @@ async def _run_ensemble(
     """
 
     def _score() -> tuple[RiskAssessment, EnsembleDecision]:
-        assessment = engine.assess(text, language=language)  # type: ignore[union-attr]
+        assessment = engine.assess(text, language=language)
         prediction: MLPrediction | None = None
         if classifier.enabled:
             try:
                 prediction = classifier.predict(text)
-            except Exception:  # noqa: BLE001 - degrade to rules-only
+            except Exception:  # degrade to rules-only
                 prediction = None
         decision = combine(
             assessment,

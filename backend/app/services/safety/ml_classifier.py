@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
-from typing import Final, Protocol
+from typing import Any, Final, Protocol
 
 from app.services.safety.base import RiskLevel
 from app.services.safety.normalise import DEFAULT_MAX_INPUT_CHARS
@@ -55,9 +55,9 @@ MAX_CLASSIFIER_CHARS: Final = DEFAULT_MAX_INPUT_CHARS
 
 try:  # scikit-learn is a base dependency, but the safety package must import
     # and degrade gracefully even in a minimal environment.
-    import joblib
+    import joblib  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover - exercised only without scikit-learn
-    joblib = None  # type: ignore[assignment]
+    joblib = None
 
 
 def preprocess_text(text: str) -> str:
@@ -142,7 +142,10 @@ class TfidfLogisticClassifier:
     enabled: bool = True
 
     def __init__(self, pipeline: object, classes: Sequence[str], version: str) -> None:
-        self._pipeline = pipeline
+        # A fitted scikit-learn Pipeline. Typed Any: sklearn has no stubs and
+        # this module must import without it (degradation); the artifact is
+        # validated by shape checks instead of types.
+        self._pipeline: Any = pipeline
         #: Training-time class order (sklearn's). ``predict_proba`` columns
         #: follow this order, so the vocabulary must match — the order may not
         #: (sklearn sorts it its own way and the artifact records that).
@@ -157,8 +160,10 @@ class TfidfLogisticClassifier:
             return None
         # The pipeline carries its own preprocessing step (preprocess_batch),
         # so the raw text goes in and training/inference cannot drift apart.
-        probabilities = self._pipeline.predict_proba([text])[0]  # type: ignore[union-attr]
-        mapping = {label: float(value) for label, value in zip(self._classes, probabilities)}
+        probabilities = self._pipeline.predict_proba([text])[0]
+        mapping = {
+            label: float(value) for label, value in zip(self._classes, probabilities, strict=True)
+        }
 
         # Tie-break toward the higher level: walk levels descending and keep
         # the first whose probability is within a hair of the maximum.
@@ -218,9 +223,9 @@ def build_ml_classifier(*, artifact_dir: str = "") -> SafetyClassifier:
 __all__ = [
     "LEVEL_LABELS",
     "MAX_CLASSIFIER_CHARS",
-    "MLPrediction",
     "METADATA_FILENAME",
     "MODEL_FILENAME",
+    "MLPrediction",
     "NullClassifier",
     "SafetyClassifier",
     "TfidfLogisticClassifier",

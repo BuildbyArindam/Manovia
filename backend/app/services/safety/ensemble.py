@@ -253,7 +253,7 @@ def decide(
     if classifier.enabled:
         try:
             prediction = classifier.predict(text)
-        except Exception:  # noqa: BLE001 - degrade to rules-only on any model error
+        except Exception:  # degrade to rules-only on any model error
             prediction = None
     return combine(
         assessment,
