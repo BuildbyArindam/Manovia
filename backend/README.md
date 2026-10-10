@@ -71,6 +71,18 @@ Local development works with no configuration at all: `DATABASE_URL` defaults to
   `APP_ENV != production`, so in production the route does not exist (404) and is
   absent from the OpenAPI schema. Logs a SHA-256 fingerprint and a length, never
   the text (AGENTS.md safety rule 5)
+- `app/api/v1/chat.py` + `app/services/chat/` — the Day 11 chat orchestrator
+  (see [docs/architecture.md](../docs/architecture.md) and
+  [ADR 0011](../docs/adr/0011-chat-orchestrator.md)). `orchestrator.py` runs
+  validate → rate limit → input safety → (HIGH/IMMINENT: crisis reply, **no LLM**)
+  → redact → emotion → retrieval stub → prompt → LLM chain → output-guard stub →
+  persist. `sessions.py`/`conversation.py`/`ephemeral.py` keep a conversation
+  either in process memory (default, 30-minute TTL, no user-linked rows) or, with
+  `store_chat` consent, as encrypted rows. Endpoints: `POST /api/v1/chat/sessions`,
+  `GET …/{id}` and `…/{id}/messages`, `POST …/{id}/messages`, and `POST`/`GET
+  …/{id}/stream` (SSE). Try the stream with
+  `curl -N -X POST $API/api/v1/chat/sessions/$ID/stream -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"message":"hi"}'`
+  (`LLM_PROVIDER=fake` for an offline demo). Settings: `CHAT_*` in `.env.example`.
 - `app/content/` — the two shipped content files and their loaders:
   `consent_documents.json` (+ `documents.py`) and `helplines.json` (+ `crisis.py`)
 - `alembic/` — migration environment (`env.py` reads `DATABASE_URL` through
