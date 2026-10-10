@@ -255,6 +255,61 @@ export class ApiClient {
     return this.send<T>(path, { ...options, method: "POST", body }, true);
   }
 
+  /**
+   * Open a streaming response and hand back the raw `Response`.
+   *
+   * The chat reply arrives as Server-Sent Events over a `POST`, which
+   * `EventSource` cannot express (no method, no `Authorization` header), so the
+   * caller reads `response.body` itself — see `features/chat/stream.ts`. This
+   * method keeps the parts that must not be duplicated: token refresh before
+   * the request, one replay after a 401, and turning a non-2xx body into an
+   * {@link ApiError} with the backend's code and request id. A failure the
+   * server knows about up front is therefore an exception here, exactly as the
+   * backend documents ("problems known before the first byte are ordinary HTTP
+   * errors, not in-stream events").
+   */
+  async postForStream(
+    path: string,
+    body: unknown,
+    options: RequestOptions = {},
+  ): Promise<Response> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...options.headers,
+    };
+    const tokens = await this.tokensForRequest();
+    if (tokens !== null) {
+      headers.Authorization = `Bearer ${tokens.accessToken}`;
+    }
+    const init: RequestInit = {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: options.signal,
+    };
+
+    let response = await this.fetchImpl(this.url(path), init);
+    if (response.status === 401) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const retried = this.tokens.read();
+        if (retried !== null) {
+          headers.Authorization = `Bearer ${retried.accessToken}`;
+        }
+        response = await this.fetchImpl(this.url(path), init);
+      }
+    }
+    if (!response.ok) {
+      const error = await toApiError(response);
+      if (response.status === 401) {
+        this.onAuthExpired?.(error);
+      }
+      throw error;
+    }
+    return response;
+  }
+
   /** Store the tokens from a sign-in/refresh response. */
   applySession(payload: SessionLike): AuthTokens {
     const tokens = toAuthTokens(payload, this.now());

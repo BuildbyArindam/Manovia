@@ -162,6 +162,41 @@
   }
 }
 
+@layer components {
+  /*
+   * The typing indicator. Slow and small on purpose: 1.6s, 3px of travel, muted
+   * colour. A fast blink reads as urgency, which is the opposite of what this
+   * surface is for. The stagger is set inline per dot.
+   */
+  .manovia-dot {
+    animation: manovia-dot 1.6s ease-in-out infinite;
+  }
+
+  @keyframes manovia-dot {
+    0%,
+    60%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+
+  /*
+   * Softened mode: a crisis reply on screen. The dot animation is switched off
+   * entirely rather than merely slowed — nothing should be moving while a
+   * helpline card is up. (The reduced-motion block below already collapses this
+   * globally; this is the case where the *content* asks for calm.)
+   */
+  [data-softened="true"] .manovia-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 @layer utilities {
   /* Motion is decoration here, never information: honour the OS setting by
      collapsing animations and transitions to (effectively) zero. The same

@@ -2,54 +2,49 @@
 
 ## Current status
 
-Day 11 (the chat orchestrator) is built and verified: **1700 backend tests pass,
-3 skip** (the optional `nlp`/`llm` extras are not installed here), `ruff`,
-`ruff format` and `mypy` (strict) are clean, and the **89 frontend tests** pass
-unchanged. Day 11 adds **167 tests**: `tests/chat/` (159: orchestrator, ephemeral
-store, prompting, repository, and the HTTP/SSE API) plus 8 settings tests.
-Nothing in them touches the network or needs a key; the model is the Fake.
+Day 12 (the chat UI) is built. `frontend/src/features/chat` reads the Day 11 SSE
+stream and renders it: tokens as they arrive, a calm typing indicator, the
+`CrisisCard` under a high-risk reply with the page softened around it, a composer
+that sends on Enter (and never on an IME's Enter), controls for saving / clearing
+/ restarting and for language, three generic starter chips, plain-language error
+and offline states with a retry that resends the exact message, and an opt-in
+emotion hint that is off by default. **Frontend: 162 tests pass, 3 skipped** (73
+of them new), `eslint`, `tsc --noEmit` and `prettier --check` clean, production
+build ok. **Backend: 2202 pass, 3 skipped, 97 % coverage; `ruff`, `ruff format`
+and `mypy` (strict) clean.** Decisions in
+[ADR 0012](docs/adr/0012-chat-ui.md).
 
-One message now runs the whole stack in a fixed order
-([docs/architecture.md](docs/architecture.md), [ADR 0011](docs/adr/0011-chat-orchestrator.md)):
-**validate → rate limit → input safety (rules + ML ensemble) → [HIGH/IMMINENT:
-deterministic Day 8 reply, no LLM call] → redact → emotion → retrieval (stub) →
-prompt → LLM chain → output guard (stub) → persist.** Endpoints:
-`POST /api/v1/chat/sessions`, `GET /chat/sessions/{id}`, `GET …/messages`,
-`POST …/messages` (JSON), and `POST`/`GET …/stream` (SSE: `token` events, then a
-`final` event with `{risk_level, emotion, response_type, resources, crisis, check_in, …}`
-for the CrisisCard). Sessions are **ephemeral by default** (in-memory, 30-minute
-TTL, no `chat_sessions`/`messages` rows); `save_history=true` needs the
-`store_chat` consent and stores Fernet-encrypted text. Another user's session is
-a `404`, identical to a missing one.
-
-The order is covered by mutation: disabling the `allow_llm` gate fails 16 tests,
-skipping redaction fails 5, and dropping the ownership check fails the
-cross-user read.
-
-**⚠ The most important finding of Day 11 is not in the Day 11 code.** With the
-committed Day 9 ML artifact and the shipped thresholds, *ordinary* messages are
-classified HIGH by the ML backstop and answered with the crisis response, with no
-LLM call — 7 of 11 hand-written ordinary messages in the live check (including
-"hello" and "What's a good way to plan my study schedule?"). With
-`SAFETY_ML_ENABLED=false` (rules only) the same messages behave correctly. The
-orchestrator is doing exactly what the gate tells it to; the gate is too
-trigger-happy for a conversation. See *Known issues → Day 11 chat notes* and
-step 1 of *Next steps*. **This needs a human decision before the chat is shown to
-anyone.** I did not retune safety thresholds inside a "wire it up" day.
+**⚠ Day 12 began with the backend broken, and that is the day's most important
+finding.** At the Day 11 merge commit, `pytest` collected **zero** tests:
+`app/api/deps.py` imported `EphemeralStore` from
+`app.services.chat.ephemeral`, where the class is named `EphemeralSessionStore`.
+The merge had pasted a superseded Day 11 draft over the shipped code — two
+`CreateSessionIn` models in one file, two `_check_chat_settings` validators, five
+dead chat providers reading `app.state` names that are never set and calling a
+constructor that does not exist, and two test modules written against an API that
+never shipped. All of it is fixed in `b443d6d`, the deleted drafts' coverage is
+mapped test-by-test in *Verification (Day 12)*, and
+`tests/unit/test_import_graph.py` (502 tests) now fails on this class of drift.
+Day 11's "1700 tests pass, lint clean" cannot have been true of the merged
+commit.
 
 What could **not** be verified here, and needs a human on their own machine:
 
-- **No real model has seen the orchestrator's prompt or hints.** Everything above
-  ran against the Fake (and an unreachable Ollama for the outage case).
-- **The SSE stream has been read with `curl -N` only**, not by a browser. Buffering
-  proxies (nginx, Cloudflare) can still batch events; `X-Accel-Buffering: no` is
-  set but unverified against a real proxy.
-- **The Docker stack was not run** (carried from Day 7).
+- **There is no browser in this sandbox.** `npx playwright install chromium`
+  fails (`cdn.playwright.dev` is unreachable) and there is no apt access, so the
+  14-test Playwright suite is written and lists but **was never run**. That also
+  means **no screenshots were added to `docs/assets/`**, and axe was run through
+  jest-axe in jsdom rather than in a real browser.
+- **There is no Docker**, so the stack ran natively (uvicorn + Vite) rather than
+  via `docker compose`.
+- The stream has now been read **through the Vite dev proxy** (chunked,
+  incremental, `x-accel-buffering: no`) — still not through a production proxy,
+  and still not by a browser.
 
-Work is on `arena/366c5ba5-manovia` — the branch this Arena session is pinned to,
-**not** the requested `day-11-chat-orchestrator-heart-system`; the session cannot
-create or push to another branch name. The pull request comes from the session
-branch, as for Days 7–10.
+Work is on `arena/737d054e-manovia` — the branch this Arena session is pinned to,
+**not** the requested `day-12-chat-ui`; the session cannot create or push to
+another branch name. The pull request comes from the session branch, as for
+Days 7–11.
 
 ## Completed
 
@@ -562,6 +557,163 @@ and `scripts/llm_probe.py` for the two hand-checks.
 
 **Docs**: [ADR 0011](docs/adr/0011-chat-orchestrator.md);
 [docs/architecture.md](docs/architecture.md) (pipeline diagram).
+
+### Day 12 (branch `arena/737d054e-manovia`) — the chat UI
+
+`frontend/src/features/chat/` — the Day 11 SSE contract in front of a person.
+[ADR 0012](docs/adr/0012-chat-ui.md).
+
+**Transport.** `sse.ts` is an incremental SSE parser (chunk boundaries anywhere,
+including inside a field name; CRLF and lone CR; multi-line `data`; comments and
+unknown fields ignored; `flush()` recovers a complete trailing frame after a dead
+socket). `stream.ts` reads `POST /chat/sessions/{id}/stream` with `fetch` +
+`ReadableStream` — `EventSource` can do neither a POST nor an `Authorization`
+header — and returns `final` | `stream-error` | `interrupted{partial, reason}`,
+always cancelling the reader. `ApiClient.postForStream` owns the HTTP half
+(refresh, one replay after a 401, non-2xx → `ApiError` with the backend's code
+and request id), so a failure known before the first byte stays an HTTP error.
+
+**State.** `chatState.ts` is a pure reducer: `send-start` → `token`* → `final`
+(`replaced` swaps the text), `interrupted` keeps the partial words and marks the
+turn incomplete (an abort the *user* asked for drops the placeholder silently),
+`clear-conversation` keeps the session, `new-chat` drops it. `useChat.ts` opens
+the session lazily on the first send, allows one in-flight send, tracks
+`navigator.onLine`, and Retry resends the exact text that failed.
+
+**Surface.** Message bubbles name their speaker for a screen reader ("You said",
+"Manovia said"); the latest assistant message is the one `aria-live="polite"`
+region and its accessible content changes once per turn (while streaming: "Manovia
+is replying…"; on completion: the reply), so a screen reader is not read a token
+at a time. `Composer`: Enter sends, Shift+Enter newlines, an `Enter` with
+`isComposing` does **not** send (Devanagari/Bengali IMEs), counter plus
+`maxLength`. Calm `TypingIndicator` (1.6s, 3px, off under reduced motion and in
+softened mode). `StarterChips` (three generic starters, empty conversation only).
+`ChatControls`: "Save this conversation" (`save_history` ⇒ `store_chat` consent,
+applies to the next session and says so), "Clear conversation" (confirmed, screen
+only), "Start a new chat", language `en`/`hi`/`bn` sent as `locale`.
+`CompanionNotice` is the permanent "AI companion — not a therapist. Need help
+now?" line opening the helpline dialog. `ChatFailureBanner`/`OfflineNotice` are
+eight plain-language kinds in a polite (never assertive) live region.
+`useAutoScroll` follows only a reader already at the bottom and offers "Jump to
+latest". Emotion hint: opt-in in Settings, **off by default**, nothing on a
+crisis turn. `data-softened="true"` on a crisis/imminent reply: chips gone, dots
+still, emphasis only on the `CrisisCard`, which is rendered verbatim under the
+message with `tel:`/`sms:` links.
+
+**Tests.** 73 new frontend tests: `sse.test.ts` (11), `chatState.test.ts` (16),
+`stream.test.ts` (13), `ChatView.test.tsx` (30 — streaming render, crisis card
+with `tel:`/`sms:`, softening, keyboard-only send, IME, aria-live announcement,
+save/clear/new-chat/language toggles, counter and limit, offline + retry,
+cut-off reply, consent failure, auto-scroll, mood hint, two jest-axe scans),
+`liveBackend.test.ts` (3, opt-in). Frontend total **162 passed, 3 skipped**;
+`eslint`, `tsc --noEmit`, `prettier --check` clean; production build ok.
+
+**Playwright.** `e2e/chat.spec.ts` × 2 projects (360x640, 1280x800) = 14 tests:
+guest onboarding → streamed reply, HIGH-risk → CrisisCard with no model text,
+keyboard-only, two axe scans, screenshots into `docs/assets/`, and a dropped
+stream via `page.route`. `playwright test --list` resolves all 14; **they were not
+run here** — this sandbox has no browser binary and `cdn.playwright.dev` is
+unreachable (see Verification, Day 12).
+
+## Verification (Day 12 — real command output)
+
+Environment: Node 22.22.3, Python 3.11.2, `uvicorn app.main:app` on SQLite with
+a throwaway `FIELD_ENCRYPTION_KEY`, `LLM_PROVIDER=fake`, `SAFETY_ML_ENABLED=false`
+(the Day 11 known issue), `EMOTION_ANALYZER=keyword`, plus `vite` on 5173 with its
+`/api` proxy. **No Docker** and **no browser binary** exist in this sandbox, and
+`cdn.playwright.dev` is not reachable from it, so items 2 and 5 below could not be
+run as written; what was run instead is stated in the row.
+
+| # | check | result |
+| --- | --- | --- |
+| 1 | `cd frontend && npm run lint && npm run typecheck && npm run test -- --run` | **PASS** — eslint no output (clean), `tsc --noEmit` clean, **162 passed / 3 skipped** in 17 files (+1 skipped file). `prettier --check` clean for every file Day 12 touched; `npm run build` ok (263.5 kB JS, 16.4 kB CSS). |
+| 2 | Playwright e2e against the docker-compose stack (`LLM_PROVIDER=fake`) | **BLOCKED (not run)** — `docker: command not found`, and `npx playwright install chromium` fails (`getaddrinfo ENOTFOUND cdn.playwright.dev`). The suite itself is present and parses: `npx playwright test --list` → **14 tests in 1 file** (7 specs × 360x640 and 1280x800). **Substituted and run:** `MANOVIA_LIVE_API=http://127.0.0.1:5173 npx vitest run liveBackend` → **3 passed**, driving the *shipped* `streamChatMessage` + `ApiClient` through the Vite proxy against the real API. |
+| 3 | HIGH-risk phrase → CrisisCard, and no streamed LLM text | **PASS (protocol, real backend)** — `POST …/stream` with `"I want to kill myself"`: **1 token event**, `final.metadata` = `response_type=crisis`, `risk_level=high`, `emotion=None`, `crisis.template_id=crisis.high`, `resources=3`, `emergency="112 — international emergency number"` (`tel:112`); the Fake's `DEFAULT_REPLY` marker ("What has today been like for you?") appears in **neither** the tokens nor `final.reply`. **PASS (UI, jsdom)** — `ChatView.test.tsx` renders the card with `tel:911`/`sms:55501` links, sets `data-softened="true"`, hides the starter chips. |
+| 4 | axe on the chat page with a message list present | **PASS (jsdom / jest-axe)** — two scans, **0 violations**: conversation on screen, and crisis card on screen. **Not run in a real browser** (`@axe-core/playwright` is installed and wired into the e2e but needs the missing browser). |
+| 5 | 360x640 and 1280x800 viewports, screenshots in `docs/assets/` | **BLOCKED (no browser)** — no screenshots were produced; `docs/assets/` holds only its README, which names the four files the e2e writes. Layout was verified only in jsdom (the shell's mobile/desktop switch, and no fixed widths in the chat markup). |
+| 6 | Dropped connection mid-stream | **PASS** — (a) real backend, `liveBackend.test.ts` aborts after the first token: `kind=interrupted`, `reason=aborted`, `partial` starts with the token that arrived; (b) jsdom, a stream that closes after one token with no `final`: the bubble keeps "That sounds really hard.", says "This reply was cut off before it finished.", and offers "Ask again"; (c) an in-stream `event: error` surfaces as `stream-error`, not a silent stop. |
+
+**Extras run, because they were open items:**
+
+- **The SSE contract through the Vite proxy** (Day 11's "check it through the
+  proxy too"): `curl -sN -D-` on the proxied stream returns
+  `content-type: text/event-stream; charset=utf-8`, `cache-control: no-cache`,
+  `x-accel-buffering: no`, `Transfer-Encoding: chunked`, and the `token` frames
+  arrive incrementally rather than in one body.
+- **Backend suite and lint, after repairing the merge drift below:**
+  `pytest --cov=app` → **2202 passed, 3 skipped, 97 % coverage**; `ruff check`
+  clean; `ruff format --check` 177 files clean; `mypy app tests` → *Success: no
+  issues found in 171 source files*.
+- **A live conversation end to end** over HTTP: guest → three consents →
+  `POST /chat/sessions` → ordinary message streamed as 5 tokens + `final`
+  (`response_type=normal`, `risk_level=none`, `emotion=sadness`) → HIGH message
+  as 1 token + `final` (`crisis`).
+- **The final wrap-up run, through the project's own targets:** root
+  `make lint` → `ruff check` clean, `ruff format --check` 177 files clean,
+  `mypy` *Success: no issues found in 171 source files*, `eslint .` clean;
+  root `make test` → backend *2202 passed, 3 skipped* (97 % coverage) and
+  frontend *162 passed, 3 skipped*.
+
+### Repaired before any of this: the Day 11 merge left the backend unimportable
+
+`pytest` at `74b85d9` collected **nothing**: `app/api/deps.py` imported
+`EphemeralStore` from `app.services.chat.ephemeral`, where the class is named
+`EphemeralSessionStore`. The merge had pasted a superseded Day 11 draft over the
+shipped code. Fixed in `b443d6d`:
+
+| file | what was wrong | what was done |
+| --- | --- | --- |
+| `app/api/deps.py` | 5 chat providers reading `app.state` names `create_app` never installs, calling a `ChatOrchestrator` constructor that does not exist, and the fatal import | removed — the real provider is `app.api.v1.chat.get_orchestrator` (nothing else referenced them) |
+| `app/api/v1/chat.py` | two `CreateSessionIn` models (`store`/`region`/`locale` and `save_history`); the second shadowed the first (F811, mypy `no-redef`) | removed the draft one |
+| `app/core/config.py` | two `_check_chat_settings` validators, the first referencing a `chat_history_window` setting that does not exist | removed the draft one |
+| `app/main.py` | unused `Redactor` import | removed |
+| `tests/unit/test_chat_orchestrator.py`, `tests/integration/test_chat_api.py` | drafts written against an API that never shipped (`handle_message(…)`, `ChatOrchestrator(rule_engine=…)`, `json={"store": …}`, `assistant_message`, `build_ephemeral_store`) — they had never passed | **deleted**, with the coverage mapped below rather than assumed |
+| `tests/unit/test_import_graph.py` | — | **new**: 500 parametrized checks that every `app`-internal import resolves, plus a walk importing every `app` module (502 tests) |
+
+Coverage mapping for the 10 deleted draft API tests and 6 draft unit tests (all
+of them in `tests/chat/`, which is the shipped Day 11 suite): ephemeral by
+default → `test_a_session_without_a_body_is_ephemeral_and_leaves_no_row`;
+persistent needs `store_chat` → `test_saving_history_needs_the_store_chat_consent`;
+neutral metadata → `test_response_type_and_risk_level_by_message` +
+`test_the_reply_shape_is_what_the_ui_needs`; HIGH ⇒ LLM calls 0 →
+`test_high_risk_never_calls_the_llm` (+ `…_when_streaming`); MEDIUM check-in →
+`test_a_medium_message_is_answered_and_the_reply_contains_a_check_in`;
+redaction → `test_pii_is_redacted_before_it_reaches_the_model`; ownership →
+`test_user_a_cannot_read_user_bs_session`; ephemeral leaves no rows →
+`test_ephemeral_sessions_leave_no_session_or_message_rows`; SSE order →
+`test_a_post_stream_is_token_events_then_a_final_event_with_metadata`; outage →
+`test_an_llm_outage_is_a_fallback_reply_not_a_500`; encrypted storage →
+`test_saved_messages_are_encrypted_at_rest`. The suite went **0 collected →
+2202 passed**; nothing that ever passed was removed.
+
+### PASS/FAIL table (Message 2 checklist)
+
+| # | item | verdict |
+| --- | --- | --- |
+| 1 | lint + typecheck + vitest clean | **PASS** |
+| 2 | Playwright e2e on the compose stack | **BLOCKED** (no Docker, no browser) — substituted live-stack run: **PASS** |
+| 3 | HIGH-risk → CrisisCard, no LLM text | **PASS** |
+| 4 | axe with a message list | **PASS** (jsdom) — real-browser axe **BLOCKED** |
+| 5 | 360x640 / 1280x800 screenshots | **BLOCKED** (no browser) |
+| 6 | dropped connection mid-stream | **PASS** |
+
+### Needs a human, not this sandbox
+
+1. **Run the Playwright suite** on a machine with browsers:
+   `cd backend && LLM_PROVIDER=fake SAFETY_ML_ENABLED=false … make dev`, then
+   `cd frontend && npm run test:e2e`. It writes the four `docs/assets/`
+   screenshots and runs `@axe-core/playwright` over both.
+2. **Look at the page at 360px** — a real viewport, not a jsdom assertion:
+   line lengths, tap targets, the crisis card's `tel:`/`sms:` buttons, dark mode.
+3. **Watch a stream in a real browser through a real proxy** (nginx/Cloudflare).
+   The Vite proxy is verified; a production proxy is not.
+4. **Screen-reader pass** on the live region: one announcement per turn, the
+   crisis card announced as it appears, and the composer reachable in order.
+5. **Try it on a phone with a flaky connection** (airplane mode mid-reply) — the
+   interrupted state is tested, not felt.
+6. Everything already carried from Day 11: the ML-backstop false positives, the
+   Docker commands, `scripts/llm_probe.py` with a real key, and the native-speaker
+   review of the `hi`/`bn` crisis copy.
 
 ## Verification (Day 11 — real command output)
 
@@ -1552,6 +1704,7 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0009 — A one-way ML backstop next to the rules engine](docs/adr/0009-safety-ml-ensemble.md): the ensemble is a ratchet — `final = max(rules, ML-if-confident)`, property-tested never-lowers; three raise bands (confident top class, crisis mass `P(high)+P(imminent)`, uncertain → MEDIUM check-in) with env-configured thresholds grid-chosen on dev only; a pragmatics gate so ML may not undo the rules' negation/figurative discounts; TF-IDF + calibrated logistic regression committed as a joblib artifact with provenance, behind `SafetyClassifier` so a transformer can replace it without touching the ensemble; the 572-case eval set split train/dev/frozen-test with the test hash in `manifest.json` and no method words anywhere; and the trade that moves metadata-only `safety_events` writes onto the public assess endpoint.
 - [0010 — The LLM provider layer: one interface, a chain that cannot fail](docs/adr/0010-llm-abstraction.md): `LLMProvider` with `complete` + `stream` (streaming abstract from day one, declared without `async` so an unconfigured provider fails at call time rather than at the first token); a typed error tree whose `retryable` flag — not a list of exception names — drives the retry machinery; `primary → ollama → canned` with a terminal link that cannot fail, which is what makes "a missing API key is a degradation, not a 500" true by construction; retry with **full jitter**, a hard timeout spent **across** all attempts, and a breaker with a half-open probe, all injectable so no test sleeps; redaction as an egress policy inside the chain rather than a caller's responsibility; the system prompt as a versioned, hashed, load-time-validated file; and a token guard that truncates (never rejects) at a word boundary so a redaction placeholder is never cut in half. **Numbered 0010, not the `0003-llm-abstraction.md` the brief asked for** — 0003 is the published data-layer ADR, ADR numbers are permanent, and the two precedents (0006, this one) are recorded at the top of the document.
 - [0011 — The chat orchestrator: one pipeline, and the order is the safety property](docs/adr/0011-chat-orchestrator.md): nine steps in a fixed order with the crisis gate before anything that can call a model; fail **closed** on input safety (503) and fail **soft** on everything else (fallback template, `emotion=None`, `persisted=false`); ephemeral-by-default sessions (process memory, 30-min sliding TTL, no user-linked rows — MEDIUM+ turns write an *anonymous* SafetyEvent) with `store_chat` required only to save; someone else's session is a 404, never a 403; hints live in the system prompt and crisis turns are dropped from the model's window; MEDIUM gets a hint *and* the template's check-in appended; SSE `token`… `final` with `final.reply` authoritative; short-lived DB sessions because streams outlive request dependencies; per-user rate limit after validation (also applies to crisis messages); and an honest note that the Day 9 ML backstop's false positives are now user-visible.
+- [0012 — The chat UI: reading a stream, and staying calm while doing it](docs/adr/0012-chat-ui.md): `fetch` + `ReadableStream` because `EventSource` can do neither a POST nor an `Authorization` header, with a chunk-boundary-safe SSE parser of its own; an interrupted stream keeps its words, says it was cut off, and never resumes; `final.reply` is authoritative when `replaced`; **one polite live region per turn** (the visible text is `aria-hidden` while streaming so a screen reader hears one sentence, not every token); a crisis reply renders the pre-written card verbatim and sets a page-wide `data-softened` flag; auto-scroll follows only a reader already at the bottom; ephemeral by default with the save toggle as `store_chat` surfacing (and it applies to the *next* session, which the copy admits); eight plain-language failure kinds where the backend's own curated sentence wins; the emotion hint opt-in and off; and Enter-does-not-send while an IME is composing, for the two Indic languages this product exists to serve.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
@@ -1855,6 +2008,49 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **`frontend/README.md` fails `prettier --check`** (pre-existing; not in CI; not
   touched).
 
+### Day 12 chat UI notes
+
+- **The Playwright suite has never run.** No browser exists in this sandbox and
+  `cdn.playwright.dev` is unreachable from it. The 14 tests parse
+  (`playwright test --list`) and the selectors match the components they name,
+  but "written" is not "verified". Until somebody runs `npm run test:e2e`, the
+  browser-level claims for Day 12 rest on jsdom.
+- **`docs/assets/` has no Day 12 screenshots**, for the same reason. The spec
+  that writes them is `e2e/chat.spec.ts` ("screenshots for docs/assets…").
+- **The save toggle cannot change an existing session.** It sets `save_history`
+  on the *next* `POST /chat/sessions`; an ephemeral conversation cannot be
+  written to the database afterwards (there is no endpoint for it). The copy
+  under the toggle says so, but a person who ticks it mid-conversation will
+  still lose that conversation — the honest fix is a backend
+  "promote this session" route, not more copy.
+- **Turning the save toggle on without the `store_chat` consent fails at the
+  next send**, with "One more agreement needed" and a button to Settings. The UI
+  does not yet fetch the consent state up front, so the switch looks available
+  when it is not.
+- **`Clear conversation` does not delete anything.** There is no
+  `DELETE /chat/sessions/{id}` yet (Day 11 parking lot), so the button only
+  empties the screen. The confirmation text says exactly that; it is still a
+  surprising button to ship next to "Save this conversation".
+- **Reloading the page loses the conversation**, saved or not: nothing calls
+  `GET …/messages` on mount. For a saved session that is a visible gap between
+  what the toggle promises and what the page shows.
+- **One in-flight send, silently.** A second Enter while a reply is streaming is
+  ignored rather than queued, because the backend does not serialise turns in a
+  session. There is no visual hint that the second press was dropped beyond the
+  disabled Send button.
+- **`navigator.onLine` is a guess.** It is wrong often enough (a captive portal,
+  a dead proxy) that a send still has to handle failure; the offline banner can
+  therefore be up while requests would work, and down while they would not.
+- **The emotion hint's vocabulary is nine English words.** `moodHintFor` maps
+  the analyser's labels to plain words and returns `null` for anything
+  unrecognised, so a new backend label silently shows nothing rather than
+  guessing — but it also means the hint is English-only while the composer
+  accepts three languages.
+- **No end-to-end test of the Vite proxy's buffering with a *slow* model.** The
+  Fake answers instantly, so "tokens arrive incrementally through the proxy" is
+  demonstrated, not stressed. A real provider (hundreds of ms per token) through
+  nginx or Cloudflare is the case that could still batch.
+
 ## Parking lot
 
 - Distributed rate limiting / lockout state (Redis) behind the existing interfaces, plus a trusted-proxy setting for `X-Forwarded-For` client identity.
@@ -1943,28 +2139,54 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 11)** A `/metrics`-style latency histogram per pipeline step (the `chat_turn` log has only the total).
 - **(Day 11)** Per-turn "why" logging for the gate (rationale codes only) so threshold tuning can use real traffic without text.
 
-## Next steps (Day 12 — first three)
+- **(Day 12)** Run the Playwright suite in CI on a real browser (GitHub Actions
+  `ubuntu-latest` with `npx playwright install --with-deps chromium`), so the
+  browser-level checks and the `docs/assets/` screenshots stop depending on
+  somebody's laptop.
+- **(Day 12)** A "promote this session" endpoint (or accepting `save_history` on
+  an existing ephemeral session) so the save toggle can be honest mid-chat, plus
+  `DELETE /chat/sessions/{id}` so "Clear" can mean delete for someone who saved.
+- **(Day 12)** Load saved history on mount (`GET …/messages`) with the
+  `incomplete` and crisis states reconstructed, and paginate it.
+- **(Day 12)** Fetch the consent state once at start-up so the save switch is
+  disabled with an explanation *before* the next send fails with `consent_required`.
+- **(Day 12)** A visual "queued" hint when a message is typed while a reply is
+  streaming, instead of a silently ignored Enter.
+- **(Day 12)** Localised emotion-hint words (hi/bn), or drop the hint's text and
+  show the label the backend sent with a one-line explanation of what it is.
+- **(Day 12)** A service-worker copy of the crisis card and helplines so the
+  "Need help now?" dialog still works with no network at all (it is the one
+  surface where offline must not mean empty).
+- **(Day 12)** A stress test of streaming through a real proxy with a slow
+  provider (or a Fake with injected per-token latency), asserting tokens arrive
+  spread out rather than in one body.
 
-**Preamble (needs a human, before any user sees the chat):** decide what to do
-about the ML backstop's false positives (Known issues → Day 11 chat notes). Until
-then, run with `SAFETY_ML_ENABLED=false` for anything demo-facing.
+## Next steps (Day 13 — first three)
 
-**Preamble (carried, needs my machine):** the Docker commands from "Verification
-(Day 7)"; `scripts/llm_probe.py` with a real key; the native-speaker review of the
-hi/bn crisis copy and the four `needs_verification` helplines.
+**Preamble (needs a machine with a browser, closing Day 12's gap):** run
+`npm run test:e2e` against the Fake-LLM stack, commit the four `docs/assets/`
+screenshots it writes, and read the `@axe-core/playwright` output in a real
+engine. Until that runs, Day 12's browser-level claims are unverified.
 
-1. **Settle the chat-time safety policy and re-measure.** Pick one of the options in
-   the known issue, change it in config/`ensemble` only, re-run `make eval`
-   and a benign-message set (add one to `evals/` — eleven ordinary messages
-   showed 7 HIGH), and add a regression test that a short list of ordinary
-   messages is not HIGH under the shipped defaults while "I want to kill myself"
-   still is.
-2. **Chat page on the stream** (parking lot, first item): POST-stream via `fetch`,
-   token rendering, `CrisisCard` from `metadata.crisis`, helplines one tap away,
-   and the `degraded` notice. This is the first time the SSE contract meets a
-   browser, so check it through the Vite proxy too (buffering).
-3. **Retrieval (Day 13) behind the existing `Retriever` protocol**, or — if the
-   plan puts the output guard first — the output-safety check behind
-   `OutputGuard` (AGENTS.md rule 4 is only met by a seam today). Either way the
-   orchestrator's order and wire format must not change; the stub tests are the
-   contract.
+**Preamble (carried, needs a human):** the ML backstop's false positives
+(Known issues → Day 11 chat notes) — until it is decided, run anything
+demo-facing with `SAFETY_ML_ENABLED=false`. Plus the Day 7 Docker commands,
+`scripts/llm_probe.py` with a real key, and the native-speaker review of the
+hi/bn crisis copy.
+
+1. **Retrieval behind the existing `Retriever` protocol** (Day 13), or — if the
+   plan puts safety first — the output-safety check behind `OutputGuard`
+   (AGENTS.md rule 4 is met by a seam today, not by a check). Either way the
+   orchestrator's order and the SSE wire format must not change: `sse.ts`,
+   `stream.ts` and `chatState.ts` are written against `token`/`final` and
+   `final.reply` being authoritative, and their tests are the contract.
+2. **Chat history on reload.** Saved sessions are readable via
+   `GET …/messages`, but the UI never calls it: a reload loses the conversation
+   even when `store_chat` is on. Wire it (with the `incomplete`/crisis states
+   intact), and add `DELETE /chat/sessions/{id}` so "Clear" can mean delete for
+   somebody who asked to save.
+3. **Settle the chat-time safety policy and re-measure** (carried from Day 11,
+   now user-visible): pick an option from the known issue, change config or the
+   ensemble only, re-run `make eval` plus a benign-message set, and add the
+   regression test that ordinary messages are not HIGH under the shipped
+   defaults while "I want to kill myself" still is.

@@ -10,6 +10,7 @@
 import { useState, type FormEvent, type ReactElement } from "react";
 
 import { api } from "@/lib/api";
+import { useMoodHintPreference } from "@/features/chat/useMoodHint";
 import { signOut } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
@@ -25,6 +26,7 @@ const THEME_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string; hint
 
 export function SettingsPage(): ReactElement {
   const { preference, resolved, setPreference } = useTheme();
+  const [showMoodHint, setShowMoodHint] = useMoodHintPreference();
   const { record, reset } = useOnboarding();
   const reduceMotion = usePrefersReducedMotion();
   const [message, setMessage] = useState<string | null>(null);
@@ -85,6 +87,38 @@ export function SettingsPage(): ReactElement {
         <p className="mt-1 text-sm text-ink-muted">
           Your device {reduceMotion ? "asks for" : "does not ask for"} reduced motion, so animations
           are {reduceMotion ? "off" : "on"}.
+        </p>
+      </section>
+
+      <section
+        aria-labelledby="chat-heading"
+        className="rounded-2xl border border-border bg-surface p-6 shadow-soft"
+      >
+        <h2 id="chat-heading" className="text-lg">
+          Chat
+        </h2>
+        <label className="mt-4 inline-flex cursor-pointer items-start gap-3 rounded-xl border border-border-strong px-4 py-3">
+          <input
+            type="checkbox"
+            role="switch"
+            data-testid="mood-hint-toggle"
+            checked={showMoodHint}
+            onChange={(event) => {
+              setShowMoodHint(event.target.checked);
+            }}
+            className="mt-1 h-5 w-5 accent-accent-bg"
+          />
+          <span>
+            <span className="block font-semibold">Show how I read your mood</span>
+            <span className="block text-sm text-ink-muted">
+              Adds a small line under Manovia&rsquo;s replies, such as &ldquo;Reads as low&rdquo;.
+            </span>
+          </span>
+        </label>
+        <p className="mt-3 text-sm text-ink-muted">
+          Off by default, and only ever shown to you. The word comes from the language of the
+          message you typed — it is a hint, not a measurement, and it is not a diagnosis. Turning it
+          off changes nothing about how Manovia replies.
         </p>
       </section>
 

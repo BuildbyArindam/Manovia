@@ -34,7 +34,6 @@ from app.core.tokens import TokenService
 from app.db.session import Database, build_database
 from app.services.chat import ChatOrchestrator, build_session_service
 from app.services.nlp import build_analyzer
-from app.services.nlp.redaction import Redactor
 
 API_TITLE = "Manovia API"
 API_VERSION = "0.1.0"
