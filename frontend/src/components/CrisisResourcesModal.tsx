@@ -3,8 +3,13 @@
  *
  * The content comes from `GET /api/v1/crisis/resources` — a public endpoint,
  * because someone in trouble has not signed in and must never be asked to. The
- * emergency line in the introduction is static copy, so the dialog is never
- * empty even when the request fails: a failed fetch must not become a dead end.
+ * emergency instruction in the introduction is static copy, so the dialog is
+ * never empty even when the request fails: a failed fetch must not become a dead
+ * end.
+ *
+ * Rendering the entries is delegated to {@link CrisisCard}, so the dialog and
+ * the inline card a high-risk assessment produces cannot drift apart: one place
+ * decides how a helpline is displayed and how big its tap targets are.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -12,26 +17,24 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 
 import { api } from "@/lib/api";
-import { fetchCrisisResources, type CrisisResource } from "@/lib/endpoints";
+import { fetchCrisisResources } from "@/lib/endpoints";
+import { CrisisCard } from "@/components/CrisisCard";
 import { Modal } from "@/components/Modal";
 
 const TITLE_ID = "crisis-dialog-title";
 const DESCRIPTION_ID = "crisis-dialog-description";
 
-/** Kept as digits and a leading `+`, which is all a `tel:` URL may contain. */
-function telHref(phone: string): string {
-  const cleaned = phone.replace(/[^+\d]/g, "");
-  return `tel:${cleaned}`;
-}
-
-function sortByPriority(resources: readonly CrisisResource[]): CrisisResource[] {
-  return [...resources].sort((left, right) => left.priority - right.priority);
-}
-
-export function CrisisResourcesModal({ onClose }: { onClose: () => void }): ReactElement {
+export function CrisisResourcesModal({
+  onClose,
+  region,
+}: {
+  onClose: () => void;
+  /** Optional region code; without it the whole shipped list is served. */
+  region?: string | null;
+}): ReactElement {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["crisis-resources"],
-    queryFn: () => fetchCrisisResources(api),
+    queryKey: ["crisis-resources", region ?? null],
+    queryFn: () => fetchCrisisResources(api, region),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
@@ -95,51 +98,21 @@ export function CrisisResourcesModal({ onClose }: { onClose: () => void }): Reac
       ) : null}
 
       {data !== undefined ? (
-        <ul className="mt-6 space-y-4">
-          {sortByPriority(data.resources).map((resource) => (
-            <li key={resource.id} className="rounded-xl border border-border bg-surface-muted p-4">
-              <h3 className="text-lg">{resource.name}</h3>
-              <p className="text-sm text-ink-muted">
-                {resource.region} · {resource.hours}
-              </p>
-              <p className="mt-2">{resource.description}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                {resource.phone !== null ? (
-                  <a
-                    href={telHref(resource.phone)}
-                    className="rounded-xl bg-accent-bg px-4 py-2 font-semibold text-accent-fg"
-                  >
-                    Call {resource.phone}
-                  </a>
-                ) : null}
-                {resource.sms !== null ? (
-                  <a
-                    href={`sms:${resource.sms}`}
-                    className="rounded-xl border border-border-strong px-4 py-2 font-semibold"
-                  >
-                    Text {resource.sms}
-                  </a>
-                ) : null}
-                {resource.url !== null ? (
-                  <a
-                    href={resource.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="rounded-xl border border-border-strong px-4 py-2 font-semibold text-accent"
-                  >
-                    Visit website
-                  </a>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {data !== undefined ? (
-        <p className="mt-6 text-sm text-ink-muted">
-          Last checked by a person on {data.last_verified}. {data.disclaimer}
-        </p>
+        <div className="mt-6">
+          <CrisisCard
+            heading={null}
+            resources={data.resources}
+            emergency={data.emergency}
+            lastVerified={data.last_verified}
+            disclaimer={data.disclaimer}
+            testId="crisis-modal-card"
+          />
+          {data.fallback_used ? (
+            <p className="mt-3 text-sm text-ink-muted">
+              We could not match the region you asked for, so these are international lines.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </Modal>
   );

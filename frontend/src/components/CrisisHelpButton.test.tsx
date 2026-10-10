@@ -12,27 +12,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CrisisHelpButton } from "@/components/CrisisHelpButton";
 import { fetchCrisisResources } from "@/lib/endpoints";
+import { TEST_RESPONSE } from "@/test/crisisFixtures";
 import { renderWithProviders } from "@/test/utils";
 
 vi.mock("@/lib/endpoints", { spy: true });
-
-const RESOURCES = {
-  last_verified: "2026-10-01",
-  disclaimer: "Placeholder data.",
-  resources: [
-    {
-      id: "us-988",
-      region: "US",
-      name: "988 Suicide & Crisis Lifeline",
-      phone: "988",
-      sms: null,
-      url: null,
-      hours: "24/7",
-      description: "Free, confidential support.",
-      priority: 1,
-    },
-  ],
-};
 
 describe("CrisisHelpButton", () => {
   it("announces itself as a dialog trigger", () => {
@@ -44,7 +27,7 @@ describe("CrisisHelpButton", () => {
   });
 
   it("opens with the keyboard and moves focus into the dialog", async () => {
-    vi.mocked(fetchCrisisResources).mockResolvedValue(RESOURCES);
+    vi.mocked(fetchCrisisResources).mockResolvedValue(TEST_RESPONSE);
     const user = userEvent.setup();
     renderWithProviders(<CrisisHelpButton />);
 
@@ -63,7 +46,7 @@ describe("CrisisHelpButton", () => {
   });
 
   it("closes with Escape and returns focus to the button", async () => {
-    vi.mocked(fetchCrisisResources).mockResolvedValue(RESOURCES);
+    vi.mocked(fetchCrisisResources).mockResolvedValue(TEST_RESPONSE);
     const user = userEvent.setup();
     renderWithProviders(<CrisisHelpButton />);
 
