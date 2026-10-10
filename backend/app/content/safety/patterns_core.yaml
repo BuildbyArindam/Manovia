@@ -1,0 +1,718 @@
+# Core risk vocabulary for the safety rules engine (Day 8).
+#
+# SCOPE: direct, literal English expressions of the eight risk categories the
+# engine must recognise. Euphemisms, figures of speech, misspellings and leet
+# forms live in patterns_euphemisms.yaml; romanised Hindi/Bengali and Indic
+# script live in patterns_indic.yaml.
+#
+# HOW TO READ AN ENTRY
+#   id        stable identifier; it is what appears in `rationale_codes`.
+#             Never put user text in a rationale code.
+#   category  one of the eight RiskCategory values.
+#   level     the risk this hit contributes on its own (low|medium|high|imminent).
+#   kind      phrase  -> matched on word boundaries in every normalisation variant
+#             regex   -> matched as written against every normalisation variant
+#   value     written for NORMALISED text: lowercase, no punctuation, single
+#             spaces. ("dont" not "don't"; "i am" not "I'm".)
+#   negation_sensitive  true when a preceding plain negation cancels the meaning
+#             ("i dont want to die"). Set false when the negation is *part* of
+#             the risk phrase ("no reason to live").
+#   figurative_prone    true when the wording is also everyday exaggeration. Such
+#             a hit is suppressed only when patterns_context.yaml gives positive
+#             evidence of a benign frame or an inanimate subject — never because
+#             the engine merely suspects a joke.
+#
+# SAFETY RULES FOR THIS FILE
+# 1. Nothing here is ever shown to a user. It is detection vocabulary only.
+# 2. `access_to_means` entries name a *category* of means as a risk signal. They
+#    must never read as instructions: no quantities, no combinations, no
+#    locations, no techniques. If an entry tells someone how to do something, it
+#    does not belong in this file and must be removed.
+# 3. Prefer false positives. A benign message that gets a helpline card is an
+#    inconvenience; a real one that gets a cheerful reply is a catastrophe.
+# 4. Every entry is hand-written and synthetic-case tested (tests/safety/cases.yaml).
+version: 1
+
+rules:
+  # ---------------------------------------------------------------- #
+  # Suicidal ideation                                                 #
+  # ---------------------------------------------------------------- #
+  - id: si.want_to_die
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bwant(?:s|ed)?\\s+to\\s+die\\b"
+    negation_sensitive: true
+    figurative_prone: true
+  - id: si.wanna_die
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:wanna|wanta|wana)\\s+(?:just\\s+)?(?:die|be\\s+dead)\\b"
+    negation_sensitive: true
+    figurative_prone: true
+  - id: si.wish_i_was_dead
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bwish\\s+(?:i|that\\s+i)\\s+(?:was|were|would\\s+be|had\\s+been|am)\\s+(?:dead|never\\s+born|gone)\\b"
+    negation_sensitive: false
+  - id: si.better_off_dead
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:better\\s+off\\s+(?:dead|without\\s+me)|dead\\s+is\\s+better)\\b"
+    negation_sensitive: false
+  - id: si.want_to_be_dead
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: want to be dead
+    negation_sensitive: true
+  - id: si.dont_want_to_be_alive
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:dont|do\\s+not|no\\s+longer)\\s+want\\s+(?:to\\s+be\\s+alive|to\\s+live|to\\s+be\\s+here)\\b"
+    negation_sensitive: false
+  - id: si.suicidal
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:suicidal|suicide)\\b"
+    # Negation-sensitive, unlike most of the hopelessness rules: "i am not
+    # suicidal" retracts the very word it uses, and reading it as a crisis would
+    # put a helpline card in front of someone who just answered a question.
+    negation_sensitive: true
+    note: "The word itself, including 'suicidal thoughts'. High because a person who types it is describing themselves more often than not."
+  - id: si.thinking_about_suicide
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:thinking|thoughts|think)\\s+(?:about|of)\\s+(?:suicide|ending\\s+(?:it|my\\s+life)|dying)\\b"
+    negation_sensitive: true
+  - id: si.kill_myself
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:kill|killing|murder|murdering)\\s+(?:myself|my\\s+self|me)\\b"
+    negation_sensitive: true
+    figurative_prone: true
+    figurative_subject: true
+    note: >-
+      Figurative with an inanimate subject ("this deadline is killing me"), real
+      without one ("I want to kill myself"). Only the subject suppresses it.
+  - id: si.kill_other_self
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:kill|murder|harm|hurt)\\s+(?:himself|herself|themself|themselves)\\b"
+    negation_sensitive: true
+    note: >-
+      About another person ("my friend wants to kill himself"). Still an emergency
+      for somebody, so the hit is never dropped: the third-person cap in
+      rules.py decides how the reply is shaped, not whether there is one.
+  - id: si.end_my_life
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:end|ended|ending|ends|take|took|taking)\\s+(?:my|this|his|her|their)\\s+(?:own\\s+)?life\\b"
+    negation_sensitive: true
+  - id: si.hate_being_alive
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:hate|tired\\s+of|sick\\s+of|done\\s+with)\\s+(?:being\\s+alive|living|this\\s+life|my\\s+life)\\b"
+    negation_sensitive: true
+  - id: si.dont_want_to_be_here
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:dont|do\\s+not)\\s+want\\s+to\\s+(?:be\\s+here|exist|stay)\\b"
+    negation_sensitive: false
+  - id: si.want_to_disappear
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:want|wanna)\\s+to?\\s*(?:disappear|vanish)\\b"
+    negation_sensitive: true
+  - id: si.shouldnt_have_been_born
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:should\\s+never\\s+have\\s+been\\s+born|shouldnt\\s+have\\s+been\\s+born|wish\\s+i\\s+was\\s+never\\s+born)\\b"
+    negation_sensitive: false
+  - id: si.kill_me_plea
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:somebody|someone|please|just)\\s+(?:kill|end)\\s+me\\b"
+    negation_sensitive: true
+    figurative_prone: true
+  - id: si.killing_me
+    category: suicidal_ideation
+    level: low
+    kind: regex
+    value: "\\b(?:is|are|was|were|keeps|keep|this|that|its)\\s+(?:killing|murdering|destroying)\\s+me\\b"
+    negation_sensitive: false
+    figurative_prone: true
+    figurative_subject: true
+    note: "Almost always exaggeration ('this traffic is killing me'), hence low plus figurative_prone: suppressed only on positive benign evidence."
+  - id: si.dying
+    category: suicidal_ideation
+    level: low
+    kind: regex
+    value: "\\b(?:i\\s+am|im|i)\\s+(?:dying|dead\\s+inside)\\b"
+    negation_sensitive: false
+    figurative_prone: true
+  - id: si.farewell
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:goodbye\\s+(?:everyone|everybody|forever|friends|all)|this\\s+is\\s+(?:goodbye|my\\s+last)|farewell\\s+(?:everyone|message)|goodbye\\s+for\\s+good)\\b"
+    negation_sensitive: false
+  - id: si.wont_see_me_again
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:you|they|everyone|everybody)\\s+(?:wont|will\\s+not|never)\\s+(?:see|meet|hear\\s+from)\\s+me\\s+again\\b"
+    negation_sensitive: false
+  - id: si.after_im_gone
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:after|when)\\s+(?:i\\s+am|im)\\s+gone\\b"
+    negation_sensitive: false
+  - id: si.my_funeral
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:my\\s+(?:own\\s+)?funeral|my\\s+cremation|my\\s+burial|at\\s+my\\s+funeral)\\b"
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Self-harm                                                         #
+  # ---------------------------------------------------------------- #
+  - id: sh.cut_myself
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:cut|cutting|carving|carve|slice|slicing)\\s+(?:myself|my\\s+(?:arms?|wrists?|legs?|thighs?|skin))\\b"
+    negation_sensitive: true
+  - id: sh.self_harm_term
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\bself\\s+(?:harm|harming|harmed|injury|injuring)\\b"
+    negation_sensitive: false
+  - id: sh.hurt_myself
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:hurt|harm|damage|punish|beat)\\s+(?:myself|my\\s+own\\s+self)\\b"
+    negation_sensitive: true
+  - id: sh.want_to_hurt_myself
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:want|wanna|need|urge)\\s+to\\s+(?:hurt|harm|cut|punish)\\s+(?:myself|me)\\b"
+    negation_sensitive: true
+  - id: sh.burn_myself
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:burn|burning|scald)\\s+(?:myself|my\\s+(?:arms?|hands?|skin))\\b"
+    negation_sensitive: true
+  - id: sh.hit_myself
+    category: self_harm
+    level: medium
+    kind: regex
+    value: "\\b(?:hit|hitting|punch|punching|slap|slapping)\\s+(?:myself|my\\s+(?:own\\s+)?(?:head|face|body))\\b"
+    negation_sensitive: true
+  - id: sh.starving_myself
+    category: self_harm
+    level: medium
+    kind: regex
+    value: "\\b(?:starving|starve)\\s+(?:myself|me)\\b"
+    negation_sensitive: true
+  - id: sh.scars
+    category: self_harm
+    level: low
+    kind: regex
+    value: "\\b(?:my\\s+scars|fresh\\s+scars|new\\s+scars|hiding\\s+my\\s+scars)\\b"
+    negation_sensitive: false
+    note: "Weak signal: scars may be historical. Low so it can only lift a message that already says something else."
+
+  # ---------------------------------------------------------------- #
+  # Intent and plan                                                   #
+  # ---------------------------------------------------------------- #
+  - id: ip.have_a_plan
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:have|had|made|ve\\s+made|got)\\s+(?:a\\s+|the\\s+|my\\s+)?plan\\b"
+    negation_sensitive: true
+  - id: ip.planning_to_kill_myself
+    category: intent_plan
+    level: imminent
+    kind: regex
+    value: "\\b(?:planning|planned|going\\s+to|intend\\s+to|preparing\\s+to)\\s+(?:to\\s+)?(?:kill\\s+(?:myself|me)|end\\s+(?:my|it\\s+all)|take\\s+my\\s+(?:own\\s+)?life|do\\s+it)\\b"
+    negation_sensitive: true
+  - id: ip.suicide_note
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:suicide\\s+note|goodbye\\s+(?:note|letter)|wrote\\s+(?:a|my)\\s+(?:note|letter)|final\\s+(?:note|letter|message|will)|(?:note|letter|message|will)\\s+to\\s+(?:leave|be\\s+left)\\s+behind|leave\\s+behind\\s+(?:a|my|the|one\\s+last)?\\s*(?:note|letter|message))\\b"
+    negation_sensitive: false
+    note: >-
+      "the note to leave behind" is the same behaviour as "suicide note" without
+      naming it. Kept to the leave-behind idiom rather than any mention of
+      writing a note, so "a note to leave for the next guest" does not escalate.
+  - id: ip.said_goodbyes
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:said|saying|say)\\s+(?:my\\s+)?goodbyes?\\b"
+    negation_sensitive: true
+  - id: ip.giving_away_possessions
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:giving|gave|give)\\s+away\\s+(?:my|all|everything|the)\\s*(?:things|stuff|possessions|belongings|books|games|jewellery|jewelry)?\\b"
+    negation_sensitive: true
+  - id: ip.made_up_my_mind
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:made\\s+up\\s+my\\s+mind|ive\\s+decided|i\\s+have\\s+decided|my\\s+mind\\s+is\\s+made\\s+up|decision\\s+is\\s+made)\\b"
+    negation_sensitive: false
+  - id: ip.know_how_i_would_do_it
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:know|knew|figured\\s+out|worked\\s+out)\\s+(?:how|the\\s+way|exactly\\s+how)\\s+(?:i\\s+)?(?:would|will|could|to)\\s*(?:do\\s+it|end\\s+it|go\\s+through\\s+with\\s+it)\\b"
+    negation_sensitive: true
+  - id: ip.going_to_do_it
+    category: intent_plan
+    level: imminent
+    kind: regex
+    value: "\\b(?:im|i\\s+am|ill|i\\s+will|going\\s+to|gonna|about\\s+to|ready\\s+to)\\s+(?:to\\s+)?(?:do\\s+it|end\\s+it|end\\s+it\\s+all|go\\s+through\\s+with\\s+it|finish\\s+it)\\b|\\b(?:doing|did)\\s+it\\s+(?:tonight|today|tomorrow|now|soon)\\b"
+    negation_sensitive: true
+  - id: ip.wont_stop_me
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:nothing|no\\s+one|nobody)\\s+(?:can|will|is\\s+going\\s+to)\\s+(?:stop\\s+me|stop\\s+it)\\b"
+    negation_sensitive: false
+  - id: ip.researching_how
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:searching|searched|search|googling|googled|google|looking\\s+up|looked\\s+up|reading|read|researching|researched|watching\\s+videos?)\\s+(?:about\\s+|on\\s+|for\\s+|into\\s+|up\\s+)?(?:how\\s+(?:to|people|someone|others|it\\s+is\\s+done|its\\s+done)|ways\\s+to|methods?\\s+(?:of|for))\\b"
+    negation_sensitive: true
+    note: "Detects research into *any* 'how to' near risk text; the engine never stores or repeats what was searched for."
+
+  # ---------------------------------------------------------------- #
+  # Access to means (signal only — never instructions)                #
+  # ---------------------------------------------------------------- #
+  - id: am.have_a_firearm
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:have|has|got|bought|buy|own|found|borrowed|stole|took)\\s+(?:a\\s+|the\\s+|my\\s+|his\\s+|dads?\\s+|fathers?\\s+)?(?:gun|pistol|rifle|firearm|shotgun|revolver)\\b"
+    negation_sensitive: true
+  - id: am.gun_in_the_house
+    category: access_to_means
+    level: medium
+    kind: regex
+    value: "\\b(?:gun|firearm|pistol|rifle|shotgun)\\s+(?:in\\s+(?:the|my|our)\\s+(?:house|home|room|drawer|closet)|at\\s+home)\\b"
+    negation_sensitive: false
+  - id: am.stockpiled_medication
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\b(?:saved\\s+up|stockpiled?|stockpiling|stocked\\s+up|stocking\\s+up|collecting|collected|hoarding|hoarded|gathering|gathered|accumulated)\\s+(?:my\\s+|the\\s+|all\\s+|enough\\s+|a\\s+(?:lot|bottle|handful|box|supply)\\s+(?:of\\s+)?)?(?:pills?|tablets?|medication|medicine|meds)\\b"
+    negation_sensitive: true
+  - id: am.have_the_pills
+    category: access_to_means
+    level: medium
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:have|has|got)\\s+(?:all\\s+|the\\s+|my\\s+|enough\\s+)?(?:pills?|tablets?|meds|medication|medicine)\\s+(?:ready|here|with\\s+me|at\\s+hand)\\b"
+    negation_sensitive: true
+  - id: am.with_a_means
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\bwith\\s+(?:a\\s+|an\\s+|the\\s+|my\\s+)?(?:gun|pills?|tablets?|rope|knife|blade|razor|belt|weapon|poison|chemicals?)\\b"
+    negation_sensitive: false
+    note: "Names means categories as a risk signal. The user-facing crisis copy never repeats any of these words."
+  - id: am.sharp_object
+    category: access_to_means
+    level: low
+    kind: regex
+    value: "\\b(?:razor\\s+blades?|box\\s+cutter|sharp\\s+(?:object|blade)|kitchen\\s+knife)\\b"
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Harm to others                                                    #
+  # ---------------------------------------------------------------- #
+  - id: ho.kill_someone
+    category: harm_to_others
+    level: high
+    kind: regex
+    value: "\\b(?:kill|murder|shoot|stab)\\s+(?:him|her|them|you|everyone|everybody|people|myself\\s+and)\\b"
+    negation_sensitive: true
+  - id: ho.will_kill_you
+    category: harm_to_others
+    level: high
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:will|ill|i\\s+am\\s+going\\s+to|im\\s+going\\s+to|gonna)\\s+(?:kill|murder|hurt|beat\\s+up)\\s+(?:you|him|her|them|everyone)\\b"
+    negation_sensitive: true
+  - id: ho.want_to_hurt_others
+    category: harm_to_others
+    level: high
+    kind: regex
+    value: "\\b(?:want|wanna|need|urge)\\s+to\\s+(?:hurt|harm|attack|punish|get\\s+back\\s+at)\\s+(?:someone|somebody|anyone|anybody|people|others|him|her|them|everyone|my)\\b"
+    negation_sensitive: true
+  - id: ho.mass_violence
+    category: harm_to_others
+    level: imminent
+    kind: regex
+    value: "\\b(?:school|mass|workplace|campus|public)\\s+shooting\\b|\\bshoot\\s+(?:up|into)\\s+(?:the\\s+)?(?:school|class|classroom|office|crowd|people|mall|mosque|church|temple|synagogue)\\b"
+    negation_sensitive: true
+  - id: ho.make_them_pay
+    category: harm_to_others
+    level: medium
+    kind: regex
+    value: "\\b(?:make\\s+(?:them|him|her|everyone)\\s+pay|they\\s+will\\s+pay|revenge|get\\s+even|retaliate)\\b"
+    negation_sensitive: true
+  - id: ho.hurt_a_child
+    category: harm_to_others
+    level: high
+    kind: regex
+    value: "\\b(?:hurt|harm|hit|shake|kill)\\s+(?:my|the)\\s+(?:baby|child|kid|son|daughter|children|kids)\\b"
+    negation_sensitive: true
+    note: "Also triggers the abuse/violence path: a message like this needs a person, not a chatbot."
+
+  # ---------------------------------------------------------------- #
+  # Abuse / violence disclosure                                       #
+  # ---------------------------------------------------------------- #
+  - id: ab.being_hit
+    category: abuse_disclosure
+    level: high
+    kind: regex
+    value: "\\b(?:(?:he|she|they|my\\s+(?:husband|wife|partner|boyfriend|girlfriend|dad|father|mom|mother|mum|brother|sister|uncle|aunty|boss|stepfather|stepmother|stepdad|stepmom|guardian|roommate|grandfather|grandmother)|someone|somebody|people\\s+at\\s+home)(?:\\s+(?:at\\s+home|at\\s+work|in\\s+the\\s+house|again|always|often|constantly|every\\s+(?:day|night|week)))*\\s+(?:hits|hit|hitting|beats|beat|beating|slaps|slapped|slapping|punches|punched|punching|kicks|kicked|kicking|chokes|choked|choking|strangles|strangled|strangling|throws\\s+things\\s+at|threw\\s+things\\s+at|attacks|attacked|hurts|hurt|hurting|harm|harms|harmed|harming|abuses|abused|abusing)\\s+(?:me|us|my|him|her|them|my\\s+(?:little\\s+)?(?:sister|brother|daughter|son|kids|children|baby|mother|mom|father|dad|mum)))\\b"
+    negation_sensitive: false
+  - id: ab.being_abused
+    category: abuse_disclosure
+    level: high
+    kind: regex
+    value: "\\b(?:i\\s+am|im)\\s+(?:being\\s+)?(?:abused|abused\\s+at\\s+home|maltreated|assaulted|raped|molested|harassed\\s+at\\s+home)\\b"
+    negation_sensitive: false
+  - id: ab.sexual_violence
+    category: abuse_disclosure
+    level: high
+    kind: regex
+    value: "\\b(?:rape|raped|sexual\\s+(?:abuse|assault|violence)|molested|molestation|forced\\s+(?:to\\s+have\\s+sex|into\\s+sex)|gang\\s+raped)\\b"
+    negation_sensitive: false
+  - id: ab.domestic_violence
+    category: abuse_disclosure
+    level: high
+    kind: regex
+    value: "\\b(?:domestic\\s+(?:violence|abuse)|intimate\\s+partner\\s+violence|dowry\\s+(?:harassment|violence|death))\\b"
+    negation_sensitive: false
+  - id: ab.not_safe_at_home
+    category: abuse_disclosure
+    level: high
+    kind: regex
+    value: "\\b(?:not\\s+safe\\s+at\\s+home|unsafe\\s+at\\s+home|dont\\s+feel\\s+safe\\s+at\\s+home|afraid\\s+(?:of|to\\s+go\\s+home)|scared\\s+(?:of|to\\s+go\\s+home)|he\\s+(?:is|was)\\s+going\\s+to\\s+kill\\s+me|threatens\\s+(?:to\\s+kill|me)|threatened\\s+to\\s+kill\\s+me)\\b"
+    negation_sensitive: false
+  - id: ab.forced_or_controlled
+    category: abuse_disclosure
+    level: medium
+    kind: regex
+    value: "\\b(?:he|she|they)\\s+(?:forces|forced|wont\\s+let\\s+me|doesnt\\s+let\\s+me|controls|controls\\s+my|takes\\s+my\\s+(?:money|phone|passport)|locks?\\s+me)\\b"
+    negation_sensitive: false
+  - id: ab.witnessed_violence
+    category: abuse_disclosure
+    level: medium
+    kind: regex
+    value: "\\b(?:i\\s+(?:saw|watched|witnessed)|my\\s+(?:mom|mother|sister|brother|kids|children)\\s+(?:gets?|is\\s+being|was)\\s+(?:hit|beaten|abused|attacked))\\b"
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Severe hopelessness                                               #
+  # ---------------------------------------------------------------- #
+  - id: hope.no_hope
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:there\\s+is\\s+no\\s+hope|no\\s+hope\\s+(?:left|at\\s+all|for\\s+me)|hopeless|all\\s+hope\\s+is\\s+lost)\\b"
+    negation_sensitive: false
+    note: >-
+      MEDIUM, not HIGH: "I feel hopeless" on its own is ordinary distress, and
+      answering it with a crisis card and no conversation reads as not having
+      listened. MEDIUM still offers helplines and writes an audit row. The
+      hopelessness rules that are passive ideation in disguise (no reason to
+      live, being a burden, better off without me) stay HIGH.
+  - id: hope.no_reason_to_live
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:no\\s+(?:reason|point)\\s+to\\s+(?:live|go\\s+on|be\\s+alive)|no\\s+(?:reason|point)\\s+in\\s+(?:staying\\s+alive|living|being\\s+alive|going\\s+on|carrying\\s+on|waking\\s+up\\s+(?:again|anymore|at\\s+all|tomorrow|each\\s+day|every\\s+day)|another\\s+day)|(?:dont|do\\s+not|cant|cannot|could\\s+not)\\s+see\\s+(?:any\\s+)?(?:point|reason|purpose)\\s+in\\s+(?:staying\\s+alive|living|being\\s+alive|going\\s+on|carrying\\s+on|waking\\s+up\\s+(?:again|anymore|at\\s+all|tomorrow))|nothing\\s+to\\s+live\\s+for|what\\s+is\\s+the\\s+point\\s+of\\s+(?:living|it\\s+all|my\\s+life)|why\\s+am\\s+i\\s+(?:alive|even\\s+here|bothering))\\b"
+    negation_sensitive: false
+    note: >-
+      "no point in waking up" is the same thought as "no point in living",
+      phrased around the next morning rather than around life. Deliberately
+      requires an existential qualifier (again / anymore / at all / tomorrow /
+      each day): the bare phrase also covers "no point in waking up before
+      seven on a Saturday", which is a complaint about an alarm and must not
+      hand somebody a crisis card.
+  - id: hope.i_am_a_burden
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:(?:i\\s+am|im|i\\s+feel|i\\s+feel\\s+like|feel\\s+like|seem\\s+like|being|feeling|like|be|such|just)\\s+)?a\\s+burden\\b|\\bburden\\s+(?:to|on)\\s+(?:my|everyone|everybody|others|people|them|you)\\b"
+    negation_sensitive: false
+  - id: hope.better_off_without_me
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:(?:everyone|everybody|they|my\\s+family|the\\s+world|people)\\s+(?:would\\s+be|will\\s+be|are)\\s+(?:better\\s+off|happier|better)\\s+without\\s+me|(?:my\\s+)?(?:family|everyone|everybody|they|people|the\\s+world)\\s+(?:would|will|could)\\s+(?:manage|be|get\\s+by|carry\\s+on|do|cope)\\s+(?:just\\s+)?(?:fine|better|ok|well)\\s+without\\s+me|life\\s+would\\s+be\\s+(?:easier|better|simpler|calmer)\\s+(?:for\\s+everyone\\s+)?if\\s+i\\s+(?:were|was)\\s+(?:not\\s+here|gone|dead|out\\s+of\\s+the\\s+way)|(?:everyone|everybody|they|people)\\s+would\\s+be\\s+(?:happier|better\\s+off|better)\\s+if\\s+i\\s+(?:just\\s+)?(?:left|went\\s+away|was\\s+gone|were\\s+gone|disappeared))\\b"
+    negation_sensitive: false
+  - id: hope.no_one_would_notice
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:no\\s+one|nobody)\\s+(?:would|will|even)\\s+(?:notice|care|miss\\s+me)\\b"
+    negation_sensitive: false
+  - id: hope.nothing_matters
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:nothing\\s+matters|nothing\\s+is\\s+real|no\\s+point\\s+in\\s+anything|nothing\\s+feels\\s+real|everything\\s+is\\s+pointless|life\\s+is\\s+pointless|life\\s+is\\s+meaningless)\\b"
+    negation_sensitive: false
+  - id: hope.no_way_out
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:there\\s+is\\s+no\\s+way\\s+out|no\\s+(?:other\\s+)?(?:way|option|choice|solution)\\s+(?:out|left)|trapped\\s+(?:and|with)\\s+no\\s+(?:way|escape))\\b"
+    negation_sensitive: false
+  - id: hope.cant_go_on
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:cant|cannot|can\\s+not|couldnt|could\\s+not)\\s+(?:go\\s+on|carry\\s+on|keep\\s+going|do\\s+this\\s+anymore|take\\s+(?:it|this)\\s+anymore|cope\\s+anymore|keep\\s+doing\\s+this)\\b"
+    negation_sensitive: false
+    note: "Deliberately not negation_sensitive: 'cant go on' is the risk, not a cancelled one."
+  - id: hope.i_am_worthless
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:i\\s+am|im|i\\s+feel|feel\\s+like)\\s+(?:worthless|useless|a\\s+failure|a\\s+disappointment|broken\\s+beyond\\s+repair|unfixable|beyond\\s+help|trash|garbage)\\b"
+    negation_sensitive: false
+  - id: hope.i_hate_myself
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:i\\s+hate\\s+myself|hate\\s+myself\\s+so\\s+much|disgusted\\s+with\\s+myself|i\\s+am\\s+disgusting)\\b"
+    negation_sensitive: false
+  - id: hope.nobody_cares
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:nobody|no\\s+one)\\s+(?:cares|loves\\s+me|wants\\s+me|needs\\s+me|is\\s+there\\s+for\\s+me)\\b"
+    negation_sensitive: false
+  - id: hope.empty_and_numb
+    category: severe_hopelessness
+    level: low
+    kind: regex
+    value: "\\b(?:empty\\s+inside|completely\\s+numb|feel\\s+nothing\\s+anymore|feel\\s+dead\\s+inside|hollow\\s+inside)\\b"
+    negation_sensitive: false
+  - id: hope.tired_of_existing
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:tired\\s+of\\s+(?:existing|being\\s+me|trying|fighting)|exhausted\\s+from\\s+(?:living|existing|trying)|so\\s+tired\\s+of\\s+this)\\b"
+    negation_sensitive: false
+  - id: hope.giving_up
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:i\\s+give\\s+up|im\\s+giving\\s+up|i\\s+am\\s+giving\\s+up|giving\\s+up\\s+on\\s+(?:life|myself|everything))\\b"
+    negation_sensitive: true
+
+  # ---------------------------------------------------------------- #
+  # Acute medical emergency (something has already happened)          #
+  # ---------------------------------------------------------------- #
+  - id: med.overdose_taken
+    category: acute_medical
+    level: imminent
+    kind: regex
+    value: "\\b(?:i\\s+|ive\\s+|i\\s+have\\s+|i\\s+just\\s+|she\\s+|he\\s+|they\\s+)?(?:took|swallowed|drank|ingested|had|consumed|ate)\\s+(?:all|too\\s+many|a\\s+(?:lot|handful|bottle|box|whole\\s+bottle|whole\\s+box|packet|strip)\\s+(?:of\\s+)?|the\\s+(?:whole|entire)|my\\s+(?:whole|entire)|an?\\s+(?:overdose|entire\\s+bottle)|entire|whole)\\s*(?:of\\s+)?(?:the\\s+|my\\s+|all\\s+the\\s+)?(?:(?:bottle|box|packet|strip|tin|bag)s?\\s+(?:of\\s+)?)?(?:pills?|tablets?|meds|medication|medicine|drugs?|sleeping\\s+pills?|poison|chemicals?|cleaning\\s+(?:fluid|liquid))\\b"
+    negation_sensitive: true
+  - id: med.overdosed
+    category: acute_medical
+    level: imminent
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:overdosed|overdosing|poisoned\\s+myself)\\b"
+    negation_sensitive: true
+  - id: med.bleeding
+    category: acute_medical
+    level: high
+    kind: regex
+    value: "\\b(?:bleeding|bleeding\\s+(?:a\\s+lot|heavily|badly)|wont\\s+stop\\s+bleeding|lost\\s+(?:a\\s+lot\\s+of\\s+)?blood|blood\\s+everywhere)\\b"
+    negation_sensitive: false
+  - id: med.not_breathing
+    category: acute_medical
+    level: imminent
+    kind: regex
+    value: "\\b(?:cant\\s+breathe|cannot\\s+breathe|not\\s+breathing|cant\\s+breath|struggling\\s+to\\s+breathe|unconscious|passed\\s+out|having\\s+a\\s+seizure|chest\\s+pain|no\\s+pulse|not\\s+responding|not\\s+waking\\s+up|wont\\s+wake\\s+up)\\b"
+    negation_sensitive: false
+  - id: med.needs_ambulance
+    category: acute_medical
+    level: high
+    kind: regex
+    value: "\\b(?:call\\s+(?:an\\s+)?ambulance|i\\s+need\\s+an\\s+ambulance|get\\s+(?:me\\s+)?(?:to\\s+)?(?:a\\s+)?hospital|take\\s+me\\s+to\\s+(?:the\\s+)?(?:hospital|emergency|er)|someone\\s+call\\s+(?:911|999|112|000|help))\\b"
+    negation_sensitive: false
+  - id: med.just_hurt_myself
+    category: acute_medical
+    level: high
+    kind: regex
+    value: "\\b(?:just\\s+(?:cut|hurt|harmed|burned|injured)\\s+(?:myself|me)|i\\s+(?:cut|hurt|burned|injured)\\s+myself\\s+(?:badly|deep|deeply|a\\s+lot)|wound\\s+is\\s+deep|still\\s+bleeding)\\b"
+    note: >-
+      Acute only: "again" is a self-harm disclosure (sh.cut_myself), not a medical
+      emergency. The level, not this category, decides the reply.
+    negation_sensitive: true
+  # ---------------------------------------------------------------- #
+  # Day 8 case-table gaps: patterns added because a hand-written case
+  # in tests/safety/cases.yaml was missed. Each note says why the rule
+  # is at the level it is, so the next reader can argue with it.
+  # ---------------------------------------------------------------- #
+  - id: si.wants_to_be_dead
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:wants|wanted|wishing|wish|wishes)\\s+to\\s+be\\s+dead\\b"
+    negation_sensitive: true
+    note: >-
+      Third-person and past inflection of si.want_to_be_dead, which is a phrase rule 
+      and so cannot carry them. Reported speech about wanting to be dead is still a 
+      disclosure worth acting on.
+
+  - id: ip.third_person_plan
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:she|he|they|my\\s+(?:friend|brother|sister|son|daughter|husband|wife|partner|dad|mom|mum|father|mother|didi|bhai))\\s+(?:has|had|have|made|made\\s+up)\\s+(?:a\\s+|the\\s+|their\\s+|her\\s+|his\\s+|my\\s+)?plan\\b"
+    negation_sensitive: true
+    note: >-
+      A plan belonging to somebody else. Kept separate from ip.have_a_plan so the 
+      subject is required: without it, 'the team has a plan' would escalate.
+
+  - id: ip.started_planning
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:started|start|begun|began|begin)\\s+(?:to\\s+)?(?:planning|plan|making\\s+(?:a\\s+)?plan|preparing)\\b"
+    negation_sensitive: true
+    note: >-
+      The move from feeling to arranging. High on its own; imminent only if a timeframe 
+      or means turns up too.
+
+  - id: am.weapon_in_the_house
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\b(?:weapon|gun|rifle|pistol|revolver|shotgun|knife|blade|razor|rope)\\s+(?:in|inside|at|around|under|behind)\\s+(?:the\\s+|my\\s+|our\\s+)?(?:house|home|room|flat|apartment|drawer|closet|cupboard|desk|car|bag|bed)\\b"
+    negation_sensitive: true
+    note: >-
+      Presence of a means, never its use. Recorded because proximity changes urgency, 
+      and because it is the factor a supporter can act on first.
+
+  - id: am.knows_where_means_are
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\b(?:i\\s+)?(?:know|knows|remember|found)\\s+(?:where|that)\\s+(?:the\\s+|my\\s+|our\\s+)?(?:pills?|tablets?|meds|medication|medicine|weapon|gun|rope|ropes|knife|knives|razor|blade)\\s+(?:are|is)(?:\\s+(?:kept|hidden|stored|stashed))?\\b"
+    negation_sensitive: true
+    note: >-
+      Knowing where something is kept is access, whether or not the person says they 
+      have taken it.
+
+  - id: am.overdose_mention
+    category: access_to_means
+    level: medium
+    kind: regex
+    value: "\\boverdose\\b"
+    negation_sensitive: true
+    note: >-
+      The bare word, base form. An act already taken is med.overdosed (imminent); a 
+      mention on its own is a risk factor to ask about, not an ambulance.
+
+  - id: sh.skin_picking
+    category: self_harm
+    level: medium
+    kind: regex
+    value: "\\b(?:pick|picking|picks|scratching|scratches|scratch|biting|bites)\\s+(?:at\\s+)?(?:my\\s+)?(?:skin|scabs?|wounds?|scars?|arms?|hands?|face|lips?)\\b"
+    negation_sensitive: true
+    note: >-
+      Medium rather than high: repetitive skin-picking is often a coping behaviour 
+      rather than an acute injury. If it is bleeding, med.bleeding raises the level on 
+      its own.
+
+  - id: ho.thinking_about_hurting
+    category: harm_to_others
+    level: high
+    kind: regex
+    value: "\\b(?<!you\\s)(?<!you)(?:thinking\\s+about|thought\\s+about|thoughts\\s+about|imagining|imagined|imagine|imagines|picture|picturing|fantasising|fantasizing|dreaming\\s+of|dream\\s+of)\\s+(?:hurting|harming|attacking|beating\\s+up|killing|ending)(?!\\s+(?:myself|me\\b))\\b"
+    negation_sensitive: true
+    note: >-
+      Intrusive thoughts about harming somebody else. High because the person may be
+      frightened of acting on them, and that fear is itself reason to respond.
+      The negative lookahead keeps "thought about hurting myself" out of this
+      rule: that is self_harm, and sh.thinking_about_hurting_myself answers it.
+      The category is recorded, so filing a self-directed thought under
+      harm_to_others corrupts the assessment even when the level is the same.
+
+  - id: ho.take_someone_down
+    category: harm_to_others
+    level: high
+    kind: regex
+    value: "\\b(?:take|drag|bring|pull)\\s+(?:them|him|her|everyone|everybody|people|the\\s+(?:kids|children)|my\\s+(?:family|brother|sister|wife|husband|partner|kids|children|neighbour|neighbor|colleague|classmate|boss|friend|father|mother|dad|mom))\\s+(?:down\\s+)?with\\s+me\\b"
+    negation_sensitive: true
+    note: >-
+      Harm to others bundled with harm to self. Never capped by the third-person rule: 
+      the speaker is the agent.
+
+  - id: ab.bullied
+    category: abuse_disclosure
+    level: medium
+    kind: regex
+    value: "\\b(?:bullied|bullying\\s+me|ragged|ragging\\s+me|harassed|harassing\\s+me|tormented|tormenting\\s+me)\\b"
+    note: >-
+      Medium: a disclosure of ongoing harm that is not usually an immediate physical 
+      emergency, but is never something to reply to with small talk.
+  - id: sh.until_it_bleeds
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:until|till|to\\s+the\\s+point)\\s+(?:it|they|i)\\s+(?:bleeds?|bleeding|bled|scars?|hurts?|numb)\\b"
+    negation_sensitive: true
+    note: >-
+      Self-harm carried past the point of injury. Deliberately not folded into
+      med.bleeding: a nose that bleeds in winter is not an emergency, and that
+      rule answers with an ambulance.
+  - id: sh.thinking_about_hurting_myself
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:thinking\\s+about|thought\\s+about|thoughts\\s+about|imagining|imagined|imagine|imagines|picture|picturing|fantasising|fantasizing|dreaming\\s+of|dream\\s+of)\\s+(?:hurting|harming|cutting|burning|beating\\s+up|killing|ending)\\s+(?:myself|me\\b|my\\s+own\\s+body)\\b"
+    negation_sensitive: true
+    note: >-
+      The self-directed twin of ho.thinking_about_hurting, added because that
+      rule now excludes "myself": intrusive thoughts about hurting oneself are
+      self_harm, and the category is recorded. High for the same reason — the
+      person may be frightened of acting on the thought, and that fear is itself
+      reason to respond. Negation-sensitive, so "not once have i thought about
+      hurting myself" is a denial and earns a check-in rather than a crisis card.

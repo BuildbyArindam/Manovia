@@ -30,6 +30,11 @@ dependencies = [
     # Language detection for the NLP service (Day 6). Pure Python, offline,
     # and its profile data ships in the wheel, so it adds no network calls.
     "langdetect>=1.0.9",
+    # Safety pattern data (Day 8). The rules engine reads YAML so that patterns
+    # can be reviewed and extended without touching code; jsonschema validates
+    # the shipped helpline file against its published contract at import time.
+    "pyyaml>=6.0.1",
+    "jsonschema>=4.21.0",
 ]
 
 [project.optional-dependencies]
@@ -50,13 +55,18 @@ dev = [
     "ruff>=0.11.0",
     "mypy>=1.10.0",
     "hypothesis>=6.100.0",
+    # mypy --strict needs stubs for the YAML loader.
+    "types-PyYAML>=6.0.12",
 ]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
 
 [tool.setuptools.package-data]
-"app.content" = ["*.json"]
+# Helpline + consent content, its schema, the localised crisis templates and the
+# safety pattern YAML. Without these the installed wheel imports but crashes on
+# first load.
+"app.content" = ["*.json", "safety/*.yaml", "i18n/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,414 @@
+# Romanised Hindi (Hinglish) and Bengali (Banglish), plus native script (Day 8).
+#
+# A large share of Manovia's users type in romanised Indic languages, often mixed
+# with English ("exam kal hai, mann nahi kar raha jeene ka"). The engine runs
+# every pattern against every normalisation variant, so these entries work in
+# code-mixed messages without any language routing.
+#
+# CONVENTIONS
+#   language: hi | bn   marks the entry. It does two things:
+#                       1. post-verbal negation (patterns_context.yaml
+#                          `negation_after_cues`, e.g. Bengali "...chai na")
+#                          only applies to entries that carry a language;
+#                       2. it tells a reviewer which language needs a native
+#                          speaker's eyes.
+#   script: devanagari | bengali   the phrase is written in native script. Those
+#                       are matched as plain substrings: Indic scripts use
+#                       combining vowel signs, so word-boundary regexes are
+#                       unreliable. (The tokeniser in app/services/nlp/lexicon.py
+#                       solves the same problem for the emotion lexicons.)
+#
+# HONEST LIMITATION — READ THIS BEFORE TRUSTING THE FILE
+# These phrases were written by one developer from romanisation knowledge and
+# cross-checked only against public helpline pages, never by a native-speaker
+# panel or a clinician. Expect gaps (many: slang differs by region, generation
+# and platform) and expect a few clumsy entries. That is why the engine leans on
+# the English set too, why this file is data rather than code (it can be fixed
+# without a release), and why `docs/safety-design.md` lists native-speaker review
+# as the first open item.
+#
+# DELIBERATE OMISSION: no entry names a location or a technique. Means appear
+# only as generic words ("zehar" / "bisha" — poison, "goliyan" — pills) because
+# the engine needs to know that access is a risk factor, not how anything works.
+version: 1
+
+rules:
+  # ---------------------------------------------------------------- #
+  # Hindi (romanised)                                                 #
+  # ---------------------------------------------------------------- #
+  - id: hi.mar_jaunga
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:mar\\s*(?:nahi\\s+|nhi\\s+|nahin\\s+)?j(?:aunga|aungi|ayega|ayegi|aayega|aayegi|aoonga|aoongi|aun|aunga|aungi|ana|aana|ayenge|aayenge|aungi|oonga|oongi)|marna\\s+(?:nahi\\s+|nhi\\s+|nahin\\s+)?chaht(?:a|i)|mar\\s*(?:nahi\\s+)?(?:jao|jaau|jau|raha\\s+hu|rahi\\s+hu))\\b"
+    language: hi
+    negation_sensitive: true
+  - id: hi.marna_hai
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:marna\\s+(?:nahi\\s+|nhi\\s+|nahin\\s+)?(?:hai|chahta\\s+hu|chahti\\s+hu|chahta\\s+hun|chahti\\s+hun)|maut\\s+(?:chahiye|aaye)|maut\\s+ki\\s+(?:chaahat|tamanna))\\b"
+    language: hi
+    negation_sensitive: true
+  - id: hi.jaan_de_dunga
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:jaan\\s+de\\s+dunga|jaan\\s+de\\s+dungi|jaan\\s+dena\\s+chahta|jaan\\s+se\\s+ja\\s+dunga|apni\\s+jaan\\s+de\\s+dunga)\\b"
+    language: hi
+    negation_sensitive: true
+  - id: hi.khud_ko_maar
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:khud\\s+ko\\s+maar|khudko\\s+maar|apne\\s+aap\\s+ko\\s+maar|khud\\s+ko\\s+khatam|apne\\s+aap\\s+ko\\s+khatam|khud\\s+ko\\s+nuksan|apne\\s+aap\\s+ko\\s+nuksan)\\b"
+    language: hi
+    negation_sensitive: true
+  - id: hi.khudkushi
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:khudkushi|khud\\s+kushi|aatmhatya|aatm\\s+hatya|aatmghat|atmahatya)\\b"
+    language: hi
+    negation_sensitive: false
+  - id: hi.aatmhatya_karunga
+    category: intent_plan
+    level: imminent
+    kind: regex
+    value: "\\b(?:aatmhatya\\s+(?:kar\\s*(?:lunga|lungi|unga|ungi|raha\\s+hu|rahi\\s+hu)|karne\\s+(?:wala|wali|ja\\s+raha)|ka\\s+plan)|khudkushi\\s+(?:kar\\s*(?:lunga|lungi|unga|ungi)|karne\\s+(?:wala|wali|ja\\s+raha)|ka\\s+plan))\\b"
+    language: hi
+    negation_sensitive: true
+  - id: hi.zindagi_khatam
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:zindagi\\s+(?:khatam|khatm|beekar|bekar|barbaad|tamam|se\\s+tang|ka\\s+ant)|zindgi\\s+(?:khatam|se\\s+tang)|jeewan\\s+(?:khatam|se\\s+tang)|zindagi\\s+(?:chhod|chod)\\s+dunga)\\b"
+    language: hi
+    negation_sensitive: false
+  - id: hi.jeena_nahi_chahta
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:jeena\\s+nahi\\s+(?:chahta|chahti|chahte)|jeene\\s+(?:ki\\s+)?(?:ichha|icchha|tamanna|mann)\\s+nahi|zinda\\s+nahi\\s+(?:rehna|rahna)|jeena\\s+nahi\\s+(?:hai|chahte)|ab\\s+jeena\\s+nahi)\\b"
+    language: hi
+    negation_sensitive: false
+    note: "The negation is inside the phrase, so it must not be treated as a cancellation."
+  - id: hi.sab_khatam_kar_dunga
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:sab\\s+(?:khatam|khatm)\\s+kar\\s+(?:dunga|dungi|raha\\s+hu|rahi\\s+hu|de|denge)|khatam\\s+kar\\s+(?:dunga|dungi|de)|kuch\\s+bhi\\s+bacha\\s+nahi)\\b"
+    language: hi
+    negation_sensitive: true
+    negation_baked: true
+    note: >-
+      One branch ("kuch bhi bacha nahi", nothing is left) requires the cue, so the
+      rule is exempt from the inside-the-hit negation check.
+
+  - id: hi.bardasht_nahi
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:bardasht|bardaasht|bardash|sah\\s+nahi)\\s+(?:nahi|na)\\s*(?:ho\\s+raha|ho\\s+rahi|ho\\s+paa|kar\\s+paa|hot[a])?|\\bab\\s+(?:saha|seha)\\s+nahi\\s+jata\\b"
+    language: hi
+    negation_sensitive: false
+  - id: hi.koi_nahi_hai
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:mera\\s+koi\\s+nahi|koi\\s+nahi\\s+hai\\s+mera|koi\\s+apna\\s+nahi|bilkul\\s+akela|bilkul\\s+akeli|ekdum\\s+akela)\\b"
+    language: hi
+    negation_sensitive: false
+  - id: hi.kisi_ko_farq_nahi
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:kisi\\s+ko\\s+(?:farq|farak)\\s+nahi\\s+padta|sab\\s+(?:mere\\s+bina|bina\\s+mere)\\s+(?:khush|acha|achhe|theek)|mere\\s+bina\\s+sab\\s+(?:achha|theek)\\s+hai|main\\s+(?:bojh|boj)\\s+hu)\\b"
+    language: hi
+    negation_sensitive: false
+  - id: hi.goliyan_kha_li
+    category: acute_medical
+    level: imminent
+    kind: regex
+    value: "\\b(?:goliyan?\\s+kha\\s+(?:li|liya|lee|liye)|saari\\s+goliyan|poori\\s+bottle\\s+pee\\s+li|neend\\s+ki\\s+goliyan\\s+(?:kha|le)\\s+li|zehar\\s+(?:kha\\s+li|pee\\s+li|pi\\s+li))\\b"
+    language: hi
+    negation_sensitive: true
+  - id: hi.zehar_means
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\b(?:zehar|zeher|vish|bisha)\\b|\\bgoliyon\\s+ka\\s+(?:dher|jaara|stock)\\b"
+    language: hi
+    negation_sensitive: false
+  - id: hi.help_me_now
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:koi\\s+(?:meri\\s+)?(?:madad|help)\\s+kar\\s+(?:do|sakta\\s+hai)|bacha\\s+lo\\s+mujhe|meri\\s+madad\\s+karo)\\b"
+    language: hi
+    negation_sensitive: false
+    note: "A plea for help in Hindi. Not risk on its own, but it changes what the reply should say."
+
+  # ---------------------------------------------------------------- #
+  # Hindi (Devanagari script)                                         #
+  # ---------------------------------------------------------------- #
+  - id: hi_dev.aatmhatya
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "आत्महत्या"
+    language: hi
+    script: devanagari
+    negation_sensitive: false
+  - id: hi_dev.khudkushi
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "खुदकुशी"
+    language: hi
+    script: devanagari
+    negation_sensitive: false
+  - id: hi_dev.mar_jaana
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "मर जाना"
+    language: hi
+    script: devanagari
+    negation_sensitive: true
+  - id: hi_dev.jeena_nahi
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "जीना नहीं"
+    language: hi
+    script: devanagari
+    negation_sensitive: false
+  - id: hi_dev.zindagi_khatam
+    category: severe_hopelessness
+    level: high
+    kind: phrase
+    value: "ज़िंदगी खत्म"
+    language: hi
+    script: devanagari
+    negation_sensitive: false
+  - id: hi_dev.khud_ko_nuksan
+    category: self_harm
+    level: high
+    kind: phrase
+    value: "खुद को नुकसान"
+    language: hi
+    script: devanagari
+    negation_sensitive: true
+  - id: hi_dev.bardasht_nahi
+    category: severe_hopelessness
+    level: medium
+    kind: phrase
+    value: "बर्दाश्त नहीं"
+    language: hi
+    script: devanagari
+    negation_sensitive: false
+  - id: hi_dev.goliyan_kha_li
+    category: acute_medical
+    level: imminent
+    kind: phrase
+    value: "गोलियां खा ली"
+    language: hi
+    script: devanagari
+    negation_sensitive: true
+  - id: hi_dev.mera_koi_nahi
+    category: severe_hopelessness
+    level: medium
+    kind: phrase
+    value: "मेरा कोई नहीं"
+    language: hi
+    script: devanagari
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Bengali (romanised)                                               #
+  # ---------------------------------------------------------------- #
+  - id: bn.more_jete_chai
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:more\\s+jete\\s+chai|morte\\s+chai|more\\s+je?te\\s+chachhi|morte\\s+chachhi|more\\s+jabo|morte\\s+jabo|marbo\\s+nijeke|morte\\s+icchha)\\b"
+    language: bn
+    negation_sensitive: true
+  - id: bn.morte_chay
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:m[oa]rte\\s+cha(?:y|i)|more\\s+jete\\s+cha(?:y|i)|m[oa]rte\\s+(?:chachhe|chaichhe|cheyechilo)|marbe\\s+bole|more\\s+jabe|m[oa]rte\\s+jabe|morte\\s+icchha|marar\\s+icchha)\\b"
+    language: bn
+    negation_sensitive: true
+    note: >-
+      Third-person inflection of "to want to die" ("she wants to die"). Kept as
+      its own rule so the third-person shaping applies on top of it.
+
+  - id: bn.atmohotta
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:atmohotta|atmahatya|aatmohotta|atmoghat|atmohatya)\\b"
+    language: bn
+    negation_sensitive: false
+  - id: bn.atmohotta_korbo
+    category: intent_plan
+    level: imminent
+    kind: regex
+    value: "\\b(?:atmohotta\\s+(?:korbo|korte\\s+chachhi|kore\\s+felbo|korar\\s+plan)|nije\\s+ke\\s+(?:shesh|sesh)\\s+kore\\s+debo)\\b"
+    language: bn
+    negation_sensitive: true
+  - id: bn.bachte_chai_na
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:bachte\\s+chai\\s+(?:na|nah|naa)|bachte\\s+chachhi\\s+(?:na|nah)|jonte\\s+chai\\s+(?:na|nah)|beche\\s+thakte\\s+chai\\s+(?:na|nah))\\b"
+    language: bn
+    negation_sensitive: false
+    note: "Bengali puts the negation after the verb, so this phrase already contains it and must not be treated as negation-sensitive."
+  - id: bn.jibon_sesh
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:jibon\\s+(?:ta\\s+)?(?:\\w+\\s+){0,2}(?:sesh|shesh|khela\\s+sesh)|sob\\s+(?:sesh|shesh)|jibon\\s+ar\\s+nei|jibon(?:ta|\\s+ta)?\\s+(?:ar\\s+)?bhalo\\s+lagche\\s+na)\\b"
+    language: bn
+    negation_sensitive: false
+    note: >-
+      Allows up to two words between "jibon ta" and "sesh": Bengali routinely
+      puts an adverb there ("ei jibon ta ekhanei shesh" — this life, ending right
+      here), and requiring adjacency missed it entirely.
+  - id: bn.jibon_shesh_korbo
+    category: intent_plan
+    level: imminent
+    kind: regex
+    value: "\\b(?:jibon(?:ta)?\\s+(?:\\w+\\s+){0,2}(?:sesh|shesh)\\s+(?:kore\\s+)?(?:korbo|korchi|debo|dibo)|(?:nijeke|nijer\\s+jibon)\\s+(?:\\w+\\s+)?(?:sesh|shesh)\\s+(?:korbo|korchi))\\b"
+    language: bn
+    negation_sensitive: true
+    note: >-
+      The active colloquial form: "jibon ta shesh korbo" is "I will end my life",
+      stated as an intention rather than a state. bn.atmohotta_korbo covers the
+      formal word for suicide; this covers what people actually type. Imminent,
+      mirroring bn.atmohotta_korbo. Negation-sensitive so the post-verbal "na"
+      ("shesh korbo na" — I will not end it) is caught by the Indic check.
+  - id: bn.ar_parchi_na
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\bar\\s+(?:parchi|parbo|pari|parbis|paren)\\s+na\\b|\\bar\\s+(?:sahi|sojjo|jeete|beche|bachte|thakte|niche)\\s+(?:kore\\s+)?(?:parchi|parbo|pari)\\s+na\\b"
+    language: bn
+    negation_sensitive: false
+    note: >-
+      "ar parchi na" is "I can't take it anymore" — the Bengali twin of
+      hope.cant_go_on, and set high for the same reason. The negation is part of
+      the phrase, so this is not negation-sensitive.
+      Deliberately does NOT allow an arbitrary verb in the middle: "ar *porte*
+      parchi na" is "I can't study anymore", the single most common thing a
+      Bengali student says during exams, and escalating it would hand a crisis
+      card to somebody revising. The endurance verbs (sahi/sojjo — tolerate,
+      jeete/beche/bachte/thakte — go on living) are listed explicitly instead.
+  - id: bn.nijeke_khut
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:nije\\s+ke\\s+(?:khotra|kkhoto|aaghat|jokhom)|nijer\\s+ga\\s+(?:kete|keteche|katbo|katchi)|nije\\s+ke\\s+(?:kosto|koshto)\\s+(?:debo|dicchi))\\b"
+    language: bn
+    negation_sensitive: true
+  - id: bn.keu_nei
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:keu\\s+(?:nei|nai|ache\\s+na)|amar\\s+keu\\s+nei|ekla\\s+(?:achi|achhi|achis)|kosto\\s+ar\\s+(?:sojjo|saho)\\s+korte\\s+parchi\\s+na|ar\\s+paro\\s+na)\\b"
+    language: bn
+    negation_sensitive: false
+  - id: bn.osudh_kheye
+    category: acute_medical
+    level: imminent
+    kind: regex
+    value: "\\b(?:osudh\\s+kheye\\s+(?:feli|felchi|felechi|felle)|shob\\s+osudh\\s+kheye|bisa\\s+kheye\\s+(?:feli|felchi)|ghum\\s+er\\s+osudh\\s+kheye)\\b"
+    language: bn
+    negation_sensitive: true
+  - id: bn.bisha_means
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\b(?:bisa|bisha|bis\\s+ache|osudher\\s+botol)\\b"
+    language: bn
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Bengali (native script)                                           #
+  # ---------------------------------------------------------------- #
+  - id: bn_native.atmohotta
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "আত্মহত্যা"
+    language: bn
+    script: bengali
+    negation_sensitive: false
+  - id: bn_native.more_jete_chai
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "মরে যেতে চাই"
+    language: bn
+    script: bengali
+    negation_sensitive: true
+  - id: bn_native.morte_chay
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "মরতে চায়"
+    language: bn
+    script: bengali
+    negation_sensitive: true
+  - id: bn_native.bachte_chai_na
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "বাঁচতে চাই না"
+    language: bn
+    script: bengali
+    negation_sensitive: false
+  - id: bn_native.jibon_sesh
+    category: severe_hopelessness
+    level: medium
+    kind: phrase
+    value: "জীবন শেষ"
+    language: bn
+    script: bengali
+    negation_sensitive: false
+  - id: bn_native.nijeke_shesh
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "নিজেকে শেষ"
+    language: bn
+    script: bengali
+    negation_sensitive: true
+  - id: bn_native.osudh_kheye
+    category: acute_medical
+    level: imminent
+    kind: phrase
+    value: "ঔষধ খেয়ে ফেলেছি"
+    language: bn
+    script: bengali
+    negation_sensitive: true
+  - id: bn_native.keu_nei
+    category: severe_hopelessness
+    level: low
+    kind: phrase
+    value: "কেউ নেই"
+    language: bn
+    script: bengali
+    negation_sensitive: false
+  - id: bn_native.kosto_sojjo
+    category: severe_hopelessness
+    level: medium
+    kind: phrase
+    value: "কষ্ট সহ্য করতে পারছি না"
+    language: bn
+    script: bengali
+    negation_sensitive: false

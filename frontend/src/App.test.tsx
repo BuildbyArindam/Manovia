@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { App } from "@/App";
 import { fetchCrisisResources } from "@/lib/endpoints";
+import { TEST_RESPONSE } from "@/test/crisisFixtures";
 import { ONBOARDING_STORAGE_KEY } from "@/onboarding/storage";
 import { stubMatchMedia } from "@/test/matchMedia";
 
@@ -26,24 +27,6 @@ const ROUTES: ReadonlyArray<{ path: string; heading: string }> = [
   { path: "/insights", heading: "Insights" },
   { path: "/settings", heading: "Settings" },
 ];
-
-const CRISIS_RESOURCES = {
-  last_verified: "2026-10-01",
-  disclaimer: "Placeholder data.",
-  resources: [
-    {
-      id: "us-988",
-      region: "US",
-      name: "988 Suicide & Crisis Lifeline",
-      phone: "988",
-      sms: null,
-      url: null,
-      hours: "24/7",
-      description: "Free, confidential support.",
-      priority: 1,
-    },
-  ],
-};
 
 function completeOnboarding(): void {
   window.localStorage.setItem(
@@ -137,14 +120,14 @@ describe("App", () => {
 
   it("opens the help dialog from the shell and shows the helplines", async () => {
     completeOnboarding();
-    vi.mocked(fetchCrisisResources).mockResolvedValue(CRISIS_RESOURCES);
+    vi.mocked(fetchCrisisResources).mockResolvedValue(TEST_RESPONSE);
     const user = userEvent.setup();
     renderApp("/insights");
 
     await user.click(screen.getByRole("button", { name: "Need help now?" }));
 
     expect(await screen.findByRole("dialog")).toHaveAccessibleName("Need help now?");
-    expect(await screen.findByText("988 Suicide & Crisis Lifeline")).toBeInTheDocument();
+    expect(await screen.findByText("Test Crisis Line")).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

@@ -1,0 +1,560 @@
+# Context data for the safety rules engine (Day 8).
+#
+# Everything here is *pragmatics*, not risk vocabulary: the words that change
+# what a risky phrase means (negation, who is speaking, whether it is a figure of
+# speech) and the spelling tricks that hide one. The risk phrases themselves live
+# in patterns_core.yaml, patterns_euphemisms.yaml and patterns_indic.yaml.
+#
+# Rules are matched against NORMALISED text (see app/services/safety/normalise.py):
+# lowercase, punctuation replaced by spaces, whitespace collapsed. Write every
+# value and regex as if it were already normalised — no capital letters, no
+# commas, no apostrophes ("dont" not "don't").
+#
+# HONEST LIMITATION: this list was written by one developer in one sitting. It is
+# not a clinical instrument, it has no native-speaker review for the Indic
+# sections, and it will be wrong on some inputs. The engine is deliberately tuned
+# to prefer false positives (showing a helpline to someone who was making a joke)
+# over false negatives (missing someone who was not).
+version: 1
+
+# Characters substituted before matching, so "k1ll mys3lf" and "k!ll" reach the
+# same pattern as "kill myself". Applied as an *extra* normalisation variant —
+# never in place of the plain one, so "911" still matches as digits.
+leet_map:
+  "0": "o"
+  "1": "i"
+  "3": "e"
+  "4": "a"
+  "5": "s"
+  "7": "t"
+  "8": "b"
+  "@": "a"
+  "$": "s"
+  "!": "i"
+  "|": "l"
+
+# Word-level spelling fixes. Common misspellings of the words that matter most,
+# plus the fused forms people type when they cannot bring themselves to write the
+# phrase with a space in it ("selfharm", "killmyself").
+misspellings:
+  sucide: suicide
+  suiside: suicide
+  suicede: suicide
+  syicide: suicide
+  sucidal: suicidal
+  suisidal: suicidal
+  suicidl: suicidal
+  sucidalthoughts: suicidal thoughts
+  selfharm: self harm
+  selfharming: self harming
+  selfharmed: self harm
+  selfinjury: self injury
+  selfinjuring: self injury
+  kil: kill
+  kiil: kill
+  killl: kill
+  kll: kill
+  kilmyself: kill myself
+  dieing: dying
+  ded: dead
+  daed: dead
+  hopless: hopeless
+  hoplessness: hopelessness
+  overdos: overdose
+  overdoes: overdose
+  overdused: overdose
+  overdozed: overdose
+  overdosis: overdose
+  endng: ending
+  zindgi: zindagi
+  jindagi: zindagi
+  zindagee: zindagi
+  khudkhushi: khudkushi
+  atmahatya: aatmhatya
+  atmahatya: aatmhatya
+  aatmahatya: aatmhatya
+  atmohotta: atmohotta
+  atmahotta: atmohotta
+  marna: marna
+  jeena: jeena
+  bachte: bachte
+
+# Plain negations: when one of these appears shortly BEFORE a hit whose pattern is
+# marked `negation_sensitive`, the hit is suppressed (and counted, and reported as
+# `ctx.negated`) — "I don't want to die" is not "I want to die".
+#
+# DELIBERATELY ABSENT: "cant", "cannot", "couldnt", "unable", "hardly", "barely".
+# Those express inability, not absence: "I can't stop thinking about killing
+# myself" must still fire. Leaving them out is the conservative choice.
+negation_cues:
+  - not
+  - "no"
+  - never
+  - dont
+  - doesnt
+  - didnt
+  - wont
+  - isnt
+  - arent
+  - wasnt
+  - werent
+  - hasnt
+  - havent
+  - nothing
+  - nobody
+  - nahi
+  - nahun
+  - nhi
+  - mat
+  - nei
+  - naa
+  - nehi
+
+# Post-verbal negation, for the Indic patterns only ("ami bachte chai na" — I do
+# not want to live). Applied only to patterns with a non-empty `language`, and
+# only within 2 tokens after the hit, so an English phrase can never be
+# suppressed by a trailing "na" in some other context.
+negation_after_cues:
+  - na
+  - nah
+  - noi
+  - naa
+
+# Words that do not break a negation window: "not *feeling* any better" still
+# negates, because "feeling" carries no meaning of its own here.
+transparent_words:
+  - i
+  - im
+  - am
+  - is
+  - are
+  - was
+  - were
+  - be
+  - been
+  - being
+  - feel
+  - feels
+  - feeling
+  - felt
+  - want
+  - wants
+  - wanted
+  - to
+  - so
+  - very
+  - really
+  - quite
+  - just
+  - still
+  - even
+  - ever
+  - anymore
+  # "i have no *intention of* killing myself": the cue sits three words back,
+  # separated only by words that assert nothing of their own.
+  - intention
+  - intent
+  - idea
+  - all
+  - that
+  - this
+  - of
+  - at
+  - a
+  - an
+  - the
+  - my
+  - me
+  - myself
+  - going
+  - gonna
+  - about
+  - like
+  - hu
+  - hun
+  - hoon
+  - raha
+  - rahi
+  - rahe
+  - karna
+  - karne
+  - chi
+  - e
+  - khali
+  - ar
+  # Auxiliaries and "once" assert nothing on their own, exactly like the entries
+  # above. Without them the backward scan stops at the auxiliary and never
+  # reaches the cue: in "not once have i thought about hurting myself" the word
+  # immediately before the hit is "have", so a scan that treats "have" as a
+  # content word breaks there and reads the sentence as an unqualified admission.
+  # Bounded by MAX_TRANSPARENT_SKIPS and by breaking at the first real content
+  # word, so this cannot let a distant "not" retract something it says nothing
+  # about: "i did not sleep well but i want to die" still breaks at "but".
+  #
+  # Deliberately NOT extended to modals (will/would/can/could/should/shall).
+  # They carry meaning about futurity and capability, they are not needed for
+  # any case, and "can" sits next to "cant", which is intentionally not a
+  # negation cue because inability is not absence ("i can't go on" is a crisis).
+  - have
+  - has
+  - had
+  - do
+  - does
+  - did
+  - once
+
+# A hit is treated as being about somebody else (or about fiction) when the
+# message contains one of these markers, or when the risky span sits inside
+# quotation marks. Third-person context caps the level (see rules.py) but never
+# returns NONE: "my friend wants to die" is still something Manovia must respond
+# to, just differently.
+third_person_markers:
+  - my friend
+  - a friend
+  - friend of mine
+  - my best friend
+  - friend said
+  - friend says
+  - he said
+  - she said
+  - they said
+  - someone said
+  - somebody said
+  - someone told me
+  - my brother
+  - my sister
+  - my mom
+  - my mum
+  - my mother
+  - my dad
+  - my father
+  - my husband
+  - my wife
+  - my partner
+  - my son
+  - my daughter
+  - my cousin
+  - my classmate
+  - my colleague
+  - my neighbour
+  - my neighbor
+  - my student
+  - my patient
+  - a patient
+  - a client
+  - my client
+  - a stranger
+  - someone i know
+  - somebody i know
+  - people say
+  - they say
+
+# Frames that say the words are not the speaker's own: fiction, a report, a
+# thought experiment. These are stronger than the person markers above and may
+# appear anywhere in the message.
+fiction_frames:
+  - a character
+  - my character
+  - the character
+  - in a movie
+  - in a film
+  - in a show
+  - in a series
+  - in a book
+  - in a novel
+  - in a song
+  - in the news
+  - in a documentary
+  - in my story
+  - for my story
+  - for a story
+  - for my novel
+  - in a script
+  - in my script
+  - for a class
+  - for an assignment
+  - for my homework
+  - writing a paper
+  - for a training
+  - hypothetical
+  - hypothetically
+  - in a dream
+  - in a nightmare
+  - role play
+  - in the film i am writing
+
+# Subject + verb frames that mean the sentence is about someone else, even when
+# no marker phrase is used ("she has a plan", "he keeps talking about it").
+third_person_patterns:
+  - "\\b(?:he|she|they|him|her|them|his|their|someone|somebody)\\s+(?:said|says|say|told|tells|wants|wanted|want|is|are|was|were|has|have|had|keeps|kept|talks|talking|mentioned|threatened|threatens|plans|planned|will|would|is\\s+going|are\\s+going|texted|texts|messaged|wrote|emailed|whatsapped)\\b"
+  - "\\b(?:my|our|the)\\s+(?:friend|brother|sister|mom|mum|mother|dad|father|husband|wife|partner|son|daughter|cousin|classmate|colleague|neighbour|neighbor|student|patient|client|roommate|flatmate)\\s+(?:said|says|told|tells|wants|wanted|is|are|was|were|has|have|had|keeps|kept|talks|talking|mentioned|threatened|threatens|plans|planned|will|would)\\b"
+  - "\\bsomeone\\s+(?:else|who|that)\\b"
+  - "\\b(?:a|some)\\s+(?:guy|girl|woman|man|person|kid|boy|student)\\s+(?:who|that|said|says|wants)\\b"
+  # Romanised Hindi: "usne kaha" (he/she said), "meri didi" (my elder sister).
+  - "\\b(?:usne|uski|uska|unhone|inhone|woh|wo|vo)\\s+(?:kaha|bola|bataya|karta|karti|karega|karegi|karega|bolega|bolegi|mar|ja|marta|marti)\\b"
+  - "\\b(?:meri|mera|mere|humari|hamari)\\s+(?:didi|behen|bhai|bhaiya|dost|yaar|maa|ma|papa|beta|beti|patni|pati|husband|wife|sister|brother|friend)\\b"
+  # Romanised Bengali: "o boleche" (she said), "amar bondhu" (my friend).
+  - "\\b(?:se|o|uni)\\s+(?:boleche|bollo|bolche|bolchilo|kotha|kheyechilo|jete\\s+chay|marte\\s+chay)\\b"
+  - "\\b(?:amar|amader|tar|tader)\\s+(?:bondhu|didi|dada|ma|baba|bou|chhele|meye|bhai|bon|svami|stri)\\b"
+
+# Markers that the speaker is talking about themselves. Used for escalation only:
+# first person + a plan + a timeframe is what separates HIGH from IMMINENT.
+first_person_markers:
+  - i
+  - im
+  - ive
+  - id
+  - me
+  - my
+  - mine
+  - myself
+  - i am
+  - i want
+  - i need
+  - i cant
+  - i feel
+  - i will
+  - i wanna
+  - i dont
+  - i am going
+  - main
+  - mai
+  - mein
+  - mera
+  - meri
+  - mere
+  - mujhe
+  - mujhko
+  - apne
+  - apna
+  - khud
+  - ami
+  - amar
+  - amake
+  - nijer
+  - nije
+
+# Possessive-relative phrases ("my friend", "her brother", "the kids") are the
+# one case where a first-person-looking word says nothing about the speaker: the
+# sentence is about the relative. Before asking "is there a first-person subject
+# in this clause?" the engine blanks these phrases out, so that
+# "my friend says she wants to die" is about the friend while
+# "I want to die, my mum doesn't care" stays about the speaker.
+relation_possessives:
+  - my
+  - our
+  - his
+  - her
+  - their
+  - your
+  - this
+  - that
+  - a
+  - an
+  - the
+
+relation_nouns:
+  - friend
+  - friends
+  - best friend
+  - boyfriend
+  - girlfriend
+  - ex
+  - brother
+  - sister
+  - siblings
+  - mum
+  - mom
+  - mother
+  - maa
+  - amma
+  - didi
+  - dad
+  - father
+  - papa
+  - bhai
+  - brother-in-law
+  - husband
+  - wife
+  - partner
+  - spouse
+  - son
+  - daughter
+  - beta
+  - cousin
+  - uncle
+  - aunt
+  - nephew
+  - niece
+  - grandparents
+  - grandma
+  - grandpa
+  - nani
+  - dadi
+  - parents
+  - family
+  - kids
+  - children
+  - baby
+  - classmate
+  - roommate
+  - neighbour
+  - neighbor
+  - colleague
+  - boss
+  - teacher
+  - professor
+  - student
+  - students
+  - patient
+  - patients
+  - client
+  - clients
+  - stranger
+  - guy
+  - girl
+  - woman
+  - man
+  - person
+  - people
+  - dost
+  - bondhu
+  - behen
+  - bou
+
+# Time markers that turn a plan into an imminent one.
+timeframe_markers:
+  - tonight
+  - today
+  - tomorrow
+  - this weekend
+  - this week
+  - right now
+  - right away
+  - at once
+  - now
+  - soon
+  - in an hour
+  - within an hour
+  - by morning
+  - before morning
+  - when they come home
+  - when everyone is asleep
+  - after everyone sleeps
+  - as soon as
+  - in the morning
+  - this evening
+  - this night
+  - aaj
+  - aj
+  - abhi
+  - abhii
+  - kal
+  - aaj raat
+  - isi raat
+  - rat
+  - ajke
+  - ekhoni
+  - khub shiggiri
+
+# A figurative-prone hit (one whose wording is common in everyday exaggeration) is
+# suppressed when its clause matches one of these frames. Every frame below is a
+# sentence people say about *things*, not about themselves.
+benign_frames:
+  - "\\b(?:laughing|laugh|dying|dead)\\s+(?:to death|myself to death|of laughter|with laughter|of\\s+(?:embarrassment|shame|curiosity|boredom|cringe|excitement|jealousy))\\b"
+  - "\\b(?:bored|scared|starving|freezing|exhausted|sick|tired)\\s+to\\s+death\\b"
+  - "\\b(?:dying|dead)\\s+(?:to|for)\\s+(?:know|see|try|get|have|be|go|meet|hear)\\b"
+  - "\\b(?:dead|deceased)\\s+(?:tired|exhausted|asleep|serious|air|end|battery|phone|line|zone|quiet|last|ahead|gone|simple)\\b"
+  - "\\b(?:kill|killing|murder|murdering)\\s+(?:it|that|this|time|some time|the time|a|the vibe|the mood|them)\\b"
+  - "\\b(?:killer|deadly|lethal|mortal)\\s+(?:app|deal|workout|recipe|joke|look|smell|bee|virus|bug|combo|move|voice|haircut|outfit|song|playlist|storm|heat|cold|exam|deadline)\\b"
+  - "\\b(?:murder|killed|kill)\\s+(?:mystery|ball|the ball|your darlings|my darlings)\\b"
+  - "\\b(?:i|we)\\s+(?:could|can|might|may|would)\\s+(?:die|kill)\\s+(?:for|of)\\b"
+  - "\\b(?:the|my|this|that)\\s+(?:world|planet|country|city|team|company|economy)\\s+is\\s+(?:ending|dying|dead)\\b"
+  - "\\bend\\s+(?:of|the)\\s+(?:the\\s+)?(?:world|semester|term|year|month|day|week|quarter|course|shift)\\b"
+  - "\\b(?:game|movie|film|show|series|book|episode|season|match|level)\\s+(?:killed|kills|is killing|ended|ends|spoiler)\\b"
+
+# Inanimate or body-part subjects: when one of these appears right before a
+# figurative-prone "killing me"-type hit, the hit is exaggeration, not distress.
+benign_subjects:
+  - traffic
+  - homework
+  - assignment
+  - exam
+  - test
+  - quiz
+  - syllabus
+  - semester
+  - coursework
+  - deadline
+  - project
+  - meeting
+  - shift
+  - work
+  - job
+  - boss
+  - manager
+  - client
+  - customer
+  - landlord
+  - neighbour
+  - neighbor
+  - queue
+  - line
+  - commute
+  - flight
+  - train
+  - bus
+  - traffic jam
+  - weather
+  - heat
+  - cold
+  - humidity
+  - monday
+  - mondays
+  - wifi
+  - internet
+  - laptop
+  - phone
+  - printer
+  - software
+  - code
+  - bug
+  - workout
+  - gym
+  - run
+  - diet
+  - back
+  - neck
+  - head
+  - headache
+  - migraine
+  - legs
+  - feet
+  - knees
+  - shoulders
+  - stomach
+  - throat
+  - teeth
+  - shoes
+  - heels
+  - baby
+  - toddler
+  - kid
+  - kids
+  - dog
+  - cat
+  - puppy
+  - kitten
+  - period
+  - cramps
+  - hangover
+  - alarm
+  - notifications
+  - emails
+  - group chat
+  - politics
+  - news
+  - rent
+  - bills
+  - inflation
+  - taxes

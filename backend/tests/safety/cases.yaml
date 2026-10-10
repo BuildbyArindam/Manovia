@@ -1,0 +1,1546 @@
+# The safety case table: synthetic messages and the level each one must get.
+#
+# Every text here is invented for this file. None of it is a real person's
+# message, none of it describes a method, and none of it names a means in a way
+# that would tell anybody how to do anything — access-to-means cases say that
+# something is *available*, which is the risk signal, and stop there.
+#
+# Expectations are what the engine MUST do, not what it currently does. A case
+# that fails is either a bug in the pattern data or a wrong expectation; both are
+# fixed deliberately, and neither is fixed by deleting the case.
+#
+# Fields:
+#   id            stable, used as the pytest id
+#   group         the hard thing this case exercises
+#   text          the message (synthetic)
+#   level         none | low | medium | high | imminent
+#   categories    optional: the exact set that must be reported
+#   codes         optional: rationale codes that must be present
+#   forbid_codes  optional: rationale codes that must be absent
+#   third_person  optional: required value of that judgement
+#   first_person  optional: required value of that judgement
+#   note          why the case exists
+
+version: 1
+
+cases:
+  # ------------------------------------------------------------------ #
+  # Plain suicidal ideation                                             #
+  # ------------------------------------------------------------------ #
+  - id: si-001
+    group: suicidal_ideation
+    text: "I want to die"
+    level: high
+    categories: [suicidal_ideation]
+    codes: [si.want_to_die]
+    note: "The canonical sentence. Everything else is a variation on it."
+
+  - id: si-002
+    group: suicidal_ideation
+    text: "i want to be dead"
+    level: high
+    codes: [si.want_to_be_dead]
+
+  - id: si-003
+    group: suicidal_ideation
+    text: "I want to kill myself"
+    level: high
+    codes: [si.kill_myself]
+
+  - id: si-004
+    group: suicidal_ideation
+    text: "i am going to end my life"
+    level: imminent
+    categories: [intent_plan, suicidal_ideation]
+    note: >-
+      "Going to end my life" states an intention, not only a wish, so it lands in
+      intent_plan as well — and ip.planning_to_kill_myself is an imminent-level
+      rule in its own right. No timeframe and no means are named, but the response
+      at imminent is the same crisis card; only the wording is more urgent.
+
+  - id: si-005
+    group: suicidal_ideation
+    text: "i have been thinking about suicide a lot lately"
+    level: high
+    categories: [suicidal_ideation]
+
+  - id: si-006
+    group: suicidal_ideation
+    text: "sometimes i wish i would not wake up"
+    level: high
+
+  - id: si-007
+    group: suicidal_ideation
+    text: "i dont see any point in staying alive"
+    level: high
+
+  - id: si-008
+    group: suicidal_ideation
+    text: "I am seriously considering ending it all"
+    level: high
+
+  - id: si-009
+    group: suicidal_ideation
+    text: "i want to disappear forever and not come back"
+    level: medium
+
+  - id: si-010
+    group: suicidal_ideation
+    text: "life would be easier if i were not here"
+    level: high
+
+  - id: si-011
+    group: suicidal_ideation
+    text: "i keep thinking my family would manage fine without me"
+    level: high
+
+  - id: si-012
+    group: suicidal_ideation
+    text: "please tell me how to stop wanting to die"
+    level: high
+    note: "Asking for help with the thought is still the thought."
+
+  # ------------------------------------------------------------------ #
+  # Negation: the words are there, the meaning is not                   #
+  # ------------------------------------------------------------------ #
+  - id: neg-001
+    group: negation
+    text: "I don't want to die"
+    level: low
+    codes: [ctx.negated]
+    forbid_codes: [si.want_to_die]
+    note: >-
+      LOW, not NONE: a person telling a mental-health companion about death is
+      saying something, even in the negative.
+
+  - id: neg-002
+    group: negation
+    text: "i am not going to kill myself"
+    level: low
+    codes: [ctx.negated]
+
+  - id: neg-003
+    group: negation
+    text: "i would never end my life"
+    level: low
+    codes: [ctx.negated]
+
+  - id: neg-004
+    group: negation
+    text: "i do not want to be dead"
+    level: low
+    codes: [ctx.negated]
+
+  - id: neg-005
+    group: negation
+    text: "nobody is going to hurt themselves here"
+    level: low
+
+  - id: neg-006
+    group: negation
+    text: "i am not suicidal, i am just tired"
+    level: low
+
+  - id: neg-007
+    group: negation
+    text: "i will not do anything stupid tonight"
+    level: low
+
+  - id: neg-008
+    group: negation
+    text: "I don't ever want to die, i just want the pain to stop"
+    level: high
+    note: >-
+      The negation cancels the first clause only. The second clause is real
+      distress and must not be explained away by the first.
+
+  - id: neg-009
+    group: negation
+    text: "therapist asked if i want to die and i said no"
+    level: high
+    note: >-
+      Reported speech with no quotation marks and a retraction in a later clause.
+      Deliberately NOT downgraded: nothing in the text proves the "no" is current,
+      and a person relaying a therapy question about wanting to die is talking
+      about wanting to die. Expecting low here would have meant teaching the
+      engine to trust a trailing "no" across a clause boundary.
+
+  - id: neg-010
+    group: negation
+    text: "main marna nahi chahta"
+    level: low
+    codes: [ctx.negated]
+    note: "Romanised Hindi negation before the verb."
+
+  - id: neg-011
+    group: negation
+    text: "ami marte chai na"
+    level: low
+    codes: [ctx.negated]
+    note: >-
+      Bengali post-verbal negation: 'ami marte chai' is 'I want to die' and the
+      trailing 'na' cancels it. The cue sits AFTER the verb, which is why the
+      engine scans forward as well as backward for language-tagged rules.
+      ('ami bachte chai na', I do not want to LIVE, is the opposite: bn-001.)
+
+  - id: neg-012
+    group: negation
+    text: "i have no intention of killing myself"
+    level: low
+
+  # ------------------------------------------------------------------ #
+  # Figurative speech and everyday exaggeration                         #
+  # ------------------------------------------------------------------ #
+  - id: fig-001
+    group: figurative
+    text: "this traffic is killing me"
+    level: none
+    codes: [ctx.figurative]
+
+  - id: fig-002
+    group: figurative
+    text: "my back is killing me after that shift"
+    level: none
+    codes: [ctx.figurative]
+
+  - id: fig-003
+    group: figurative
+    text: "this homework is killing me"
+    level: none
+    codes: [ctx.figurative]
+
+  - id: fig-004
+    group: figurative
+    text: "the deadline is killing me"
+    level: none
+    codes: [ctx.figurative]
+
+  - id: fig-005
+    group: figurative
+    text: "that meeting was killing me"
+    level: none
+
+  - id: fig-006
+    group: figurative
+    text: "dying to know what happens next"
+    level: none
+    note: >-
+      No ctx.figurative code here, and that is correct: the code records a hit that
+      was suppressed, and no rule matched this at all. Level none is the assertion
+      that matters. Compare fig-001, where a rule does fire and is then suppressed.
+
+  - id: fig-007
+    group: figurative
+    text: "i am bored to death in this lecture"
+    level: none
+    note: "No rule fires on 'bored to death', so there is nothing to suppress."
+
+  - id: fig-008
+    group: figurative
+    text: "killing it at work today"
+    level: none
+    note: "No rule fires on 'killing it', so there is nothing to suppress."
+
+  - id: fig-009
+    group: figurative
+    text: "i am dead tired, that is all"
+    level: none
+
+  - id: fig-010
+    group: figurative
+    text: "this exam is killing me but i will survive it"
+    level: none
+
+  - id: fig-011
+    group: figurative
+    text: "my phone died again"
+    level: none
+    note: "An inanimate subject doing ordinary dying."
+
+  - id: fig-012
+    group: figurative
+    text: "i want to kill this bug in the code before lunch"
+    level: none
+
+  # ------------------------------------------------------------------ #
+  # Third person and reported speech                                    #
+  # ------------------------------------------------------------------ #
+  - id: tp-001
+    group: third_person
+    text: "my friend says she wants to die"
+    level: high
+    third_person: true
+    first_person: false
+    codes: [ctx.third_person]
+
+  - id: tp-002
+    group: third_person
+    text: "my brother keeps saying he will end it all"
+    level: high
+    third_person: true
+
+  - id: tp-003
+    group: third_person
+    text: "she told me she has a plan for tonight"
+    level: high
+    third_person: true
+    note: >-
+      Capped at HIGH rather than IMMINENT: it is a crisis, but it is not the
+      speaker's own attempt, and the reply has to tell a supporter what to do.
+
+  - id: tp-004
+    group: third_person
+    text: "someone at work said they wanted to be dead"
+    level: high
+    third_person: true
+
+  - id: tp-005
+    group: third_person
+    text: "my student wrote about wanting to die in an essay"
+    level: high
+    third_person: true
+
+  - id: tp-006
+    group: third_person
+    text: "he says he cannot go on any more"
+    level: high
+    third_person: true
+
+  - id: tp-007
+    group: third_person
+    text: "I want to die, my mum doesn't care"
+    level: high
+    third_person: false
+    first_person: true
+    note: >-
+      Mentioning a relative must not downgrade this. The speaker is the subject
+      of the risky clause, so the first-person card is the right one.
+
+  - id: tp-008
+    group: third_person
+    text: "my husband threatens to kill me"
+    level: high
+    first_person: true
+    categories: [abuse_disclosure, suicidal_ideation]
+    note: >-
+      Third person and first person at once: the speaker is the victim, and
+      escalation must not treat them as a bystander. "kill me" is also recorded
+      under suicidal_ideation — imprecise as a label, but harmless in effect, and
+      narrowing si.kill_myself to first-person subjects would risk missing "i am
+      going to kill me", which people do write. The level and the reply are the
+      same either way.
+
+  - id: tp-009
+    group: third_person
+    text: "the film had a character who wanted to die"
+    level: high
+    third_person: true
+    codes: [ctx.third_person]
+
+  - id: tp-010
+    group: third_person
+    text: "for my novel, how would a character describe wanting to die"
+    level: high
+    third_person: true
+    codes: [ctx.fiction_frame]
+
+  - id: tp-011
+    group: third_person
+    text: "hypothetically, how long does it take for someone to die"
+    level: high
+    third_person: true
+    note: >-
+      A hypothetical frame is treated as reported speech, which caps imminent but
+      does not lower high. Asking how long dying takes is a question worth
+      answering with a crisis card and a human voice, not with a guess.
+
+  - id: tp-012
+    group: third_person
+    text: "in the news there was a man who ended his life"
+    level: high
+    third_person: true
+
+  # ------------------------------------------------------------------ #
+  # Quoted speech                                                       #
+  # ------------------------------------------------------------------ #
+  - id: quote-001
+    group: quoted
+    text: 'she said "I want to die" yesterday and i am worried'
+    level: high
+    third_person: true
+    codes: [ctx.quoted]
+
+  - id: quote-002
+    group: quoted
+    text: 'my dad keeps telling me "you are a burden" every day'
+    level: high
+    note: >-
+      Quoting caps imminent, it does not downgrade high. Perceived burdensomeness
+      is one of the better-evidenced risk factors, and being told it daily by a
+      parent is not made safer by the quotation marks.
+
+  - id: quote-003
+    group: quoted
+    text: 'the song goes "i want to be dead" and it stuck in my head'
+    level: high
+    third_person: true
+
+  - id: quote-004
+    group: quoted
+    text: "he texted me: i am going to end it all tonight"
+    level: high
+    third_person: true
+
+  # ------------------------------------------------------------------ #
+  # Intent and plan                                                     #
+  # ------------------------------------------------------------------ #
+  - id: ip-001
+    group: intent_plan
+    text: "i have a plan and i am doing it tonight"
+    level: imminent
+    categories: [intent_plan]
+    codes: [ctx.timeframe]
+
+  - id: ip-002
+    group: intent_plan
+    text: "i wrote a goodbye letter this morning"
+    level: high
+
+  - id: ip-003
+    group: intent_plan
+    text: "i have decided what i am going to do on friday"
+    level: medium
+    note: >-
+      Medium, not high: with no reference to death, harm or ending anything, this
+      is as consistent with a weekend plan as with a crisis. ip.made_up_my_mind is
+      deliberately medium so that ambiguity earns a question rather than a card.
+
+  - id: ip-004
+    group: intent_plan
+    text: "i know exactly how i would do it and when"
+    level: high
+    categories: [intent_plan]
+    note: >-
+      High, not imminent: "and when" names no actual time, and the engine will not
+      invent one. Imminent needs a timeframe marker or a means, and this has
+      neither. The reply is the crisis card either way.
+
+  - id: ip-005
+    group: intent_plan
+    text: "i am going to end it all"
+    level: imminent
+
+  - id: ip-006
+    group: intent_plan
+    text: "i have been making arrangements and saying goodbye to people"
+    level: high
+
+  - id: ip-007
+    group: intent_plan
+    text: "tonight is the night i stop everything"
+    level: high
+    codes: [ctx.timeframe]
+
+  - id: ip-008
+    group: intent_plan
+    text: "i have a plan but i have not decided when"
+    level: high
+    note: "A plan without a time is HIGH; the time is what makes it imminent."
+
+  # ------------------------------------------------------------------ #
+  # Access to means: a risk signal, never a description                 #
+  # ------------------------------------------------------------------ #
+  - id: am-001
+    group: access_to_means
+    text: "i have a plan and i already got what i need"
+    level: high
+    note: >-
+      High, not imminent. "What i need" names no means, and access_to_means is
+      only recorded when something is actually referenced: widening it to any
+      phrase about having obtained something made "i have what i need for the
+      exam" summon a helpline card. See am-003 for the version that does escalate.
+
+  - id: am-002
+    group: access_to_means
+    text: "i have been stockpiling my medication for weeks"
+    level: high
+    categories: [access_to_means]
+
+  - id: am-003
+    group: access_to_means
+    text: "i bought the pills today and i have a plan for tonight"
+    level: imminent
+
+  - id: am-004
+    group: access_to_means
+    text: "there is a weapon in the house and i keep staring at it"
+    level: high
+    categories: [access_to_means]
+
+  - id: am-005
+    group: access_to_means
+    text: "i know where the ropes are kept"
+    level: high
+    categories: [access_to_means]
+
+  - id: am-006
+    group: access_to_means
+    text: "i have everything ready in my bag"
+    level: medium
+    note: >-
+      Ambiguous on its own. Without ideation or a plan it is a MEDIUM signal, not
+      a crisis — but paired with either it escalates.
+
+  # ------------------------------------------------------------------ #
+  # Self-harm                                                           #
+  # ------------------------------------------------------------------ #
+  - id: sh-001
+    group: self_harm
+    text: "i cut myself again last night"
+    level: high
+    categories: [self_harm]
+
+  - id: sh-002
+    group: self_harm
+    text: "i hurt myself when i feel this angry"
+    level: high
+    categories: [self_harm]
+
+  - id: sh-003
+    group: self_harm
+    text: "self harm is the only thing that helps me cope"
+    level: high
+    categories: [self_harm]
+
+  - id: sh-004
+    group: self_harm
+    text: "i have been burning myself"
+    level: high
+    categories: [self_harm]
+
+  - id: sh-005
+    group: self_harm
+    text: "i pick at my skin until it bleeds"
+    level: high
+
+  - id: sh-006
+    group: self_harm
+    text: "i used to self harm at school but i stopped two years ago"
+    level: high
+    note: >-
+      High, and that is a known cost, not an oversight. The engine does no tense
+      reasoning: "used to" and "stopped" are not negation cues, and inventing a
+      past-tense detector would risk reading "i cut myself, then i stopped the
+      bleeding" as history too. A person who self-harmed before gets the crisis
+      card and a warm reply; relapse risk is real, and the false positive is cheap
+      next to the alternative.
+
+  - id: sh-007
+    group: self_harm
+    text: "i want to hurt myself right now"
+    level: high
+    categories: [self_harm]
+
+  - id: sh-008
+    group: self_harm
+    text: "i cut myself deeply and it will not stop bleeding"
+    level: high
+    categories: [acute_medical, self_harm]
+    note: "An injury needing medical attention is acute, whoever it happened to."
+
+  # ------------------------------------------------------------------ #
+  # Harm to others                                                      #
+  # ------------------------------------------------------------------ #
+  - id: ho-001
+    group: harm_to_others
+    text: "i want to hurt my brother"
+    level: high
+    categories: [harm_to_others]
+
+  - id: ho-002
+    group: harm_to_others
+    text: "i keep thinking about hurting the person who did this to me"
+    level: high
+    categories: [harm_to_others]
+
+  - id: ho-003
+    group: harm_to_others
+    text: "i might take my neighbour down with me"
+    level: high
+
+  - id: ho-004
+    group: harm_to_others
+    text: "i want to make them pay for what they did"
+    level: medium
+
+  - id: ho-005
+    group: harm_to_others
+    text: "sometimes i imagine hurting someone i do not know"
+    level: high
+    note: >-
+      Intrusive thoughts about harming a stranger. Written without a location or a
+      technique on purpose: this suite is a test fixture and must not read as
+      instruction, however fictional.
+
+  # ------------------------------------------------------------------ #
+  # Abuse and violence disclosure                                       #
+  # ------------------------------------------------------------------ #
+  - id: ab-001
+    group: abuse_disclosure
+    text: "he hits me every night"
+    level: high
+    categories: [abuse_disclosure]
+
+  - id: ab-002
+    group: abuse_disclosure
+    text: "my partner threatens me when i try to leave"
+    level: high
+
+  - id: ab-003
+    group: abuse_disclosure
+    text: "i was raped last year and i have not told anyone"
+    level: high
+    categories: [abuse_disclosure]
+
+  - id: ab-004
+    group: abuse_disclosure
+    text: "my stepfather beats my little sister"
+    level: high
+
+  - id: ab-005
+    group: abuse_disclosure
+    text: "someone at home hurts me and i am scared"
+    level: high
+
+  - id: ab-006
+    group: abuse_disclosure
+    text: "i was bullied at school for years"
+    level: medium
+    note: "Disclosure without present danger: listen, do not send a crisis card."
+
+  # ------------------------------------------------------------------ #
+  # Severe hopelessness                                                 #
+  # ------------------------------------------------------------------ #
+  - id: hope-001
+    group: severe_hopelessness
+    text: "i feel hopeless"
+    level: medium
+    categories: [severe_hopelessness]
+    note: >-
+      MEDIUM on its own. Bare hopelessness is ordinary distress, and answering it
+      with a crisis card and no conversation reads as not having listened.
+
+  - id: hope-002
+    group: severe_hopelessness
+    text: "there is no reason to live"
+    level: high
+    categories: [severe_hopelessness]
+
+  - id: hope-003
+    group: severe_hopelessness
+    text: "everyone would be better off without me"
+    level: high
+
+  - id: hope-004
+    group: severe_hopelessness
+    text: "nobody would notice if i was gone"
+    level: high
+
+  - id: hope-005
+    group: severe_hopelessness
+    text: "i cannot go on like this any more"
+    level: high
+
+  - id: hope-006
+    group: severe_hopelessness
+    text: "there is no way out of this"
+    level: high
+
+  - id: hope-007
+    group: severe_hopelessness
+    text: "i am a burden to my family"
+    level: high
+
+  - id: hope-008
+    group: severe_hopelessness
+    text: "i feel worthless"
+    level: medium
+    categories: [severe_hopelessness]
+
+  - id: hope-009
+    group: severe_hopelessness
+    text: "nothing matters any more"
+    level: medium
+
+  - id: hope-010
+    group: severe_hopelessness
+    text: "i am so tired of existing"
+    level: high
+
+  - id: hope-011
+    group: severe_hopelessness
+    text: "i feel empty inside and i cannot cry"
+    level: low
+
+  - id: hope-012
+    group: severe_hopelessness
+    text: "i give up on everything"
+    level: medium
+
+  # ------------------------------------------------------------------ #
+  # Acute medical emergency: something has already happened             #
+  # ------------------------------------------------------------------ #
+  - id: med-001
+    group: acute_medical
+    text: "I just took a whole bottle of pills"
+    level: imminent
+    categories: [acute_medical]
+
+  - id: med-002
+    group: acute_medical
+    text: "she swallowed all the tablets"
+    level: imminent
+    categories: [acute_medical]
+    note: >-
+      Third person does NOT cap this one: an ambulance is needed regardless of who
+      the sentence is about.
+
+  - id: med-003
+    group: acute_medical
+    text: "i overdosed about an hour ago"
+    level: imminent
+    categories: [acute_medical]
+
+  - id: med-004
+    group: acute_medical
+    text: "i cannot breathe and my chest hurts"
+    level: imminent
+    categories: [acute_medical]
+
+  - id: med-005
+    group: acute_medical
+    text: "my friend is unconscious and will not wake up"
+    level: imminent
+    third_person: true
+
+  - id: med-006
+    group: acute_medical
+    text: "please call an ambulance for my sister"
+    level: high
+    third_person: true
+
+  - id: med-007
+    group: acute_medical
+    text: "i drank the whole bottle of cleaning fluid"
+    level: imminent
+    categories: [acute_medical]
+
+  # ------------------------------------------------------------------ #
+  # Euphemism and indirect language                                     #
+  # ------------------------------------------------------------------ #
+  - id: eu-001
+    group: euphemism
+    text: "i want to go to sleep and never wake up"
+    level: high
+
+  - id: eu-002
+    group: euphemism
+    text: "i am planning to check out for good"
+    level: high
+
+  - id: eu-003
+    group: euphemism
+    text: "i want to be free of all this forever"
+    level: medium
+
+  - id: eu-004
+    group: euphemism
+    text: "everyone would be happier if i just left for good"
+    level: high
+
+  - id: eu-005
+    group: euphemism
+    text: "i am going to make it stop one way or another"
+    level: high
+
+  - id: eu-006
+    group: euphemism
+    text: "i feel like i am already gone"
+    level: medium
+
+  - id: eu-007
+    group: euphemism
+    text: "i have been reading about how people end their lives"
+    level: high
+
+  - id: eu-008
+    group: euphemism
+    text: "soon none of this will be my problem"
+    level: medium
+
+  # ------------------------------------------------------------------ #
+  # Leetspeak, spacing tricks and repeated letters                      #
+  # ------------------------------------------------------------------ #
+  - id: leet-001
+    group: leetspeak
+    text: "k1ll my$elf"
+    level: high
+    codes: [si.kill_myself]
+
+  - id: leet-002
+    group: leetspeak
+    text: "i w4nt to d!e"
+    level: high
+
+  - id: leet-003
+    group: leetspeak
+    text: "3nd my lif3"
+    level: high
+
+  - id: leet-004
+    group: leetspeak
+    text: "5uicid3 thoughts"
+    level: high
+
+  - id: leet-005
+    group: spacing
+    text: "w a n t  t o  d i e"
+    level: high
+    note: "Spaced out to slip past a filter; the squashed projection catches it."
+
+  - id: leet-006
+    group: spacing
+    text: "killmyself"
+    level: high
+    codes: [eu.fused_killmyself]
+
+  - id: leet-007
+    group: spacing
+    text: "iwanttodie"
+    level: high
+    codes: [eu.fused_wanttodie]
+
+  - id: leet-008
+    group: spacing
+    text: "endmylife"
+    level: high
+    codes: [eu.fused_endmylife]
+
+  - id: leet-009
+    group: repeated_letters
+    text: "i want to diiiiie"
+    level: high
+    note: "The collapsed projection catches stretched letters without breaking real words."
+
+  - id: leet-010
+    group: repeated_letters
+    text: "kiiiillll meee"
+    level: high
+
+  - id: leet-011
+    group: leetspeak
+    text: "selfharm"
+    level: high
+    codes: [eu.fused_selfharm]
+
+  - id: leet-012
+    group: leetspeak
+    text: "n0b0dy w0uld n0tice if i w4s g0ne"
+    level: high
+
+  # ------------------------------------------------------------------ #
+  # Misspellings                                                        #
+  # ------------------------------------------------------------------ #
+  - id: spell-001
+    group: misspelling
+    text: "i am sucidal"
+    level: high
+
+  - id: spell-002
+    group: misspelling
+    text: "i keep having sucidalthoughts"
+    level: high
+
+  - id: spell-003
+    group: misspelling
+    text: "i feel hopless and alone"
+    level: medium
+
+  - id: spell-004
+    group: misspelling
+    text: "i want to kil myself"
+    level: high
+
+  - id: spell-005
+    group: misspelling
+    text: "i have been selfharming again"
+    level: high
+
+  - id: spell-006
+    group: misspelling
+    text: "i am dieing inside"
+    level: low
+
+  - id: spell-007
+    group: misspelling
+    text: "i think about suiside every day"
+    level: high
+
+  - id: spell-008
+    group: misspelling
+    text: "i overdused last year"
+    level: medium
+    note: "Past tense and historical: worth asking about, not an ambulance."
+
+  # ------------------------------------------------------------------ #
+  # Romanised Hindi                                                     #
+  # ------------------------------------------------------------------ #
+  - id: hi-001
+    group: hindi_romanised
+    text: "main aaj raat mar jaunga"
+    level: high
+    codes: [ctx.timeframe]
+
+  - id: hi-002
+    group: hindi_romanised
+    text: "mujhe jeena nahi hai"
+    level: high
+
+  - id: hi-003
+    group: hindi_romanised
+    text: "zindagi se tang aa gaya hu"
+    level: high
+
+  - id: hi-004
+    group: hindi_romanised
+    text: "khud ko maar dunga kabhi"
+    level: high
+    note: >-
+      No ctx.timeframe: "kabhi" means "sometime, ever" — vague, and not one of the
+      timeframe markers, which name an actual window. High on the ideation alone.
+
+  - id: hi-005
+    group: hindi_romanised
+    text: "khudkushi karne ka mann hai"
+    level: high
+
+  - id: hi-006
+    group: hindi_romanised
+    text: "mera koi nahi hai"
+    level: medium
+
+  - id: hi-007
+    group: hindi_romanised
+    text: "ab bardasht nahi hota"
+    level: medium
+
+  - id: hi-008
+    group: hindi_romanised
+    text: "meri didi ne kaha ki wo mar jaayegi"
+    level: high
+    third_person: true
+
+  - id: hi-009
+    group: hindi_romanised
+    text: "usne bola ki wo khudkushi kar lega"
+    level: high
+    third_person: true
+
+  - id: hi-010
+    group: hindi_romanised
+    text: "main mar nahi jaunga, bas thak gaya hu"
+    level: low
+    note: >-
+      "I will not die, I am just tired." The ideation is negated, and no rule
+      claims the fatigue, so this is low: worth a gentle check-in, not a helpline
+      card. Hindi puts the cue between stem and auxiliary, which is why the engine
+      also looks inside a matched span for language-tagged rules.
+
+  # ------------------------------------------------------------------ #
+  # Devanagari                                                          #
+  # ------------------------------------------------------------------ #
+  - id: hid-001
+    group: hindi_native
+    text: "आत्महत्या करने का मन है"
+    level: high
+    codes: [hi_dev.aatmhatya]
+
+  - id: hid-002
+    group: hindi_native
+    text: "मुझे जीना नहीं है"
+    level: high
+    codes: [hi_dev.jeena_nahi]
+
+  - id: hid-003
+    group: hindi_native
+    text: "ज़िंदगी खत्म हो गई"
+    level: high
+    codes: [hi_dev.zindagi_khatam]
+
+  - id: hid-004
+    group: hindi_native
+    text: "खुद को नुकसान पहुँचाया"
+    level: high
+    codes: [hi_dev.khud_ko_nuksan]
+
+  - id: hid-005
+    group: hindi_native
+    text: "मर जाना है मुझे"
+    level: high
+    codes: [hi_dev.mar_jaana]
+
+  - id: hid-006
+    group: hindi_native
+    text: "गोलियां खा ली मैंने"
+    level: imminent
+    codes: [hi_dev.goliyan_kha_li]
+
+  # ------------------------------------------------------------------ #
+  # Romanised Bengali                                                   #
+  # ------------------------------------------------------------------ #
+  - id: bn-001
+    group: bengali_romanised
+    text: "ami ar bachte chai na"
+    level: high
+    codes: [bn.bachte_chai_na]
+
+  - id: bn-002
+    group: bengali_romanised
+    text: "amar jibon ta sesh"
+    level: medium
+
+  - id: bn-003
+    group: bengali_romanised
+    text: "ami bachte chai"
+    level: none
+    note: >-
+      'I want to live.' No rule fires, and none should: there is no risk signal
+      here, only a wish to survive. Escalating it would be the engine announcing a
+      crisis at someone asking for help — the single worst failure mode available
+      to it. Contrast bn-001, where the trailing 'na' inverts the meaning.
+
+  - id: bn-004
+    group: bengali_romanised
+    text: "o marte chay"
+    level: high
+    third_person: true
+    codes: [bn.morte_chay]
+
+  - id: bn-005
+    group: bengali_romanised
+    text: "amar bondhu bollo o marte chay"
+    level: high
+    third_person: true
+
+  - id: bn-006
+    group: bengali_romanised
+    text: "kosto ar sojjo korte parchi na"
+    level: medium
+
+  - id: bn-007
+    group: bengali_romanised
+    text: "ami shob osudh kheye feli"
+    level: imminent
+    codes: [bn.osudh_kheye]
+
+  # ------------------------------------------------------------------ #
+  # Bengali script                                                      #
+  # ------------------------------------------------------------------ #
+  - id: bnn-001
+    group: bengali_native
+    text: "আমি মরে যেতে চাই"
+    level: high
+    codes: [bn_native.more_jete_chai]
+
+  - id: bnn-002
+    group: bengali_native
+    text: "আত্মহত্যা করব"
+    level: high
+    codes: [bn_native.atmohotta]
+
+  - id: bnn-003
+    group: bengali_native
+    text: "বাঁচতে চাই না"
+    level: high
+    codes: [bn_native.bachte_chai_na]
+
+  - id: bnn-004
+    group: bengali_native
+    text: "ঔষধ খেয়ে ফেলেছি"
+    level: imminent
+    codes: [bn_native.osudh_kheye]
+
+  - id: bnn-005
+    group: bengali_native
+    text: "কেউ নেই আমার"
+    level: low
+    codes: [bn_native.keu_nei]
+
+  # ------------------------------------------------------------------ #
+  # Benign messages: must NOT escalate                                  #
+  # ------------------------------------------------------------------ #
+  - id: ok-001
+    group: benign
+    text: "everything is fine thanks"
+    level: none
+
+  - id: ok-002
+    group: benign
+    text: "i had a really hard day at work"
+    level: none
+
+  - id: ok-003
+    group: benign
+    text: "my dog died last week and i am sad"
+    level: none
+    note: "Grief is not a crisis signal, and must not be treated as one."
+
+  - id: ok-004
+    group: benign
+    text: "i am feeling low today"
+    level: none
+
+  - id: ok-005
+    group: benign
+    text: "thanks for the help earlier"
+    level: none
+
+  - id: ok-006
+    group: benign
+    text: "i want to kill the process and restart my laptop"
+    level: none
+
+  - id: ok-007
+    group: benign
+    text: "my grandmother passed away in her sleep at 94"
+    level: none
+
+  - id: ok-008
+    group: benign
+    text: "i am stressed about exams next month"
+    level: none
+
+  - id: ok-009
+    group: benign
+    text: "can you help me with a breathing exercise"
+    level: none
+
+  - id: ok-010
+    group: benign
+    text: "the burden of proof is on you"
+    level: none
+    note: "'Burden' in its ordinary sense. Perceived burdensomeness is the risk signal, not the noun."
+
+  - id: ok-011
+    group: benign
+    text: "i am dead tired from the gym"
+    level: none
+
+  - id: ok-012
+    group: benign
+    text: "my plants keep dying and i do not know why"
+    level: none
+
+  - id: ok-013
+    group: benign
+    text: "we watched a documentary about the war"
+    level: none
+
+  - id: ok-014
+    group: benign
+    text: "i slept badly and i am irritable today"
+    level: none
+
+  # ------------------------------------------------------------------ #
+  # Edges: empty, whitespace, punctuation, very long                    #
+  # ------------------------------------------------------------------ #
+  - id: edge-001
+    group: edge
+    text: "..."
+    level: none
+    codes: [input.empty]
+
+  - id: edge-002
+    group: edge
+    text: "?"
+    level: none
+
+  - id: edge-003
+    group: edge
+    text: "ok"
+    level: none
+
+  - id: edge-004
+    group: edge
+    text: "🙂"
+    level: none
+
+  - id: edge-005
+    group: edge
+    text: "I WANT TO DIE"
+    level: high
+    note: "Case must not matter."
+
+  - id: edge-006
+    group: edge
+    text: "i  want   to    die"
+    level: high
+    note: "Extra whitespace must not matter."
+
+  - id: edge-007
+    group: edge
+    text: "i want to die!!!"
+    level: high
+
+  - id: edge-008
+    group: edge
+    text: "i want to die\ni really do"
+    level: high
+    note: "Multi-line messages are one assessment."
+
+  # ------------------------------------------------------------------ #
+  # Combinations: two signals in one message                            #
+  # ------------------------------------------------------------------ #
+  - id: mix-001
+    group: combination
+    text: "this exam is killing me and i want to die"
+    level: high
+    categories: [suicidal_ideation]
+    note: >-
+      The figurative clause must not explain away the real one. Suppression is per
+      occurrence, never per message.
+
+  - id: mix-002
+    group: combination
+    text: "i feel hopeless and i have started planning"
+    level: high
+    note: >-
+      High, not imminent: hopeless (medium) plus started planning (high) takes the
+      maximum, and the imminent upgrade needs a timeframe or a means on top of
+      intent. Neither is present.
+
+  - id: mix-003
+    group: combination
+    text: "i cut myself and i want to die"
+    level: high
+    categories: [self_harm, suicidal_ideation]
+
+  - id: mix-004
+    group: combination
+    text: "i am a burden and nobody would notice if i was gone"
+    level: high
+
+  - id: mix-005
+    group: combination
+    text: "i dont want to die but i cannot go on like this"
+    level: high
+    note: "A negated clause plus a real one: the real one decides."
+
+  - id: mix-006
+    group: combination
+    text: "he hit me again and i want to disappear"
+    level: high
+    categories: [abuse_disclosure, suicidal_ideation]
+
+  - id: mix-007
+    group: combination
+    text: "i have a plan, i got what i need, and i said goodbye to my sister"
+    level: high
+    note: >-
+      High, not imminent, for the same reason as am-001: "what i need" names no
+      means. Plan plus goodbyes is serious and gets the crisis card; the engine
+      will not claim imminence it cannot evidence.
+
+  - id: mix-008
+    group: combination
+    text: "my friend wants to die and i do not know how to help her"
+    level: high
+    third_person: true
+
+  # ------------------------------------------------------------------ #
+  # Out-of-table probe (Day 8 verification)                             #
+  #                                                                     #
+  # These cases were NOT used to tune the engine. They were invented     #
+  # after the suite was green, run once, and every disagreement was      #
+  # triaged as either a data gap or a wrong expectation before being     #
+  # recorded here. That is the point of the section: the rest of the     #
+  # table agrees with the engine because the engine was tuned against    #
+  # it, so only phrases from outside it can find a real gap. Six of      #
+  # these fifteen exposed one.                                           #
+  # ------------------------------------------------------------------ #
+  - id: probe-001
+    group: intent_plan
+    text: "i've been drafting the note to leave behind for my sister"
+    level: high
+    codes: [ip.suicide_note]
+    note: >-
+      Gap found by the probe. Writing what will be left behind is planning
+      behaviour, but ip.suicide_note only named the thing ("suicide note",
+      "goodbye letter") and never the act of leaving one behind. Now covers the
+      leave-behind idiom; "a note to leave for the next guest" must not match,
+      and probe-017 pins that.
+
+  - id: probe-002
+    group: severe_hopelessness
+    text: "there is no point in waking up again i am done trying"
+    level: high
+    codes: [hope.no_reason_to_live]
+    note: >-
+      Gap found by the probe. "No point in waking up" is "no point in living"
+      phrased around the next morning. The rule listed gerunds of continuing
+      (living, going on, carrying on) but not waking up.
+
+  - id: probe-003
+    group: intent_plan
+    text: "i gave away everything i own this week and it feels like tidying up"
+    level: imminent
+    codes: [ip.giving_away_possessions, ctx.timeframe]
+    note: >-
+      MY EXPECTATION WAS WRONG, not the engine. I first wrote this down as high.
+      Giving away everything one owns is a preparatory act and "this week" puts
+      it in time, which is exactly the plan-plus-a-timeframe gate that separates
+      "I have been thinking about this" from "this is happening". The minimising
+      "it feels like tidying up" argues for caution, not against it. Imminent is
+      the defensible reading and the conservative one.
+
+  - id: probe-004
+    group: hindi_romanised
+    text: "main kal raat sab khatam kar dunga"
+    level: imminent
+    codes: [hi.sab_khatam_kar_dunga, ctx.timeframe]
+    note: "Probe control: already worked. Romanised Hindi end-it-all plus a named night."
+
+  - id: probe-005
+    group: bengali_romanised
+    text: "ami ar porte parchi na ei jibon ta ekhanei shesh korbo"
+    level: imminent
+    codes: [bn.jibon_sesh, bn.jibon_shesh_korbo]
+    note: >-
+      Gap found by the probe, and two at once. bn.jibon_sesh required "jibon ta"
+      and "sesh" to be adjacent, but Bengali routinely puts an adverb between
+      them ("ekhanei" — right here), so the whole sentence was invisible. And
+      the active form "shesh korbo" (I WILL end it) had no rule at all:
+      bn.atmohotta_korbo covers the formal word for suicide, not what people
+      type. The study complaint in the first clause is correctly ignored, which
+      probe-019 pins.
+
+  - id: probe-006
+    group: figurative
+    text: "the new tax deadline is killing me but i will survive it"
+    level: none
+    codes: [ctx.figurative]
+    note: "Probe control: inanimate subject plus an explicit benign frame."
+
+  - id: probe-007
+    group: figurative
+    text: "my phone battery is dying again"
+    level: none
+    note: "Probe control: si.dying needs a first-person subject, and a battery is not one."
+
+  - id: probe-008
+    group: figurative
+    text: "i am dying of embarrassment about that presentation"
+    level: none
+    codes: [ctx.figurative]
+    forbid_codes: [si.dying]
+    note: >-
+      Gap found by the probe, and an ENGINE bug rather than a data gap. The
+      benign frame "dying of embarrassment" was missing, but adding it was not
+      enough: the repeated-letter collapse rewrites "embarrassment" to
+      "embarasment", which breaks the frame in the collapsed variant while
+      leaving "i am dying" intact, so the idiom the honest text had dismissed
+      was re-admitted from a rewrite of itself. _match now judges the primary
+      first and lets its verdicts bind every derived view — the same rule the
+      projections already followed. test_a_derived_variant_cannot_readmit_a_hit
+      pins the invariant directly.
+
+  - id: probe-009
+    group: benign
+    text: "that rollercoaster almost gave me a heart attack"
+    level: none
+    note: "Probe control: no rule fires at all, so nothing needs suppressing."
+
+  - id: probe-010
+    group: figurative
+    text: "we killed it at the debate finals yesterday"
+    level: none
+    note: "Probe control: the praise idiom, already covered by benign_frames."
+
+  - id: probe-011
+    group: negation
+    text: "i don't want to hurt anyone including myself"
+    level: low
+    codes: [ctx.negated]
+    note: >-
+      Gap found by the probe. ho.want_to_hurt_others listed someone/somebody/
+      people/others/him/her/them/everyone but not anyone/anybody, so a refusal
+      phrased with "anyone" matched nothing at all and scored NONE — meaning
+      there was no negated hit to soften to LOW. With "anyone" covered, the
+      denial is recognised as a denial and earns a check-in.
+
+  - id: probe-012
+    group: third_person
+    text: "my cousin posted that he might end it all and i am scared for him"
+    level: high
+    third_person: true
+    codes: [eu.end_it_all, ctx.third_person]
+    note: >-
+      Probe control: a supporter reporting somebody else's risk. "Posted" is one
+      of the reporting verbs added when "he texted me: i am going to end it all"
+      read as first person. Capped at high, not imminent, because it is not the
+      speaker's attempt.
+
+  - id: probe-013
+    group: third_person
+    text: "she told me she would never do something like that to her kids"
+    level: none
+    third_person: true
+    note: "Probe control: third person plus an explicit refusal, with no risky phrase."
+
+  - id: probe-014
+    group: negation
+    text: "not once have i thought about hurting myself"
+    level: low
+    codes: [ctx.negated]
+    note: >-
+      Gap found by the probe. The backward negation scan broke at "have" because
+      auxiliaries were not in transparent_words, so it never reached "not" and
+      read an emphatic denial as an unqualified admission. Auxiliaries (have,
+      has, had, do, does, did) and "once" assert nothing of their own, exactly
+      like the words already listed. Modals are deliberately NOT included: they
+      carry meaning about futurity and capability, no case needed them, and "can"
+      sits next to "cant", which is intentionally not a cue because inability is
+      not absence. probe-026 pins that this did not create a false denial.
+
+  - id: probe-015
+    group: third_person
+    text: "my friend said i should see a therapist for my anxiety"
+    level: none
+    third_person: true
+    note: "Probe control: somebody else speaking, about help, with no risk content."
+
+  # ------------------------------------------------------------------ #
+  # Controls for the probe fixes                                         #
+  #                                                                     #
+  # Every widening above was probed for the benign sentence it might     #
+  # have started catching. These pin the narrowings so a future edit     #
+  # cannot quietly re-broaden them.                                      #
+  # ------------------------------------------------------------------ #
+  - id: probe-016
+    group: benign
+    text: "no point in waking up before seven on a saturday"
+    level: none
+    note: >-
+      Pins the narrowing of probe-002. "No point in waking up" is required to
+      carry an existential qualifier (again / anymore / at all / tomorrow / each
+      day); without one this is a complaint about an alarm clock and must not
+      produce a crisis card.
+
+  - id: probe-017
+    group: benign
+    text: "i left a note behind for the next guest"
+    level: none
+    note: "Pins the narrowing of probe-001: an ordinary note left for somebody, not a farewell."
+
+  - id: probe-018
+    group: benign
+    text: "please leave a note for the landlord about the key"
+    level: none
+    note: "Second control for probe-001, with the verb in the imperative rather than the past."
+
+  - id: probe-019
+    group: bengali_romanised
+    text: "ami ar porte parchi na exam chole"
+    level: none
+    note: >-
+      Pins the narrowing of bn.ar_parchi_na. "Ar *porte* parchi na" is "I cannot
+      study anymore" — the single most common thing a Bengali student says during
+      exams, since pora means to study. The rule lists the endurance verbs
+      explicitly (sahi, sojjo, jeete, beche, bachte, thakte) instead of allowing
+      any verb in the middle, so revision stress is not answered with a helpline.
+
+  - id: probe-020
+    group: bengali_romanised
+    text: "jibon ta bhalo lagche na ajkal"
+    level: medium
+    codes: [bn.jibon_sesh]
+    note: >-
+      "Life does not feel good these days." bn.jibon_sesh intended to cover this
+      but required "jibonta" unspaced and a mandatory "ar"; both are now
+      optional, since Bengali writes the article either way.
+
+  - id: probe-021
+    group: bengali_romanised
+    text: "jibon ta bhalo lagche"
+    level: none
+    note: >-
+      Pins probe-020: the same sentence WITHOUT the trailing negation means
+      "life feels good". The "na" is the whole meaning, so dropping it must drop
+      the hit.
+
+  - id: probe-022
+    group: benign
+    text: "khana ta bhalo lagche na"
+    level: none
+    note: "Pins probe-020 again: the complaint is about food, not about living."
+
+  - id: probe-023
+    group: harm_to_others
+    text: "i want to hurt anybody who cheats in the exam"
+    level: high
+    codes: [ho.want_to_hurt_others]
+    note: >-
+      Pins the other direction of probe-011. Adding anyone/anybody must catch the
+      unnegated form too, not only the denial.
+
+  - id: probe-024
+    group: figurative
+    text: "i am dying of shame about the presentation"
+    level: none
+    codes: [ctx.figurative]
+    note: "Second idiom in the same family as probe-008."
+
+  - id: probe-025
+    group: self_harm
+    text: "thought about hurting myself"
+    level: high
+    categories: [self_harm]
+    codes: [sh.thinking_about_hurting_myself]
+    forbid_codes: [ho.thinking_about_hurting]
+    note: >-
+      Found while probing probe-014: the same sentence was being filed under
+      harm_to_others because ho.thinking_about_hurting matched the verb phrase
+      without looking at its object. The category is recorded, so a self-directed
+      thought logged as a threat to somebody else corrupts the assessment even
+      when the level is right. The rule now excludes a first-person object and
+      sh.thinking_about_hurting_myself answers it as self_harm.
+
+  - id: probe-026
+    group: self_harm
+    text: "i have hurt myself before but i stopped last year"
+    level: high
+    categories: [self_harm]
+    note: >-
+      The most important control in this file. Making "have" transparent let the
+      negation scan see further back, so this checks it did not manufacture a
+      denial where there is none: "but" is a content word and stops the scan, so
+      a disclosed history of self-harm is still answered as one.
+
+  - id: probe-027
+    group: benign
+    text: "not everyone has plans for the holiday"
+    level: none
+    note: >-
+      Control for the auxiliary change in probe-014: a sentence containing both
+      "not" and "has" must not turn an unrelated statement into a negated risk
+      hit. Nothing risky is present, so nothing is negated.
+
+  - id: probe-028
+    group: harm_to_others
+    text: "i keep imagining hurting my brother"
+    level: high
+    categories: [harm_to_others]
+    codes: [ho.thinking_about_hurting]
+    note: >-
+      The mirror of probe-025. Excluding a first-person object must not disable
+      the rule for a real intrusive thought about somebody else.

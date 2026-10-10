@@ -61,22 +61,143 @@ export interface ConsentResponse {
   recorded: Array<{ kind: ConsentKind; version: string; granted: boolean; created_at: string }>;
 }
 
+/** Mirrors `ResourceKind` in `app/content/crisis.py`. */
+export type CrisisResourceKind = "emergency" | "crisis_line" | "text_line" | "directory";
+
+/** Mirrors `ContactType`: how the entry is actually reached. */
+export type CrisisContactType = "call" | "text" | "chat" | "web";
+
 export interface CrisisResource {
   id: string;
   region: string;
+  /** `emergency` sorts first: immediate danger outranks every counselling line. */
+  kind: CrisisResourceKind;
   name: string;
-  phone: string | null;
-  sms: string | null;
-  url: string | null;
+  /** The number to dial or text, exactly as it should be displayed. */
+  number: string | null;
+  type: CrisisContactType;
+  /** The first word a text line expects (`HOME`, `SHOUT`, `CONNECT`). */
+  text_keyword: string | null;
+  /** Anything the caller must know to get through. */
+  instructions: string | null;
   hours: string;
+  languages: string[];
+  audience: string | null;
   description: string;
+  url: string | null;
+  /** Where a person checked this entry. Every resource carries one. */
+  source_url: string;
+  /** ISO date this entry was last checked by a human. */
+  last_verified: string;
+  /** True when any field rests on a secondary or conflicting source. */
+  needs_verification: boolean;
+  verification_note: string | null;
   priority: number;
+  /**
+   * Built on the backend, so the dialling format lives in exactly one place.
+   * `tel_href` is set for `call` entries, `sms_href` for `text` entries.
+   */
+  tel_href: string | null;
+  sms_href: string | null;
 }
 
 export interface CrisisResourcesResponse {
-  /** ISO date the content was last checked by a human. */
+  /** The region actually served; `null` when the whole file was requested. */
+  region: string | null;
+  requested_region: string | null;
+  /** True when an unknown region was served the `DEFAULT` set instead. */
+  fallback_used: boolean;
+  version: number;
+  /** ISO date the file as a whole was last checked by a human. */
   last_verified: string;
+  source: string;
   disclaimer: string;
+  known_regions: string[];
+  /** This region's emergency number, called out so it can be shown first. */
+  emergency: CrisisResource | null;
+  resources: CrisisResource[];
+  /** Ids flagged `needs_verification`, so a UI can label rather than assert. */
+  needs_verification: string[];
+}
+
+/** Mirrors `RiskLevel.label` in `app/services/safety/base.py`. */
+export type RiskLevel = "none" | "low" | "medium" | "high" | "imminent";
+
+/** Mirrors `EscalationAction` in `app/services/safety/escalation.py`. */
+export type EscalationAction =
+  | "normal_reply"
+  | "supportive_check_in"
+  | "encourage_helpline"
+  | "show_crisis_message"
+  | "show_emergency_instruction"
+  | "show_helplines"
+  | "block_llm"
+  | "record_safety_event";
+
+/** A pre-written, already-substituted message. No placeholders survive. */
+export interface CrisisMessage {
+  template_id: string;
+  locale: string;
+  title: string;
+  body: string[];
+  helpline_intro: string | null;
+  emergency_instruction: string | null;
+  trusted_person: string | null;
+  safety_steps: string[];
+  closing: string | null;
+  disclaimer: string | null;
+}
+
+/** Metadata about the detection — never the text that produced it. */
+export interface AssessmentContext {
+  first_person: boolean;
+  third_person: boolean;
+  quoted: boolean;
+  fiction_frame: boolean;
+  timeframe: boolean;
+  negated_hits: number;
+  figurative_hits: number;
+  language: string | null;
+  truncated: boolean;
+  variants_searched: number;
+}
+
+export interface EscalationPolicy {
+  template_id: string | null;
+  actions: EscalationAction[];
+  /** False at `high`/`imminent`: no model call happens for that turn. */
+  allow_llm: boolean;
+  deterministic_reply: boolean;
+  show_helplines: boolean;
+  show_emergency_instruction: boolean;
+  record_event: boolean;
+}
+
+export interface AssessRequest {
+  text: string;
+  region?: string | null;
+  locale?: string | null;
+  /** Optional hint, recorded on the assessment. Never used to route. */
+  language?: string | null;
+}
+
+export interface AssessResponse {
+  level: RiskLevel;
+  /** The four-tier database value: `high` and `imminent` both map to `crisis`. */
+  stored_level: string;
+  matched_categories: string[];
+  /** Stable pattern ids and context codes — never fragments of the message. */
+  rationale_codes: string[];
+  context: AssessmentContext;
+  policy: EscalationPolicy;
+  /** True when the reply is addressed to a supporter, not the person in crisis. */
+  about_someone_else: boolean;
+  locale: string;
+  locale_fallback_used: boolean;
+  region: string;
+  region_fallback_used: boolean;
+  crisis: CrisisMessage | null;
+  emergency: CrisisResource | null;
   resources: CrisisResource[];
 }
 
@@ -154,9 +275,31 @@ export async function fetchProfile(client: ApiClient = defaultClient): Promise<U
 /**
  * Crisis helplines. Public on purpose: someone in trouble has not signed in and
  * must never be asked to. Cached by TanStack Query.
+ *
+ * With no region the whole shipped file comes back; with one, that region's list
+ * plus the global directories and its own emergency number. An unknown region is
+ * served the `DEFAULT` set with `fallback_used: true` rather than an error.
  */
 export async function fetchCrisisResources(
   client: ApiClient = defaultClient,
+  region?: string | null,
 ): Promise<CrisisResourcesResponse> {
-  return client.get<CrisisResourcesResponse>("/crisis/resources", { authenticated: false });
+  const query = region ? `?region=${encodeURIComponent(region)}` : "";
+  return client.get<CrisisResourcesResponse>(`/crisis/resources${query}`, {
+    authenticated: false,
+  });
+}
+
+/**
+ * Assess one message with the backend rules engine (no model call involved).
+ *
+ * Also public: the thing that tells you whether you need a helpline must not be
+ * behind a sign-in. The response never echoes the input text — only the level,
+ * the policy, pre-written copy and the region's helplines.
+ */
+export async function assessCrisis(
+  payload: AssessRequest,
+  client: ApiClient = defaultClient,
+): Promise<AssessResponse> {
+  return client.post<AssessResponse>("/crisis/assess", payload, { authenticated: false });
 }
