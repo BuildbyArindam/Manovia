@@ -9,3 +9,8 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# Playwright artifacts (browser binaries are never downloaded in CI here)
+test-results/
+playwright-report/
+.playwright/

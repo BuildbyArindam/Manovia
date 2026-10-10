@@ -41,6 +41,15 @@ export default tseslint.config(
     },
   },
   {
+    // The e2e specs run in Node (Playwright), even though they drive a browser.
+    files: ["e2e/**/*.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     // Config files run in Node, not the browser.
     files: ["*.config.{ts,js}", "vitest.setup.ts"],
     languageOptions: {

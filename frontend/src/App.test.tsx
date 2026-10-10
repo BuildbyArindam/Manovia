@@ -7,7 +7,7 @@
  */
 
 import { axe } from "jest-axe";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -83,7 +83,11 @@ describe("App", () => {
 
     for (const route of ROUTES) {
       const { unmount } = renderApp(route.path);
-      expect(screen.getByRole("button", { name: "Need help now?" })).toBeInTheDocument();
+      // Scoped to the header: the chat page carries a second "Need help now?"
+      // inside its permanent "AI companion — not a therapist" line (Day 12), and
+      // that one is a chat affordance, not the shell's.
+      const header = within(screen.getByRole("banner"));
+      expect(header.getByRole("button", { name: "Need help now?" })).toBeInTheDocument();
       unmount();
     }
   });
