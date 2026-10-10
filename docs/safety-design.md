@@ -56,7 +56,7 @@ normalise()            app/services/safety/normalise.py
     │  squashed projection, clause index, truncation flag
     ▼
 RuleEngine.assess()    app/services/safety/rules.py
-    │  match 178 rules × every projection
+    │  match 181 rules × every projection
     │  judge pragmatics per occurrence: negation, figurative
     │  drop suppressed hits; detect third person, quotation,
     │  fiction frame, timeframe, first person
@@ -85,7 +85,7 @@ convention: the layer that builds the response never receives the message.
 
 ## 3. The pattern vocabulary
 
-178 rules across four YAML files in `app/content/safety/`:
+181 rules across four YAML files in `app/content/safety/`:
 
 | file | rules | what it holds |
 | --- | --- | --- |
@@ -94,17 +94,17 @@ convention: the layer that builds the response never receives the message.
 | `patterns_indic.yaml` | Hindi and Bengali | romanised and native script |
 | `patterns_context.yaml` | 0 rules | the pragmatics vocabulary (§5) |
 
-By level: 113 high, 41 medium, 12 low, 12 imminent. By language: 135 English, 24
-Hindi, 19 Bengali. By kind: 155 regex, 23 phrase.
+By level: 115 high, 41 medium, 12 low, 13 imminent. By language: 136 English, 24
+Hindi, 21 Bengali. By kind: 158 regex, 23 phrase.
 
 By category:
 
 | category | rules | notes |
 | --- | --- | --- |
 | `suicidal_ideation` | 73 | the largest set, and the one most exposed to figurative speech |
-| `severe_hopelessness` | 30 | mostly medium; high when it implies absence ("no reason to live") |
-| `intent_plan` | 21 | what separates a wish from an arrangement |
-| `self_harm` | 16 | |
+| `severe_hopelessness` | 31 | mostly medium; high when it implies absence ("no reason to live") |
+| `intent_plan` | 22 | what separates a wish from an arrangement |
+| `self_harm` | 17 | |
 | `access_to_means` | 12 | **presence only, never use** — see §8 |
 | `acute_medical` | 10 | something has already happened; an ambulance, not a conversation |
 | `harm_to_others` | 8 | |
@@ -176,12 +176,24 @@ against a module that runs synchronously in the request path.
 Projections lose the information pragmatics needs. In `idonotwanttobedead` the
 word "not" is no longer a token, so the negation scan cannot find it.
 
-**A projection can add a hit the honest text hid. It can never cancel one.**
+**A derived view can add a hit the honest text hid. It can never cancel one.**
 
-Concretely: a rule judged negated or figurative in any variant is skipped
-entirely in the projections. Without this, obfuscating a refusal made it escalate
-— `"i do not want to be dead"` was HIGH while `"I don't want to die"` was LOW,
-which is an evasion path no honest typist should be penalised for not taking.
+Concretely: the primary text is judged first and alone, and a rule it judged
+negated or figurative is skipped in every derived view of it — the leet,
+spelling-corrected and collapsed variants, and the squashed and collapsed
+projections. Without this, obfuscating a refusal made it escalate —
+`"i do not want to be dead"` was HIGH while `"I don't want to die"` was LOW, which
+is an evasion path no honest typist should be penalised for not taking.
+
+The rule originally covered only the projections, because they are the views where
+pragmatics genuinely cannot be evaluated. That was too narrow, and the Day 8 probe
+found the hole: a rewrite can also *destroy the evidence that dismisses a hit*.
+Collapsing repeated letters turns "embarrassment" into "embarasment", which breaks
+the benign frame "dying of embarrassment" while leaving "i am dying" intact — so
+an idiom the primary had already dismissed was re-admitted from a collapsed
+spelling of the same sentence, and a joke scored LOW. Variants keep their clause
+boundaries and are still judged on their own merits; they simply cannot overrule
+the honest text.
 
 ---
 
@@ -200,7 +212,8 @@ Three directions, because the languages differ:
   and today **not** really" does not cancel something three clauses away. The
   stop-at-content-word rule is what keeps a distant "not" from retracting something
   it says nothing about. Transparent words are function words and hedging
-  (`i`, `am`, `to`, `just`, `really`, `feel`, `of`, `intention`) — 57 of them, so
+  (`i`, `am`, `to`, `just`, `really`, `feel`, `of`, `intention`, and the
+  auxiliaries `have`/`has`/`had`/`do`/`does`/`did` plus `once`) — 64 of them, so
   "I have **no** *intention of* killing myself" is still read as a refusal.
 - **Forward**, up to 3 tokens, only for rules tagged with a language, because
   Bengali negates post-verbally: "ami bachte chai **na**" is "I do not want to
@@ -369,7 +382,7 @@ path (Day 9) when to.
 Two tests make the guarantee structural rather than a hunt for leaked substrings:
 
 1. Every string reachable from an assessment must belong to a fixed vocabulary of
-   levels, categories, pattern ids and flags — checked across all 190 cases. A leak
+   levels, categories, pattern ids and flags — checked across all 218 cases. A leak
    would have to appear as a string, and there is no string that is not vocabulary.
 2. The response is a **pure function of the assessment**: round-tripping the
    assessment through JSON and rebuilding the plan must produce a byte-identical
@@ -415,12 +428,48 @@ exactly this reason — it had named a location and an action.
 Stated plainly, because a safety module that claims to be finished is a safety
 module nobody is checking.
 
-**The recall figure is circular.** All 190 cases pass, and recall on the 127
-HIGH/IMMINENT cases is 127/127. That number means "the engine does what the table
+**The recall figure is circular.** All 218 cases pass, and recall on the 137
+HIGH/IMMINENT cases is 137/137. That number means "the engine does what the table
 says", not "the engine catches every real crisis". The patterns were tuned against
 these cases; measuring on them proves consistency, not coverage. A real recall
 measurement needs a labelled corpus of actual messages, which this repo does not
-have and should not collect.
+have and should not collect. §9.1 is the only out-of-sample measurement available,
+and it is much less flattering than 100%.
+
+### 9.1 What an out-of-table probe actually measured
+
+During Day 8 verification I invented fifteen phrases that appear nowhere in the
+case table — five clearly high-risk, five figurative or benign, five negated or
+third-person — and ran them once against the already-green engine. Nine of the
+fifteen came back as expected. Six did not:
+
+- **Three of the five high-risk phrases returned NONE.** Not a low level, not a
+  check-in — nothing. "Drafting the note to leave behind for my sister", "no point
+  in waking up again", and a Bengali "I will end this life right here" all scored
+  as if they were about homework. First-contact recall on invented high-risk
+  phrasing was therefore **2 of 5**, not 137 of 137.
+- **One emphatic denial got a crisis card.** "Not once have i thought about
+  hurting myself" returned HIGH, because the backward negation scan broke at the
+  auxiliary "have" and never reached "not".
+- Two smaller errors: an idiom ("dying of embarrassment") scored LOW, and a
+  refusal phrased with "anyone" rather than "someone" scored NONE instead of LOW.
+
+All six were fixed at the root cause and are now pinned by 28 regression cases
+(`probe-001`…`probe-028`) plus two invariant tests. One of the six turned out to
+be my expectation rather than the engine — see `probe-003`.
+
+The honest reading of this is uncomfortable and worth stating: a table that the
+patterns were tuned against cannot detect its own holes, and five invented
+sentences found three that 190 curated ones had not. Detection coverage is
+**bounded by what somebody thought to write down**, and the way to find the next
+hole is to keep feeding the engine phrases from outside the table. That is a
+standing maintenance task (§10), not something a test suite can discharge.
+
+The probe also found one engine bug rather than a data gap: the repeated-letter
+collapse rewrites ordinary words ("embarrassment" → "embarasment"), which broke a
+benign frame in the collapsed variant and re-admitted a hit the honest text had
+dismissed. `_match` now judges the primary first and lets its verdicts bind every
+derived view (§4.1).
 
 **No tense reasoning.** "I used to self harm at school but I stopped two years ago"
 gets the crisis card. Inferring past tense reliably is hard, and getting it wrong
@@ -434,10 +483,12 @@ is HIGH. "My husband threatens to kill me" is recorded under `abuse_disclosure`
 subjects would risk missing "I am going to kill me", which people do write. The
 level and the reply are identical either way.
 
-**English is over-represented.** 135 English rules against 24 Hindi and 19
+**English is over-represented.** 136 English rules against 24 Hindi and 21
 Bengali, for a product whose primary audience is Indian. The Indic sets cover the
 common romanised forms and native script, and both were checked against real
-phrasings, but they are thinner and less battle-tested.
+phrasings, but they are thinner and less battle-tested. Two of the six gaps the
+out-of-table probe found in §9.1 were Bengali, from a set one sixth the size of
+the English one — which is roughly what that ratio predicts.
 
 **Translations need native-speaker review.** The Hindi and Bengali crisis templates
 are written to be warm and plain, and are tested for structure and safe messaging,
@@ -473,6 +524,16 @@ inflection must attach only to the genuine idiom.
 
 **Change a level.** Levels are a policy decision with a response attached. Read
 §6.2 first: moving something to HIGH blocks the LLM for that turn.
+
+**Run an out-of-table probe before trusting a green suite.** This is the practice
+§9.1 came out of, and it is the only check that can find a hole the table does not
+already cover. Invent ten to fifteen phrases that appear nowhere in
+`cases.yaml` — some clearly high-risk, some figurative, some negated or
+third-person — run them once, and triage every disagreement as either a data gap
+or a wrong expectation *before* recording it. Confirm the phrases really are new
+(set-compare against the loaded cases) or the exercise measures nothing. Five such
+sentences found three high-risk phrases that returned NONE after 190 curated cases
+were already passing, so do this on a cadence and not only at release time.
 
 **Add a language.** Add a patterns file with `language:` set on every rule (that is
 what enables post-verbal and in-span negation), add a locale file with all five
