@@ -211,7 +211,13 @@ def false_negatives(results: list[dict[str, object]], key: str) -> list[dict[str
     ]
 
 
-def build_report(split: str, cases: list[dict[str, str]], results: list[dict[str, object]]) -> str:
+def build_report(
+    split: str,
+    cases: list[dict[str, str]],
+    results: list[dict[str, object]],
+    *,
+    ml_enabled: bool,
+) -> str:
     settings = Settings(_env_file=None)
     today = date.today().isoformat()
     ensemble_pairs = [(str(r["true"]), str(r["final"])) for r in results]
@@ -223,10 +229,15 @@ def build_report(split: str, cases: list[dict[str, str]], results: list[dict[str
 
     fns = sorted(false_negatives(results, "final"), key=lambda r: str(r["id"]))
 
+    pipeline = (
+        "rules engine + ML ensemble (TF-IDF + calibrated logistic regression)"
+        if ml_enabled
+        else "rules engine only (ML disabled with --no-ml)"
+    )
     lines: list[str] = [
         f"# Safety evaluation — {today} (split: {split})",
         "",
-        f"- Pipeline: rules engine + ML ensemble (TF-IDF + calibrated logistic regression).",
+        f"- Pipeline: {pipeline}.",
         f"- Thresholds: min_confidence={settings.safety_ml_min_confidence}, "
         f"crisis_mass_floor={settings.safety_ml_crisis_mass_floor}, "
         f"suspicion_floor={settings.safety_ml_suspicion_floor} "
@@ -237,7 +248,8 @@ def build_report(split: str, cases: list[dict[str, str]], results: list[dict[str
         "",
         "| pipeline | precision | recall | crisis cases |",
         "| --- | --- | --- | --- |",
-        f"| **rules + ML ensemble** | **{_fmt(e_p)}** | **{_fmt(e_r)}** | {e_n} |",
+        f"| **{'rules + ML ensemble' if ml_enabled else 'rules only (scored)'}** "
+        f"| **{_fmt(e_p)}** | **{_fmt(e_r)}** | {e_n} |",
         f"| rules only | {_fmt(r_p)} | {_fmt(r_r)} | {r_n} |",
         "",
     ]
@@ -260,8 +272,9 @@ def build_report(split: str, cases: list[dict[str, str]], results: list[dict[str
             "",
         ]
 
+    scored = "rules + ML ensemble" if ml_enabled else "rules only"
     lines += [
-        "## Per-level metrics (rules + ML ensemble)",
+        f"## Per-level metrics ({scored})",
         "",
         *per_level_table(ensemble_pairs),
         "",
@@ -269,9 +282,9 @@ def build_report(split: str, cases: list[dict[str, str]], results: list[dict[str
         "",
         *per_level_table(rules_pairs),
         "",
-        "## Confusion matrix (rules + ML ensemble)",
+        f"## Confusion matrix ({scored})",
         "",
-        "Rows are ground truth; columns are the ensemble's final level.",
+        "Rows are ground truth; columns are the scored pipeline's final level.",
         "",
         *confusion_matrix(ensemble_pairs),
         "",
@@ -298,7 +311,7 @@ def build_report(split: str, cases: list[dict[str, str]], results: list[dict[str
         "recall above at this dataset size; see the design doc for the trade-off and",
         "the precision-leaning thresholds.",
         "",
-        "## False negatives at HIGH+IMMINENT (ensemble)",
+        f"## False negatives at HIGH+IMMINENT ({scored})",
         "",
     ]
     if fns:
@@ -325,10 +338,15 @@ def main() -> None:
 
     cases = load_split(args.split)
     results = assess_all(cases, ml_enabled=not args.no_ml)
-    report = build_report(args.split, cases, results)
+    report = build_report(args.split, cases, results, ml_enabled=not args.no_ml)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = REPORTS_DIR / f"safety_{date.today().isoformat()}{'_' + args.split if args.split != 'dev' else ''}.md"
+    stem = f"safety_{date.today().isoformat()}"
+    if args.split != "dev":
+        stem += f"_{args.split}"
+    if args.no_ml:
+        stem += "_rules_only"
+    out_path = REPORTS_DIR / f"{stem}.md"
     out_path.write_text(report, encoding="utf-8")
 
     # Console summary: the headline numbers, not the whole report.
