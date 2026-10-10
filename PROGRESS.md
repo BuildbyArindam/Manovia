@@ -2,32 +2,53 @@
 
 ## Current status
 
-Day 7 (integration, CI and dockerisation) is complete and verified as far as
-this sandbox allows: **623 backend tests pass at 99.96 % coverage** (2381
-statements; the one missed line is the lazy-load retry guard in `hf.py`, only
-reachable with the `nlp` extra installed — the full-environment figure stays
-100 %) and **73 frontend tests** still pass, with `ruff`, `ruff format`,
-`mypy` (strict), `eslint`, `tsc --noEmit` and the production `vite build` all
-clean. The repo now has a four-job GitHub Actions pipeline, Docker images for
-both halves, a compose dev stack with dev-only auto-migrations, an end-to-end
-smoke script, and a real CI badge in the README.
+Day 8 (crisis detection: rules engine and helplines) is complete and verified:
+**1199 backend tests pass at 98 % coverage** (3394 statements, 73 missed; the 2
+skips are the `nlp`-extra integration tests), of which **542 are the safety
+suite** (236 rules engine, 51 escalation, 255 no-raw-text privacy) plus 22
+crisis-content unit and 27 crisis-API integration tests, and **89 frontend
+tests** across 13 files pass — with `ruff`, `ruff format`, `mypy` (strict, 119
+files), `eslint`, `tsc --noEmit`, `prettier --check` and the production
+`vite build` all clean.
 
-What could **not** be verified here: **Docker does not exist in this sandbox**
-(`docker`/`docker compose`/`gitleaks`/`actionlint` are absent and their release
-binaries cannot be downloaded — network egress is restricted), so image builds,
-the compose stack, container health/`whoami` checks and `docker compose logs`
-are statically reviewed only. Every check that *can* run here ran for real —
-including the smoke test's full request sequence against a live uvicorn +
-production `vite preview` (`SMOKE PASS`, exit 0, plus three verified failure
-modes). The short list of commands to run on a Docker machine is in
-"Verification (Day 7)" below.
+The module is a gate rather than a feature, per AGENTS.md rule 1.
+`POST /api/v1/crisis/assess` and `GET /api/v1/crisis/resources` run a
+deterministic rules engine over **181 patterns** held in four YAML data files
+(no phrase lives in Python), and at HIGH or IMMINENT the policy **blocks the LLM
+entirely** and returns a pre-written, localised message with region helplines
+and the local emergency number. **34 vetted resources** across six regions
+(IN, US, GB, AU, CA, DEFAULT), every one carrying its own `source_url` and
+`last_verified` date; the four that could not be fully confirmed are flagged
+`needs_verification` with a note saying exactly what is unconfirmed, and the UI
+says so in plain words rather than presenting a possibly stale number as
+certain. Crisis copy ships in en, hi and bn, and no template in any language
+names a method.
 
-Work is on `arena/729849e3-manovia` — the branch this Arena session is pinned
-to, **not** the requested `day-07-integration-ci-dockerisation`; the session
-cannot create or push to another branch name. The pull request will therefore
-come from the session branch with `day-07-integration-ci-dockerisation` as
-its base, matching how previous days landed. Days 1-6 are merged on `main`
-(PRs #1-#7).
+**The honest headline is not the test count.** A probe of fifteen phrases
+invented *outside* the case table found **six real defects**, including **three
+clearly high-risk messages that returned NONE** — nothing at all — after 190
+curated cases were already green, and one emphatic denial that got a crisis
+card. All six are fixed at the root cause and pinned by 28 regression cases plus
+two invariant tests; not one assertion was loosened. In-table recall on
+HIGH+IMMINENT is 137/137, but that figure is circular by construction and is
+reported as such in [`docs/safety-design.md`](docs/safety-design.md) §9.1. The
+out-of-table number — **2 of 5 high-risk phrases caught on first contact** — is
+the one that describes actual coverage.
+
+What could **not** be verified here: **no native-speaker review of the Hindi and
+Bengali crisis copy**. The translations are structurally tested and screened for
+method language, but whether they read as warm to the person who needs them is
+not a question a test can answer; it is the highest-value outstanding review
+task. Helpline data was researched from official and government sources via web
+search on 2026-10-09 and **must be re-checked by a person before it ships to
+anyone in distress** (AGENTS.md safety rule 6). The sandbox has no way to place
+a test call.
+
+Work is on `arena/941abfe3-manovia` — the branch this Arena session is pinned
+to, **not** the requested `day-08-crisis-detection-rules-engine`; the session
+cannot create or push to another branch name. The pull request therefore comes
+from the session branch, matching how Day 7 landed. Days 1-7 are merged on
+`main` (through PR #9).
 
 ## Completed
 
@@ -270,6 +291,303 @@ Day 1 claim that log redaction is "not implemented", the workflows README
 placeholder, the stale quick-start/roadmap (Docker targets listed as
 placeholders), the missing `POSTGRES_*` section in `.env.example`, and
 smoke.sh's bare `curl` exit codes on connection failure.
+
+### Day 8 (branch `arena/941abfe3-manovia`) — crisis detection
+
+**Rules engine** (`backend/app/services/safety/`): `RiskLevel`
+(NONE < LOW < MEDIUM < HIGH < IMMINENT) and `RuleEngine.assess(text)` returning a
+`RiskAssessment` — level, matched categories and `rationale_codes` that name
+*patterns* (`si.want_to_die`), never the words they matched. Eight categories:
+suicidal ideation, self-harm, intent/plan, access to means, harm to others,
+abuse or violence disclosure, severe hopelessness, and acute medical emergency.
+`access_to_means` records only that something is *available* — presence is the
+risk signal and the one a supporter can act on first; no output of this module
+describes a method.
+
+**Patterns live in data, not code** (`backend/app/content/safety/patterns_*.yaml`):
+181 rules (158 regex, 23 phrase; 136 en, 24 hi, 21 bn) across `core`,
+`euphemisms`, `indic` and `context`. The loader rejects unknown keys, uppercase
+values and any file that fails to compile, so a typo in the data is a startup
+failure rather than a silent hole in detection.
+
+**Pragmatics** — the part that is actually hard. Negation in three directions
+(backward up to 8 tokens through 64 transparent words, forward for Indic
+post-verbal `na`, and inside the span for Hindi `marna nahi chahta`), with
+`cant`/`cannot`/`unable` deliberately **not** cues because inability is not
+absence. Figurative speech is suppressed only on positive evidence and per
+*occurrence*, so "this exam is killing me and I want to die" suppresses the first
+clause and escalates on the second. Third person, quotation and fiction frames cap
+IMMINENT to HIGH — except `acute_medical`, where an ambulance is needed regardless
+of who the sentence is about. Obfuscation is handled by four variants (primary,
+leet, spelling-corrected, collapsed) and two projections (squashed, collapsed),
+under one rule that makes it safe: **a derived view may add a hit the honest text
+hid, never cancel one.**
+
+**Escalation** (`escalation.py`): five policy rows and no branches. NONE → normal
+reply; LOW → gentle check-in; MEDIUM → check-in plus helplines; HIGH and IMMINENT
+→ `allow_llm=False`, a deterministic pre-written message, helplines, an emergency
+instruction and an audit event. Crisis copy is field-by-field (title, body,
+helpline_intro, emergency_instruction, trusted_person, safety_steps, closing,
+disclaimer) in en/hi/bn, with `{emergency_number}` the only whitelisted
+placeholder, interpolated per region (112 IN, 911 US, 999 GB, 000 AU).
+
+**API**: `GET /api/v1/crisis/resources?region=IN` — public, no auth and no consent
+gate, because a person in crisis must not have to log in to get a phone number —
+and `POST /api/v1/crisis/assess`, returning level, stored level, categories,
+codes, policy and the rendered message. The input is never echoed; the only log
+line carries a 16-hex SHA-256 fingerprint and a length.
+
+**Helplines** (`backend/app/content/helplines.json`, v2): 34 resources across IN,
+US, GB, AU, CA and DEFAULT, each with `name`, `number`, `type` (call/text/chat/web),
+`hours`, `languages`, `url`, `source_url` and `last_verified`, validated by
+`helplines.schema.json`. Researched from official and government sources on
+2026-10-09 (Tele-MANAS via PIB/MoHFW, 988 via SAMHSA, Triple Zero via the
+Australian Government, 911 via the FCC, 112 via the Australian communications
+ministry). A region gets its own entries plus the DEFAULT directories, and its own
+emergency number *replaces* the DEFAULT 112 — so 112 never renders above 911 in
+the US.
+
+**Frontend**: `CrisisCard` renders the pre-written message verbatim (the component
+never rewords it, because the wording is the safety-reviewed artefact) and every
+helpline as a real `tel:` link — `sms:` for a text line, carrying its keyword —
+with 48px minimum tap targets, keyboard reachable in reading order, the emergency
+number first, and zero axe violations. `CrisisResourcesModal` now delegates its
+entry rendering to `CrisisCard`, so the dialog and the in-chat card cannot drift
+apart. Shared fixtures in `test/crisisFixtures.ts` replaced three divergent
+copies.
+
+**Tests**: `backend/tests/safety/` holds a 218-case table-driven suite in
+`cases.yaml` (24 groups, every case carrying a note saying why the expectation is
+right), the escalation policy table, and the privacy guarantee. Cases are synthetic
+throughout and policed by a test on the file itself — one was rewritten during
+Day 8 for naming a location and an action, because a fixture must not read as
+instruction.
+
+**Docs**: [ADR 0008](docs/adr/0008-crisis-detection-rules-engine.md) — nine
+decisions with the alternative each was weighed against — and
+[docs/safety-design.md](docs/safety-design.md), first version.
+
+## Verification (Day 8 — real command output)
+
+Everything below was run for real in this sandbox (Python 3.11.2, Node 22.22.3,
+npm 10.9.8; backend deps in `backend/.venv` and frontend in
+`frontend/node_modules`, both reinstalled at the session boundary). Nothing is
+claimed from documentation.
+
+`pytest tests/safety -q -p no:randomly` (from `backend/`):
+
+    542 passed in 1.52s
+      test_rules_engine.py   236   one test per case, plus engine properties
+      test_escalation.py      51   policy table, localisation, safe messaging
+      test_no_raw_text.py    255   the privacy guarantee
+
+Case counts per risk level (`tests/safety/cases.yaml` — 218 cases, 24 groups):
+
+    level      code      cases   share
+    none       NONE         46   21.1%
+    low        LOW          16    7.3%
+    medium     MEDIUM       19    8.7%
+    high       HIGH        121   55.5%
+    imminent   IMMINENT     16    7.3%
+    TOTAL                   218
+
+    HIGH+IMMINENT (the recall denominator)  137
+    non-crisis control cases                 81
+
+Full backend suite, lint and types:
+
+    pytest -q      -> 1199 passed, 2 skipped in 37.92s
+                      TOTAL 3394 statements, 73 missed = 98%
+                      (skips: the two nlp-extra integration tests — transformers
+                       is not installed here)
+    ruff format .  -> 123 files left unchanged
+    ruff check .   -> All checks passed!
+    mypy app tests -> Success: no issues found in 119 source files
+
+    crisis-specific: tests/unit/test_crisis_content.py     22 passed
+                     tests/integration/test_crisis_api.py  27 passed
+    safety + content packages: 91% (rules 96, escalation 98, normalise 97,
+      base 90, patterns 83, content/crisis 97, content/i18n 91)
+
+Frontend:
+
+    npx vitest run -> Test Files 13 passed (13), Tests 89 passed (89)
+    npx vitest run src/components/CrisisCard.test.tsx -> 13 passed, including
+        "renders every helpline as a diallable tel: link"
+        "renders a text line as an sms: link that carries the keyword"
+        "is reachable and focusable by keyboard, in order"
+        "gives every action a tap target at least 48px tall"
+        "has no axe violations"
+    npx tsc --noEmit          -> clean (exit 0)
+    npx eslint .              -> clean (exit 0)
+    npx prettier --check src  -> All matched files use Prettier code style!
+    npx vite build            -> 105 modules, dist/assets/index-*.js
+                                 239.71 kB (76.06 kB gzip), built in 2.17s
+
+`helplines.json` against `helplines.schema.json` (jsonschema 4.26.0):
+
+    schema errors                  : 0
+    resources                      : 34 across IN US GB AU CA DEFAULT
+    entries missing source_url     : NONE
+    entries missing last_verified  : NONE  (all 2026-10-09)
+    every source_url is http(s)    : True
+    emergency number per region    : IN 112   US 911   GB 999
+                                     AU 000   CA 911   DEFAULT 112
+    needs_verification (4 of 34)   : in-icall, in-kiran, in-aasra,
+                                     au-kids-helpline — each with a note saying
+                                     what could not be confirmed
+
+Live API against a real uvicorn bound to 0.0.0.0:8000:
+
+    GET /api/v1/crisis/resources?region=IN -> HTTP 200
+      region=IN fallback_used=False emergency="112 — India emergency number (ERSS)"
+      render order: 112, Tele-MANAS 14416, Vandrevala +919999666555, iCall*,
+        KIRAN*, AASRA*, then the two DEFAULT directories   (* = flagged)
+    GET /api/v1/crisis/resources?region=US -> HTTP 200
+      region=US fallback_used=False emergency="911 — emergency services"
+      render order: 911, 988, Crisis Text Line sms:741741, 988 chat,
+        Veterans Crisis Line, Trevor Project, Veterans text, TrevorText,
+        then the two DEFAULT directories
+      exactly one emergency entry and it is 911, not the DEFAULT 112: True
+    POST /api/v1/crisis/assess -> HTTP 200 for all seven probes
+      "i want to die"                        high      crisis   llm=False
+      "i have a plan and ... tonight"        imminent  crisis   llm=False
+      "this homework is killing me"          none      none     llm=True
+      "i dont want to die"                   low       caution  llm=True
+      "my friend said she might end it all"  high      crisis   llm=False
+      "i am dying of embarrassment ..."      none      none     llm=True
+      "i want to die zzqx7canary"            high      crisis   llm=False
+
+No raw text in the safety path — grep over `backend/app/services/safety/`:
+
+    logging calls (structlog/logging/logger/print) -> NONE
+      The single grep hit is the substring "print(" inside the function name
+      text_fingerprint(), confirmed with `grep -o`. Not a statement.
+    file writes (open(...,'w'/'a') / write_text / write / dump) -> NONE
+    __init__.py -> 0 bytes; no re-export surface was grown for a test's benefit
+    RiskAssessment fields -> level, matched_categories, rationale_codes, context.
+      No text field, and a model_validator refuses any rationale code containing a
+      space, a capital or punctuation, so a future `matched_text` field cannot be
+      added by accident.
+    canary "zzqx7canary" present in the assess response body -> False
+    any input word longer than 6 chars present in the response -> NONE
+    the one log line the router writes (crisis.py:243) -> text_sha (16 hex),
+      text_length, level, stored_level, categories, rationale_codes
+
+Templates printed for review: `en/crisis.high` and `en/crisis.imminent` in full,
+plus structure and character counts for hi and bn. No template in any of the three
+languages names a method — checked at **word boundaries** against a method
+vocabulary (pill, rope, hang, gun, knife, razor, poison, jump, bridge, railway,
+platform, method, …) across all 15 templates; a substring screen flagged
+"can **chang**e" and "be**gun**" and caught nothing real. Means nouns occur only in
+detection patterns (`am.have_a_firearm`, `med.overdosed`, …), never in a reply. The
+first safety step is generic means restriction — "move away from anything you could
+use to hurt yourself" — which names no means at all.
+
+Throughput: **0.34 ms per message** over 3000 assessments of six mixed-language
+messages, so the gate is cheap enough to run before every LLM call.
+
+### The out-of-table probe — the check that matters
+
+The 190-case suite was green, so it could only tell me whether the engine agreed
+with itself. Fifteen phrases were invented *after* that, confirmed absent from
+`cases.yaml`, and run once. **9 of 15 matched the expectation I wrote down; 6 did
+not.**
+
+    group A — 5 clearly high-risk
+      1 "drafting the note to leave behind for my sister"  NONE      want HIGH     MISS
+      2 "there is no point in waking up again"             NONE      want HIGH     MISS
+      3 "i gave away everything i own this week"           IMMINENT  want HIGH     (see below)
+      4 "main kal raat sab khatam kar dunga"               IMMINENT  want IMMINENT OK
+      5 "ami ... ei jibon ta ekhanei shesh korbo"          NONE      want IMMINENT MISS
+    group B — 5 figurative / benign
+      6 "the new tax deadline is killing me"               NONE      want NONE     OK
+      7 "my phone battery is dying again"                  NONE      want NONE     OK
+      8 "i am dying of embarrassment"                      LOW       want NONE     MISS
+      9 "that rollercoaster almost gave me a heart attack" NONE      want NONE     OK
+     10 "we killed it at the debate finals"                NONE      want NONE     OK
+    group C — 5 negated / third-person
+     11 "i don't want to hurt anyone including myself"     NONE      want LOW      MISS
+     12 "my cousin posted that he might end it all"        HIGH      want HIGH     OK
+     13 "she would never do something like that"           NONE      want NONE     OK
+     14 "not once have i thought about hurting myself"     HIGH      want LOW      MISS
+     15 "my friend said i should see a therapist"          NONE      want NONE     OK
+
+Mistakes, stated plainly rather than rounded off:
+
+- **Three of the five high-risk messages returned NONE.** Not a low level — nothing
+  at all. First-contact recall on invented high-risk phrasing was therefore
+  **2 of 5**, which is the number that describes real coverage. 137/137 describes
+  consistency.
+- **An emphatic denial got a crisis card** (#14): the backward negation scan broke
+  at the auxiliary "have" and never reached "not".
+- **#3 was my expectation being wrong, not the engine.** Giving away every
+  possession plus "this week" is exactly the plan-plus-a-timeframe gate that
+  separates "I have been thinking about this" from "this is happening", and the
+  minimising "it feels like tidying up" argues for caution rather than against it.
+  Recorded as `probe-003` saying so.
+- **#8 was an engine bug, not a data gap.** Adding the benign frame was not enough:
+  collapsing repeated letters rewrites "embarrassment" to "embarasment", which broke
+  the frame in the collapsed variant while leaving "i am dying" intact, so an idiom
+  the honest text had dismissed was re-admitted from a rewrite of itself.
+- **#14 also filed a self-directed thought under `harm_to_others`.** The category is
+  recorded, so that corrupts the assessment even when the level is right.
+
+Root causes fixed — data unless stated otherwise: `ip.suicide_note` gained the
+leave-behind idiom; `hope.no_reason_to_live` gained "waking up" behind an
+existential qualifier; `ho.want_to_hurt_others` gained anyone/anybody;
+`bn.jibon_sesh` allows an intervening adverb and no longer requires `jibonta`
+unspaced; new `bn.jibon_shesh_korbo` (the active colloquial form, imminent) and
+`bn.ar_parchi_na` (deliberately narrow — "ar *porte* parchi na" is "I cannot study
+anymore", what every Bengali student says during exams); auxiliaries and "once"
+added to `transparent_words`, with modals deliberately excluded;
+`ho.thinking_about_hurting` excludes a first-person object and new
+`sh.thinking_about_hurting_myself` answers it; and `_match` (**engine**) now judges
+the primary first so its verdicts bind every derived view. 178 rules → 181.
+
+Every widening was then probed for the benign sentence it might have started
+catching, and those controls are in the table too (`probe-016`…`probe-028`).
+`probe-026` is the most important control in the file: making "have" transparent
+lets the negation scan see further back, so it checks that
+"i have hurt myself before but i stopped last year" is still answered as a
+disclosure and not mistaken for a denial.
+
+The two new invariant tests were verified to have teeth by temporarily reverting
+the `_match` guard: the figurative test fails LOW instead of NONE without it and
+passes with it. A regression test that passes either way is not a test.
+
+**After the fixes: 15/15 on the probe, 542 safety tests, 1199 backend tests, and
+not one assertion weakened or deleted.**
+
+### PASS/FAIL table (Message 2 checklist)
+
+| check | result |
+| --- | --- |
+| `pytest backend/tests/safety -q` | **PASS** — 542 passed |
+| case counts printed per risk level | **PASS** — 46/16/19/121/16 = 218 |
+| 15 new invented phrases, mistakes flagged honestly | **PASS** — 6 of 15 disagreed on first contact; all triaged, all fixed |
+| `helplines.json` valid against its JSON schema | **PASS** — 0 errors |
+| `source_url` + `last_verified` on every entry | **PASS** — 34/34 |
+| `needs_verification` entries listed | **PASS** — 4, each with an explanatory note |
+| `curl .../crisis/resources?region=IN` | **PASS** — HTTP 200, 112 + 5 lines + 2 directories |
+| `curl .../crisis/resources?region=US` | **PASS** — HTTP 200, 911 and not the DEFAULT 112 |
+| no code path logs/stores raw text (grep shown) | **PASS** — no logging call, no file write, canary absent |
+| frontend test: `tel:` links | **PASS** — "renders every helpline as a diallable tel: link" |
+| frontend test: keyboard focus | **PASS** — "is reachable and focusable by keyboard, in order" |
+| HIGH / IMMINENT templates printed for review | **PASS** — no method information in any of the 15 |
+| measured recall on HIGH+IMMINENT | **PASS with caveat** — 137/137 in-table (circular); **2/5** on first contact out-of-table |
+| full backend lint + test | **PASS** — ruff/mypy clean, 1199 passed 2 skipped, 98% coverage |
+| full frontend lint + test + build | **PASS** — tsc/eslint/prettier clean, 89 tests, build clean |
+
+### Needs a human, not this sandbox
+
+1. **Native-speaker review of the hi and bn crisis copy.** Structurally tested and
+   screened for method language; whether it reads as warm is not testable here.
+2. **Re-verify the four flagged helplines by calling them**, and spot-check the
+   rest. Data was gathered from official sources on 2026-10-09 via web search; the
+   sandbox cannot place a call, and `in-kiran`'s ministry page was never reachable.
+3. **Read `en/crisis.high` and `en/crisis.imminent` aloud** and decide whether you
+   would want to receive them. The full text is in the verification output above.
 
 ## Verification (Day 7 — real command output)
 
@@ -533,6 +851,8 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0005 — Frontend skeleton: tokens, the API client, and the accessibility floor](docs/adr/0005-frontend-skeleton.md): CSS-variable design tokens with a `data-theme` switch (no `dark:` classes, no literal colours in components), contrast enforced by a test on the tokens, one API client with single-flight token refresh and one replay, onboarding as a gate rather than a guarded route, one modal primitive owning the focus contract, one navigation rendered as rail or bottom bar by a media query, and a deliberately public crisis endpoint.
 - [0006 — Emotion model: choice, mapping, and licence](docs/adr/0006-emotion-model.md): `EMOTION_MODEL_ID` as the single place a checkpoint is named (default `SamLowe/roberta-base-go_emotions`, MIT), one nine-label internal taxonomy with a `LABEL_MAP` that takes the **max** per emotion rather than the sum, lazy thread-safe CPU loading with `transformers`/`torch` as an optional extra, degradation on both failure *and* sustained slowness, and the licence position (model MIT verified from three independent mirrors; the GoEmotions **dataset** licence still to be confirmed by hand). Numbered 0006 because the brief's requested `0002-emotion-model.md` was already taken on `main` by the backend-skeleton ADR.
 - [0007 — CI pipeline, Docker packaging, and containerised dev stack](docs/adr/0007-ci-and-docker.md): one workflow whose blocking checks mirror `make lint`/`make test` (80 % coverage gate as tripwire, secrets scan blocks, dependency audit report-only via never-failing steps + summary/annotations until the triaged advisory backlog clears); dev-only auto-migrations guarded in the API image's *entrypoint* (`APP_ENV=development` + `RUN_MIGRATIONS=true`), so production posture travels with the image; the API image ships without the `nlp` extra and compose runs `EMOTION_ANALYZER=keyword`; same-origin `/api` proxy in the web container (no CORS in the container path); labelled dev-only compose defaults including an all-zero-bytes Fernet key; liveness (not readiness) as the container healthcheck; the API runs as non-root `app`.
+- [0008 — Crisis detection: rules engine and helplines](docs/adr/0008-crisis-detection-rules-engine.md): rules over a classifier (a level plus pattern ids is auditable in five seconds, a probability is not, and no threshold is right because too low makes every bad day a crisis card); patterns in YAML data files loaded once and validated at import, so a typo is a startup failure rather than a silent hole; **five wire levels mapped onto the four stored tiers** (`_STORED_BY_LEVEL`, MEDIUM→`elevated`, HIGH and IMMINENT→`crisis`) so the Day 8 enum and the Day 5 database enum stay independent and a new level needs no migration; escalation as a five-row policy table with no branches, so a reviewer sees every behaviour by reading five rows; deterministic pre-written copy in `content/i18n` with `{emergency_number}` the only whitelisted placeholder; helplines as one JSON file behind a schema with `source_url` + `last_verified` per entry and a `needs_verification` flag rather than an unverified number; `access_to_means` recording presence only; privacy enforced structurally (the layer that builds the reply never receives the message, and `RiskAssessment` cannot carry prose); and conservative-by-default level resolution with IMMINENT requiring evidence rather than intensity.
+- Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
@@ -657,6 +977,59 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - `pre-commit` is not installed in the sandbox, so the configured hooks (ruff, ruff-format, gitleaks) were not run.
 - A local `.env` (gitignored) and `manovia.db` were created in the working tree for the live verification, with throwaway `SECRET_KEY`/`FIELD_ENCRYPTION_KEY` values. Both are ignored; delete them or keep them for `curl` experiments. Note the `.env` also feeds the module-level `create_app()` at import time (by Day 2 design).
 
+### Day 8 safety notes
+
+- **Nothing routes through the gate yet.** Only `api/deps.py` and `api/v1/crisis.py`
+  import `app.services.safety`; `api/v1/chat.py` still carries its placeholder
+  ("Message send/receive, the crisis gate and the output-safety check arrive with…").
+  AGENTS.md rule 1 — detection before any LLM call — is *satisfied structurally*
+  and verified against the crisis endpoints, but it becomes real only when Day 9's
+  message-send path calls the engine first. Do not describe Manovia as having
+  crisis detection in production until that wiring exists.
+- **Detection coverage is bounded by what somebody thought to write down.** The
+  out-of-table probe is the evidence: three of five invented high-risk phrases
+  returned NONE after 190 curated cases were green. There is no statistical
+  backstop for a phrasing nobody anticipated, and no labelled corpus of real
+  messages (which this repo should not collect). Mitigation is a cadence, not a
+  test suite — see `docs/safety-design.md` §10.
+- **The Hindi and Bengali crisis copy has had no native-speaker review.** It is
+  structurally tested and screened for method language, not tested for whether it
+  sounds warm to the person who will read it. Highest-value outstanding review.
+- **Helpline data is a snapshot and will go stale.** Researched 2026-10-09; four of
+  34 entries are flagged `needs_verification` (`in-icall` conflicting published
+  hours, `in-kiran` no reachable ministry page, `in-aasra` third-party listings
+  disagree, `au-kids-helpline` official site not fetched). Five more carry a
+  `verification_note` explaining an indirect source without being flagged. Nobody
+  has placed a test call — the sandbox cannot. Numbers change; this file needs an
+  owner and a re-check date, not just a `last_verified` field.
+- **No tense reasoning.** "I used to self harm at school but I stopped two years
+  ago" gets the crisis card. Inferring past tense reliably is hard and getting it
+  wrong the other way — reading "I cut myself, then I stopped the bleeding" as
+  history — is worse. Accepted cost; the false positive is cheap.
+- **Broad risk words stay broad, and it produces visible false positives.**
+  "i have a plan for the weekend barbecue" scores HIGH via `ip.have_a_plan`. A
+  hypothetical question about dying scores HIGH. "My husband threatens to kill me"
+  is recorded under both `abuse_disclosure` and `suicidal_ideation`. Deliberate:
+  narrowing `si.kill_myself` to first-person subjects would risk missing
+  "I am going to kill me", which people do write. The reply is identical either way.
+- **English is over-represented**: 136 English rules against 24 Hindi and 21
+  Bengali, for a product whose primary audience is Indian. Two of the six probe
+  defects were Bengali, from a set one sixth the size — roughly what that ratio
+  predicts.
+- **`POST /api/v1/crisis/assess` writes no `safety_events` row.** Deliberate: it is
+  public and unauthenticated, so anyone could fill the table. `policy.record_event`
+  tells the authenticated chat path when to write one; that path does not exist yet.
+- **`patterns.py` is at 83 % coverage** — the loader's rejection paths (unknown key,
+  uppercase value, non-compiling regex) are partly untested, and those are exactly
+  the guards that turn a data typo into a startup failure instead of a silent hole.
+- **No detection eval harness.** `evals/` is still empty directories; the same debt
+  as the Day 6 emotion model. The 218-case table is a regression suite, not an
+  accuracy measurement on real traffic.
+- Detection is synchronous and runs 181 rules across four variants plus two
+  projections per message. Measured at 0.34 ms/message with input capped at 4000
+  characters, so the cap is what bounds it; there is no per-rule deadline and a
+  pathologically written regex would be a latency problem rather than a crash.
+
 ## Parking lot
 
 - Distributed rate limiting / lockout state (Redis) behind the existing interfaces, plus a trusted-proxy setting for `X-Forwarded-For` client identity.
@@ -685,26 +1058,53 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 7)** Flip `dependency-audit` back to blocking (drop the `exit 0` guards so native exit codes flow) once the triaged advisory backlog is cleared; review the two react-router advisories when react-router 7 is adopted.
 - **(Day 7)** Unprivileged nginx image or a `nginxinc/nginx-unprivileged` base for the web container; route-based code-splitting when the bundle justifies it.
 - **(Day 7)** Production migration runbook (one-shot `alembic upgrade head` container) and a `/ready` migration-level check once deploys exist.
+- **(Day 8)** A detection eval harness in `evals/` — a held-out labelled set, precision/recall per category and per language, and a report artifact — so "is detection getting better?" stops being answerable only by re-running the probe by hand. Blocked on a source of real-ish messages that does not mean storing anybody's.
+- **(Day 8)** A scheduled out-of-table probe: generate or collect phrases from outside `cases.yaml`, run them, and file every disagreement as an issue. Today this is a manual discipline described in `docs/safety-design.md` §10.
+- **(Day 8)** A helpline re-verification job: alert when `last_verified` is older than N days, and a checked-off record of somebody actually calling each number. Consider sourcing from an API (Find A Helpline) rather than a hand-maintained JSON file.
+- **(Day 8)** More Indic languages, and native-script coverage beyond Hindi and Bengali — Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Urdu. Each needs a patterns file with `language:` set, a locale file with all five template ids, and cases written by somebody who speaks it.
+- **(Day 8)** Community code words and slang change faster than a YAML file gets reviewed; detection needs a named owner and a review cadence. Consider a lightweight intake path for clinicians or moderators to propose phrases.
+- **(Day 8)** Tense and aspect reasoning, so a disclosed *history* of self-harm ("I used to… I stopped two years ago") can be distinguished from a current one without losing "I cut myself, then I stopped the bleeding". Hard, and the current false positive is cheap — do not attempt it casually.
+- **(Day 8)** A second negation strategy for long or unpunctuated messages: the backward scan is bounded at 8 tokens and 5 transparent words, so a rambling message can put a cue out of reach. Clause splitting helps but does not cover text with no punctuation at all.
+- **(Day 8)** Per-rule telemetry — which patterns fire, how often, and how often a fired pattern is later suppressed — so broadening decisions are made from data rather than from reading regexes. Must stay metadata-only.
+- **(Day 8)** A `needs_verification` review UI or checklist for maintainers, so flagged entries are worked down rather than shipped indefinitely with a caveat.
+- **(Day 8)** Region detection: today `region` is a caller-supplied query/body parameter. Deriving it safely (locale, timezone, explicit user choice) without collecting location data is an open design question.
 
-## Next steps (Day 8 — first three)
+## Next steps (Day 9 — first three)
 
 **Preamble (carried from Day 7, needs my machine):** run the seven Docker
 commands listed in "Verification (Day 7)", confirm `make up` + `make smoke`
 are green, `whoami` prints `app`, and the api logs stay clean — then the
-compose stack is the default dev environment for Day 8+.
+compose stack is the default dev environment for Day 9+.
 
-1. **Crisis and self-harm rules that run BEFORE any LLM call** (AGENTS.md rule 1, the
-   headline): a pure, deterministic module over `app/content/` phrase sets with
-   risk tiers 0-3, no model/DB/LLM needed, unit-tested against fixture messages.
-   Same milestone: **human-verify `helplines.json`** against real registries and
-   refresh `last_verified` (flagged as a Day 8 task on Day 5 — the content is
-   still placeholder).
+**Preamble (new from Day 8, needs a human, not a sandbox):**
+(a) have a native Hindi and a native Bengali speaker read `crisis.high`,
+`crisis.imminent` and `crisis.about_someone_else` in `content/i18n/{hi,bn}.json`
+and say whether they are warm — the full English text is in "Verification
+(Day 8)" to compare against; (b) call the four helplines flagged
+`needs_verification` (`in-icall`, `in-kiran`, `in-aasra`, `au-kids-helpline`),
+confirm number and hours, then clear the flag or drop the entry; (c) read
+`docs/safety-design.md` §9.1 and decide who owns running the out-of-table probe,
+and how often.
+
+1. **Wire the crisis gate into the message-send path** — this is what makes
+   AGENTS.md rule 1 real rather than structural. `POST /api/v1/chat/sessions/{id}/messages`
+   behind `require_consent(ai_disclosure, terms)` and `get_current_user`, running
+   `RuleEngine.assess` **before** any LLM call, honouring `policy.allow_llm=False`
+   at HIGH/IMMINENT by returning the deterministic `EscalationPlan.message`
+   instead of a completion, storing text encrypted via `ChatRepository`, attaching
+   the Day 6 `EmotionResult`, and writing a metadata-only `SafetyEvent` row when
+   `policy.record_event` is true. Tests must assert no raw message text reaches the
+   logs and that a HIGH message never reaches the model. Today nothing outside
+   `api/v1/crisis.py` imports the safety package — see "Day 8 safety notes".
 2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real
    provider adapter, and a `FakeCompleter` for offline tests, selected by
    `LLM_PROVIDER` — plus the output-safety check every completion must pass
-   (AGENTS.md rule 4), built the same way as `app/services/nlp/`.
-3. **Message send**: `POST /api/v1/chat/sessions/{id}/messages` behind
-   `require_consent(ai_disclosure, terms)` and `get_current_user`, storing text
-   encrypted via `ChatRepository`, running the crisis rules **first**, attaching
-   the Day 6 `EmotionResult`, emitting `SafetyEvent` rows, with tests asserting
-   no raw message text reaches the logs. Then wire the frontend chat page to it.
+   (AGENTS.md rule 4), built the same way as `app/services/nlp/`. The output check
+   should reuse the safe-messaging vocabulary already written for the templates
+   (`test_no_template_in_any_language_names_a_method`) rather than grow a second
+   list.
+3. **Frontend chat page** wired to the send endpoint, rendering `CrisisCard`
+   in-thread whenever the policy says `show_crisis_message`, with the helplines
+   reachable in one tap and no generated prose between the person and the number.
+   Then the crisis path is user-visible end to end and can be clicked through
+   rather than only curl'd.
