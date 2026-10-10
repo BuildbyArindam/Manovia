@@ -251,3 +251,44 @@ def test_recall_on_the_high_and_imminent_cases(engine: RuleEngine) -> None:
         f"recall on HIGH+IMMINENT cases fell to {recall:.1%}; missed: "
         f"{[case.id for case in crisis if case not in caught]}"
     )
+
+
+def test_a_derived_variant_cannot_readmit_a_hit_the_honest_text_dismissed(
+    engine: RuleEngine,
+) -> None:
+    """The honest text's verdict binds every rewrite of it.
+
+    Regression, found by the Day 8 out-of-table probe. The repeated-letter
+    collapse rewrites ordinary words as well as tricks: "embarrassment" becomes
+    "embarasment". That broke the benign frame "dying of embarrassment" in the
+    collapsed variant while leaving "i am dying" intact, so an idiom the primary
+    had already dismissed was re-admitted from a rewrite of itself and the
+    message scored LOW on the strength of a joke.
+
+    The projections already obeyed this rule — a projection may add a hit the
+    honest text hid, it can never cancel one — but the collapse lives in the
+    variants list, which was searched before the verdicts were computed. _match
+    now judges the primary first and applies its verdicts to every derived view.
+    """
+    assessment = engine.assess("i am dying of embarrassment about that presentation")
+
+    assert assessment.level is RiskLevel.NONE
+    assert CODE_FIGURATIVE in assessment.rationale_codes
+    assert "si.dying" not in assessment.rationale_codes, (
+        "the collapsed spelling of the same sentence re-admitted a hit the honest "
+        "text had already dismissed as an idiom"
+    )
+
+
+def test_stretched_letters_do_not_outvote_a_negation(engine: RuleEngine) -> None:
+    """Collapsing "diiiiie" to "die" has to carry the denial with it.
+
+    The collapse exists so letter-stretching cannot hide a risk phrase. It must
+    not work in the other direction either: the negation in the honest text still
+    applies to the collapsed spelling, so this stays a denial and scores LOW
+    rather than becoming a crisis the moment somebody holds a key down.
+    """
+    assessment = engine.assess("i dont want to diiiiie")
+
+    assert assessment.level is RiskLevel.LOW
+    assert CODE_NEGATED in assessment.rationale_codes

@@ -249,30 +249,50 @@ class RuleEngine:
     def _match(self, message: NormalisedMessage) -> list[Occurrence]:
         """Run every rule against every projection of the message.
 
-        The pragmatics-bearing projections (``variants``, the clause index) are run
-        first. ``squashed`` and ``collapsed`` exist purely to defeat spacing and
-        letter-stretching tricks, and in them the words are welded together — a
-        negation cue is not a token any more, so it cannot be found. Rather than
-        let that make evasion easier than honest typing, a rule that was negated in
-        the real text stays negated in the trick projection. The projections can
-        add a hit; they cannot cancel one.
+        The honest text is judged first and on its own, because its verdicts bind
+        every derived view of it. ``squashed`` and ``collapsed`` exist purely to
+        defeat spacing and letter-stretching tricks, and in them the words are
+        welded together — a negation cue is not a token any more, so it cannot be
+        found. The leet, spelling-corrected and repeated-letter-collapsed variants
+        keep their clause boundaries, but they still rewrite the text, and a
+        rewrite can destroy the benign frame that justified dismissing a hit.
+        Rather than let that make evasion easier than honest typing, a rule that
+        was negated or judged figurative in the real text stays that way in every
+        derived view. The derived views can add a hit; they cannot cancel one.
         """
         occurrences: list[Occurrence] = []
         rules: tuple[RulePattern, ...] = self._patterns.rules
 
-        for variant in message.variants:
-            index = message.index_for(variant)
-            for rule in rules:
-                for match in rule.pattern.finditer(variant):
-                    occurrences.append(self._occurrence(rule, index, match.start(), match.end()))
+        # The honest text, alone, so its verdicts are not contaminated by a
+        # rewrite of itself.
+        primary, *derived_variants = message.variants
+        index = message.index_for(primary)
+        for rule in rules:
+            for match in rule.pattern.finditer(primary):
+                occurrences.append(self._occurrence(rule, index, match.start(), match.end()))
 
-        # What the honest projections concluded, applied to the trick projections.
+        # What the honest text concluded, applied to every derived view of it.
         negated_rules = frozenset(
             occurrence.rule.id for occurrence in occurrences if occurrence.negated
         )
         figurative_rules = frozenset(
             occurrence.rule.id for occurrence in occurrences if occurrence.figurative
         )
+
+        # Leet, spelling-corrected and repeated-letter-collapsed variants. These
+        # keep their clause boundaries, so pragmatics is still evaluated in them —
+        # but collapsing repeated letters also rewrites ordinary words:
+        # "embarrassment" becomes "embarasment", which breaks the benign frame
+        # "dying of embarrassment" while leaving "i am dying" untouched. Without
+        # this guard an idiom the honest text had already dismissed was re-admitted
+        # from the collapsed spelling of the same sentence.
+        for variant in derived_variants:
+            index = message.index_for(variant)
+            for rule in rules:
+                if rule.id in negated_rules or rule.id in figurative_rules:
+                    continue
+                for match in rule.pattern.finditer(variant):
+                    occurrences.append(self._occurrence(rule, index, match.start(), match.end()))
 
         # Spacing- and letter-trick projections. Each is a different string, so
         # clause offsets from the primary are meaningless here: the projection is

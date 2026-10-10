@@ -272,9 +272,42 @@ rules:
     category: severe_hopelessness
     level: medium
     kind: regex
-    value: "\\b(?:jibon\\s+(?:ta\\s+)?(?:sesh|shesh|khela\\s+sesh)|sob\\s+(?:sesh|shesh)|jibon\\s+ar\\s+nei|jibonta\\s+ar\\s+bhalo\\s+lagche\\s+na)\\b"
+    value: "\\b(?:jibon\\s+(?:ta\\s+)?(?:\\w+\\s+){0,2}(?:sesh|shesh|khela\\s+sesh)|sob\\s+(?:sesh|shesh)|jibon\\s+ar\\s+nei|jibon(?:ta|\\s+ta)?\\s+(?:ar\\s+)?bhalo\\s+lagche\\s+na)\\b"
     language: bn
     negation_sensitive: false
+    note: >-
+      Allows up to two words between "jibon ta" and "sesh": Bengali routinely
+      puts an adverb there ("ei jibon ta ekhanei shesh" — this life, ending right
+      here), and requiring adjacency missed it entirely.
+  - id: bn.jibon_shesh_korbo
+    category: intent_plan
+    level: imminent
+    kind: regex
+    value: "\\b(?:jibon(?:ta)?\\s+(?:\\w+\\s+){0,2}(?:sesh|shesh)\\s+(?:kore\\s+)?(?:korbo|korchi|debo|dibo)|(?:nijeke|nijer\\s+jibon)\\s+(?:\\w+\\s+)?(?:sesh|shesh)\\s+(?:korbo|korchi))\\b"
+    language: bn
+    negation_sensitive: true
+    note: >-
+      The active colloquial form: "jibon ta shesh korbo" is "I will end my life",
+      stated as an intention rather than a state. bn.atmohotta_korbo covers the
+      formal word for suicide; this covers what people actually type. Imminent,
+      mirroring bn.atmohotta_korbo. Negation-sensitive so the post-verbal "na"
+      ("shesh korbo na" — I will not end it) is caught by the Indic check.
+  - id: bn.ar_parchi_na
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\bar\\s+(?:parchi|parbo|pari|parbis|paren)\\s+na\\b|\\bar\\s+(?:sahi|sojjo|jeete|beche|bachte|thakte|niche)\\s+(?:kore\\s+)?(?:parchi|parbo|pari)\\s+na\\b"
+    language: bn
+    negation_sensitive: false
+    note: >-
+      "ar parchi na" is "I can't take it anymore" — the Bengali twin of
+      hope.cant_go_on, and set high for the same reason. The negation is part of
+      the phrase, so this is not negation-sensitive.
+      Deliberately does NOT allow an arbitrary verb in the middle: "ar *porte*
+      parchi na" is "I can't study anymore", the single most common thing a
+      Bengali student says during exams, and escalating it would hand a crisis
+      card to somebody revising. The endurance verbs (sahi/sojjo — tolerate,
+      jeete/beche/bachte/thakte — go on living) are listed explicitly instead.
   - id: bn.nijeke_khut
     category: self_harm
     level: high

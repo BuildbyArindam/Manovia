@@ -1256,3 +1256,291 @@ cases:
     text: "my friend wants to die and i do not know how to help her"
     level: high
     third_person: true
+
+  # ------------------------------------------------------------------ #
+  # Out-of-table probe (Day 8 verification)                             #
+  #                                                                     #
+  # These cases were NOT used to tune the engine. They were invented     #
+  # after the suite was green, run once, and every disagreement was      #
+  # triaged as either a data gap or a wrong expectation before being     #
+  # recorded here. That is the point of the section: the rest of the     #
+  # table agrees with the engine because the engine was tuned against    #
+  # it, so only phrases from outside it can find a real gap. Six of      #
+  # these fifteen exposed one.                                           #
+  # ------------------------------------------------------------------ #
+  - id: probe-001
+    group: intent_plan
+    text: "i've been drafting the note to leave behind for my sister"
+    level: high
+    codes: [ip.suicide_note]
+    note: >-
+      Gap found by the probe. Writing what will be left behind is planning
+      behaviour, but ip.suicide_note only named the thing ("suicide note",
+      "goodbye letter") and never the act of leaving one behind. Now covers the
+      leave-behind idiom; "a note to leave for the next guest" must not match,
+      and probe-017 pins that.
+
+  - id: probe-002
+    group: severe_hopelessness
+    text: "there is no point in waking up again i am done trying"
+    level: high
+    codes: [hope.no_reason_to_live]
+    note: >-
+      Gap found by the probe. "No point in waking up" is "no point in living"
+      phrased around the next morning. The rule listed gerunds of continuing
+      (living, going on, carrying on) but not waking up.
+
+  - id: probe-003
+    group: intent_plan
+    text: "i gave away everything i own this week and it feels like tidying up"
+    level: imminent
+    codes: [ip.giving_away_possessions, ctx.timeframe]
+    note: >-
+      MY EXPECTATION WAS WRONG, not the engine. I first wrote this down as high.
+      Giving away everything one owns is a preparatory act and "this week" puts
+      it in time, which is exactly the plan-plus-a-timeframe gate that separates
+      "I have been thinking about this" from "this is happening". The minimising
+      "it feels like tidying up" argues for caution, not against it. Imminent is
+      the defensible reading and the conservative one.
+
+  - id: probe-004
+    group: hindi_romanised
+    text: "main kal raat sab khatam kar dunga"
+    level: imminent
+    codes: [hi.sab_khatam_kar_dunga, ctx.timeframe]
+    note: "Probe control: already worked. Romanised Hindi end-it-all plus a named night."
+
+  - id: probe-005
+    group: bengali_romanised
+    text: "ami ar porte parchi na ei jibon ta ekhanei shesh korbo"
+    level: imminent
+    codes: [bn.jibon_sesh, bn.jibon_shesh_korbo]
+    note: >-
+      Gap found by the probe, and two at once. bn.jibon_sesh required "jibon ta"
+      and "sesh" to be adjacent, but Bengali routinely puts an adverb between
+      them ("ekhanei" — right here), so the whole sentence was invisible. And
+      the active form "shesh korbo" (I WILL end it) had no rule at all:
+      bn.atmohotta_korbo covers the formal word for suicide, not what people
+      type. The study complaint in the first clause is correctly ignored, which
+      probe-019 pins.
+
+  - id: probe-006
+    group: figurative
+    text: "the new tax deadline is killing me but i will survive it"
+    level: none
+    codes: [ctx.figurative]
+    note: "Probe control: inanimate subject plus an explicit benign frame."
+
+  - id: probe-007
+    group: figurative
+    text: "my phone battery is dying again"
+    level: none
+    note: "Probe control: si.dying needs a first-person subject, and a battery is not one."
+
+  - id: probe-008
+    group: figurative
+    text: "i am dying of embarrassment about that presentation"
+    level: none
+    codes: [ctx.figurative]
+    forbid_codes: [si.dying]
+    note: >-
+      Gap found by the probe, and an ENGINE bug rather than a data gap. The
+      benign frame "dying of embarrassment" was missing, but adding it was not
+      enough: the repeated-letter collapse rewrites "embarrassment" to
+      "embarasment", which breaks the frame in the collapsed variant while
+      leaving "i am dying" intact, so the idiom the honest text had dismissed
+      was re-admitted from a rewrite of itself. _match now judges the primary
+      first and lets its verdicts bind every derived view — the same rule the
+      projections already followed. test_a_derived_variant_cannot_readmit_a_hit
+      pins the invariant directly.
+
+  - id: probe-009
+    group: benign
+    text: "that rollercoaster almost gave me a heart attack"
+    level: none
+    note: "Probe control: no rule fires at all, so nothing needs suppressing."
+
+  - id: probe-010
+    group: figurative
+    text: "we killed it at the debate finals yesterday"
+    level: none
+    note: "Probe control: the praise idiom, already covered by benign_frames."
+
+  - id: probe-011
+    group: negation
+    text: "i don't want to hurt anyone including myself"
+    level: low
+    codes: [ctx.negated]
+    note: >-
+      Gap found by the probe. ho.want_to_hurt_others listed someone/somebody/
+      people/others/him/her/them/everyone but not anyone/anybody, so a refusal
+      phrased with "anyone" matched nothing at all and scored NONE — meaning
+      there was no negated hit to soften to LOW. With "anyone" covered, the
+      denial is recognised as a denial and earns a check-in.
+
+  - id: probe-012
+    group: third_person
+    text: "my cousin posted that he might end it all and i am scared for him"
+    level: high
+    third_person: true
+    codes: [eu.end_it_all, ctx.third_person]
+    note: >-
+      Probe control: a supporter reporting somebody else's risk. "Posted" is one
+      of the reporting verbs added when "he texted me: i am going to end it all"
+      read as first person. Capped at high, not imminent, because it is not the
+      speaker's attempt.
+
+  - id: probe-013
+    group: third_person
+    text: "she told me she would never do something like that to her kids"
+    level: none
+    third_person: true
+    note: "Probe control: third person plus an explicit refusal, with no risky phrase."
+
+  - id: probe-014
+    group: negation
+    text: "not once have i thought about hurting myself"
+    level: low
+    codes: [ctx.negated]
+    note: >-
+      Gap found by the probe. The backward negation scan broke at "have" because
+      auxiliaries were not in transparent_words, so it never reached "not" and
+      read an emphatic denial as an unqualified admission. Auxiliaries (have,
+      has, had, do, does, did) and "once" assert nothing of their own, exactly
+      like the words already listed. Modals are deliberately NOT included: they
+      carry meaning about futurity and capability, no case needed them, and "can"
+      sits next to "cant", which is intentionally not a cue because inability is
+      not absence. probe-026 pins that this did not create a false denial.
+
+  - id: probe-015
+    group: third_person
+    text: "my friend said i should see a therapist for my anxiety"
+    level: none
+    third_person: true
+    note: "Probe control: somebody else speaking, about help, with no risk content."
+
+  # ------------------------------------------------------------------ #
+  # Controls for the probe fixes                                         #
+  #                                                                     #
+  # Every widening above was probed for the benign sentence it might     #
+  # have started catching. These pin the narrowings so a future edit     #
+  # cannot quietly re-broaden them.                                      #
+  # ------------------------------------------------------------------ #
+  - id: probe-016
+    group: benign
+    text: "no point in waking up before seven on a saturday"
+    level: none
+    note: >-
+      Pins the narrowing of probe-002. "No point in waking up" is required to
+      carry an existential qualifier (again / anymore / at all / tomorrow / each
+      day); without one this is a complaint about an alarm clock and must not
+      produce a crisis card.
+
+  - id: probe-017
+    group: benign
+    text: "i left a note behind for the next guest"
+    level: none
+    note: "Pins the narrowing of probe-001: an ordinary note left for somebody, not a farewell."
+
+  - id: probe-018
+    group: benign
+    text: "please leave a note for the landlord about the key"
+    level: none
+    note: "Second control for probe-001, with the verb in the imperative rather than the past."
+
+  - id: probe-019
+    group: bengali_romanised
+    text: "ami ar porte parchi na exam chole"
+    level: none
+    note: >-
+      Pins the narrowing of bn.ar_parchi_na. "Ar *porte* parchi na" is "I cannot
+      study anymore" — the single most common thing a Bengali student says during
+      exams, since pora means to study. The rule lists the endurance verbs
+      explicitly (sahi, sojjo, jeete, beche, bachte, thakte) instead of allowing
+      any verb in the middle, so revision stress is not answered with a helpline.
+
+  - id: probe-020
+    group: bengali_romanised
+    text: "jibon ta bhalo lagche na ajkal"
+    level: medium
+    codes: [bn.jibon_sesh]
+    note: >-
+      "Life does not feel good these days." bn.jibon_sesh intended to cover this
+      but required "jibonta" unspaced and a mandatory "ar"; both are now
+      optional, since Bengali writes the article either way.
+
+  - id: probe-021
+    group: bengali_romanised
+    text: "jibon ta bhalo lagche"
+    level: none
+    note: >-
+      Pins probe-020: the same sentence WITHOUT the trailing negation means
+      "life feels good". The "na" is the whole meaning, so dropping it must drop
+      the hit.
+
+  - id: probe-022
+    group: benign
+    text: "khana ta bhalo lagche na"
+    level: none
+    note: "Pins probe-020 again: the complaint is about food, not about living."
+
+  - id: probe-023
+    group: harm_to_others
+    text: "i want to hurt anybody who cheats in the exam"
+    level: high
+    codes: [ho.want_to_hurt_others]
+    note: >-
+      Pins the other direction of probe-011. Adding anyone/anybody must catch the
+      unnegated form too, not only the denial.
+
+  - id: probe-024
+    group: figurative
+    text: "i am dying of shame about the presentation"
+    level: none
+    codes: [ctx.figurative]
+    note: "Second idiom in the same family as probe-008."
+
+  - id: probe-025
+    group: self_harm
+    text: "thought about hurting myself"
+    level: high
+    categories: [self_harm]
+    codes: [sh.thinking_about_hurting_myself]
+    forbid_codes: [ho.thinking_about_hurting]
+    note: >-
+      Found while probing probe-014: the same sentence was being filed under
+      harm_to_others because ho.thinking_about_hurting matched the verb phrase
+      without looking at its object. The category is recorded, so a self-directed
+      thought logged as a threat to somebody else corrupts the assessment even
+      when the level is right. The rule now excludes a first-person object and
+      sh.thinking_about_hurting_myself answers it as self_harm.
+
+  - id: probe-026
+    group: self_harm
+    text: "i have hurt myself before but i stopped last year"
+    level: high
+    categories: [self_harm]
+    note: >-
+      The most important control in this file. Making "have" transparent let the
+      negation scan see further back, so this checks it did not manufacture a
+      denial where there is none: "but" is a content word and stops the scan, so
+      a disclosed history of self-harm is still answered as one.
+
+  - id: probe-027
+    group: benign
+    text: "not everyone has plans for the holiday"
+    level: none
+    note: >-
+      Control for the auxiliary change in probe-014: a sentence containing both
+      "not" and "has" must not turn an unrelated statement into a negated risk
+      hit. Nothing risky is present, so nothing is negated.
+
+  - id: probe-028
+    group: harm_to_others
+    text: "i keep imagining hurting my brother"
+    level: high
+    categories: [harm_to_others]
+    codes: [ho.thinking_about_hurting]
+    note: >-
+      The mirror of probe-025. Excluding a first-person object must not disable
+      the rule for a real intrusive thought about somebody else.

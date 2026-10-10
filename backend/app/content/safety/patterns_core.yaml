@@ -262,8 +262,12 @@ rules:
     category: intent_plan
     level: high
     kind: regex
-    value: "\\b(?:suicide\\s+note|goodbye\\s+(?:note|letter)|wrote\\s+(?:a|my)\\s+(?:note|letter)|final\\s+(?:note|letter|message|will))\\b"
+    value: "\\b(?:suicide\\s+note|goodbye\\s+(?:note|letter)|wrote\\s+(?:a|my)\\s+(?:note|letter)|final\\s+(?:note|letter|message|will)|(?:note|letter|message|will)\\s+to\\s+(?:leave|be\\s+left)\\s+behind|leave\\s+behind\\s+(?:a|my|the|one\\s+last)?\\s*(?:note|letter|message))\\b"
     negation_sensitive: false
+    note: >-
+      "the note to leave behind" is the same behaviour as "suicide note" without
+      naming it. Kept to the leave-behind idiom rather than any mention of
+      writing a note, so "a note to leave for the next guest" does not escalate.
   - id: ip.said_goodbyes
     category: intent_plan
     level: high
@@ -368,7 +372,7 @@ rules:
     category: harm_to_others
     level: high
     kind: regex
-    value: "\\b(?:want|wanna|need|urge)\\s+to\\s+(?:hurt|harm|attack|punish|get\\s+back\\s+at)\\s+(?:someone|somebody|people|others|him|her|them|everyone|my)\\b"
+    value: "\\b(?:want|wanna|need|urge)\\s+to\\s+(?:hurt|harm|attack|punish|get\\s+back\\s+at)\\s+(?:someone|somebody|anyone|anybody|people|others|him|her|them|everyone|my)\\b"
     negation_sensitive: true
   - id: ho.mass_violence
     category: harm_to_others
@@ -455,8 +459,15 @@ rules:
     category: severe_hopelessness
     level: high
     kind: regex
-    value: "\\b(?:no\\s+(?:reason|point)\\s+to\\s+(?:live|go\\s+on|be\\s+alive)|no\\s+(?:reason|point)\\s+in\\s+(?:staying\\s+alive|living|being\\s+alive|going\\s+on|carrying\\s+on)|(?:dont|do\\s+not|cant|cannot|could\\s+not)\\s+see\\s+(?:any\\s+)?(?:point|reason|purpose)\\s+in\\s+(?:staying\\s+alive|living|being\\s+alive|going\\s+on|carrying\\s+on)|nothing\\s+to\\s+live\\s+for|what\\s+is\\s+the\\s+point\\s+of\\s+(?:living|it\\s+all|my\\s+life)|why\\s+am\\s+i\\s+(?:alive|even\\s+here|bothering))\\b"
+    value: "\\b(?:no\\s+(?:reason|point)\\s+to\\s+(?:live|go\\s+on|be\\s+alive)|no\\s+(?:reason|point)\\s+in\\s+(?:staying\\s+alive|living|being\\s+alive|going\\s+on|carrying\\s+on|waking\\s+up\\s+(?:again|anymore|at\\s+all|tomorrow|each\\s+day|every\\s+day)|another\\s+day)|(?:dont|do\\s+not|cant|cannot|could\\s+not)\\s+see\\s+(?:any\\s+)?(?:point|reason|purpose)\\s+in\\s+(?:staying\\s+alive|living|being\\s+alive|going\\s+on|carrying\\s+on|waking\\s+up\\s+(?:again|anymore|at\\s+all|tomorrow))|nothing\\s+to\\s+live\\s+for|what\\s+is\\s+the\\s+point\\s+of\\s+(?:living|it\\s+all|my\\s+life)|why\\s+am\\s+i\\s+(?:alive|even\\s+here|bothering))\\b"
     negation_sensitive: false
+    note: >-
+      "no point in waking up" is the same thought as "no point in living",
+      phrased around the next morning rather than around life. Deliberately
+      requires an existential qualifier (again / anymore / at all / tomorrow /
+      each day): the bare phrase also covers "no point in waking up before
+      seven on a Saturday", which is a complaint about an alarm and must not
+      hand somebody a crisis card.
   - id: hope.i_am_a_burden
     category: severe_hopelessness
     level: high
@@ -654,11 +665,15 @@ rules:
     category: harm_to_others
     level: high
     kind: regex
-    value: "\\b(?<!you\\s)(?<!you)(?:thinking\\s+about|thought\\s+about|thoughts\\s+about|imagining|imagined|imagine|imagines|picture|picturing|fantasising|fantasizing|dreaming\\s+of|dream\\s+of)\\s+(?:hurting|harming|attacking|beating\\s+up|killing|ending)\\b"
+    value: "\\b(?<!you\\s)(?<!you)(?:thinking\\s+about|thought\\s+about|thoughts\\s+about|imagining|imagined|imagine|imagines|picture|picturing|fantasising|fantasizing|dreaming\\s+of|dream\\s+of)\\s+(?:hurting|harming|attacking|beating\\s+up|killing|ending)(?!\\s+(?:myself|me\\b))\\b"
     negation_sensitive: true
     note: >-
-      Intrusive thoughts about harming somebody else. High because the person may be 
+      Intrusive thoughts about harming somebody else. High because the person may be
       frightened of acting on them, and that fear is itself reason to respond.
+      The negative lookahead keeps "thought about hurting myself" out of this
+      rule: that is self_harm, and sh.thinking_about_hurting_myself answers it.
+      The category is recorded, so filing a self-directed thought under
+      harm_to_others corrupts the assessment even when the level is the same.
 
   - id: ho.take_someone_down
     category: harm_to_others
@@ -688,3 +703,16 @@ rules:
       Self-harm carried past the point of injury. Deliberately not folded into
       med.bleeding: a nose that bleeds in winter is not an emergency, and that
       rule answers with an ambulance.
+  - id: sh.thinking_about_hurting_myself
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:thinking\\s+about|thought\\s+about|thoughts\\s+about|imagining|imagined|imagine|imagines|picture|picturing|fantasising|fantasizing|dreaming\\s+of|dream\\s+of)\\s+(?:hurting|harming|cutting|burning|beating\\s+up|killing|ending)\\s+(?:myself|me\\b|my\\s+own\\s+body)\\b"
+    negation_sensitive: true
+    note: >-
+      The self-directed twin of ho.thinking_about_hurting, added because that
+      rule now excludes "myself": intrusive thoughts about hurting oneself are
+      self_harm, and the category is recorded. High for the same reason — the
+      person may be frightened of acting on the thought, and that fear is itself
+      reason to respond. Negation-sensitive, so "not once have i thought about
+      hurting myself" is a denial and earns a check-in rather than a crisis card.

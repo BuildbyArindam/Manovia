@@ -182,6 +182,26 @@ transparent_words:
   - e
   - khali
   - ar
+  # Auxiliaries and "once" assert nothing on their own, exactly like the entries
+  # above. Without them the backward scan stops at the auxiliary and never
+  # reaches the cue: in "not once have i thought about hurting myself" the word
+  # immediately before the hit is "have", so a scan that treats "have" as a
+  # content word breaks there and reads the sentence as an unqualified admission.
+  # Bounded by MAX_TRANSPARENT_SKIPS and by breaking at the first real content
+  # word, so this cannot let a distant "not" retract something it says nothing
+  # about: "i did not sleep well but i want to die" still breaks at "but".
+  #
+  # Deliberately NOT extended to modals (will/would/can/could/should/shall).
+  # They carry meaning about futurity and capability, they are not needed for
+  # any case, and "can" sits next to "cant", which is intentionally not a
+  # negation cue because inability is not absence ("i can't go on" is a crisis).
+  - have
+  - has
+  - had
+  - do
+  - does
+  - did
+  - once
 
 # A hit is treated as being about somebody else (or about fiction) when the
 # message contains one of these markers, or when the risky span sits inside
@@ -441,7 +461,7 @@ timeframe_markers:
 # suppressed when its clause matches one of these frames. Every frame below is a
 # sentence people say about *things*, not about themselves.
 benign_frames:
-  - "\\b(?:laughing|laugh|dying|dead)\\s+(?:to death|myself to death|of laughter|with laughter)\\b"
+  - "\\b(?:laughing|laugh|dying|dead)\\s+(?:to death|myself to death|of laughter|with laughter|of\\s+(?:embarrassment|shame|curiosity|boredom|cringe|excitement|jealousy))\\b"
   - "\\b(?:bored|scared|starving|freezing|exhausted|sick|tired)\\s+to\\s+death\\b"
   - "\\b(?:dying|dead)\\s+(?:to|for)\\s+(?:know|see|try|get|have|be|go|meet|hear)\\b"
   - "\\b(?:dead|deceased)\\s+(?:tired|exhausted|asleep|serious|air|end|battery|phone|line|zone|quiet|last|ahead|gone|simple)\\b"
