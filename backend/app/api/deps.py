@@ -26,6 +26,8 @@ from app.db.repos import ConsentRepository, UserRepository
 from app.db.session import Database
 from app.models.enums import ConsentKind
 from app.models.user import User
+from app.services.safety.escalation import Escalator, build_escalator
+from app.services.safety.rules import RuleEngine, build_engine
 
 
 def get_database(request: Request) -> Database:
@@ -63,10 +65,26 @@ def get_helplines() -> HelplineContent:
     return load_helplines()
 
 
+def get_rule_engine() -> RuleEngine:
+    """The process-wide safety rules engine (AGENTS.md safety rule 1).
+
+    Built once per process from the shipped pattern YAML and shared: it is
+    stateless, so every request sees the same rules and the same answers.
+    """
+    return build_engine()
+
+
+def get_escalator() -> Escalator:
+    """The level-to-policy mapper and the pre-written crisis messages."""
+    return build_escalator()
+
+
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 ConsentDocumentsDep = Annotated[ConsentDocuments, Depends(get_consent_documents)]
 HelplinesDep = Annotated[HelplineContent, Depends(get_helplines)]
+RuleEngineDep = Annotated[RuleEngine, Depends(get_rule_engine)]
+EscalatorDep = Annotated[Escalator, Depends(get_escalator)]
 LockoutDep = Annotated[LoginLockout, Depends(get_login_lockout)]
 
 

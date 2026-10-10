@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "locale": "en",
+  "display_name": "English",
+  "placeholder_whitelist": ["emergency_number"],
+  "templates": {
+    "crisis.high": {
+      "title": "What you're feeling is real, and you don't have to face it alone",
+      "body": [
+        "Thank you for telling me. Putting this into words takes courage, and I'm glad you did.",
+        "I'm a self-help companion, not a person, and I'm not the right support for what you're carrying right now. There are people whose whole job is to stay with you through this.",
+        "Please reach out to one of the helplines below. They'll listen without judging you, and you don't need to have the right words ready."
+      ],
+      "helpline_intro": "Free, confidential support — call or text:",
+      "emergency_instruction": "If you are in immediate danger, or you have hurt yourself and need medical help, call {emergency_number} now.",
+      "trusted_person": "If you can, tell one person you trust where you are, and ask them to stay with you.",
+      "safety_steps": [
+        "Move away from anything you could use to hurt yourself, or ask someone you trust to hold it for now.",
+        "Stay where other people are, if that feels safe to you.",
+        "Take the next minute only — you don't have to solve tonight.",
+        "Keep this screen open while you call or text."
+      ],
+      "closing": "You matter, and the way this feels can change. Please let someone help you get through tonight.",
+      "disclaimer": "Manovia is a self-help companion. It is not therapy, it cannot diagnose, and it is not a crisis service."
+    },
+    "crisis.imminent": {
+      "title": "Please get help right now — you don't have to do this alone",
+      "body": [
+        "I'm really glad you told me. What you've described needs a person, not an app, and it needs one now.",
+        "Please call {emergency_number}, or go to the nearest emergency department. If you can't make the call yourself, ask someone near you to make it for you.",
+        "A helpline below can stay with you while you wait."
+      ],
+      "helpline_intro": "Free, confidential support — call or text:",
+      "emergency_instruction": "Call {emergency_number} now. Tell them you are having thoughts of ending your life, or that someone has been hurt — they'll know what to do next.",
+      "trusted_person": "If you can, tell one person you trust where you are, and ask them to stay with you.",
+      "safety_steps": [
+        "Put distance between yourself and anything you could use to hurt yourself. Hand it to someone, or leave the room.",
+        "Don't be alone if you can help it — go to another person, or ask them to come to you.",
+        "If you have taken anything or hurt yourself, call {emergency_number} first. Don't wait to see how you feel.",
+        "Keep this screen open and use one of the numbers below.",
+        "Just get through the next few minutes. You don't have to decide anything else tonight."
+      ],
+      "closing": "Please reach out now. You are worth staying for, even if it doesn't feel that way this minute.",
+      "disclaimer": "Manovia is a self-help companion. It is not therapy, it cannot diagnose, and it is not a crisis service."
+    },
+    "crisis.about_someone_else": {
+      "title": "You're doing the right thing by taking this seriously",
+      "body": [
+        "Thank you for telling me about them. Someone who says this needs a person, and reaching out is a good first step.",
+        "I can't assess somebody who isn't here, and this isn't yours to carry alone. Please involve a person who can be with them.",
+        "The helplines below can advise you on what to do next, and they'll talk to you as well as to them."
+      ],
+      "helpline_intro": "Free, confidential support — for you, or for them:",
+      "emergency_instruction": "If they have taken anything, have hurt themselves, or are not responding, call {emergency_number} now. Stay with them, or make sure someone else does.",
+      "trusted_person": "Tell someone else you both know, so that you are not the only person holding this.",
+      "safety_steps": [
+        "Stay with them, or make sure somebody else is. If they have a plan, don't leave them alone.",
+        "Ask them directly whether they are thinking about ending their life. Asking doesn't plant the idea — it lets them say it out loud.",
+        "If they're willing, ask them to move away from anything they could use to hurt themselves, or offer to hold it for them.",
+        "Help them make the call. Offer to dial, or to sit with them while they do.",
+        "If they refuse help and you believe they are in danger, call {emergency_number} anyway."
+      ],
+      "closing": "Looking after yourself matters too. If this is weighing on you, the same helplines will listen to you.",
+      "disclaimer": "Manovia is a self-help companion. It is not therapy, it cannot diagnose, and it is not a crisis service."
+    },
+    "check_in.medium": {
+      "title": "That sounds heavy",
+      "body": [
+        "Thank you for saying it out loud.",
+        "We can keep talking. If hearing a person's voice would help, the helplines below are free and confidential — you don't need to be in crisis to use them."
+      ],
+      "helpline_intro": "Free, confidential support — call or text:",
+      "closing": "I'm here, and we can take this one step at a time.",
+      "disclaimer": "Manovia is a self-help companion. It is not therapy, it cannot diagnose, and it is not a crisis service."
+    },
+    "check_in.low": {
+      "title": "That sounds hard",
+      "body": [
+        "Thank you for telling me. I'm here, and you can say as much or as little as you like.",
+        "Would you tell me a little more about what today has been like?"
+      ],
+      "closing": "There's no rush — I'm listening.",
+      "disclaimer": "Manovia is a self-help companion. It is not therapy, it cannot diagnose, and it is not a crisis service."
+    }
+  }
+}

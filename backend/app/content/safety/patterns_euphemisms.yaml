@@ -1,0 +1,362 @@
+# Euphemisms, indirect phrasing and typing tricks (Day 8).
+#
+# People rarely write "I am going to commit suicide". They write around it: they
+# use a softer word, they fuse the phrase together so it does not look like what
+# it is, they swap letters, or they type it with spaces so the search bar (and a
+# keyword list) does not catch it. This file is that vocabulary.
+#
+# Entries here follow exactly the same schema as patterns_core.yaml. Two extra
+# conventions:
+#   * `spelling: fused`      -> the phrase is written without spaces; it is also
+#                               matched by the whitespace-stripped normalisation
+#                               variant, but is listed here so a reviewer can see it.
+#   * `spelling: obfuscated` -> leetspeak, spacing tricks or misspellings. The
+#                               engine reaches these through normalisation variants;
+#                               the entry exists so the *intended* phrase is on record.
+#
+# Nothing in this file is shown to a user, and nothing here describes a method.
+version: 1
+
+rules:
+  # ---------------------------------------------------------------- #
+  # Softer words for ending one's life                                #
+  # ---------------------------------------------------------------- #
+  - id: eu.end_it_all
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:(?:end|ended|ending|ends)\\s+(?:it\\s+all|everything|this\\s+life|my\\s+life|it\\s+short)|stop\\s+(?:it\\s+all|everything|this\\s+life|my\\s+suffering|the\\s+pain)|finish\\s+(?:it\\s+all|this\\s+life|my\\s+suffering|the\\s+pain)|cut\\s+(?:my|his|her|their|a)\\s+life\\s+short|cutting\\s+(?:my|his|her|their)\\s+life\\s+short)\\b"
+    negation_sensitive: true
+  - id: eu.off_myself
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:off|do|top|waste)\\s+(?:myself|my\\s+self)\\b"
+    negation_sensitive: true
+  - id: eu.easy_way_out
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:the\\s+)?(?:easy|quick|only|final|permanent)\\s+way\\s+out\\b"
+    negation_sensitive: false
+  - id: eu.make_it_stop
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:make|want|need)\\s+(?:it|this|the\\s+pain|everything|the\\s+noise|the\\s+hurting)\\s+(?:to\\s+)?(?:stop|end|go\\s+away)\\b"
+    negation_sensitive: false
+    note: "Not negation_sensitive: 'I don't want the pain to stop' is rare, 'I want it to stop' is the common indirect way of saying this."
+  - id: eu.pain_to_stop
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:want|need|wish)\\s+(?:the\\s+)?(?:pain|hurt|hurting|suffering|agon[y]|noise)\\s+to\\s+(?:stop|end|go\\s+away)\\b"
+    negation_sensitive: false
+  - id: eu.not_wake_up
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:go\\s+to\\s+sleep|sleep|fall\\s+asleep)\\s+(?:and\\s+)?(?:not|never|dont|do\\s+not)\\s+(?:wake\\s+up|come\\s+back|get\\s+up)\\b|\\b(?:not|never)\\s+wake\\s+up\\b"
+    negation_sensitive: false
+  - id: eu.sleep_forever
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:sleep|rest|nap)\\s+(?:forever|for\\s+good|eternally)\\b"
+    negation_sensitive: false
+  - id: eu.leave_this_world
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:leave|left|leaving|exit|quit)\\s+(?:this\\s+world|the\\s+world|this\\s+life|this\\s+plane|earth)\\b"
+    negation_sensitive: true
+  - id: eu.not_exist_anymore
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:not|never)\\s+(?:exist|be\\s+around|be\\s+here|be\\s+alive)\\s+(?:anymore|any\\s+more|again)\\b"
+    negation_sensitive: false
+  - id: eu.erase_myself
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:erase|delete|remove|unmake|undo)\\s+(?:myself|me|my\\s+existence)\\b"
+    negation_sensitive: true
+  - id: eu.disappear_forever
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:disappear|vanish|go\\s+away|walk\\s+away|run\\s+away)\\s+(?:forever|for\\s+good|and\\s+never\\s+come\\s+back)\\b"
+    negation_sensitive: true
+  - id: eu.wont_have_to_worry
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:you|they|everyone|everybody|my\\s+family)\\s+(?:wont|will\\s+not|wouldnt|would\\s+not)\\s+(?:have\\s+to\\s+)?(?:worry\\s+about|deal\\s+with|put\\s+up\\s+with)\\s+me\\b"
+    negation_sensitive: false
+  - id: eu.better_without_me
+    category: severe_hopelessness
+    level: high
+    kind: regex
+    value: "\\b(?:things|life|everything|it\\s+all|the\\s+world)\\s+(?:would\\s+be|will\\s+be|are|is)\\s+(?:better|calmer|easier|quieter|happier)\\s+without\\s+me\\b"
+    negation_sensitive: false
+  - id: eu.join_someone_dead
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bjoin\\s+(?:my|the|him|her|them|mom|mum|dad|father|brother|sister|friend)?\\s*(?:late|dead|deceased)?\\s*(?:mom|mum|mother|dad|father|brother|sister|friend|grandma|grandpa|him|her|them)\\b"
+    negation_sensitive: true
+    note: "Weaker than it looks — 'join my brother' can be innocent — so it is the surrounding words ('late', 'dead') that make it count."
+  - id: eu.settle_my_affairs
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:settle|settling|sort(?:ing)?\\s+out|tie\\s+up|arrange|arranging)\\s+(?:my|all|the)\\s+(?:affairs|accounts|debts|papers|documents|things|belongings|finances)\\b"
+    negation_sensitive: true
+  - id: eu.deleting_my_accounts
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:deleting|deleted|closing|closed|deactivating)\\s+(?:all\\s+)?(?:my|the)\\s+(?:accounts|social\\s+media|profiles|instagram|facebook|whatsapp|numbers?)\\b"
+    negation_sensitive: true
+  - id: eu.last_time_seeing
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:last|final)\\s+(?:time|message|post|text|call|chat|words|entry)\\b"
+    negation_sensitive: true
+  - id: eu.thank_you_for_everything
+    category: intent_plan
+    level: low
+    kind: regex
+    value: "\\b(?:thank\\s+you\\s+for\\s+everything|thanks\\s+for\\s+everything|it\\s+has\\s+been\\s+an\\s+honour|it\\s+has\\s+been\\s+real|take\\s+care\\s+of\\s+(?:each\\s+other|yourself|my))\\b"
+    negation_sensitive: false
+    note: "Low on its own: farewell language is common and often innocent. It lifts a message that already carries something heavier."
+  - id: eu.sorry_for_everything
+    category: intent_plan
+    level: low
+    kind: regex
+    value: "\\b(?:sorry\\s+for\\s+everything|im\\s+sorry\\s+(?:for|about)\\s+(?:all|everything|this)|forgive\\s+me\\s+for\\s+(?:this|everything))\\b"
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Indirect self-harm and means language                             #
+  # ---------------------------------------------------------------- #
+  - id: eu.hurt_myself_indirect
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:do\\s+(?:something|anything)\\s+to\\s+myself|make\\s+(?:myself|me)\\s+(?:bleed|feel\\s+something|stop)|punish\\s+(?:my\\s+)?body|make\\s+the\\s+pain\\s+(?:real|physical|visible)|feel\\s+something\\s+physical)\\b"
+    negation_sensitive: true
+  - id: eu.urge_to_harm
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:urge|craving|pull|itch|voice)\\s+(?:to|telling\\s+me\\s+to)\\s+(?:hurt|harm|cut|burn|damage|end)\\b"
+    negation_sensitive: true
+  - id: eu.stockpile_generic
+    category: access_to_means
+    level: medium
+    kind: regex
+    value: "\\b(?:stockpile|stockpiling|saving\\s+up|building\\s+up\\s+(?:a\\s+)?supply|got\\s+(?:everything|it\\s+all)\\s+(?:i\\s+need|ready|sorted)|(?:have|has|had)\\s+(?:everything|it\\s+all)\\s+(?:ready|sorted|i\\s+need)|everything\\s+is\\s+(?:ready|sorted|in\\s+place)|all\\s+set\\s+up|the\\s+supplies?\\s+are)\\b"
+    negation_sensitive: true
+    note: "Deliberately vague: means are detected as a *readiness* signal, never by naming a technique."
+
+  # ---------------------------------------------------------------- #
+  # Fused and obfuscated spellings                                    #
+  # ---------------------------------------------------------------- #
+  - id: eu.fused_killmyself
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: killmyself
+    spelling: fused
+    negation_sensitive: true
+  - id: eu.fused_endmylife
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: endmylife
+    spelling: fused
+    negation_sensitive: true
+  - id: eu.fused_wanttodie
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: wanttodie
+    spelling: fused
+    negation_sensitive: true
+  - id: eu.fused_selfharm
+    category: self_harm
+    level: high
+    kind: phrase
+    value: selfharm
+    spelling: fused
+    negation_sensitive: false
+  - id: eu.fused_suicidal
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:suicidalthoughts|suicidalideation|suicidemission|feelingsuicidal|being\\s*suicidal)\\b"
+    spelling: fused
+    negation_sensitive: false
+  - id: eu.leet_kill
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:k1ll|k!ll|k1lll)\\s+(?:myself|me|my\\s*self)\\b"
+    spelling: obfuscated
+    negation_sensitive: true
+    note: "Reachable through the leet variant too; kept here so the obfuscated form is documented."
+  - id: eu.leet_die
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:d1e|die|dying|dy1ng)\\s+(?:today|tonight|tomorrow|soon|for\\s+real|permanently)\\b"
+    spelling: obfuscated
+    negation_sensitive: true
+  - id: eu.spaced_want_to_die
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bw\\s?a?\\s?n\\s?t\\s+?t\\s?o\\s+?d\\s?i\\s?e\\b"
+    spelling: obfuscated
+    negation_sensitive: true
+    note: "The 'w a n t  t o  d i e' trick: matched on the plain variant, so it does not depend on the whitespace-stripped one."
+  - id: eu.spaced_kill_myself
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bk\\s?i\\s?l\\s?l\\s+?m\\s?y\\s?s\\s?e\\s?l\\s?f\\b"
+    spelling: obfuscated
+    negation_sensitive: true
+  - id: eu.repeated_letters_die
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bd+ie+\\b"
+    spelling: obfuscated
+    negation_sensitive: true
+    figurative_prone: true
+    note: "Catches 'diiiie' and 'dieeee' after normalisation collapses letter runs; figurative_prone keeps 'this homework is diiiie' honest."
+  - id: eu.repeated_letters_kill
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bk+il+l+\\s+(?:myself|me)\\b"
+    spelling: obfuscated
+    negation_sensitive: true
+  - id: eu.misspelled_suicide
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:sucide|suiside|suicede|syicide|sucidal|suisidal|suicidl|suiced)\\b"
+    spelling: obfuscated
+    negation_sensitive: false
+  - id: eu.misspelled_self_harm
+    category: self_harm
+    level: high
+    kind: regex
+    value: "\\b(?:selfharming|selfharmers|selfharmed|selfinjuring|selfinjury)\\b"
+    spelling: obfuscated
+    negation_sensitive: false
+  - id: eu.misspelled_hopeless
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:hopless|hopeles|hoplessness|hopelessnesss|despairing|despaire)\\b"
+    spelling: obfuscated
+    negation_sensitive: false
+
+  # ---------------------------------------------------------------- #
+  # Everyday exaggeration that must NOT be read as risk               #
+  # ---------------------------------------------------------------- #
+  # These are low-level, figurative_prone entries. They exist so the engine has
+  # something to match (and then suppress, on positive benign evidence) rather
+  # than guessing. If a benign frame or an inanimate subject from
+  # patterns_context.yaml is present, they are dropped from the assessment.
+  - id: fg.this_is_killing_me
+    category: suicidal_ideation
+    level: low
+    kind: regex
+    value: "\\b(?:is|are|was|were|will\\s+be|keeps|keep|has\\s+been|have\\s+been)\\s+(?:literally\\s+|actually\\s+|basically\\s+|honestly\\s+|absolutely\\s+|totally\\s+|completely\\s+|nearly\\s+|almost\\s+|fricking\\s+|freaking\\s+)?(?:killing|murdering|destroying|ruining|ending)\\s+(?:me|us)\\b"
+    negation_sensitive: false
+    figurative_prone: true
+    figurative_subject: true
+  - id: fg.im_dead
+    category: suicidal_ideation
+    level: low
+    kind: regex
+    value: "\\b(?:im|i\\s+am|ima)\\s+(?:so\\s+)?(?:dead|dead\\s+dead|deceased|done\\s+for)\\b"
+    negation_sensitive: false
+    figurative_prone: true
+    note: "Slang for exhausted or for something being very funny. Low and suppressible."
+  - id: fg.i_could_die
+    category: suicidal_ideation
+    level: low
+    kind: regex
+    value: "\\b(?:i\\s+could|i\\s+can|i\\s+might|i\\s+would|we\\s+could)\\s+(?:just\\s+)?(?:die|faint|cry|scream|explode)\\b"
+    negation_sensitive: false
+    figurative_prone: true
+  - id: fg.kill_me_now
+    category: suicidal_ideation
+    level: low
+    kind: regex
+    value: "\\b(?:kill|end|shoot|finish)\\s+me\\s+(?:now|already|please\\s+now)\\b"
+    negation_sensitive: true
+    figurative_prone: true
+    note: "Very often a joke about a bad meeting. Still kept, because the same words from someone in crisis mean the opposite."
+  # ---------------------------------------------------------------- #
+  # Day 8 case-table gaps: indirect phrasings that carry intent
+  # without naming it.
+  # ---------------------------------------------------------------- #
+  - id: eu.do_something_stupid
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:do|doing)\\s+(?:something|anything)\\s+(?:stupid|reckless|drastic)\\b"
+    negation_sensitive: true
+    note: >-
+      A common indirect way of naming an intent. The negation is left outside the match 
+      on purpose: in 'i will not do anything stupid' the cue precedes the verb, and 
+      swallowing it into the pattern would hide it from the backward scan.
+
+  - id: eu.check_out_for_good
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:check|checking|checked)\\s+out\\s+(?:for\\s+good|early|permanently|forever|of\\s+here\\s+for\\s+good)\\b"
+    negation_sensitive: true
+    note: >-
+      'Checking out' with a permanence marker. Without the marker the same words mean 
+      losing focus in a meeting, so the marker is what makes it a signal.
+
+  - id: eu.free_of_all_this
+    category: severe_hopelessness
+    level: medium
+    kind: regex
+    value: "\\b(?:free|rid)\\s+of\\s+(?:all\\s+)?(?:this|it\\s+all|everything|the\\s+pain|my\\s+pain|all\\s+of\\s+this|this\\s+life)\\b"
+    negation_sensitive: true
+    note: >-
+      Medium: wanting relief is ordinary. It becomes high when it arrives with ideation 
+      or a plan, which the engine's max-level rule handles.
+
+  - id: eu.already_gone
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:i\\s+am|im|i)\\s+(?:already|as\\s+good\\s+as)\\s+gone\\b"
+    negation_sensitive: true
+    note: >-
+      Depersonalisation and a sense of being already absent. Requires a first-person 
+      subject so that 'the pain is already gone' does not escalate.
+
+  - id: eu.none_of_my_problem
+    category: suicidal_ideation
+    level: medium
+    kind: regex
+    value: "\\b(?:(?:soon\\s+)?(?:none|nothing)\\s+of\\s+this\\s+will\\s+be\\s+my\\s+problem|none\\s+of\\s+this\\s+will\\s+matter\\s+soon)\\b"
+    negation_sensitive: true
+    note: >-
+      A future in which the speaker is absent, phrased as relief. Medium on its own; 
+      the timeframe marker raises it when a plan is present.
