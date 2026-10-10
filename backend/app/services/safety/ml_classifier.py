@@ -72,6 +72,11 @@ def preprocess_text(text: str) -> str:
     return unicodedata.normalize("NFC", text)[:MAX_CLASSIFIER_CHARS].casefold()
 
 
+def preprocess_batch(texts: Sequence[str]) -> list[str]:
+    """Vectorised form of :func:`preprocess_text` for pipeline steps."""
+    return [preprocess_text(item) for item in texts]
+
+
 @dataclass(frozen=True)
 class MLPrediction:
     """Calibrated probabilities per level for one message, plus the argmax.
@@ -138,10 +143,11 @@ class TfidfLogisticClassifier:
 
     def __init__(self, pipeline: object, classes: Sequence[str], version: str) -> None:
         self._pipeline = pipeline
-        #: Training-time class order. The artifact and this class must agree on
-        #: the label vocabulary, so refuse to serve if they do not.
-        if tuple(classes) != LEVEL_LABELS:
-            raise ValueError(f"artifact classes {tuple(classes)!r} do not match {LEVEL_LABELS!r}")
+        #: Training-time class order (sklearn's). ``predict_proba`` columns
+        #: follow this order, so the vocabulary must match — the order may not
+        #: (sklearn sorts it its own way and the artifact records that).
+        if set(classes) != set(LEVEL_LABELS):
+            raise ValueError(f"artifact classes {tuple(classes)!r} do not cover {LEVEL_LABELS!r}")
         self._classes = tuple(classes)
         self.version = version
 
@@ -149,8 +155,9 @@ class TfidfLogisticClassifier:
         """Return calibrated per-level probabilities for one message."""
         if not text or not text.strip():
             return None
-        prepared = [preprocess_text(text)]
-        probabilities = self._pipeline.predict_proba(prepared)[0]  # type: ignore[union-attr]
+        # The pipeline carries its own preprocessing step (preprocess_batch),
+        # so the raw text goes in and training/inference cannot drift apart.
+        probabilities = self._pipeline.predict_proba([text])[0]  # type: ignore[union-attr]
         mapping = {label: float(value) for label, value in zip(self._classes, probabilities)}
 
         # Tie-break toward the higher level: walk levels descending and keep
@@ -218,5 +225,6 @@ __all__ = [
     "SafetyClassifier",
     "TfidfLogisticClassifier",
     "build_ml_classifier",
+    "preprocess_batch",
     "preprocess_text",
 ]

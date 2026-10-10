@@ -3,33 +3,33 @@
   "built": "2026-10-10",
   "seed": 20261010,
   "labels": {
-    "NONE": 88,
-    "LOW": 46,
-    "MEDIUM": 58,
-    "HIGH": 77,
-    "IMMINENT": 63
+    "NONE": 189,
+    "LOW": 64,
+    "MEDIUM": 68,
+    "HIGH": 148,
+    "IMMINENT": 103
   },
   "languages": {
-    "en": 144,
-    "hi-Latn": 64,
-    "hi": 52,
-    "bn": 72
+    "en": 241,
+    "hi-Latn": 118,
+    "hi": 92,
+    "bn": 121
   },
-  "total": 332,
+  "total": 572,
   "splits": {
     "train": {
-      "count": 202,
-      "sha256": "b9ba0c9d36d174eb1a4c862a65f90ec9b6393f8831463fdc263a64e6807f8e11",
+      "count": 340,
+      "sha256": "905e56e67f6680fb41c1c6d7aac9810e60eb8e5b850f36d50a978303cf6a87e6",
       "frozen": false
     },
     "dev": {
-      "count": 65,
-      "sha256": "76cd1625891ffccc046417f615ab49363db670ab79b6d9b715bff61165f53a38",
+      "count": 116,
+      "sha256": "38dfd78820bdd11fd38b9695caba0abb523ccb40389257c4c6c910a0c00725b0",
       "frozen": false
     },
     "test": {
-      "count": 65,
-      "sha256": "7a4466dd09a6c5685a93ac5ac2e5276713d7b35561e9e4764ed0b3d310e5af5d",
+      "count": 116,
+      "sha256": "0845c77a48214818b7ffe945f892e120bac45eeb33818741cc56b4d1d3cc4362",
       "frozen": true
     }
   }

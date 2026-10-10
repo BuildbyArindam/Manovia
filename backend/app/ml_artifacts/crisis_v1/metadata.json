@@ -1,0 +1,38 @@
+{
+  "version": "v1",
+  "trained_at": "2026-10-10T08:50:05+00:00",
+  "algorithm": "tfidf(char_wb 2-4 + word 1-2) + multinomial logistic regression, calibrated (sigmoid, cv=3)",
+  "hyperparameters": {
+    "char_ngram_range": [
+      2,
+      4
+    ],
+    "word_ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 1,
+    "logistic_C": 1.0,
+    "logistic_max_iter": 5000,
+    "class_weight": null,
+    "calibration_method": "sigmoid",
+    "calibration_cv": 3
+  },
+  "train_split_sha256": "905e56e67f6680fb41c1c6d7aac9810e60eb8e5b850f36d50a978303cf6a87e6",
+  "dev_split_sha256": "38dfd78820bdd11fd38b9695caba0abb523ccb40389257c4c6c910a0c00725b0",
+  "train_cases": 340,
+  "train_label_counts": {
+    "none": 113,
+    "low": 38,
+    "medium": 40,
+    "high": 86,
+    "imminent": 63
+  },
+  "dev_metrics": {
+    "cases": 116,
+    "accuracy": 0.5431,
+    "macro_f1": 0.4594,
+    "high_plus_imminent_recall": 0.8039
+  },
+  "test_split_used": false
+}

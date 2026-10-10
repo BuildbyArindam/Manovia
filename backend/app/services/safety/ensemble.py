@@ -10,18 +10,32 @@ card — a probability is not something to put between a person in crisis and a
 helpline. The model's job is to catch what the rules missed: the indirect
 phrasings, the messages with none of the obvious words.
 
-Three outcomes, all visible in the returned :class:`EnsembleDecision`:
+Four outcomes, all visible in the returned :class:`EnsembleDecision`:
 
 * ``source == "rules"`` — the rules level stood. Either the model agreed, was
   less confident than ``min_confidence``, or wanted to lower (which it may
   not).
-* ``source == "ml"`` — the model was confident enough and asked for a higher
-  level. The assessment is raised to it.
-* ``source == "ensemble.uncertain"`` — the model was *not* confident, but its
-  HIGH+IMMINENT probability mass reached ``suspicion_floor`` while the rules
-  stayed below MEDIUM. The policy then treats the message as MEDIUM: respond
-  normally, append the soft check-in and resources — never a crisis card, and
-  never silence. Uncertainty resolves toward noticing, not toward dismissing.
+* ``source == "ml"`` with code ``ml.raised`` — the model's top class was
+  confident enough and asked for a higher level. The assessment is raised to
+  it.
+* ``source == "ml"`` with code ``ml.crisis_mass`` — the model was torn between
+  HIGH and IMMINENT (no single confident top class) but its combined crisis
+  probability reached ``crisis_mass_floor``. The assessment is raised to HIGH:
+  being sure it is a crisis but unsure which tier is still being sure it is a
+  crisis.
+* ``source == "ensemble.uncertain"`` — the model was *not* confident and the
+  crisis mass stayed under ``crisis_mass_floor``, but it still reached
+  ``suspicion_floor`` while the rules stayed below MEDIUM. The policy then
+  treats the message as MEDIUM: respond normally, append the soft check-in and
+  resources — never a crisis card, and never silence. Uncertainty resolves
+  toward noticing, not toward dismissing.
+
+One limit on the model's right to raise: a **pragmatics gate**. When the rules
+engine matched risky words and discounted them on positive evidence — a
+negation, or a plainly figurative frame — that discount is evidence, and a
+statistical raise over the same words would simply undo it. The model may not
+raise past the rules verdict in that case; the gentle uncertain check-in still
+applies.
 
 Privacy note, same as the rest of the package: this module takes assessments
 and numbers in and gives metadata out. It never sees the message text, and it
@@ -36,10 +50,11 @@ from typing import Final
 from app.services.safety.base import RiskAssessment, RiskLevel
 from app.services.safety.ml_classifier import MLPrediction, SafetyClassifier
 
-#: Rationale codes the ensemble adds. Both pass the pattern-id shape check in
+#: Rationale codes the ensemble adds. All pass the pattern-id shape check in
 #: ``base.RiskAssessment`` (dotted, lowercase, no prose) and name the *policy*
 #: that fired, never the words that triggered it.
 CODE_ML_RAISED: Final = "ml.raised"
+CODE_ML_CRISIS_MASS: Final = "ml.crisis_mass"
 CODE_ML_UNCERTAIN_CHECKIN: Final = "ml.uncertain.checkin"
 
 #: Source vocabulary for the decision. Maps onto ``SafetyEventSource`` at the
@@ -90,12 +105,24 @@ def combine(
     prediction: MLPrediction | None,
     *,
     min_confidence: float,
+    crisis_mass_floor: float,
     suspicion_floor: float,
 ) -> EnsembleDecision:
     """Apply the ensemble rule to one rules assessment and one ML prediction.
 
     ``prediction`` is ``None`` when the classifier is disabled or has no
     artifact; the decision is then the rules level unchanged.
+
+    The raise cascade, strongest evidence first:
+
+    1. **Confident top class** (``confidence >= min_confidence``): raise to the
+       model's level if it is higher than the rules level.
+    2. **Crisis mass** (``P(high)+P(imminent) >= crisis_mass_floor``): the model
+       is sure this is crisis-adjacent but torn between HIGH and IMMINENT, so
+       the top class alone undersells it. Raise to HIGH.
+    3. **Suspicion** (``high mass >= suspicion_floor`` while rules saw less
+       than MEDIUM): uncertain — treat as MEDIUM, gentle check-in, never a
+       crisis card on a hunch.
 
     The invariant ``decision.level >= assessment.level`` holds by construction
     — every branch either keeps the rules level or replaces it with a higher
@@ -118,33 +145,50 @@ def combine(
     confidence = prediction.confidence
     high_mass = prediction.mass_at_or_above(RiskLevel.HIGH)
 
+    # Pragmatics gate: when the rules engine matched risky words but discounted
+    # them on positive evidence — a negation ("I *don't* want to die") or a
+    # plainly figurative frame ("this deadline is killing me") — the discount
+    # is evidence, and a statistical raise over those same words would simply
+    # undo it. The model may not raise past the rules verdict in that case
+    # (the gentle uncertain check-in below still applies).
+    pragmatics_discounted = (
+        assessment.context.negated_hits > 0 or assessment.context.figurative_hits > 0
+    )
+
     # Case 1: the model is confident. It may raise, never lower.
-    if confidence >= min_confidence:
-        if ml_level > rules_level:
-            return EnsembleDecision(
-                level=ml_level,
-                source=SOURCE_ML,
-                ml_used=True,
-                ml_level=ml_level,
-                ml_confidence=confidence,
-                ml_high_mass=high_mass,
-                uncertain_checkin=False,
-                extra_codes=(CODE_ML_RAISED,),
-            )
+    if confidence >= min_confidence and ml_level > rules_level and not pragmatics_discounted:
         return EnsembleDecision(
-            level=rules_level,
-            source=SOURCE_RULES,
+            level=ml_level,
+            source=SOURCE_ML,
             ml_used=True,
             ml_level=ml_level,
             ml_confidence=confidence,
             ml_high_mass=high_mass,
             uncertain_checkin=False,
+            extra_codes=(CODE_ML_RAISED,),
         )
 
-    # Case 2: the model is not confident. If it still puts meaningful mass on
-    # HIGH+IMMINENT while the rules saw less than MEDIUM, play safe: treat as
-    # MEDIUM, gentle check-in. Never above MEDIUM on unconfident evidence — a
-    # crisis card on a hunch is its own harm.
+    # Case 2: confident it is a crisis, torn on which level. The combined
+    # HIGH+IMMINENT mass is the honest number here, and it raises to HIGH.
+    if (
+        high_mass >= crisis_mass_floor
+        and rules_level < RiskLevel.HIGH
+        and not pragmatics_discounted
+    ):
+        return EnsembleDecision(
+            level=RiskLevel.HIGH,
+            source=SOURCE_ML,
+            ml_used=True,
+            ml_level=ml_level,
+            ml_confidence=confidence,
+            ml_high_mass=high_mass,
+            uncertain_checkin=False,
+            extra_codes=(CODE_ML_CRISIS_MASS,),
+        )
+
+    # Case 3: not confident, but the crisis mass is too large to shrug off
+    # while the rules stayed below MEDIUM. Treat as MEDIUM: respond normally,
+    # append the soft check-in and resources.
     if high_mass >= suspicion_floor and rules_level < UNCERTAIN_LEVEL:
         return EnsembleDecision(
             level=UNCERTAIN_LEVEL,
@@ -157,7 +201,7 @@ def combine(
             extra_codes=(CODE_ML_UNCERTAIN_CHECKIN,),
         )
 
-    # Case 3: nothing to change.
+    # Case 4: nothing to change.
     return EnsembleDecision(
         level=rules_level,
         source=SOURCE_RULES,
@@ -195,6 +239,7 @@ def decide(
     *,
     text: str,
     min_confidence: float,
+    crisis_mass_floor: float,
     suspicion_floor: float,
 ) -> EnsembleDecision:
     """One-call helper: score with the classifier (if enabled), then combine.
@@ -214,6 +259,7 @@ def decide(
         assessment,
         prediction,
         min_confidence=min_confidence,
+        crisis_mass_floor=crisis_mass_floor,
         suspicion_floor=suspicion_floor,
     )
 
