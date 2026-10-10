@@ -388,12 +388,12 @@ async def send_message(
         emotion=result.emotion,
         response_type=result.response_type,
         resources=[
-            r.model_dump() if hasattr(r, "model_dump") else dict(r) for r in result.resources
+            r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r) for r in result.resources
         ],
-        emergency=result.emergency.model_dump()
+        emergency=result.emergency.model_dump(mode="json")
         if result.emergency and hasattr(result.emergency, "model_dump")
         else (dict(result.emergency) if result.emergency else None),
-        crisis=result.crisis_message.model_dump()
+        crisis=result.crisis_message.model_dump(mode="json")
         if result.crisis_message and hasattr(result.crisis_message, "model_dump")
         else None,
         degraded=result.degraded,

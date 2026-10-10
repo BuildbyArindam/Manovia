@@ -802,7 +802,7 @@ class ChatOrchestrator:
                 "emotion": result.emotion,
                 "response_type": result.response_type,
                 "resources": [
-                    r.model_dump() if hasattr(r, "model_dump") else dict(r)
+                    r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r)
                     for r in result.resources
                 ],
                 "degraded": result.degraded,
@@ -918,7 +918,7 @@ class ChatOrchestrator:
             "emotion": emotion_result.primary if emotion_result else None,
             "response_type": response_type,
             "resources": [
-                r.model_dump() if hasattr(r, "model_dump") else dict(r) for r in plan.resources
+                r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r) for r in plan.resources
             ],
             "degraded": degraded,
             "provider": provider_name,

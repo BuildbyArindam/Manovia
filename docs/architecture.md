@@ -198,6 +198,9 @@ data: {"type": "final", "risk_level": "none", "emotion": "joy", "response_type":
 ```
 
 Final event carries `{risk_level, emotion, response_type, resources}` so UI can show CrisisCard.
+Resources contain `HttpUrl` fields — `model_dump(mode="json")` + `jsonable_encoder` before `json.dumps`
+is required, otherwise `TypeError: Object of type HttpUrl is not JSON serializable` truncates the stream
+after token events (fixed in Day 11 verification).
 
 ### Fallback
 
