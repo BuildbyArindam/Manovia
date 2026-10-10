@@ -35,6 +35,10 @@ dependencies = [
     # the shipped helpline file against its published contract at import time.
     "pyyaml>=6.0.1",
     "jsonschema>=4.21.0",
+    # Safety ML classifier (Day 9). The baseline model is TF-IDF + logistic
+    # regression, trained offline from evals/datasets and committed as an
+    # artifact under app/ml_artifacts/ — no network at load or predict time.
+    "scikit-learn>=1.4.0",
 ]
 
 [project.optional-dependencies]

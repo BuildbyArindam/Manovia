@@ -87,6 +87,23 @@ class Settings(BaseSettings):
     # it: a stalled companion is worse than a cruder reading.
     emotion_slow_ms: float = 1500.0
 
+    # --- Safety ML ensemble (Day 9) ---
+    # The ML classifier can only RAISE the level the rules engine found, never
+    # lower it (docs/safety-design.md §12). With the flag off the pipeline is
+    # rules-only, which is also how the test suite runs by default.
+    safety_ml_enabled: bool = True
+    # Minimum top-class calibrated probability for the ML level to be trusted
+    # enough to raise the assessment. Chosen on the dev split only
+    # (evals/tune_safety_thresholds.py); the test split was never touched.
+    safety_ml_min_confidence: float = 0.45
+    # Below that confidence, if the HIGH+IMMINENT probability mass reaches this
+    # floor, the ensemble plays safe: treat as MEDIUM, soft check-in policy.
+    safety_ml_suspicion_floor: float = 0.25
+    # Where the trained artifact lives. Empty means the shipped artifact under
+    # app/ml_artifacts/. A missing artifact degrades to rules-only, never to a
+    # startup failure.
+    safety_ml_artifact_dir: str = ""
+
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> "Settings":
         if self.app_env.strip().lower() != "production":
@@ -156,6 +173,15 @@ class Settings(BaseSettings):
             raise ValueError("emotion_cooldown_seconds must not be negative")
         if self.emotion_slow_ms <= 0:
             raise ValueError("emotion_slow_ms must be positive")
+        return self
+
+    @model_validator(mode="after")
+    def _check_safety_ml_settings(self) -> "Settings":
+        """The ensemble thresholds must be usable probabilities."""
+        if not 0.0 < self.safety_ml_min_confidence <= 1.0:
+            raise ValueError("safety_ml_min_confidence must be in (0, 1]")
+        if not 0.0 <= self.safety_ml_suspicion_floor <= 1.0:
+            raise ValueError("safety_ml_suspicion_floor must be in [0, 1]")
         return self
 
     @property
