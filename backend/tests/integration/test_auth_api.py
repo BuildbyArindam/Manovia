@@ -217,13 +217,16 @@ async def test_upgrade_preserves_everything_the_guest_created(
     user_id = uuid.UUID(guest["user"]["id"])
 
     # Guest data: consents, then a chat session through the gated endpoint.
-    for kind in ("ai_disclosure", "terms"):
+    # Day 11: persistent sessions require store_chat consent and store=True.
+    for kind in ("ai_disclosure", "terms", "store_chat"):
         await client.post(
             "/api/v1/consent",
             headers=headers,
             json={"grants": [{"kind": kind, "version": "2026-10-01", "granted": True}]},
         )
-    opened = await client.post("/api/v1/chat/sessions", headers=headers)
+    opened = await client.post(
+        "/api/v1/chat/sessions", headers=headers, json={"store": True}
+    )
     assert opened.status_code == 201
     session_id = uuid.UUID(opened.json()["id"])
 

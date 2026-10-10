@@ -32,7 +32,10 @@ from app.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
+from app.services.chat.ephemeral import build_ephemeral_store
+from app.services.llm import build_llm_chain
 from app.services.nlp import build_analyzer
+from app.services.nlp.redaction import Redactor
 
 API_TITLE = "Manovia API"
 API_VERSION = "0.1.0"
@@ -90,6 +93,23 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     # eagerly: a bad EMOTION_MODEL_ID must not stop the app from starting, it
     # must fall back to the lexicon analyzers on first use.
     app.state.emotion_analyzer = build_analyzer(app_settings)
+
+    # LLM chain (Day 10) — primary → ollama → canned, with redaction and guard.
+    # Built once per process so the circuit breaker and degraded counters are
+    # shared.
+    app.state.redactor = Redactor()
+    app.state.llm_chain = build_llm_chain(app_settings, redactor=app.state.redactor)
+
+    # Ephemeral chat sessions (Day 11) — in-memory TTL 30 min when store_chat
+    # consent is not granted.
+    app.state.ephemeral_store = build_ephemeral_store(
+        ttl_seconds=app_settings.chat_ephemeral_ttl_seconds
+    )
+
+    # Per-user chat rate limiter (Day 11) — 20/min by default.
+    app.state.rate_limit_chat = InMemoryRateLimiter(
+        app_settings.chat_rate_limit_per_minute
+    )
 
     # Middleware added last runs first (outermost), so the request ID wraps
     # every response, including error responses. Rate limiting sits just inside
