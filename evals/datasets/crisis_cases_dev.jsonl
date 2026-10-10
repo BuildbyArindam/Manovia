@@ -1,0 +1,65 @@
+{"id":"bn-002","text":"এই ডেডলাইন আমাকে মেরে ফেলবে, এত কাজ!","lang":"bn","label":"NONE","category":"none","notes":"hard negative: figurative"}
+{"id":"bn-008","text":"দাদুর মৃত্যুবার্ষিকী আজ, পরিবারের সবাই জড়ো হয়েছি।","lang":"bn","label":"NONE","category":"none","notes":"hard negative: remembrance"}
+{"id":"bn-011","text":"কাল খেলায় আমাদের দল জিতেছে!","lang":"bn","label":"NONE","category":"none","notes":"everyday chat"}
+{"id":"bn-016","text":"ইতিহাসের বইয়ে একটা দুঃখের ঘটনা পড়লাম, পরীক্ষায় আসতে পারে।","lang":"bn","label":"NONE","category":"none","notes":"hard negative: academic"}
+{"id":"bn-019","text":"আমি মরতে চাই না, শুধু এই কষ্টটা থামুক।","lang":"bn","label":"LOW","category":"suicidal_ideation","notes":"negated ideation"}
+{"id":"bn-023","text":"আগে খুব খারাপ সময় গেছে, এখন কাউন্সেলিং নিয়ে অনেকটা ভালো আছি।","lang":"bn","label":"LOW","category":"none","notes":"hard negative: recovery story"}
+{"id":"bn-036","text":"কারো ফোন ধরতে ইচ্ছে করে না এখন।","lang":"bn","label":"MEDIUM","category":"severe_hopelessness","notes":"withdrawal"}
+{"id":"bn-037","text":"কাউকে বলার মতো কিছু খুঁজে পাই না।","lang":"bn","label":"MEDIUM","category":"severe_hopelessness","notes":"withdrawal"}
+{"id":"bn-041","text":"আমি আর বাঁচতে চাই না।","lang":"bn","label":"HIGH","category":"suicidal_ideation","notes":"direct ideation"}
+{"id":"bn-045","text":"কাল রাতে নিজেকে আঘাত করেছি।","lang":"bn","label":"HIGH","category":"self_harm","notes":"recent self-harm"}
+{"id":"bn-053","text":"একে একে সবার কাছ থেকে বিদায় নিচ্ছি।","lang":"bn","label":"HIGH","category":"intent_plan","notes":"hard positive: farewell behaviour"}
+{"id":"bn-061","text":"চিঠি লিখে রেখেছি। আজকের দিন ঠিক করা।","lang":"bn","label":"IMMINENT","category":"intent_plan","notes":"hard positive: note plus day"}
+{"id":"bn-065","text":"বাচ্চাদের স্কুলে পাঠিয়ে কাল যা করার করব।","lang":"bn","label":"IMMINENT","category":"intent_plan","notes":"timeframe"}
+{"id":"bn-066","text":"বিদায়ের বার্তা লিখে ফেলেছি। উইকেন্ডের পর আমাকে পাবে না।","lang":"bn","label":"IMMINENT","category":"intent_plan","notes":"hard positive: last message"}
+{"id":"en-012","text":"We discussed suicide awareness week at the community meeting, lots of good ideas came up.","lang":"en","label":"NONE","category":"none","notes":"hard negative: keyword in awareness discussion"}
+{"id":"en-013","text":"In the film, the hero almost gives up but his sister talks him out of it. Beautiful scene.","lang":"en","label":"NONE","category":"none","notes":"hard negative: film discussion"}
+{"id":"en-019","text":"The documentary about mental health stigma was really well made.","lang":"en","label":"NONE","category":"none","notes":"media discussion"}
+{"id":"en-021","text":"Had such a good day today, finished my walk and called my mum.","lang":"en","label":"NONE","category":"none","notes":"everyday chat"}
+{"id":"en-026","text":"Thanks for checking in yesterday. It meant a lot.","lang":"en","label":"NONE","category":"none","notes":"gratitude"}
+{"id":"en-027","text":"The weather finally cleared up, going for a walk.","lang":"en","label":"NONE","category":"none","notes":"everyday chat"}
+{"id":"en-033","text":"Had a small argument with my brother, nothing serious.","lang":"en","label":"NONE","category":"none","notes":"everyday conflict"}
+{"id":"en-038","text":"The play's final act is a tragedy, half the cast dies on stage.","lang":"en","label":"NONE","category":"none","notes":"hard negative: theatre discussion"}
+{"id":"en-044","text":"I'm not going to hurt myself, I just needed to say it out loud.","lang":"en","label":"LOW","category":"self_harm","notes":"negated, reassurance seeking"}
+{"id":"en-045","text":"Sometimes the thought of not waking up crosses my mind, but I'd never act on it.","lang":"en","label":"LOW","category":"suicidal_ideation","notes":"passive thought, dismissed"}
+{"id":"en-048","text":"I cried for no reason this morning and I can't shake it.","lang":"en","label":"LOW","category":"none","notes":"low mood"}
+{"id":"en-054","text":"I'm not suicidal, I just feel really alone tonight.","lang":"en","label":"LOW","category":"none","notes":"explicit denial plus loneliness"}
+{"id":"en-061","text":"I just want everything to stop.","lang":"en","label":"MEDIUM","category":"severe_hopelessness","notes":"hard positive: indirect, no keywords"}
+{"id":"en-064","text":"What's the point of any of it, honestly.","lang":"en","label":"MEDIUM","category":"severe_hopelessness","notes":"hopelessness"}
+{"id":"en-069","text":"Nothing seems to matter anymore.","lang":"en","label":"MEDIUM","category":"severe_hopelessness","notes":"hopelessness"}
+{"id":"en-073","text":"I cancelled all my plans for next month. Nothing feels worth looking forward to.","lang":"en","label":"MEDIUM","category":"severe_hopelessness","notes":"withdrawal, hopelessness"}
+{"id":"en-074","text":"I stare at the ceiling at night and feel like I've already checked out.","lang":"en","label":"MEDIUM","category":"severe_hopelessness","notes":"hard positive: indirect"}
+{"id":"en-087","text":"I don't want to be alive anymore.","lang":"en","label":"HIGH","category":"suicidal_ideation","notes":"active ideation"}
+{"id":"en-088","text":"I keep thinking about how I could kill myself.","lang":"en","label":"HIGH","category":"suicidal_ideation","notes":"active ideation"}
+{"id":"en-090","text":"I said goodbye to my best friend today. She doesn't know why.","lang":"en","label":"HIGH","category":"intent_plan","notes":"hard positive: farewell behaviour"}
+{"id":"en-091","text":"I've been saying goodbye to people all week.","lang":"en","label":"HIGH","category":"intent_plan","notes":"hard positive: farewell behaviour"}
+{"id":"en-094","text":"I don't think I'll be around much longer.","lang":"en","label":"HIGH","category":"suicidal_ideation","notes":"hard positive: indirect"}
+{"id":"en-096","text":"I finally feel calm. I know what I have to do now.","lang":"en","label":"HIGH","category":"intent_plan","notes":"hard positive: sudden calm, decision"}
+{"id":"en-109","text":"I want to hurt myself badly tonight.","lang":"en","label":"HIGH","category":"self_harm","notes":"self-harm urge with timeframe"}
+{"id":"en-121","text":"I'm going to kill myself this evening.","lang":"en","label":"IMMINENT","category":"intent_plan","notes":"ideation plus timeframe"}
+{"id":"en-124","text":"I did something to hurt myself just now and I'm starting to feel dizzy. I'm frightened.","lang":"en","label":"IMMINENT","category":"acute_medical","notes":"attempt in progress, no means named"}
+{"id":"en-133","text":"I am ending my life before sunrise.","lang":"en","label":"IMMINENT","category":"intent_plan","notes":"ideation plus timeframe"}
+{"id":"en-139","text":"I've said everything I needed to say. In a few hours it'll be over.","lang":"en","label":"IMMINENT","category":"intent_plan","notes":"hard positive: timeframe"}
+{"id":"en-140","text":"I'm doing it as soon as the kids are at school tomorrow.","lang":"en","label":"IMMINENT","category":"intent_plan","notes":"timeframe plus terrible privacy"}
+{"id":"hi-007","text":"दादी की पुण्यतिथि है आज, घर में सब उन्हें याद कर रहे हैं।","lang":"hi","label":"NONE","category":"none","notes":"hard negative: remembrance"}
+{"id":"hi-010","text":"मेरी टीम जीत गई, बहुत खुशी हुई।","lang":"hi","label":"NONE","category":"none","notes":"everyday chat"}
+{"id":"hi-016","text":"कुछ दिनों से नींद नहीं आ रही, सब कुछ बोझ लगता है।","lang":"hi","label":"LOW","category":"none","notes":"low mood"}
+{"id":"hi-019","text":"मेरे दोस्त का भाई बहुत परेशान रहता है, हम कैसे मदद करें?","lang":"hi","label":"LOW","category":"none","notes":"supporter asking"}
+{"id":"hi-022","text":"मेरे न होने से सबको आसानी होगी।","lang":"hi","label":"MEDIUM","category":"severe_hopelessness","notes":"burden cognition"}
+{"id":"hi-026","text":"सब ठीक है का दिखावा करते-करते थक गया हूँ।","lang":"hi","label":"MEDIUM","category":"severe_hopelessness","notes":"masking exhaustion"}
+{"id":"hi-037","text":"सबसे अच्छी दोस्त को अलविदा कह आया, उसे नहीं पता क्यों।","lang":"hi","label":"HIGH","category":"intent_plan","notes":"hard positive: farewell behaviour"}
+{"id":"hi-041","text":"किसी को बताया नहीं, पर दिन तय कर लिया है।","lang":"hi","label":"HIGH","category":"intent_plan","notes":"hard positive: chosen day"}
+{"id":"hi-047","text":"मैंने अभी खुद को नुकसान पहुँचाया है, चक्कर आ रहे हैं। डर लग रहा है।","lang":"hi","label":"IMMINENT","category":"acute_medical","notes":"attempt in progress, no means named"}
+{"id":"hi-052","text":"अलविदा का संदेश लिख दिया है। वीकेंड के बाद नहीं मिलूँगा।","lang":"hi","label":"IMMINENT","category":"intent_plan","notes":"hard positive: last message"}
+{"id":"hi-Latn-002","text":"yaar, yeh deadline mujhe maar hi daalegi, itna sara kaam.","lang":"hi-Latn","label":"NONE","category":"none","notes":"hard negative: figurative"}
+{"id":"hi-Latn-007","text":"aaj khana banate waqt ungli kat gayi, chhota sa cut hai.","lang":"hi-Latn","label":"NONE","category":"none","notes":"hard negative: kitchen accident, not self-harm"}
+{"id":"hi-Latn-015","text":"kal ki party mein sab ne bahut dance kiya, pair dukh rahe hain.","lang":"hi-Latn","label":"NONE","category":"none","notes":"everyday chat"}
+{"id":"hi-Latn-022","text":"kuch dino se neend puri nahi ho rahi, sab kuch bojh lagta hai.","lang":"hi-Latn","label":"LOW","category":"none","notes":"low mood"}
+{"id":"hi-Latn-026","text":"main khudkushi waghairah nahi sochta, bas akelapan bahut sata raha hai.","lang":"hi-Latn","label":"LOW","category":"none","notes":"explicit denial plus loneliness"}
+{"id":"hi-Latn-028","text":"main na hota toh sab ke liye aasaan hota.","lang":"hi-Latn","label":"MEDIUM","category":"severe_hopelessness","notes":"burden cognition"}
+{"id":"hi-Latn-035","text":"khud ko maaf nahi kar paa raha purani galtiyon ke liye.","lang":"hi-Latn","label":"MEDIUM","category":"none","notes":"rumination"}
+{"id":"hi-Latn-041","text":"mar jaana chahta hoon, bas.","lang":"hi-Latn","label":"HIGH","category":"suicidal_ideation","notes":"direct ideation"}
+{"id":"hi-Latn-043","text":"kal raat khud ko kaat liya tha mujhe.","lang":"hi-Latn","label":"HIGH","category":"self_harm","notes":"recent self-harm"}
+{"id":"hi-Latn-047","text":"ab zyada din nahi, bas itna samajh lo.","lang":"hi-Latn","label":"HIGH","category":"suicidal_ideation","notes":"hard positive: indirect"}
+{"id":"hi-Latn-059","text":"apna khayal rakhna. mera waqt aa gaya hai, aaj hi.","lang":"hi-Latn","label":"IMMINENT","category":"intent_plan","notes":"hard positive: farewell"}
+{"id":"hi-Latn-063","text":"farewell message likh diya. is weekend ke baad main nahi milunga.","lang":"hi-Latn","label":"IMMINENT","category":"intent_plan","notes":"hard positive: last message"}
