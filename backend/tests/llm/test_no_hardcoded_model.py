@@ -64,8 +64,10 @@ SCANNED_SUFFIXES: frozenset[str] = frozenset(
 MODEL_ID_PATTERNS: tuple[tuple[str, str], ...] = (
     ("anthropic claude", r"claude[-_][a-z0-9.\-]*\d"),
     ("openai gpt", r"\bgpt[-_][0-9][0-9a-z.\-]*"),
+    # \b matters: "ollama" contains "llama", and the Ollama provider's own name
+    # must not trip the guard every time it appears in prose.
     ("meta llama", r"\bllama[-_]?[0-9][0-9a-z.:]*"),
-    ("mistral", r"\bmistral[-_][0-9a-z.\-]+"),
+    ("mistral", r"\bmistral[-_:]?[0-9a-z.\-]+"),
     ("google gemini", r"\bgemini[-_][0-9][0-9a-z.\-]*"),
     ("alibaba qwen", r"\bqwen[-_]?[0-9][0-9a-z.\-]*"),
     ("google gemma", r"\bgemma[-_][0-9][0-9a-z.\-]*"),
@@ -155,6 +157,8 @@ def test_the_patterns_do_not_match_ordinary_prose() -> None:
         "model=TEST_MODEL",
         "fake-deterministic-v1",
         "test-model-anthropic-000",
+        'TEST_MODEL = "test-model-ollama-000"',  # "ollama" contains "llama"
+        "the local ollama server reported no models",
         "the llm provider layer",
     ):
         for label, pattern in _COMPILED:
