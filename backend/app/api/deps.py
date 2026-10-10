@@ -21,11 +21,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content import ConsentDocuments, HelplineContent, load_consent_documents, load_helplines
 from app.core.errors import ApiError
 from app.core.lockout import LoginLockout
+from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import ACCESS_TOKEN_TYPE, TokenError, TokenExpiredError, TokenService
 from app.db.repos import ConsentRepository, UserRepository
 from app.db.session import Database
 from app.models.enums import ConsentKind
 from app.models.user import User
+from app.services.chat.ephemeral import EphemeralStore
+from app.services.chat.orchestrator import ChatOrchestrator
+from app.services.llm import LLMChain
+from app.services.nlp.base import EmotionAnalyzer
+from app.services.nlp.redaction import Redactor
 from app.services.safety.escalation import Escalator, build_escalator
 from app.services.safety.ml_classifier import NullClassifier, SafetyClassifier, build_ml_classifier
 from app.services.safety.rules import RuleEngine, build_engine
@@ -94,6 +100,47 @@ def get_ml_classifier(request: Request) -> SafetyClassifier:
     return build_ml_classifier(artifact_dir=settings.safety_ml_artifact_dir)
 
 
+def get_emotion_analyzer(request: Request) -> EmotionAnalyzer:
+    analyzer: EmotionAnalyzer = request.app.state.emotion_analyzer
+    return analyzer
+
+
+def get_llm_chain(request: Request) -> LLMChain:
+    chain: LLMChain = request.app.state.llm_chain
+    return chain
+
+
+def get_redactor(request: Request) -> Redactor:
+    redactor: Redactor = request.app.state.redactor
+    return redactor
+
+
+def get_ephemeral_store(request: Request) -> EphemeralStore:
+    store: EphemeralStore = request.app.state.ephemeral_store
+    return store
+
+
+def get_chat_rate_limiter(request: Request) -> InMemoryRateLimiter:
+    limiter: InMemoryRateLimiter = request.app.state.rate_limit_chat
+    return limiter
+
+
+def get_orchestrator(request: Request) -> ChatOrchestrator:
+    """Build the Day 11 orchestrator from the process-wide singletons."""
+    settings = request.app.state.settings
+    return ChatOrchestrator(
+        settings,
+        rule_engine=get_rule_engine(),
+        ml_classifier=get_ml_classifier(request),
+        escalator=get_escalator(),
+        emotion_analyzer=get_emotion_analyzer(request),
+        llm_chain=get_llm_chain(request),
+        redactor=get_redactor(request),
+        ephemeral_store=get_ephemeral_store(request),
+        chat_rate_limiter=get_chat_rate_limiter(request),
+    )
+
+
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 ConsentDocumentsDep = Annotated[ConsentDocuments, Depends(get_consent_documents)]
@@ -102,6 +149,12 @@ RuleEngineDep = Annotated[RuleEngine, Depends(get_rule_engine)]
 EscalatorDep = Annotated[Escalator, Depends(get_escalator)]
 MLClassifierDep = Annotated[SafetyClassifier, Depends(get_ml_classifier)]
 LockoutDep = Annotated[LoginLockout, Depends(get_login_lockout)]
+EmotionAnalyzerDep = Annotated[EmotionAnalyzer, Depends(get_emotion_analyzer)]
+LLMChainDep = Annotated[LLMChain, Depends(get_llm_chain)]
+RedactorDep = Annotated[Redactor, Depends(get_redactor)]
+EphemeralStoreDep = Annotated[EphemeralStore, Depends(get_ephemeral_store)]
+ChatRateLimiterDep = Annotated[InMemoryRateLimiter, Depends(get_chat_rate_limiter)]
+OrchestratorDep = Annotated[ChatOrchestrator, Depends(get_orchestrator)]
 
 
 def _bearer_token(request: Request) -> str:

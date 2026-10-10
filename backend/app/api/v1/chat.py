@@ -87,6 +87,21 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 #: A chat may only start (and continue) once these are granted at their current versions.
 ChatConsentGate = require_consent(ConsentKind.AI_DISCLOSURE, ConsentKind.TERMS)
+ChatStoreConsentGate = require_consent(
+    ConsentKind.AI_DISCLOSURE, ConsentKind.TERMS, ConsentKind.STORE_CHAT
+)
+
+
+# --- Request / Response models ----------------------------------------------
+
+
+class CreateSessionIn(BaseModel):
+    store: bool = Field(
+        default=False,
+        description="True to persist history (requires store_chat consent); False for ephemeral.",
+    )
+    region: str | None = Field(default=None, max_length=16)
+    locale: str | None = Field(default=None, max_length=16)
 
 #: Hard ceiling on the request body's message field, in characters. The
 #: configurable, user-facing limit (``CHAT_MAX_MESSAGE_CHARS``) is enforced by the
