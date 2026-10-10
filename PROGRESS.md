@@ -2,56 +2,56 @@
 
 ## Current status
 
-Day 9 (crisis ML classifier, ensemble and the first eval set) is complete and
-verified: **1236 backend tests pass** (the Day 8 suite plus 37 new Day 9 tests:
-the ensemble contract with a hypothesis never-lowers property, the committed
-artifact's behaviour and provenance, dataset integrity including the frozen-test
-hash, and the assess endpoint's audit rows), `ruff`, `ruff format` and
-`mypy --strict` all clean, and the safety suite alone is now **574 tests**.
+Day 10 (LLM provider layer and PII redaction) is complete and verified:
+**1534 backend tests pass** (the Day 9 suite plus **298 new Day 10 tests**),
+`ruff`, `ruff format` and `mypy --strict` are clean, and **89 frontend tests**
+pass unchanged. Total backend coverage is **97 %**. Nothing in the Day 10 suite
+touches the network, needs an API key, or downloads a model — the whole layer is
+exercised through a deterministic Fake.
 
-The rules engine remains the gate (ADR 0008, unchanged); Day 9 adds a
-**one-way statistical backstop** next to it (ADR 0009). A TF-IDF + calibrated
-logistic-regression classifier trained on the new labelled corpus serves
-five-level calibrated probabilities; `ensemble.combine()` computes
-**final = max(rules level, ML level if confident)** with three raise bands —
-confident top class (`ml.raised`), crisis mass `P(high)+P(imminent)`
-(`ml.crisis_mass`), and an uncertain → MEDIUM gentle-check-in band
-(`ml.uncertain.checkin`). The ML path can raise an assessment and **never lower
-one** — pinned from the outside by a hypothesis property over 800 random
-predictions × random thresholds — and it is blocked from raising when the rules
-engine discounted risky words on positive evidence (negation, figurative frames).
-Every knob degrades to the exact Day 8 pipeline: `SAFETY_ML_ENABLED=false`, a
-missing artifact, a missing scikit-learn, or any predict-time exception.
+The layer is one interface and four implementations:
+`app/services/llm/base.py` declares `LLMProvider` (`complete` + `stream`) plus a
+typed error tree whose `retryable` flag — not a list of exception names — decides
+what the retry machinery does. Around it sit **Anthropic** (hosted), **Ollama**
+(local), **Fake** (offline, scriptable) and **Canned** (the terminal link, which
+cannot fail). `ResilientProvider` wraps any of them in **exponential backoff with
+full jitter**, a **hard timeout spent across all attempts** (not per attempt), and
+a **circuit breaker with a half-open probe**.
 
-The eval contract landed: **572 synthetic labelled cases** (en, hi Devanagari,
-hi romanised, bn; five levels; hard negatives — figurative, news, media
-discussion, third person, past-tense recovery stories; hard positives — indirect
-and keyword-free), split deterministically into train 340 / dev 116 / test 116.
-The test split is **frozen by hash** in `manifest.json`; the runner refuses a
-drifted file and a backend test asserts neither the training script nor the
-threshold tuner names it. Thresholds were chosen on dev only
-(0.70 / 0.30 / 0.25), and the first look at test reports honestly:
-**HIGH+IMMINENT recall 1.000 (0 false negatives on 51 crisis cases, in all four
-languages) at precision 0.567, with 27/51 benign cases escalated to a crisis
-card** — the stated price of the recall target at this dataset size
-(`docs/safety-design.md` §12.6), with the precision-leaning alternative
-documented. Rules alone score 0.255 recall on the same split; the backstop is
-doing the work Day 9 exists for. `POST /api/v1/crisis/assess` now writes
-metadata-only `safety_events` rows (stored tier + which detector earned it,
-never text) at MEDIUM and above.
+The chain is `primary → ollama → canned`, and because the last link cannot fail,
+"a missing API key is a degradation, not a 500" is true **by construction**
+rather than by careful error handling in an endpoint. Two things run on the way
+out, before any provider sees a byte: **PII redaction** (emails, Indian and
+international phone numbers, Aadhaar/PAN/SSN-like ids, Luhn-checked card numbers,
+URLs; names opt-in and off by default) and the **token/cost guard** (input
+truncation at a word boundary plus a conversation window that never drops the
+newest turn). The system prompt is a **versioned, hashed, load-time-validated
+file** under `app/content/prompts/` carrying all ten rules from the brief.
 
-What could **not** be verified here: no human review of the eval labels (a
-single maintainer wrote the ground truth for synthetic text), no native-speaker
-review of the Indic crisis copy (carried from Day 8), and no transformer-based
-classifier — the sandbox has no Hugging Face Hub access, so the interface
-(`SafetyClassifier`) ships with the offline TF-IDF baseline it was designed for,
-and a fine-tuned model can slot in behind it later.
+**No model id is hard-coded anywhere.** `ANTHROPIC_MODEL` unset means the
+provider reports "not configured" and the chain falls through; a test walks the
+repository and fails on any vendor model id outside `.env.example`.
 
-Work is on `arena/2f354295-manovia` — the branch this Arena session is pinned
-to, **not** the requested `day-09-crisis-ml-classifier-ensemble`; the session
-cannot create or push to another branch name. The pull request therefore comes
-from the session branch, matching how Days 7 and 8 landed. Days 1-8 are merged
-on `main` (through PR #10).
+What could **not** be verified here, and needs a human on their own machine:
+
+- **No real model has ever seen this prompt.** `ANTHROPIC_API_KEY` is not set in
+  the sandbox and Ollama is not installed, so every number below comes from the
+  Fake. Run `python3 scripts/llm_probe.py` with a key and a model set to make
+  one real call ("Say hello in one sentence") and see the latency.
+- **The prompt has never been read by the model it was written for.** The
+  requirement checks are regexes over the file, not judgements about behaviour.
+- **Redaction has never met real traffic.** The property tests say no
+  identifier-shaped text survives; they say nothing about whether the model can
+  still be useful when an address is gone.
+
+Work is on `arena/3dcc0082-manovia` — the branch this Arena session is pinned
+to, **not** the requested `day-10-llm-provider-layer-pii`; the session cannot
+create or push to another branch name. The pull request therefore comes from the
+session branch, matching how Days 7, 8 and 9 landed. Days 1-8 are merged on
+`main` (through PR #10). Day 10 also ships **ADR 0010**, not the
+`0003-llm-abstraction.md` the brief asked for: 0003 is the published data-layer
+ADR, ADR numbers are permanent, and the filename is called out at the top of the
+document.
 
 ## Completed
 
@@ -439,6 +439,366 @@ with ML on writes metadata-only rows and never echoes input
 **Docs**: [ADR 0009](docs/adr/0009-safety-ml-ensemble.md); `docs/safety-design.md`
 §12 (ensemble policy + Day 9 known limitations incl. the false-alarm cost);
 `evals/datasets/README.md` (dataset contract); `.env.example` knobs; `make eval`.
+
+### Day 10 (branch `arena/3dcc0082-manovia`) — LLM provider layer and PII redaction
+
+**The interface** (`app/services/llm/base.py`): `LLMProvider` with
+`complete(messages, *, system, max_tokens, temperature) -> LLMResult` and
+`stream(...) -> AsyncIterator[str]`. `stream` is abstract from day one — a
+companion is read one token at a time, and retrofitting streaming onto a
+`complete`-only interface means reworking every caller. It is declared **without**
+`async`, which is load-bearing: an `async def` with a `yield` is an async
+*generator*, and a caller cannot tell from the signature whether
+`ProviderNotConfigured` raises at call time or at the first token. Providers that
+validate (Anthropic, Ollama) are plain `def`s returning an inner async generator,
+so they fail eagerly; providers that only stream (Fake, Canned) are `async def`.
+
+**Typed errors, and the type decides the retry.** `LLMError` carries a
+`retryable` class attribute that the retry machinery reads, so adding a provider
+cannot silently change retry behaviour: `ProviderTimeout` / `ProviderRateLimited`
+/ `ProviderDown` are retryable; `ProviderBadRequest` / `ProviderNotConfigured` /
+`ProviderNotAvailable` are not. A 429 that reports `Retry-After` is honoured
+exactly; one that would outlast the deadline is not retried at all, because
+waiting 30 seconds inside a 15-second budget is worse than falling through. No
+error in the tree carries message text.
+
+**Three providers and a terminal link.** `anthropic_provider.py` uses the
+official SDK, imported **lazily inside the client factory** and shipped as an
+optional `llm` extra — without it the provider raises `ProviderNotAvailable` and
+the chain falls through, exactly as it does for a missing key. The model id comes
+from `ANTHROPIC_MODEL` and has no default; the system prompt travels as
+Anthropic's separate `system` parameter rather than as a message, so the versioned
+prompt and the conversation stay separable. `ollama_provider.py` speaks
+`/api/chat` over plain `httpx` (already a dependency, so the fallback is always
+available), reads NDJSON for streaming, defaults to **localhost only**, and
+discovers the model from `/api/tags` when `OLLAMA_MODEL` is unset.
+`fake_provider.py` is deterministic (same script → same bytes), scriptable per
+test (reply queue, `script_error`, `fail_times`, `latency_ms`, `script_stream`)
+and records every call in full — which is the mechanism the PII tests use.
+`canned.py` is the terminal link: one fixed string in the repository, it cannot
+fail, it does not quote or react to what the person wrote, it says the failure is
+on our side, and it points at a helpline and a trusted person.
+
+**Resilience** (`resilience.py`): `RetryPolicy` with **full jitter** (delay drawn
+uniformly from `[0, min(cap, base · 2ⁿ)]` — without it, every client rate-limited
+at the same second retries at the same second), `CircuitBreaker` with a cooldown
+and a half-open probe, and `ResilientProvider`, which wraps any provider and
+*is* one, so the chain cannot tell which links are armoured. The timeout is a
+**total budget across all attempts**, not per attempt: three 60 ms attempts inside
+a 100 ms budget is two attempts, because a slow-but-alive provider must not
+triple the latency somebody waits through. Clock, sleep and RNG are all
+injectable, so no test sleeps for real.
+
+**The fallback chain** (`chain.py`): `primary → ollama → canned`. An unconfigured
+provider is skipped without spending an attempt. A 401 is not retried. An
+unexpected exception — an SDK bug, an `AttributeError` on a renamed field — is
+treated as an outage and moves to the next link, logging the exception *type*
+only, because exception text can echo request content. This was a **real bug
+found by running `scripts/llm_probe.py`**: the chain originally caught only
+`LLMError`, so anything else escaped and became a 500 in front of somebody
+mid-conversation. Six regression tests pin it.
+
+**PII redaction** (`app/services/nlp/redaction.py`): emails, Indian phone numbers
+(`+91`, `0`-prefixed STD, bare 10-digit starting 6–9) and international ones,
+Aadhaar/PAN/SSN-like ids, Luhn-checked card numbers (a run that fails the
+checksum is still removed, just labelled `[ID]`), and URLs. Typed placeholders
+(`[EMAIL]`, `[PHONE]`, `[ID]`, `[CARD]`, `[URL]`, `[PERSON]`) are applied in a
+fixed order, longest-and-strictest span first, so a 16-digit card is not also
+claimed as a phone number plus six digits. URLs are replaced **whole**, not
+scrubbed: rewriting `?code=[REDACTED]` still tells the model where the account
+lives. Names are **opt-in** — the default `NullNameFinder` finds nothing, because
+a detector that fires on common Indian given names which are also ordinary words
+(*Kiran*, *Jyoti*, *Anand*) mangles sentences and teaches engineers to switch
+redaction off. The reversible map is dropped in the same frame it is built:
+nothing downstream needs the originals.
+
+**The versioned prompt** (`content/prompts/system_v1.md` +
+`services/llm/prompts.py`): the filename is the version, the file is SHA-256'd at
+load, only `{max_words}` and `{language}` may be interpolated, all **ten rules
+from the brief** are required at load time (`REQUIRED_RULES`), and the leading
+`>` blockquote — the note for human reviewers — is stripped before the model sees
+anything. `{language}` renders from a fixed table, and an unknown code renders as
+"the language they wrote in": detection answers `other` for short text, and
+"reply in other" is not an instruction a model can follow.
+
+**Token/cost guard** (`guard.py`): over-long input is truncated at a **word
+boundary** (so `[EMAIL]` is never cut into `[PHO`, which would no longer be a
+placeholder) with a `[…]` marker; the conversation window keeps the most recent
+turns that fit the budget and **always** keeps the newest turn, however small the
+budget. Truncation and windowing, never rejection — somebody who wrote a lot is
+often somebody who needs the reply.
+
+**Tests** (298 new): hypothesis properties over the redactor (a second pass never
+finds anything; idempotent; no generated email, phone, id or card survives);
+retry, timeout and breaker behaviour asserted by call counts and recorded waits;
+the full fallback chain including the invalid-key and unexpected-exception paths;
+a **payload-level proof** that no identifier reaches the provider, with a control
+case that switches redaction off to show the assertion can fail; Anthropic and
+Ollama driven by stubs; prompt rules one test each; and a repo-wide guard that
+fails on any vendor model id outside `.env.example`.
+
+**Docs**: [ADR 0010](docs/adr/0010-llm-abstraction.md);
+`app/content/prompts/CHANGELOG.md`; `.env.example` knobs; `scripts/redaction_demo.py`
+and `scripts/llm_probe.py` for the two hand-checks.
+
+## Verification (Day 10 — real command output)
+
+| # | check | result |
+| --- | --- | --- |
+| 1 | `make test` offline (backend + frontend) | **PASS** — 1534 + 89 |
+| 2 | `pytest tests/llm -q` | **PASS** — 247 tests |
+| 3 | retry / timeout / circuit breaker | **PASS** — 27 tests, listed below |
+| 4 | fallback chain (incl. missing and invalid key) | **PASS** — 66 tests |
+| 5 | redaction demo, 10 sample strings | **PASS** — all 10, see below |
+| 6 | no PII in the provider payload | **PASS** — 22 tests + control |
+| 7 | one real Anthropic call | **N/A here** — no key in the sandbox; Ollama/Fake confirmed |
+| 8 | missing/invalid key ⇒ fallback, not 500 | **PASS** — canned reply, `degraded=True` |
+| 9 | no hard-coded model id | **PASS** — 0 hits repo-wide |
+| 10 | system prompt vs the ten rules | **PASS** — 10/10 |
+| 11 | `ruff` + `ruff format` + `mypy --strict` | **PASS** — all clean |
+
+### 1 and 2. `make test` and the LLM suite
+
+```
+$ PATH=$PWD/.venv/bin:$PATH make test
+...
+TOTAL                                     4950    168    97%
+=========== 1534 passed, 2 skipped, 32 warnings in 113.35s (0:01:53) ===========
+
+ Test Files  13 passed (13)
+      Tests  89 passed (89)
+
+$ pytest tests/llm -q
+241 passed in 3.84s        (247 after the model-id guard landed)
+```
+
+The 2 skips are the pre-existing `model`-marked emotion tests, which need the
+`nlp` extra and the network. Frontend is unchanged on Day 10 — its Day 8
+lint/test state is the current one.
+
+### 3. Retry, timeout and circuit breaker
+
+```
+$ pytest tests/llm/test_resilience.py -v
+test_delay_ceiling_grows_exponentially_and_is_capped          PASSED
+test_delay_is_jittered_within_the_ceiling                     PASSED
+test_a_transient_failure_is_retried_and_succeeds              PASSED
+test_retry_stops_after_max_attempts                           PASSED
+test_a_non_retryable_error_is_not_retried                     PASSED
+test_an_unexpected_exception_becomes_provider_down            PASSED
+test_rate_limit_honours_retry_after                           PASSED
+test_rate_limit_gives_up_when_the_wait_exceeds_the_deadline   PASSED
+test_an_unconfigured_provider_is_never_called                 PASSED
+test_a_slow_provider_times_out_as_provider_timeout            PASSED
+test_the_timeout_is_a_total_budget_not_a_per_attempt_one      PASSED
+test_breaker_opens_after_the_failure_threshold                PASSED
+test_breaker_goes_half_open_after_the_cooldown                PASSED
+test_a_success_closes_the_breaker                             PASSED
+test_an_open_breaker_skips_the_provider_entirely              PASSED
+test_stream_retries_when_it_fails_before_the_first_token      PASSED
+test_stream_does_not_retry_after_tokens_were_delivered        PASSED
+test_stream_raises_provider_timeout_on_a_stalled_stream       PASSED
+============================== 27 passed in 0.55s ==============================
+```
+
+The behavioural shape these pin down: a transient failure is retried once and
+succeeds (2 calls, 1 recorded wait); a permanent failure costs exactly
+`max_attempts` calls and 2 waits, never 3; a non-retryable error costs 1 call and
+0 waits; a rate limit with `retry_after=1.25` waits exactly 1.25 s and not the
+backoff; a rate limit that would outlast the deadline costs 1 call and 0 waits;
+and once the breaker is open the provider is **not called at all** until the
+cooldown elapses, after which exactly one probe goes through.
+
+### 4. Fallback chain
+
+```
+$ pytest tests/llm/test_chain.py tests/llm/test_llm_factory.py -v
+test_a_failing_primary_falls_through_to_the_next_provider     PASSED
+test_everything_failing_still_produces_a_reply                PASSED
+test_an_unconfigured_provider_is_skipped_without_a_call       PASSED
+test_a_bad_credential_falls_through_instead_of_retrying       PASSED
+test_a_missing_key_never_raises_provider_not_configured_...   PASSED
+test_streaming_falls_through_to_the_next_provider             PASSED
+test_streaming_falls_through_to_the_canned_reply              PASSED
+test_no_api_key_falls_through_to_the_canned_reply             PASSED
+test_no_api_key_and_no_ollama_still_answers                   PASSED
+test_an_invalid_key_falls_through_without_retrying_it         PASSED
+test_an_unexpected_exception_falls_through_to_the_next_link   PASSED
+test_an_unexpected_exception_falls_through_to_the_canned_...  PASSED
+test_an_unexpected_exception_does_not_leak_its_text_into_logs PASSED
+============================== 66 passed in 2.44s ==============================
+```
+
+### 5. Redaction demo — 10 sample strings, before/after
+
+```
+$ python3 scripts/redaction_demo.py
+email              before : you can reach me at riya.sharma@example.com any evening
+                   after  : you can reach me at [EMAIL] any evening
+phone +91          before : call me on +91 98765 43210 after six
+                   after  : call me on [PHONE] after six
+phone STD          before : my landline is 09876543210
+                   after  : my landline is [PHONE]
+phone mobile       before : just dial 9876543210
+                   after  : just dial [PHONE]
+Aadhaar-like       before : my aadhaar is 1234 5678 9012 on file
+                   after  : my aadhaar is [ID] on file
+PAN-like           before : pan ABCDE1234F
+                   after  : pan [ID]
+SSN-like           before : ssn 123-45-6789
+                   after  : ssn [ID]
+card (Luhn-valid)  before : card 4111111111111111 exp 12/28
+                   after  : card [CARD] exp 12/28
+URL with a token   before : the reset link was https://app.example.com/reset?token=abc123def
+                   after  : the reset link was [URL]
+URL, no secret     before : privacy policy is at https://manovia.app/privacy
+                   after  : privacy policy is at [URL]
+```
+
+All ten identifiers are replaced. The numbers above are invented. A 16-digit run
+that fails the checksum is still removed (labelled `[ID]`, not `[CARD]`), and a
+PIN code, a year and a 6-digit OTP deliberately survive — over-redacting every
+number would leave the model nothing to work with.
+
+### 6. No PII reaches the provider
+
+```
+$ pytest tests/llm/test_no_pii_reaches_provider.py -q
+22 passed in 1.22s
+```
+
+The Fake provider records the exact payload, so the assertion is on the request
+itself rather than on the redactor:
+
+```
+payload = {'messages': [{'role': 'user',
+                         'content': 'mail me at [EMAIL] or call [PHONE]'}],
+           'system': 'be kind', 'max_tokens': 123, 'temperature': 0.25}
+```
+
+`test_with_redaction_off_the_identifier_does_reach_the_provider` is the control:
+it switches redaction off and asserts `riya.sharma@example.com` **is** present,
+so the 21 assertions above cannot all be passing because the assertion is broken.
+The same proof covers the system prompt, the streaming path, the result, the
+`describe()` output, the guard report and the log lines.
+
+### 7. One real call — not possible in this sandbox
+
+```
+$ python3 scripts/llm_probe.py
+LLM_PROVIDER        = fake
+ANTHROPIC_API_KEY   = not set
+ANTHROPIC_MODEL     = not set
+OLLAMA_BASE_URL     = not set (default localhost:11434)
+------------------------------------------------------------------------------
+  anthropic  skipped: ANTHROPIC_MODEL is not set
+  ollama     trying http://localhost:11434 ...
+  ollama     FAILED after 0.11s: ProviderDown: ollama is not reachable
+  neither real provider answered — falling back to the offline path
+  fake       replied with: 'Thanks for telling me that. ...'
+  canned     degraded=True provider=canned fallbacks_used=1
+```
+
+`ANTHROPIC_API_KEY` is not set in the sandbox and Ollama is not installed, so
+**run this on your machine** with `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` set;
+it makes one harmless call ("Say hello in one sentence") and prints the reply and
+the latency. The Ollama/Fake path is confirmed here instead.
+
+### 8. Missing or invalid key — fallback, not a 500
+
+Two separate cases, both covered by tests and both ending in a reply:
+
+* **missing** — `Settings(llm_provider="anthropic")` with no key:
+  `AnthropicProvider.is_configured` is `False`, the chain skips it without
+  spending an attempt, Ollama is unreachable, and `CannedProvider` answers with
+  `degraded=True, fallbacks_used=2, provider="canned"`. No exception reaches the
+  caller.
+* **invalid** — a stub client raising the `ProviderBadRequest` that a 401
+  translates to: the provider is called **exactly once** (a rejected credential
+  is not an outage, and hammering it is how you get blocked) and the canned link
+  answers.
+
+### 9. No hard-coded model id
+
+```
+$ grep -rniE "claude[-_][a-z0-9.\-]*[0-9]|\bgpt[-_][0-9]|\bllama[-_]?[0-9]|\bmistral[-_:]?[0-9a-z.\-]+|\bgemini[-_][0-9]|\bqwen[-_]?[0-9]|\bgemma[-_][0-9]|\bcommand[-_](r|light)|\bgrok[-_][0-9]" \
+    --include="*.py" --include="*.md" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.yml" --include="*.toml" .
+(no hits)   exit=1
+```
+
+`tests/llm/test_no_hardcoded_model.py` runs the same scan in CI, with positive
+controls (nine real model ids must be recognised) and negative controls (the
+provider names, the product's own ids, and `test-model-ollama-000` must **not**
+trip it — `\bllama` was added after the guard flagged the "llama" inside
+"ollama"). The only place a model may be named is `.env.example`.
+`Settings().anthropic_model is None` and `Settings().ollama_model == ""`.
+
+### 10. System prompt vs the brief's rules
+
+```
+$ pytest tests/llm/test_prompts.py -q
+36 passed in 0.16s
+
+  [PASS] states it is an AI                            (discloses_ai)
+  [PASS] warm and brief (~120 words)                   (brief)
+  [PASS] validates feelings, no toxic positivity       (validates_without_toxic_positivity)
+  [PASS] at most one gentle question                   (at_most_one_question)
+  [PASS] never diagnoses                               (no_diagnosis)
+  [PASS] never discusses medication                    (no_medication)
+  [PASS] never gives self-harm instructions            (no_self_harm_instructions)
+  [PASS] encourages professional help + trusted people (encourages_professional_help)
+  [PASS] declines therapist/human role-play            (declines_roleplay)
+  [PASS] responds in the user's language               (responds_in_user_language)
+```
+
+The shipped `system_v1` (`sha256 c0a153a3769e…`, 2302 characters) is printed in
+full in the Day 10 section above. Each rule also has its own named test, so a
+*weakened* rule fails in CI with a sentence a reviewer can read rather than a
+regex id.
+
+### 11. Lint and types
+
+```
+$ ruff check .                 All checks passed!
+$ ruff format --check .        157 files already formatted
+$ mypy app tests               Success: no issues found in 151 source files
+```
+
+One ruff rule is waived, with the reason recorded next to the waiver:
+`N818` in `app/services/llm/base.py`, because the brief names the errors
+Timeout / RateLimited / ProviderDown and they read as *conditions*, which is
+exactly how the retry machinery reads them.
+
+### PASS/FAIL table (Message 2 checklist)
+
+| # | check | result |
+| --- | --- | --- |
+| 1 | `make test` offline — retry, timeout, breaker, fallback chain | **PASS** |
+| 2 | redaction demo on 10 sample strings | **PASS** |
+| 3 | no PII in the provider payload (Fake captures it) | **PASS** |
+| 4 | one real Anthropic call | **N/A here** — no key; Ollama/Fake confirmed |
+| 5 | missing/invalid key ⇒ fallback chain, not 500 | **PASS** |
+| 6 | grep: no hard-coded model id outside `.env.example` | **PASS** |
+| 7 | `system_v1` printed and checked against every rule | **PASS** |
+
+### Needs a human, not this sandbox
+
+1. **One real Anthropic call.** `ANTHROPIC_API_KEY=… ANTHROPIC_MODEL=… python3
+   scripts/llm_probe.py` — check the reply, the latency and the reported token
+   counts. This is the only unverified item in the table above.
+2. **Does the prompt actually behave?** Send five hard messages (a disclosure of
+   self-harm intent, a medication question, "are you a real therapist?", a
+   Hinglish message, a very long one) and read what comes back. The rules are
+   regex-checked; the behaviour is not.
+3. **Ollama as a real fallback.** Install Ollama, pull a small model, set
+   `LLM_PROVIDER=anthropic` with a deliberately wrong key, and confirm the
+   conversation continues through the local model.
+4. **Token accounting against a real model.** The 4-chars-per-token estimate is
+   wrong for Devanagari and Bengali; compare `LLMResult.usage.input_tokens` with
+   the guard's `input_tokens` on real Indic text and adjust `LLM_WINDOW_TOKENS`.
+5. **Is redaction too aggressive to be useful?** Every URL becomes `[URL]`, and
+   a date like `2024-01-15` becomes `[PHONE]`. Read a dozen real-ish conversations
+   after redaction and judge whether the model still has enough to be warm.
 
 ## Verification (Day 9 — real command output)
 
@@ -1075,6 +1435,7 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0007 — CI pipeline, Docker packaging, and containerised dev stack](docs/adr/0007-ci-and-docker.md): one workflow whose blocking checks mirror `make lint`/`make test` (80 % coverage gate as tripwire, secrets scan blocks, dependency audit report-only via never-failing steps + summary/annotations until the triaged advisory backlog clears); dev-only auto-migrations guarded in the API image's *entrypoint* (`APP_ENV=development` + `RUN_MIGRATIONS=true`), so production posture travels with the image; the API image ships without the `nlp` extra and compose runs `EMOTION_ANALYZER=keyword`; same-origin `/api` proxy in the web container (no CORS in the container path); labelled dev-only compose defaults including an all-zero-bytes Fernet key; liveness (not readiness) as the container healthcheck; the API runs as non-root `app`.
 - [0008 — Crisis detection: rules engine and helplines](docs/adr/0008-crisis-detection-rules-engine.md): rules over a classifier (a level plus pattern ids is auditable in five seconds, a probability is not, and no threshold is right because too low makes every bad day a crisis card); patterns in YAML data files loaded once and validated at import, so a typo is a startup failure rather than a silent hole; **five wire levels mapped onto the four stored tiers** (`_STORED_BY_LEVEL`, MEDIUM→`elevated`, HIGH and IMMINENT→`crisis`) so the Day 8 enum and the Day 5 database enum stay independent and a new level needs no migration; escalation as a five-row policy table with no branches, so a reviewer sees every behaviour by reading five rows; deterministic pre-written copy in `content/i18n` with `{emergency_number}` the only whitelisted placeholder; helplines as one JSON file behind a schema with `source_url` + `last_verified` per entry and a `needs_verification` flag rather than an unverified number; `access_to_means` recording presence only; privacy enforced structurally (the layer that builds the reply never receives the message, and `RiskAssessment` cannot carry prose); and conservative-by-default level resolution with IMMINENT requiring evidence rather than intensity.
 - [0009 — A one-way ML backstop next to the rules engine](docs/adr/0009-safety-ml-ensemble.md): the ensemble is a ratchet — `final = max(rules, ML-if-confident)`, property-tested never-lowers; three raise bands (confident top class, crisis mass `P(high)+P(imminent)`, uncertain → MEDIUM check-in) with env-configured thresholds grid-chosen on dev only; a pragmatics gate so ML may not undo the rules' negation/figurative discounts; TF-IDF + calibrated logistic regression committed as a joblib artifact with provenance, behind `SafetyClassifier` so a transformer can replace it without touching the ensemble; the 572-case eval set split train/dev/frozen-test with the test hash in `manifest.json` and no method words anywhere; and the trade that moves metadata-only `safety_events` writes onto the public assess endpoint.
+- [0010 — The LLM provider layer: one interface, a chain that cannot fail](docs/adr/0010-llm-abstraction.md): `LLMProvider` with `complete` + `stream` (streaming abstract from day one, declared without `async` so an unconfigured provider fails at call time rather than at the first token); a typed error tree whose `retryable` flag — not a list of exception names — drives the retry machinery; `primary → ollama → canned` with a terminal link that cannot fail, which is what makes "a missing API key is a degradation, not a 500" true by construction; retry with **full jitter**, a hard timeout spent **across** all attempts, and a breaker with a half-open probe, all injectable so no test sleeps; redaction as an egress policy inside the chain rather than a caller's responsibility; the system prompt as a versioned, hashed, load-time-validated file; and a token guard that truncates (never rejects) at a word boundary so a redaction placeholder is never cut in half. **Numbered 0010, not the `0003-llm-abstraction.md` the brief asked for** — 0003 is the published data-layer ADR, ADR numbers are permanent, and the two precedents (0006, this one) are recorded at the top of the document.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
@@ -1289,6 +1650,51 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   and raising is safe — but a future tune should look at the bands between
   suspicion floor and crisis-mass floor.
 
+### Day 10 LLM notes
+
+- **The system prompt has never been read by a model.** Every check on it is a
+  regex over a file. It states the nine rules, it does not prove the model will
+  follow them, and 402 words of instruction is a lot to compete with everything
+  else a model knows about being helpful. The first real conversation is the
+  first real test.
+- **Nothing here has been tried against a real provider.** No `ANTHROPIC_API_KEY`
+  in the sandbox, no Ollama installed: the request shape, the response parsing
+  (`content` blocks, `usage`, NDJSON) and the error translation are all verified
+  against stubs. The stubs match the documented SDK shape, and the real SDK
+  error classes translate correctly when the extra is installed (one test checks
+  that, and skips when it is not) — but "the stub agreed with us" is not "the API
+  agreed with us".
+- **The chain caught only `LLMError` at first**, so a provider raising anything
+  else became a 500. Found by running `scripts/llm_probe.py`, fixed, and pinned
+  by six tests. Recorded here because it is the kind of bug that only appears when
+  somebody actually runs the code rather than reading it.
+- **Redaction over-matches, and the cost is reply quality.** Every URL becomes
+  `[URL]` even when it is a link to our own privacy policy, and a date written
+  `2024-01-15` matches the grouped-phone pattern and becomes `[PHONE]`. The
+  direction is right — losing a detail is free, leaking one is not — but it means
+  the model sees a garbled sentence sometimes, and nobody has measured whether
+  that makes replies worse.
+- **Names are not redacted.** `LLM_REDACT_NAMES` is `false` by default and the
+  `NullNameFinder` finds nothing, so a person who signs their message or names
+  their employer sends it. For an Indian user base, where the available NER
+  models are English-centric and many given names are also ordinary words, this
+  is a real gap rather than a tick-box.
+- **The token estimate is wrong for Devanagari and Bengali.** 4 characters per
+  token under-counts multi-byte UTF-8, so the window keeps *more* Indic turns
+  than the budget intends. It errs toward spending more rather than cutting
+  somebody off, but the number in `GuardReport.input_tokens` is not the number on
+  the invoice.
+- **The provider's own retry loop is disabled** (`max_retries=0`) so ours owns
+  the deadline and the jitter. If a future SDK does something smarter there, we
+  have opted out of it.
+- **The reversible redaction map is dropped, not stored.** That is the right
+  default, but it means a future feature that wants to show the user their own
+  message with names intact has no way to do it and will be tempted to start
+  persisting the map. Do not: the moment it is persisted, redaction is decorative.
+- **Streaming is built and tested end to end but not exercised by any caller.**
+  No endpoint streams yet, so the mid-stream-failure path (raise, do not restart)
+  has only ever run in a test.
+
 ## Parking lot
 
 - Distributed rate limiting / lockout state (Redis) behind the existing interfaces, plus a trusted-proxy setting for `X-Forwarded-For` client identity.
@@ -1343,35 +1749,70 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   without ever storing text; no such dashboard exists yet.
 - **(Day 9)** The eval runner's per-level MEDIUM/LOW tuning (see Day 9 safety
   notes) and an explicit "check-in false alarm" budget next to the recall target.
+- **(Day 10)** An output-safety check on every completion (AGENTS.md rule 4),
+  reusing the Day 8 safe-messaging vocabulary rather than growing a second list —
+  the half of the Day 10 brief that is still missing.
+- **(Day 10)** A prompt eval set: ~40 hard messages (self-harm disclosure,
+  medication question, "are you a real therapist?", Hinglish, very long, very
+  short) scored against the nine prompt rules, run offline against the Fake for
+  plumbing and by hand against a real model. Today the prompt is regex-checked,
+  not behaviour-checked.
+- **(Day 10)** A real NER name redactor behind `NameFinder` (Indic languages
+  first — an English-centric model would miss most of this product's names), so
+  `LLM_REDACT_NAMES=true` becomes a setting worth turning on.
+- **(Day 10)** Token counting that matches the provider: use Anthropic's
+  `/v1/messages/count_tokens` (or a real tokenizer) instead of `chars / 4`, which
+  under-counts Devanagari and Bengali badly enough to matter for the window.
+- **(Day 10)** Streaming wired to a real endpoint, so the mid-stream-failure path
+  is exercised by traffic and not only by tests.
+- **(Day 10)** Per-provider telemetry: attempts, breaker state, degraded rate and
+  `fallbacks_used` exported next to the existing `describe()` output, so "are we
+  running on the canned reply and nobody noticed?" is answerable from a
+  dashboard.
+- **(Day 10)** A cost dashboard / per-request ceiling enforced across a
+  conversation rather than per turn, once there is traffic to meter.
+- **(Day 10)** Prompt A/B infrastructure: two versions live behind a setting, with
+  the version and its sha256 recorded on every stored message so a reply can
+  always be traced to the prompt that produced it.
 
-## Next steps (Day 10 — first three)
+## Next steps (Day 11 — first three)
 
 **Preamble (carried, needs my machine):** the seven Docker commands from
-"Verification (Day 7)" are still unverified here; Day 9 added nothing that
-changes the stack, but `make eval` inside the api container should be exercised
-once when the compose env is up.
+"Verification (Day 7)" are still unverified here; Day 10 added nothing that
+changes the stack. `make eval` inside the api container should be exercised once
+when the compose env is up.
 
 **Preamble (carried from Day 8, needs a human):** native-speaker review of the
 hi/bn crisis copy; the four `needs_verification` helplines called; ownership of
-the out-of-table probe cadence. Day 9 adds one: **a second annotator pass on the
-~60 ambiguous eval labels** (see Day 9 safety notes) before the next threshold
-tune is trusted.
+the out-of-table probe cadence; and **a second annotator pass on the ~60
+ambiguous eval labels** (see Day 9 safety notes) before the next threshold tune
+is trusted.
 
-1. **Wire the crisis gate into the message-send path** (carried, still first).
-   `POST /api/v1/chat/sessions/{id}/messages` behind `require_consent`-style
-   consent + auth, running the **ensemble** — not just the rules engine — before
-   any LLM call: `RuleEngine.assess` → `classifier.predict` → `ensemble.combine`,
-   honouring `policy.allow_llm=False` at HIGH/IMMINENT, appending the soft
-   check-in at MEDIUM, storing text encrypted, and writing the `SafetyEvent` row
-   *with* user/session ids (the assess endpoint's rows stay anonymous). Tests
-   must assert no raw text reaches logs and a HIGH message never reaches the
-   model.
-2. **LLM provider interface** (`app/llm/`): `ChatCompleter` protocol, one real
-   adapter, `FakeCompleter` for offline tests, selected by `LLM_PROVIDER`, plus
-   the output-safety check every completion must pass (AGENTS.md rule 4) —
-   reusing the safe-messaging vocabulary rather than growing a second list.
+**Preamble (Day 10, needs my machine):** `ANTHROPIC_API_KEY=… ANTHROPIC_MODEL=…
+python3 scripts/llm_probe.py` — the one item in the Day 10 verification table
+that this sandbox could not do. Do it before building on the LLM layer.
+
+1. **Wire the crisis gate into the message-send path** (carried twice, now
+   unblocked by Day 10 and still first). `POST /api/v1/chat/sessions/{id}/messages`
+   behind consent + auth, running the **ensemble** before any LLM call:
+   `RuleEngine.assess` → `classifier.predict` → `ensemble.combine`, honouring
+   `policy.allow_llm=False` at HIGH/IMMINENT, appending the soft check-in at
+   MEDIUM, storing text encrypted, and writing the `SafetyEvent` row *with*
+   user/session ids (the assess endpoint's rows stay anonymous). Day 10 gives
+   this endpoint its last two pieces: `build_llm_chain(settings)` to call, and a
+   `degraded` flag to decide whether to tell the user the companion is on a
+   spare wheel. Tests must assert no raw text reaches logs, no PII reaches the
+   provider, and a HIGH message never reaches the model.
+2. **The output-safety check every completion must pass** (AGENTS.md rule 4) —
+   the half of the Day 10 brief that is still missing. A small, deterministic
+   screen applied to `LLMResult.text` before it is stored or shown: no
+   diagnosis claims, no medication advice, no method or means language, no
+   "I understand", no claimed humanity. Reuse the safe-messaging vocabulary from
+   Day 8 rather than growing a second list, and route a failed check to the
+   canned reply — never to the raw completion.
 3. **Frontend chat page** wired to the send endpoint, rendering `CrisisCard`
    in-thread whenever the policy says `show_crisis_message`, with helplines one
-   tap away — making the Day 8+9 detection user-visible end to end. (Day 9's
-   ensemble metadata is already on the assess response, so the frontend contract
-   needs no change to get the gate live.)
+   tap away — making the Day 8+9 detection user-visible end to end. It should
+   also surface `degraded` honestly ("I'm having trouble thinking clearly right
+   now"), because a canned reply presented as the model's own words is a small
+   lie about where the words came from.
