@@ -27,6 +27,7 @@ from app.db.session import Database
 from app.models.enums import ConsentKind
 from app.models.user import User
 from app.services.safety.escalation import Escalator, build_escalator
+from app.services.safety.ml_classifier import NullClassifier, SafetyClassifier, build_ml_classifier
 from app.services.safety.rules import RuleEngine, build_engine
 
 
@@ -79,12 +80,27 @@ def get_escalator() -> Escalator:
     return build_escalator()
 
 
+def get_ml_classifier(request: Request) -> SafetyClassifier:
+    """The Day 9 ML safety classifier (Day 8 behaviour when disabled).
+
+    The artifact loads once per process and is shared: prediction is
+    stateless. ``SAFETY_ML_ENABLED=false`` (the test suite's default) or a
+    missing artifact both hand back a disabled classifier, and the pipeline
+    runs rules-only — degradation, never failure.
+    """
+    settings = request.app.state.settings
+    if not settings.safety_ml_enabled:
+        return NullClassifier(reason="disabled")
+    return build_ml_classifier(artifact_dir=settings.safety_ml_artifact_dir)
+
+
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 ConsentDocumentsDep = Annotated[ConsentDocuments, Depends(get_consent_documents)]
 HelplinesDep = Annotated[HelplineContent, Depends(get_helplines)]
 RuleEngineDep = Annotated[RuleEngine, Depends(get_rule_engine)]
 EscalatorDep = Annotated[Escalator, Depends(get_escalator)]
+MLClassifierDep = Annotated[SafetyClassifier, Depends(get_ml_classifier)]
 LockoutDep = Annotated[LoginLockout, Depends(get_login_lockout)]
 
 

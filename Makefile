@@ -2,7 +2,7 @@
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
-# eval remains a placeholder.
+# `eval` runs the Day 9 safety evaluation (backend/Makefile).
 
 dev:
 	$(MAKE) -C backend dev
@@ -63,4 +63,4 @@ smoke:
 	./scripts/smoke.sh
 
 eval:
-	@echo "not implemented yet"
+	$(MAKE) -C backend eval

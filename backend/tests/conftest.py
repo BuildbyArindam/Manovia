@@ -59,6 +59,13 @@ _ENV_KEYS = (
     # Model downloads must never happen inside the test suite.
     "HF_HUB_OFFLINE",
     "TRANSFORMERS_OFFLINE",
+    # Safety ML ensemble (Day 9). Tests pin the ML path explicitly; a
+    # developer's .env must not flip the rules-only expectations.
+    "SAFETY_ML_ENABLED",
+    "SAFETY_ML_MIN_CONFIDENCE",
+    "SAFETY_ML_CRISIS_MASS_FLOOR",
+    "SAFETY_ML_SUSPICION_FLOOR",
+    "SAFETY_ML_ARTIFACT_DIR",
 )
 
 
@@ -94,6 +101,9 @@ def settings(clean_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     monkeypatch.setenv("FIELD_ENCRYPTION_KEY", crypto.FernetCipher.generate_key())
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://testserver")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'manovia-test.db'}")
+    # The Day 8 integration tests pin exact levels for pinned texts; the ML
+    # raise path is exercised by its own tests, which flip this on.
+    monkeypatch.setenv("SAFETY_ML_ENABLED", "false")
     return Settings(_env_file=None)
 
 

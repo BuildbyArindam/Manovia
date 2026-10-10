@@ -1,0 +1,36 @@
+{
+  "dataset": "crisis_cases",
+  "built": "2026-10-10",
+  "seed": 20261010,
+  "labels": {
+    "NONE": 189,
+    "LOW": 64,
+    "MEDIUM": 68,
+    "HIGH": 148,
+    "IMMINENT": 103
+  },
+  "languages": {
+    "en": 241,
+    "hi-Latn": 118,
+    "hi": 92,
+    "bn": 121
+  },
+  "total": 572,
+  "splits": {
+    "train": {
+      "count": 340,
+      "sha256": "905e56e67f6680fb41c1c6d7aac9810e60eb8e5b850f36d50a978303cf6a87e6",
+      "frozen": false
+    },
+    "dev": {
+      "count": 116,
+      "sha256": "38dfd78820bdd11fd38b9695caba0abb523ccb40389257c4c6c910a0c00725b0",
+      "frozen": false
+    },
+    "test": {
+      "count": 116,
+      "sha256": "0845c77a48214818b7ffe945f892e120bac45eeb33818741cc56b4d1d3cc4362",
+      "frozen": true
+    }
+  }
+}
