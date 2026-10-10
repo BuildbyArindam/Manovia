@@ -37,8 +37,11 @@ from .conftest import messages
 #: either way, so the real-SDK test below skips when it is not.
 ANTHROPIC_INSTALLED: bool = importlib.util.find_spec("anthropic") is not None
 
-# A model id used only by tests. Nothing in the application code names a model.
-TEST_MODEL = "claude-sonnet-4-5"
+#: A model id used only by tests, and deliberately not a real one: it keeps
+#: "grep the repo for a vendor model name" a usable check (see
+#: tests/llm/test_no_hardcoded_model.py). Nothing in the application code names
+#: a model; the id always arrives from ANTHROPIC_MODEL.
+TEST_MODEL = "test-model-anthropic-000"
 
 
 def block(text: str) -> SimpleNamespace:

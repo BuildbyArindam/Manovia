@@ -42,6 +42,7 @@ from app.services.llm.base import (
     LLMMessage,
     LLMProvider,
     LLMResult,
+    ProviderDown,
 )
 from app.services.llm.guard import GuardReport, TokenGuard
 from app.services.llm.prompts import (
@@ -152,6 +153,22 @@ class LLMChain(LLMProvider):
                     error_type=type(exc).__name__,
                 )
                 continue
+            except Exception as exc:
+                # A provider that raises something outside the LLMError tree has
+                # broken its contract, but the person waiting for a reply has
+                # not. This is the same rule the resilient wrapper applies one
+                # level down, and for the same reason: an SDK bug is an outage,
+                # not a 500. The exception's own text is never logged — it can
+                # echo request content.
+                last_error = ProviderDown(f"{provider.name} raised {type(exc).__name__}")
+                self._note_failure(provider.name, f"unexpected:{type(exc).__name__}")
+                structlog.get_logger().warning(
+                    "llm_chain_provider_crashed",
+                    provider=provider.name,
+                    position=index,
+                    error_type=type(exc).__name__,
+                )
+                continue
             return self._finish(result, position=index, request=request)
 
         raise AllProvidersFailed(
@@ -199,6 +216,19 @@ class LLMChain(LLMProvider):
                     raise
                 structlog.get_logger().warning(
                     "llm_chain_provider_failed",
+                    provider=provider.name,
+                    position=index,
+                    error_type=type(exc).__name__,
+                )
+                continue
+            except Exception as exc:
+                # See complete(): a broken provider contract is an outage.
+                last_error = ProviderDown(f"{provider.name} raised {type(exc).__name__}")
+                self._note_failure(provider.name, f"unexpected:{type(exc).__name__}")
+                if yielded:
+                    raise
+                structlog.get_logger().warning(
+                    "llm_chain_provider_crashed",
                     provider=provider.name,
                     position=index,
                     error_type=type(exc).__name__,

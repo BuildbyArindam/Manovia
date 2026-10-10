@@ -7,7 +7,11 @@ here ends by asserting what the user got, not what the provider did.
 
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator, Sequence
+
 import pytest
+from structlog.testing import capture_logs
 
 from app.services.llm.base import (
     AllProvidersFailed,
@@ -297,3 +301,79 @@ async def test_message_objects_are_not_mutated_by_the_chain() -> None:
     original = LLMMessage(role="user", content="mail me at riya@example.com")
     await chain(FakeLLMProvider()).complete([original])
     assert original.content == "mail me at riya@example.com"
+
+
+# --- a provider that breaks its contract -------------------------------------
+
+
+async def test_an_unexpected_exception_falls_through_to_the_next_link() -> None:
+    """Regression: the chain used to catch only LLMError, so a provider raising
+    anything else — an SDK bug, an AttributeError on a renamed field — escaped
+    to the caller and became a 500 in front of somebody mid-conversation.
+
+    Providers are contracted to raise LLMError, but a contract a caller cannot
+    survive being broken is not a contract, it is a wish. The chain degrades.
+    """
+    broken = ScriptedProvider(RuntimeError("SDK internals changed"), name="broken")
+    spare = FakeLLMProvider(replies=["from the spare"])
+    result = await chain(broken, spare).complete(messages("hello"))
+    assert result.text == "from the spare"
+    assert result.degraded is True
+    assert broken.calls == 1
+
+
+async def test_an_unexpected_exception_falls_through_to_the_canned_reply() -> None:
+    broken = ScriptedProvider(AttributeError("no attribute 'messages'"), name="broken")
+    result = await chain(broken).complete(messages("hello"))
+    assert result.text == CANNED_REPLY
+    assert result.fallbacks_used == 1
+
+
+async def test_an_unexpected_stream_exception_falls_through_before_the_first_token() -> None:
+    broken = ScriptedProvider(RuntimeError("boom"), name="broken")
+    spare = ScriptedProvider(["a", "b"], name="spare")
+    assert await collect(chain(broken, spare), "hi") == "ab"
+
+
+async def test_an_unexpected_stream_exception_after_tokens_is_raised() -> None:
+    """The one case that must surface: text the user has already read cannot be
+    silently restarted from the next provider."""
+
+    class CrashesMidStream(ScriptedProvider):
+        async def stream(
+            self,
+            messages: Sequence[LLMMessage],
+            *,
+            system: str | None = None,
+            max_tokens: int = 400,
+            temperature: float = 0.7,
+        ) -> AsyncIterator[str]:
+            self.stream_calls += 1
+            yield "I hear you"
+            raise RuntimeError("connection reset mid-stream")
+
+    inner = CrashesMidStream(name="broken")
+    received: list[str] = []
+    with pytest.raises(RuntimeError):
+        async for chunk in chain(inner).stream(messages("hi")):
+            received.append(chunk)
+    assert received == ["I hear you"]
+
+
+async def test_the_failure_counter_records_unexpected_exceptions_separately() -> None:
+    """An SDK bug and a clean ProviderDown are different problems, and whoever
+    reads the metrics should be able to tell them apart."""
+    link = chain(ScriptedProvider(RuntimeError("boom"), name="broken"))
+    await link.complete(messages("hello"))
+    assert link.failure_counts.get("broken:unexpected:RuntimeError") == 1
+    assert "broken:RuntimeError" not in link.failure_counts
+
+
+async def test_an_unexpected_exception_does_not_leak_its_text_into_logs() -> None:
+    """Exception text can echo request content, so only the type is logged."""
+    secret = "riya.sharma@example.com"
+    broken = ScriptedProvider(RuntimeError(f"failed on {secret}"), name="broken")
+    with capture_logs() as captured:
+        await chain(broken).complete(messages("hello"))
+    assert secret not in json.dumps(captured)
+    assert any(entry["event"] == "llm_chain_provider_crashed" for entry in captured)

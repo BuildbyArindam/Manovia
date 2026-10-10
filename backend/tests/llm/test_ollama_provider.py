@@ -27,7 +27,8 @@ from app.services.llm.ollama_provider import DEFAULT_BASE_URL, OllamaProvider
 
 from .conftest import messages
 
-TEST_MODEL = "llama3.2:3b"
+#: Deliberately not a real model id — see test_no_hardcoded_model.py.
+TEST_MODEL = "test-model-ollama-000"
 
 
 def client(handler: Any) -> httpx.AsyncClient:
