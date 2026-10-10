@@ -23,6 +23,11 @@ SUPPORTED_DB_BACKENDS: tuple[str, ...] = ("sqlite", "postgresql", "postgres")
 # docs/adr/0006-emotion-model.md for why the model is a setting, not a constant.
 EMOTION_ANALYZER_CHOICES: tuple[str, ...] = ("auto", "hf", "keyword", "sentiment", "fake")
 
+# Providers the LLM chain can lead with (Day 10). "fake" is the offline
+# double the test suite uses; the chain always ends at a canned reply, so any
+# of these being unusable is a degradation, never a 500.
+LLM_PROVIDER_CHOICES: tuple[str, ...] = ("anthropic", "ollama", "fake")
+
 
 class Settings(BaseSettings):
     """Runtime settings. Every value comes from the environment (see .env.example)."""
@@ -86,6 +91,39 @@ class Settings(BaseSettings):
     # If the model's latency average exceeds this, the chain stops routing to
     # it: a stalled companion is worse than a cruder reading.
     emotion_slow_ms: float = 1500.0
+
+    # --- LLM provider layer (Day 10) ---
+
+    # Which provider leads the conversation: anthropic | ollama | fake.
+    # "fake" is deterministic and offline; it is what the test suite uses.
+    # The chain always ends at a canned supportive reply, so a missing key or
+    # a dead provider degrades instead of returning a 500 (ADR 0010).
+    # llm_provider / anthropic_api_key / anthropic_model / ollama_base_url are
+    # declared above with the other connection settings.
+    llm_timeout_seconds: float = 15.0
+    llm_max_attempts: int = 3
+    llm_retry_base_seconds: float = 0.4
+    llm_retry_max_seconds: float = 8.0
+    llm_circuit_failure_threshold: int = 3
+    llm_circuit_cooldown_seconds: float = 60.0
+    # Generation defaults. max_tokens is also the cost ceiling per reply.
+    llm_max_tokens: int = 400
+    llm_temperature: float = 0.7
+    # Input guard: long messages are truncated, never rejected, and the
+    # conversation window keeps only the most recent turns that fit the budget.
+    llm_max_input_chars: int = 8000
+    llm_window_turns: int = 12
+    llm_window_tokens: int = 3000
+    # Which versioned prompt file under app/content/prompts/ to load.
+    llm_prompt_version: str = "system_v1"
+    # Local Ollama model id (env OLLAMA_MODEL). Empty means "ask the server
+    # what it has" and is only valid for the fallback provider.
+    ollama_model: str = ""
+    # PII redaction (app/services/nlp/redaction.py). Names stay off by
+    # default: an NER pass is slower and false-positives on common Indian
+    # given names that are also ordinary words.
+    llm_redact_pii: bool = True
+    llm_redact_names: bool = False
 
     # --- Safety ML ensemble (Day 9) ---
     # The ML classifier can only RAISE the level the rules engine found, never
@@ -195,6 +233,38 @@ class Settings(BaseSettings):
             raise ValueError("safety_ml_suspicion_floor must be in [0, 1]")
         if self.safety_ml_crisis_mass_floor < self.safety_ml_suspicion_floor:
             raise ValueError("safety_ml_crisis_mass_floor must be >= safety_ml_suspicion_floor")
+        return self
+
+    @model_validator(mode="after")
+    def _check_llm_settings(self) -> "Settings":
+        """Catch an unusable LLM configuration at startup, not mid-conversation."""
+        if self.llm_provider.strip().casefold() not in LLM_PROVIDER_CHOICES:
+            raise ValueError(
+                f"LLM_PROVIDER must be one of {', '.join(LLM_PROVIDER_CHOICES)} "
+                f"(got {self.llm_provider!r})"
+            )
+        if self.llm_timeout_seconds <= 0:
+            raise ValueError("llm_timeout_seconds must be positive")
+        if self.llm_max_attempts < 1:
+            raise ValueError("llm_max_attempts must be at least 1")
+        if self.llm_retry_base_seconds <= 0 or self.llm_retry_max_seconds <= 0:
+            raise ValueError("retry delays must be positive")
+        if self.llm_retry_max_seconds < self.llm_retry_base_seconds:
+            raise ValueError("llm_retry_max_seconds must be >= llm_retry_base_seconds")
+        if self.llm_circuit_failure_threshold < 1:
+            raise ValueError("llm_circuit_failure_threshold must be at least 1")
+        if self.llm_circuit_cooldown_seconds < 0:
+            raise ValueError("llm_circuit_cooldown_seconds must not be negative")
+        if self.llm_max_tokens < 1:
+            raise ValueError("llm_max_tokens must be at least 1")
+        if not 0.0 <= self.llm_temperature <= 2.0:
+            raise ValueError("llm_temperature must be within [0, 2]")
+        if self.llm_max_input_chars < 1:
+            raise ValueError("llm_max_input_chars must be at least 1")
+        if self.llm_window_turns < 1:
+            raise ValueError("llm_window_turns must be at least 1")
+        if self.llm_window_tokens < 1:
+            raise ValueError("llm_window_tokens must be at least 1")
         return self
 
     @property

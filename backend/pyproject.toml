@@ -52,6 +52,21 @@ nlp = [
     "transformers>=4.44.0",
     "torch>=2.2.0",
 ]
+# LLM providers (Day 10). Deliberately NOT base dependencies: the offline test
+# suite, CI and any deployment that routes through Ollama or the Fake must be
+# able to import app.services.llm without a hosted vendor's SDK. The Anthropic
+# provider imports its SDK lazily and raises ProviderNotAvailable when it is
+# missing, so the chain simply falls through to the next link.
+#   pip install -e ".[dev,llm]"
+llm = [
+    "anthropic>=0.40.0",
+]
+# Optional person-name redaction (LLM_REDACT_NAMES). Off by default and never
+# imported eagerly: app.services.nlp.redaction.SpacyNameFinder degrades to
+# "finds nothing" when this is absent.
+ner = [
+    "spacy>=3.7.0",
+]
 dev = [
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.0",
@@ -70,7 +85,9 @@ include = ["app*"]
 # Helpline + consent content, its schema, the localised crisis templates and the
 # safety pattern YAML. Without these the installed wheel imports but crashes on
 # first load.
-"app.content" = ["*.json", "safety/*.yaml", "i18n/*.json"]
+# Day 10 adds the versioned system prompts (prompts/*.md). A missing prompt
+# file is a startup error by design, so it must be in the wheel.
+"app.content" = ["*.json", "safety/*.yaml", "i18n/*.json", "prompts/*.md"]
 # Day 9 safety ML artifact (trained offline from evals/datasets; see
 # evals/train_safety_classifier.py). Missing artifact degrades to rules-only.
 "app.ml_artifacts.crisis_v1" = ["model.joblib", "metadata.json"]
@@ -106,6 +123,13 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
+[tool.ruff.lint.per-file-ignores]
+# The LLM error names are the ones the Day 10 brief asks for (Timeout,
+# RateLimited, ProviderDown). They read as *conditions* rather than as types,
+# which is exactly how the retry machinery reads them, and N818's "Error"
+# suffix would make that code noisier for no gain. Domain naming wins here.
+"app/services/llm/base.py" = ["N818"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -114,6 +138,6 @@ plugins = ["pydantic.mypy"]
 # Third-party modules with no type information. langdetect ships no stubs;
 # transformers/torch are imported lazily inside app/services/nlp/hf.py.
 [[tool.mypy.overrides]]
-module = ["langdetect.*", "transformers.*", "torch.*"]
+module = ["langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*"]
 ignore_missing_imports = true
 follow_imports = "skip"
