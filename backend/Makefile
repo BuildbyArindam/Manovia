@@ -1,4 +1,4 @@
-.PHONY: dev test lint format migrate migrate-down migrate-check revision
+.PHONY: dev test lint format migrate migrate-down migrate-check revision eval
 
 # Development API server (install first: pip install -e ".[dev]")
 # --no-access-log: uvicorn's access log prints the full request line including
@@ -38,3 +38,10 @@ migrate-check:
 # Usage: make revision m="add risk index to messages"
 revision:
 	alembic revision --autogenerate -m "$(m)"
+
+# Day 9 safety eval: score rules + ML ensemble against the labelled dataset.
+# Dev split by default (tuning may look at it); the test split is frozen by
+# hash and is scored deliberately, not as a default: `make eval SPLIT=test`.
+SPLIT ?= dev
+eval:
+	python ../evals/run_safety_eval.py --split $(SPLIT)

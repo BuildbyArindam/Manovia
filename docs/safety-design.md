@@ -572,3 +572,147 @@ Safe messaging guidance:
 
 The three agree on the points this module implements: do not describe method or
 location, do not sensationalise, and do point to where help is available.
+
+---
+
+## 12. Day 9: the ML ensemble — a one-way backstop
+
+First version of this section, Day 9 (2026-10-10). Design decisions recorded in
+[ADR 0009](adr/0009-safety-ml-ensemble.md); this section describes the system as
+built and, as in the rest of this document, states the cost next to each decision.
+
+### 12.1 What changed, and what did not
+
+The rules engine is still the gate. It still runs before anything else, it still
+owns the HIGH/IMMINENT deterministic reply, and — this is the point of the whole
+design — **nothing that Day 9 added can lower a level the rules found.** What Day
+9 adds is a statistical answer to §9's honest sentence: recall is bounded by what
+somebody thought to write down. The out-of-table probe showed indirect phrasings
+("drafting the note to leave behind for my sister") slipping past a curated
+vocabulary; a classifier trained on labelled examples is the instrument that
+generalises beyond the vocabulary.
+
+### 12.2 The ratchet
+
+```
+message text
+    │
+    ▼
+RuleEngine.assess()            rules level, categories, pattern ids, pragmatics
+    │
+    ▼
+TfidfLogisticClassifier        calibrated P(none..imminent)   [skippable: rules-only]
+    │
+    ▼
+ensemble.combine()             final = max(rules, ML-if-confident)
+    │                           ML can RAISE, never LOWER (property-tested)
+    ▼
+Escalator.plan()               unchanged — policy table, templates, helplines
+```
+
+`ensemble.combine()` is the only place the two detectors meet. Every branch keeps
+or raises the rules level; a hypothesis property test (800 random predictions ×
+random thresholds) asserts `final >= rules level` from the outside. When the ML
+path is disabled (`SAFETY_ML_ENABLED=false`), missing its artifact, or throws,
+the pipeline is exactly the Day 8 pipeline.
+
+### 12.3 The raise bands
+
+The model contributes two numbers: its top-class calibrated confidence, and its
+**crisis mass** `P(high) + P(imminent)`. Three bands, strongest evidence first:
+
+| band | condition | effect | rationale code |
+| --- | --- | --- | --- |
+| confident top class | `confidence >= SAFETY_ML_MIN_CONFIDENCE` and ML level > rules level | raise to the ML level | `ml.raised` |
+| crisis mass | `mass >= SAFETY_ML_CRISIS_MASS_FLOOR` and rules < HIGH | raise to HIGH | `ml.crisis_mass` |
+| suspicion | `mass >= SAFETY_ML_SUSPICION_FLOOR` and rules < MEDIUM | treat as MEDIUM (soft check-in) | `ml.uncertain.checkin` |
+
+The crisis-mass band exists because indirect crisis phrasing usually splits its
+probability between HIGH and IMMINENT; neither class alone crosses a confidence
+threshold while their sum is exactly the evidence being asked about. The suspicion
+band is the "uncertain → treat as MEDIUM" policy: respond normally, append the
+soft check-in and resources — never a crisis card on a hunch, never silence.
+
+Shipped defaults (chosen by grid search on the dev split only,
+`evals/tune_safety_thresholds.py`): `SAFETY_ML_MIN_CONFIDENCE=0.70`,
+`SAFETY_ML_CRISIS_MASS_FLOOR=0.30`, `SAFETY_ML_SUSPICION_FLOOR=0.25`. Startup
+validation rejects out-of-range values and a suspicion floor above the mass floor
+(which would empty the check-in band).
+
+### 12.4 The pragmatics gate
+
+When the rules engine matched risky words but discounted them on positive evidence
+— negation hits or a figurative frame — the ML raise bands are blocked for that
+message (the gentle check-in band still applies). Without this, the classifier's
+n-grams would "see" the same risky words and simply undo the pragmatics: the
+classic way a statistical layer talks a system out of a correct NONE. The discount
+is evidence; a probability does not get to overrule evidence with vibes.
+
+### 12.5 Response policy at MEDIUM and LOW (unchanged, now ML-reachable)
+
+The Day 8 policy table already did what the task asks; Day 9 makes it reachable
+by the model:
+
+- **MEDIUM** — respond normally, append the soft check-in (`check_in.medium`)
+  and the region's helplines as resources; the LLM stays allowed; a
+  metadata-only `safety_events` row is due.
+- **LOW** — the gentle tone: `check_in.low`, no helplines, no event.
+
+### 12.6 What the numbers actually say (honest, and uncomfortable)
+
+Eval set: 572 synthetic cases (en, hi Devanagari, hi romanised, bn), split
+202-style into train 340 / dev 116 / test 116, test frozen by hash before any
+tuning (see `evals/datasets/manifest.json`). Dev ground truth: 51 HIGH+IMMINENT,
+51 NONE/LOW.
+
+| pipeline | dev crisis recall | dev crisis precision |
+| --- | --- | --- |
+| rules only | 0.333 | 1.000 |
+| rules + ML (shipped thresholds) | **1.000** | 0.543 |
+
+The recall target (>= 0.97 on dev) is met. The cost, stated plainly: at these
+thresholds **31 of 51 benign dev cases are escalated to a crisis card**, and 7
+more to a MEDIUM check-in. The benign and crisis mass distributions overlap badly
+(benign median ≈ 0.34, crisis median ≈ 0.54) — a char n-gram model on 340
+training examples cannot separate "কাল খেলায় আমাদের দল জিতেছে" from crisis text
+with any confidence. The operating point is deliberately recall-first, consistent
+with the conservative bias this document has argued for since Day 8 (a false
+alarm shows somebody a warm message and a helpline; a miss can be fatal), and the
+precision-leaning alternative is documented in `threshold_tuning.md`
+(`crisis_mass_floor 0.45–0.50`: recall ≈ 0.80–0.84, crisis-card false alarms cut
+by two-thirds) for the day the product decides the alarm fatigue is the bigger
+risk.
+
+Three honest caveats about the 1.00 itself:
+
+- **It is tuned on dev.** The test split is the first honest measurement and is
+  reported in the Day 9 verification section of PROGRESS.md.
+- **The ground truth is one annotator's judgement** (the maintainer) on synthetic
+  text. Borderline families (farewell behaviour, "everything is arranged") are
+  labelled as a careful human would, which means the eval measures agreement with
+  one human, not with the world.
+- **The dataset over-represents hard cases on purpose** — that is what it exists
+  to stress — so per-level precision on this set understates how the system will
+  behave on ordinary traffic, and the false-alarm figures overstate it. Neither
+  direction excuses the numbers; they frame them.
+
+### 12.7 Known limitations (Day 9 additions)
+
+- **Calibration at this data size is approximate.** Sigmoid calibration with
+  cv=3 on ~340 examples produces noisy probabilities; the masses are good enough
+  to order evidence, not to read as frequencies.
+- **Indic coverage is thinner than English** in training data (88 bn, 82 hi,
+  107 hi-Latn vs 218 en cases) and the model inherits the rules engine's §9
+  warning that the Indic sets are less battle-tested.
+- **The ML path adds CPU work per message** (~ms for TF-IDF scoring on this
+  artifact; measured acceptable under `run_in_threadpool`), and the artifact is
+  a committed 2 MB joblib file: reproducible via `evals/train_safety_classifier.py`,
+  but opaque like any pickled model. Reviewability lives in the dataset, the
+  thresholds, and the eval report — not in the weights.
+- **Ground-truth labels differ from engine behaviour by design in places** (a
+  past-tense recovery story is LOW truth while the engine — no tense reasoning —
+  says HIGH). The eval reports the system against truth, so those over-escalations
+  appear in the confusion matrix as the deliberate conservative bias they are.
+- **The audit row is anonymous on this endpoint.** `safety_events` rows written
+  by the public endpoint have NULL user/session ids; the authenticated chat gate
+  will attach both when it lands (Day 10+).
