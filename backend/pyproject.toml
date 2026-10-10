@@ -71,6 +71,9 @@ include = ["app*"]
 # safety pattern YAML. Without these the installed wheel imports but crashes on
 # first load.
 "app.content" = ["*.json", "safety/*.yaml", "i18n/*.json"]
+# Day 9 safety ML artifact (trained offline from evals/datasets; see
+# evals/train_safety_classifier.py). Missing artifact degrades to rules-only.
+"app.ml_artifacts.crisis_v1" = ["model.joblib", "metadata.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
