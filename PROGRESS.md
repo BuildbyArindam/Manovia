@@ -2,53 +2,56 @@
 
 ## Current status
 
-Day 8 (crisis detection: rules engine and helplines) is complete and verified:
-**1199 backend tests pass at 98 % coverage** (3394 statements, 73 missed; the 2
-skips are the `nlp`-extra integration tests), of which **542 are the safety
-suite** (236 rules engine, 51 escalation, 255 no-raw-text privacy) plus 22
-crisis-content unit and 27 crisis-API integration tests, and **89 frontend
-tests** across 13 files pass — with `ruff`, `ruff format`, `mypy` (strict, 119
-files), `eslint`, `tsc --noEmit`, `prettier --check` and the production
-`vite build` all clean.
+Day 9 (crisis ML classifier, ensemble and the first eval set) is complete and
+verified: **1236 backend tests pass** (the Day 8 suite plus 37 new Day 9 tests:
+the ensemble contract with a hypothesis never-lowers property, the committed
+artifact's behaviour and provenance, dataset integrity including the frozen-test
+hash, and the assess endpoint's audit rows), `ruff`, `ruff format` and
+`mypy --strict` all clean, and the safety suite alone is now **574 tests**.
 
-The module is a gate rather than a feature, per AGENTS.md rule 1.
-`POST /api/v1/crisis/assess` and `GET /api/v1/crisis/resources` run a
-deterministic rules engine over **181 patterns** held in four YAML data files
-(no phrase lives in Python), and at HIGH or IMMINENT the policy **blocks the LLM
-entirely** and returns a pre-written, localised message with region helplines
-and the local emergency number. **34 vetted resources** across six regions
-(IN, US, GB, AU, CA, DEFAULT), every one carrying its own `source_url` and
-`last_verified` date; the four that could not be fully confirmed are flagged
-`needs_verification` with a note saying exactly what is unconfirmed, and the UI
-says so in plain words rather than presenting a possibly stale number as
-certain. Crisis copy ships in en, hi and bn, and no template in any language
-names a method.
+The rules engine remains the gate (ADR 0008, unchanged); Day 9 adds a
+**one-way statistical backstop** next to it (ADR 0009). A TF-IDF + calibrated
+logistic-regression classifier trained on the new labelled corpus serves
+five-level calibrated probabilities; `ensemble.combine()` computes
+**final = max(rules level, ML level if confident)** with three raise bands —
+confident top class (`ml.raised`), crisis mass `P(high)+P(imminent)`
+(`ml.crisis_mass`), and an uncertain → MEDIUM gentle-check-in band
+(`ml.uncertain.checkin`). The ML path can raise an assessment and **never lower
+one** — pinned from the outside by a hypothesis property over 800 random
+predictions × random thresholds — and it is blocked from raising when the rules
+engine discounted risky words on positive evidence (negation, figurative frames).
+Every knob degrades to the exact Day 8 pipeline: `SAFETY_ML_ENABLED=false`, a
+missing artifact, a missing scikit-learn, or any predict-time exception.
 
-**The honest headline is not the test count.** A probe of fifteen phrases
-invented *outside* the case table found **six real defects**, including **three
-clearly high-risk messages that returned NONE** — nothing at all — after 190
-curated cases were already green, and one emphatic denial that got a crisis
-card. All six are fixed at the root cause and pinned by 28 regression cases plus
-two invariant tests; not one assertion was loosened. In-table recall on
-HIGH+IMMINENT is 137/137, but that figure is circular by construction and is
-reported as such in [`docs/safety-design.md`](docs/safety-design.md) §9.1. The
-out-of-table number — **2 of 5 high-risk phrases caught on first contact** — is
-the one that describes actual coverage.
+The eval contract landed: **572 synthetic labelled cases** (en, hi Devanagari,
+hi romanised, bn; five levels; hard negatives — figurative, news, media
+discussion, third person, past-tense recovery stories; hard positives — indirect
+and keyword-free), split deterministically into train 340 / dev 116 / test 116.
+The test split is **frozen by hash** in `manifest.json`; the runner refuses a
+drifted file and a backend test asserts neither the training script nor the
+threshold tuner names it. Thresholds were chosen on dev only
+(0.70 / 0.30 / 0.25), and the first look at test reports honestly:
+**HIGH+IMMINENT recall 1.000 (0 false negatives on 51 crisis cases, in all four
+languages) at precision 0.567, with 27/51 benign cases escalated to a crisis
+card** — the stated price of the recall target at this dataset size
+(`docs/safety-design.md` §12.6), with the precision-leaning alternative
+documented. Rules alone score 0.255 recall on the same split; the backstop is
+doing the work Day 9 exists for. `POST /api/v1/crisis/assess` now writes
+metadata-only `safety_events` rows (stored tier + which detector earned it,
+never text) at MEDIUM and above.
 
-What could **not** be verified here: **no native-speaker review of the Hindi and
-Bengali crisis copy**. The translations are structurally tested and screened for
-method language, but whether they read as warm to the person who needs them is
-not a question a test can answer; it is the highest-value outstanding review
-task. Helpline data was researched from official and government sources via web
-search on 2026-10-09 and **must be re-checked by a person before it ships to
-anyone in distress** (AGENTS.md safety rule 6). The sandbox has no way to place
-a test call.
+What could **not** be verified here: no human review of the eval labels (a
+single maintainer wrote the ground truth for synthetic text), no native-speaker
+review of the Indic crisis copy (carried from Day 8), and no transformer-based
+classifier — the sandbox has no Hugging Face Hub access, so the interface
+(`SafetyClassifier`) ships with the offline TF-IDF baseline it was designed for,
+and a fine-tuned model can slot in behind it later.
 
-Work is on `arena/941abfe3-manovia` — the branch this Arena session is pinned
-to, **not** the requested `day-08-crisis-detection-rules-engine`; the session
+Work is on `arena/2f354295-manovia` — the branch this Arena session is pinned
+to, **not** the requested `day-09-crisis-ml-classifier-ensemble`; the session
 cannot create or push to another branch name. The pull request therefore comes
-from the session branch, matching how Day 7 landed. Days 1-7 are merged on
-`main` (through PR #9).
+from the session branch, matching how Days 7 and 8 landed. Days 1-8 are merged
+on `main` (through PR #10).
 
 ## Completed
 
@@ -366,6 +369,225 @@ instruction.
 **Docs**: [ADR 0008](docs/adr/0008-crisis-detection-rules-engine.md) — nine
 decisions with the alternative each was weighed against — and
 [docs/safety-design.md](docs/safety-design.md), first version.
+
+### Day 9 (branch `arena/2f354295-manovia`) — crisis ML classifier, ensemble and the first eval set
+
+**Eval dataset** (`evals/build_crisis_dataset.py` → `evals/datasets/`):
+572 synthetic labelled cases — fields `id`, `text`, `lang`, `label`
+(none/low/medium/high/imminent), `category`, `notes`, `difficulty` — across en
+(218), hi Devanagari (82), hi-Latn romanised (107) and bn (88). Hard families
+are present by construction: figurative idioms, news reporting, song/film
+discussion with quoted lyrics, third-person worry, past-tense recovery stories,
+and indirect keyword-free positives ("I've been saying goodbye to people this
+week", "the letters are written and everyone knows what to do"). **No case names
+a method or means** — the builder asserts it against the safe-messaging vocabulary
+extended with Indic means words, and a backend test re-checks every committed
+line. Split deterministically (seed 20261010) into train 340 / dev 116 /
+test 116; `manifest.json` records each file's SHA-256 and marks test
+`frozen: true`.
+
+**Classifier** (`app/services/safety/ml_classifier.py`): `SafetyClassifier`
+protocol (`enabled`, `version`, `predict(text) -> MLPrediction | None`),
+`TfidfLogisticClassifier` implementation — char-wb (2–4) + word (1–2) TF-IDF and
+multinomial logistic regression, sigmoid-calibrated (cv=3), trained offline by
+`evals/train_safety_classifier.py` from the train split and committed as
+`app/ml_artifacts/crisis_v1/model.joblib` (1.9 MB) with a `metadata.json`
+provenance record (`test_split_used: false`, dataset hashes, dev metrics,
+training command). `NullClassifier` covers the disabled/degraded state; a
+predict-time exception degrades to rules-only, never to a 500. Input is capped
+(8000 chars) and preprocessed *inside* the pipeline so training and inference
+cannot drift.
+
+**Ensemble** (`app/services/safety/ensemble.py`): `combine()` returns
+`final = max(rules, ML-if-confident)` — structurally raise-only, and pinned from
+the outside by a hypothesis property. Three raise bands read two calibrated
+numbers (top-class confidence, crisis mass `P(high)+P(imminent)`):
+`ml.raised`, `ml.crisis_mass` (torn between HIGH and IMMINENT ⇒ HIGH), and the
+suspicion band's **uncertain → MEDIUM gentle check-in** (`ml.uncertain.checkin`,
+source `ensemble.uncertain`) — uncertainty resolves toward noticing, never
+toward dismissing, and never to a crisis card on a hunch. The **pragmatics gate**
+blocks the raise bands when the rules discounted risky words on positive evidence
+(negation hits, figurative frames). Thresholds are settings with startup
+validation: `SAFETY_ML_MIN_CONFIDENCE=0.70`, `SAFETY_ML_CRISIS_MASS_FLOOR=0.30`,
+`SAFETY_ML_SUSPICION_FLOOR=0.25` (grid-chosen on dev by
+`evals/tune_safety_thresholds.py`, report in `evals/reports/threshold_tuning.md`).
+
+**Endpoint wiring** (`api/v1/crisis.py`, `api/deps.py`): the assess handler runs
+the ensemble on a threadpool, exposes `EnsembleOut` (metadata only: which
+detector earned the level, calibrated confidence, crisis mass, check-in flag),
+and writes a `safety_events` row whenever `policy.record_event` — stored tier
+plus `source` (`rules`/`ml`), **no text** (the model has no text column and a
+whitelist test enforces it). ML disabled or degraded ⇒ exact Day 8 responses.
+
+**MEDIUM and LOW policy** (unchanged, now ML-reachable): MEDIUM ⇒ respond
+normally + append the soft check-in and resources; LOW ⇒ gentle tone. The model
+can now *put* a message at MEDIUM through the suspicion band.
+
+**Eval runner** (`evals/run_safety_eval.py`, `make eval`): precision/recall/F1
+per level, the binary HIGH+IMMINENT view, per-language tables, 5×5 confusion
+matrix, benign-escalation cost, and false negatives listed by id (texts stay out
+of reports). Enforces the frozen-test hash. Reports: `evals/reports/safety_*.md`.
+
+**Tests** (37 new): hypothesis never-lowers property + branch pinning
+(`tests/safety/test_ensemble.py`); real-artifact load, calibration, provenance
+and degradation (`test_ml_classifier.py`); dataset integrity — sizes,
+vocabularies, disjoint splits, hard families, method-word screen, frozen sha,
+and "tuning scripts never name the test file" (`test_eval_dataset.py`); endpoint
+with ML on writes metadata-only rows and never echoes input
+(`tests/integration/test_crisis_assess_ml.py`).
+
+**Docs**: [ADR 0009](docs/adr/0009-safety-ml-ensemble.md); `docs/safety-design.md`
+§12 (ensemble policy + Day 9 known limitations incl. the false-alarm cost);
+`evals/datasets/README.md` (dataset contract); `.env.example` knobs; `make eval`.
+
+## Verification (Day 9 — real command output)
+
+| # | check | result |
+| --- | --- | --- |
+| 1 | `run_safety_eval.py --split test` | **PASS** — recall 1.000 |
+| 2 | worst false negatives | **PASS** — zero; rules-only baseline analysed |
+| 3 | `pytest backend/tests/safety -q` | **PASS** — 574 passed |
+| 4 | test split unused for tuning | **PASS** — hashes + greps + test |
+| 5 | assess endpoint MEDIUM + HIGH | **PASS** — 2 metadata-only rows |
+| 6 | classifier offline | **PASS** — DNS disabled, dead proxies |
+
+### 1. Frozen test-split evaluation
+
+```
+$ cd backend && ../.venv/bin/python ../evals/run_safety_eval.py --split test
+split=test cases=116
+HIGH+IMMINENT  precision=0.567  recall=1.000  (crisis cases: 51)
+false negatives: 0  benign escalated to crisis: 27/51
+report written: evals/reports/safety_2026-10-10_test.md
+```
+
+**HIGH+IMMINENT recall on the frozen test split: 1.000** (target >= 0.97, met).
+Precision 0.567; 27 of 51 benign cases handed a crisis card, 11 more a MEDIUM
+check-in — the recall-first operating point, cost stated in `safety-design.md`
+§12.6. Per-language crisis recall: en 1.000 (22), hi 1.000 (8), hi-Latn 1.000
+(10), bn 1.000 (11). For comparison the same split under rules only:
+recall **0.255**, 38 false negatives, 1 benign crisis card
+(`safety_2026-10-10_test_rules_only.md`).
+
+### 2. False negatives
+
+The ensemble has **zero** HIGH+IMMINENT false negatives on both dev and test —
+there is no "worst 10" to analyse. The honest analysis is what the rules-only
+baseline missed, because that is the gap the ML layer is paid to close; its 38
+test-split FNs, by id (texts omitted; ids resolve in `crisis_cases_test.jsonl`):
+
+- `bn-042, bn-048, bn-049, bn-052, bn-078` — indirect wording, farewell
+  behaviour, plan-complete-without-keywords, sudden-calm-after-decision
+- `bn-060, bn-061, bn-068, bn-079, bn-121` — timeframe/ immediacy phrasings
+  without the curated IMMINENT patterns
+- `bn-112, hi-Latn-110, hi-Latn-113, hi-Latn-115, hi-Latn-118` — direct ideation
+  phrasings the Indic rule sets did not carry (Day 8's known 136-en/24-hi/21-bn
+  imbalance, now confirmed quantitatively)
+- `en-092, en-096, en-105, en-110, en-118, en-128, en-132, en-140, en-148,
+  en-153, en-164, en-167, en-240` — note-writing, affairs-in-order, letters
+  written, implied timing, attempt-in-progress: all hard positives by design
+- `hi-032, hi-035, hi-038, hi-043, hi-049, hi-057, hi-Latn-046, hi-Latn-054,
+  hi-Latn-055, hi-Latn-069` — indirect/burden/plan-complete in Hindi
+
+Pattern: **every one is a hard positive or an Indic direct phrasing** — exactly
+the classes a curated vocabulary cannot anticipate and exactly what a statistical
+backstop exists to catch. The ensemble catches all 38 at the price of the 27
+benign escalations above.
+
+### 3. Safety test suite (incl. hypothesis property)
+
+```
+$ cd backend && ../.venv/bin/python -m pytest tests/safety -q
+574 passed in 4.04s
+```
+
+Includes `test_the_ensemble_never_lowers_a_rules_result` (800 examples ×
+arbitrary thresholds) and the rules engine's Day 8 suite untouched.
+
+### 4. Proof the test split was not used for tuning
+
+```
+$ grep -c "crisis_cases_test\|_test" evals/train_safety_classifier.py evals/tune_safety_thresholds.py
+evals/train_safety_classifier.py:0
+evals/tune_safety_thresholds.py:0
+
+$ python - <<'…'   # manifest hash check
+train  frozen=False sha_match=True
+dev    frozen=False sha_match=True
+test   frozen=True  sha_match=True
+```
+
+Plus: `run_safety_eval.py --split test` re-hashes the file against `manifest.json`
+before scoring (and exits non-zero on drift), `tests/safety/test_eval_dataset.py`
+asserts the same in CI, and `threshold_tuning.md` records that the grid ran on
+the 116-case dev split only. The test report above is the first ever scoring of
+those cases.
+
+### 5. `POST /crisis/assess` — a MEDIUM and a HIGH message
+
+Ran the real app (ASGI transport, SQLite, `SAFETY_ML_ENABLED=true`):
+
+```
+>>> POST text="Everything feels grey lately, I can't enjoy anything"
+    HTTP 200  level=medium  stored_level=elevated
+    ensemble: source=ensemble.uncertain ml_used=True ml_confidence=0.486
+              ml_crisis_mass=0.261 uncertain_checkin=True
+    policy: allow_llm=True deterministic_reply=False record_event=True show_helplines=True
+    crisis reply title: 'That sounds heavy'  (check_in.medium, en)
+    rationale_codes=['ml.uncertain.checkin']
+
+>>> POST text="Some days I wonder if anyone would even notice if I was gone"
+    HTTP 200  level=high  stored_level=crisis
+    ensemble: source=ml ml_used=True ml_confidence=0.359 ml_crisis_mass=0.338
+    policy: allow_llm=False deterministic_reply=True record_event=True show_helplines=True
+    crisis reply title: "What you're feeling is real, and you don't have to face it alone"
+    rationale_codes=['ml.crisis_mass']        # rules said NONE; ML raised
+
+safety_events rows written: 2
+  risk_level=ELEVATED source=ML  user_id=None session_id=None created_at=2026-10-10 09:06:02
+  risk_level=CRISIS   source=ML  user_id=None session_id=None created_at=2026-10-10 09:06:02
+safety_events columns: ['id','user_id','session_id','risk_level','source','created_at']
+                       (no message/text column exists)
+```
+
+Both rows are metadata-only — the model has no column in which text could exist,
+and the whitelist test fails CI if one is ever added. Structured logs carry a
+16-hex fingerprint and length only. The HIGH row shows the design working end to
+end: a keyword-free indirect message the rules missed, raised by crisis mass.
+
+### 6. Baseline classifier, network disabled
+
+Ran with `getaddrinfo` patched to raise and every `*_PROXY` pointed at
+`127.0.0.1:9`:
+
+```
+classifier enabled=True version=v1
+  "I can't stop thinking about ending it all"   -> final=HIGH source=rules (offline)
+  'ami bachte chai na'                          -> final=HIGH source=rules (offline)
+  'this deadline is killing me'                 -> final=MEDIUM source=ensemble.uncertain (offline)
+
+$ HTTPS_PROXY=http://127.0.0.1:9 … run_safety_eval.py --split test
+HIGH+IMMINENT  precision=0.567  recall=1.000  (crisis cases: 51)
+```
+
+The TF-IDF + logistic baseline has no network path at all — no hub downloads, no
+provider calls (the sandbox cannot reach Hugging Face anyway; see Known issues).
+The full frozen-split evaluation completes identically offline.
+
+### Full suite and lint (end of Day 9)
+
+```
+$ cd backend && ../.venv/bin/python -m pytest -q
+1236 passed, 2 skipped in 32.68s      # skips: nlp-extra integration tests
+
+$ cd backend && ../.venv/bin/python -m ruff check . && ../.venv/bin/python -m ruff format --check . && ../.venv/bin/python -m mypy app tests
+All checks passed!
+131 files already formatted
+Success: no issues found in 127 source files
+```
+
+(Frontend unchanged on Day 9; its Day 8 lint/test state is in the Day 8 section
+below and was re-run before the PR.)
 
 ## Verification (Day 8 — real command output)
 
@@ -852,6 +1074,7 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0006 — Emotion model: choice, mapping, and licence](docs/adr/0006-emotion-model.md): `EMOTION_MODEL_ID` as the single place a checkpoint is named (default `SamLowe/roberta-base-go_emotions`, MIT), one nine-label internal taxonomy with a `LABEL_MAP` that takes the **max** per emotion rather than the sum, lazy thread-safe CPU loading with `transformers`/`torch` as an optional extra, degradation on both failure *and* sustained slowness, and the licence position (model MIT verified from three independent mirrors; the GoEmotions **dataset** licence still to be confirmed by hand). Numbered 0006 because the brief's requested `0002-emotion-model.md` was already taken on `main` by the backend-skeleton ADR.
 - [0007 — CI pipeline, Docker packaging, and containerised dev stack](docs/adr/0007-ci-and-docker.md): one workflow whose blocking checks mirror `make lint`/`make test` (80 % coverage gate as tripwire, secrets scan blocks, dependency audit report-only via never-failing steps + summary/annotations until the triaged advisory backlog clears); dev-only auto-migrations guarded in the API image's *entrypoint* (`APP_ENV=development` + `RUN_MIGRATIONS=true`), so production posture travels with the image; the API image ships without the `nlp` extra and compose runs `EMOTION_ANALYZER=keyword`; same-origin `/api` proxy in the web container (no CORS in the container path); labelled dev-only compose defaults including an all-zero-bytes Fernet key; liveness (not readiness) as the container healthcheck; the API runs as non-root `app`.
 - [0008 — Crisis detection: rules engine and helplines](docs/adr/0008-crisis-detection-rules-engine.md): rules over a classifier (a level plus pattern ids is auditable in five seconds, a probability is not, and no threshold is right because too low makes every bad day a crisis card); patterns in YAML data files loaded once and validated at import, so a typo is a startup failure rather than a silent hole; **five wire levels mapped onto the four stored tiers** (`_STORED_BY_LEVEL`, MEDIUM→`elevated`, HIGH and IMMINENT→`crisis`) so the Day 8 enum and the Day 5 database enum stay independent and a new level needs no migration; escalation as a five-row policy table with no branches, so a reviewer sees every behaviour by reading five rows; deterministic pre-written copy in `content/i18n` with `{emergency_number}` the only whitelisted placeholder; helplines as one JSON file behind a schema with `source_url` + `last_verified` per entry and a `needs_verification` flag rather than an unverified number; `access_to_means` recording presence only; privacy enforced structurally (the layer that builds the reply never receives the message, and `RiskAssessment` cannot carry prose); and conservative-by-default level resolution with IMMINENT requiring evidence rather than intensity.
+- [0009 — A one-way ML backstop next to the rules engine](docs/adr/0009-safety-ml-ensemble.md): the ensemble is a ratchet — `final = max(rules, ML-if-confident)`, property-tested never-lowers; three raise bands (confident top class, crisis mass `P(high)+P(imminent)`, uncertain → MEDIUM check-in) with env-configured thresholds grid-chosen on dev only; a pragmatics gate so ML may not undo the rules' negation/figurative discounts; TF-IDF + calibrated logistic regression committed as a joblib artifact with provenance, behind `SafetyClassifier` so a transformer can replace it without touching the ensemble; the 572-case eval set split train/dev/frozen-test with the test hash in `manifest.json` and no method words anywhere; and the trade that moves metadata-only `safety_events` writes onto the public assess endpoint.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
@@ -1030,6 +1253,42 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   characters, so the cap is what bounds it; there is no per-rule deadline and a
   pathologically written regex would be a latency problem rather than a crash.
 
+### Day 9 safety notes
+
+- **The eval ground truth is one annotator's judgement on synthetic text.** I
+  wrote every label; borderline families (farewell behaviour, "everything is
+  arranged") are labelled as a careful human would, which means the eval measures
+  agreement with one human, not with the world. A second annotator pass on the
+  ~60 ambiguous cases is the cheapest way to make these numbers mean more.
+- **The shipped operating point over-escalates benign text, deliberately.** At
+  the recall-first thresholds, 27/51 benign test cases get a crisis card and 11
+  more a check-in (dev: 31 + 7). A char n-gram model on 340 training examples
+  cannot separate benign from crisis masses (medians 0.34 vs 0.54, badly
+  overlapping). The precision-leaning alternative (`crisis_mass_floor` 0.45–0.50:
+  recall ~0.80–0.84, crisis-card false alarms cut ~2/3) is documented in
+  `threshold_tuning.md`; switching is a config change, no retraining.
+- **Rules-only false positives are unchanged and are part of the same bill.**
+  Figurative "die laughing" → HIGH, past-tense recovery stories → HIGH (no tense
+  reasoning), awareness discussions → HIGH. The eval confusion matrix reports
+  them against ground truth by design.
+- **The classifier is a 572-case baseline.** Dev accuracy 0.543 / macro F1 0.459
+  — it earns its place as a recall backstop, not as a standalone detector.
+  Indic training data is thinner than English (82 hi / 107 hi-Latn / 88 bn vs
+  218 en), and the sandbox has no Hugging Face Hub access, so no transformer or
+  NLI experiment was even attempted; the `SafetyClassifier` interface is the hedge.
+- **Per-level calibration at this size is noisy** (sigmoid, cv=3 on ~340
+  examples). The masses order evidence well enough to threshold on; they are not
+  frequencies.
+- **`safety_events` rows from the assess endpoint are anonymous** (NULL
+  user/session) and the endpoint is public: an attacker under the rate limit can
+  add metadata rows. Accepted for the audit trail; the authenticated chat gate
+  attaches identities when it lands.
+- **MEDIUM/LOW separation is weak** (test MEDIUM recall 0.000, LOW 0.077): the
+  ensemble mostly promotes them to HIGH or holds them at NONE. That is tolerable
+  today — the product policies that differ between them are tone and resources,
+  and raising is safe — but a future tune should look at the bands between
+  suspicion floor and crisis-mass floor.
+
 ## Parking lot
 
 - Distributed rate limiting / lockout state (Redis) behind the existing interfaces, plus a trusted-proxy setting for `X-Forwarded-For` client identity.
@@ -1068,43 +1327,51 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 8)** Per-rule telemetry — which patterns fire, how often, and how often a fired pattern is later suppressed — so broadening decisions are made from data rather than from reading regexes. Must stay metadata-only.
 - **(Day 8)** A `needs_verification` review UI or checklist for maintainers, so flagged entries are worked down rather than shipped indefinitely with a caveat.
 - **(Day 8)** Region detection: today `region` is a caller-supplied query/body parameter. Deriving it safely (locale, timezone, explicit user choice) without collecting location data is an open design question.
+- **(Day 9)** A second annotator pass over the ~60 ambiguous eval cases, and a
+  small inter-annotator-agreement note; then consider relabelling the families
+  where the disagreement clusters (farewell behaviour, "everything is arranged").
+- **(Day 9)** A fine-tuned multilingual transformer behind `SafetyClassifier`
+  once Hub access and more labelled data exist; re-run the frozen test split
+  before touching thresholds. Same interface, same ratchet.
+- **(Day 9)** Grow the Indic training families (bn/hi/hi-Latn are ~48% of cases
+  but carry the hardest phrasings); code-mixed Hinglish cases are absent.
+- **(Day 9)** A precision-leaning operating-point switch for products that decide
+  alarm fatigue outweighs the last few points of recall (documented curve in
+  `evals/reports/threshold_tuning.md`).
+- **(Day 9)** Live traffic triage: the metadata-only `safety_events` rows plus
+  the assess endpoint's fingerprints are enough to spot escalation-rate anomalies
+  without ever storing text; no such dashboard exists yet.
+- **(Day 9)** The eval runner's per-level MEDIUM/LOW tuning (see Day 9 safety
+  notes) and an explicit "check-in false alarm" budget next to the recall target.
 
-## Next steps (Day 9 — first three)
+## Next steps (Day 10 — first three)
 
-**Preamble (carried from Day 7, needs my machine):** run the seven Docker
-commands listed in "Verification (Day 7)", confirm `make up` + `make smoke`
-are green, `whoami` prints `app`, and the api logs stay clean — then the
-compose stack is the default dev environment for Day 9+.
+**Preamble (carried, needs my machine):** the seven Docker commands from
+"Verification (Day 7)" are still unverified here; Day 9 added nothing that
+changes the stack, but `make eval` inside the api container should be exercised
+once when the compose env is up.
 
-**Preamble (new from Day 8, needs a human, not a sandbox):**
-(a) have a native Hindi and a native Bengali speaker read `crisis.high`,
-`crisis.imminent` and `crisis.about_someone_else` in `content/i18n/{hi,bn}.json`
-and say whether they are warm — the full English text is in "Verification
-(Day 8)" to compare against; (b) call the four helplines flagged
-`needs_verification` (`in-icall`, `in-kiran`, `in-aasra`, `au-kids-helpline`),
-confirm number and hours, then clear the flag or drop the entry; (c) read
-`docs/safety-design.md` §9.1 and decide who owns running the out-of-table probe,
-and how often.
+**Preamble (carried from Day 8, needs a human):** native-speaker review of the
+hi/bn crisis copy; the four `needs_verification` helplines called; ownership of
+the out-of-table probe cadence. Day 9 adds one: **a second annotator pass on the
+~60 ambiguous eval labels** (see Day 9 safety notes) before the next threshold
+tune is trusted.
 
-1. **Wire the crisis gate into the message-send path** — this is what makes
-   AGENTS.md rule 1 real rather than structural. `POST /api/v1/chat/sessions/{id}/messages`
-   behind `require_consent(ai_disclosure, terms)` and `get_current_user`, running
-   `RuleEngine.assess` **before** any LLM call, honouring `policy.allow_llm=False`
-   at HIGH/IMMINENT by returning the deterministic `EscalationPlan.message`
-   instead of a completion, storing text encrypted via `ChatRepository`, attaching
-   the Day 6 `EmotionResult`, and writing a metadata-only `SafetyEvent` row when
-   `policy.record_event` is true. Tests must assert no raw message text reaches the
-   logs and that a HIGH message never reaches the model. Today nothing outside
-   `api/v1/crisis.py` imports the safety package — see "Day 8 safety notes".
-2. **LLM provider interface**: `app/llm/` with a `ChatCompleter` protocol, one real
-   provider adapter, and a `FakeCompleter` for offline tests, selected by
-   `LLM_PROVIDER` — plus the output-safety check every completion must pass
-   (AGENTS.md rule 4), built the same way as `app/services/nlp/`. The output check
-   should reuse the safe-messaging vocabulary already written for the templates
-   (`test_no_template_in_any_language_names_a_method`) rather than grow a second
-   list.
+1. **Wire the crisis gate into the message-send path** (carried, still first).
+   `POST /api/v1/chat/sessions/{id}/messages` behind `require_consent`-style
+   consent + auth, running the **ensemble** — not just the rules engine — before
+   any LLM call: `RuleEngine.assess` → `classifier.predict` → `ensemble.combine`,
+   honouring `policy.allow_llm=False` at HIGH/IMMINENT, appending the soft
+   check-in at MEDIUM, storing text encrypted, and writing the `SafetyEvent` row
+   *with* user/session ids (the assess endpoint's rows stay anonymous). Tests
+   must assert no raw text reaches logs and a HIGH message never reaches the
+   model.
+2. **LLM provider interface** (`app/llm/`): `ChatCompleter` protocol, one real
+   adapter, `FakeCompleter` for offline tests, selected by `LLM_PROVIDER`, plus
+   the output-safety check every completion must pass (AGENTS.md rule 4) —
+   reusing the safe-messaging vocabulary rather than growing a second list.
 3. **Frontend chat page** wired to the send endpoint, rendering `CrisisCard`
-   in-thread whenever the policy says `show_crisis_message`, with the helplines
-   reachable in one tap and no generated prose between the person and the number.
-   Then the crisis path is user-visible end to end and can be clicked through
-   rather than only curl'd.
+   in-thread whenever the policy says `show_crisis_message`, with helplines one
+   tap away — making the Day 8+9 detection user-visible end to end. (Day 9's
+   ensemble metadata is already on the assess response, so the frontend contract
+   needs no change to get the gate live.)
