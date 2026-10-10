@@ -1,258 +1,185 @@
-"""Ephemeral (in-memory) chat sessions — no DB rows, TTL 30 min.
+"""Ephemeral chat sessions: process memory only, gone after 30 idle minutes.
 
-When a user has *not* granted ``store_chat`` consent, their conversation lives
-only in this process, for :data:`~app.core.config.Settings.chat_ephemeral_ttl_seconds`
-seconds after the last activity. No row is written to ``chat_sessions`` or
-``messages``, which is what the verification step checks.
+A person who has not opted in to saving their chats gets a conversation that
+leaves no trace in the database — no ``chat_sessions`` row, no ``messages``
+rows. The conversation lives in this dictionary so the model still has the
+thread to work with, and it is dropped when the person stops talking.
 
-Design notes:
+Properties, each deliberate:
 
-* Thread-safe via a single :class:`threading.RLock` — FastAPI may run with
-  several workers in production (the real fix is Redis, parked in PROGRESS.md),
-  but for the single-process dev and test environments a lock is enough.
-* Expiry is checked on every access, not by a background sweeper, so a dead
-  session costs no timer thread.
-* Messages are plain Python objects; encryption is unnecessary because they
-  never touch disk.
-* The store is process-wide and shared by every request (installed on
-  ``app.state.ephemeral_store``).
+* **Sliding TTL.** The 30 minutes run from the last activity, not from creation:
+  a conversation that is still going must not vanish mid-sentence.
+* **Owner-scoped lookup.** ``get(session_id, user_id)`` answers ``None`` for a
+  session that belongs to somebody else exactly as it does for one that does not
+  exist, so a probe learns nothing.
+* **Bounded.** A total cap, a per-user cap and a per-session turn cap, so one
+  client cannot grow the process without limit. At a cap the *oldest idle*
+  session goes first.
+* **No background task.** Expiry is checked lazily on every access and swept on
+  every ``create``; there is no timer to leak or to forget to cancel.
+* **Per process.** Two workers have two stores, so a session is only reachable on
+  the worker that created it. That is a documented limit (PROGRESS.md), the same
+  as the in-process rate limiter; a shared store is the production answer.
+
+Plaintext lives here (it must — the model needs it), which is why the store is
+never serialised, logged or exposed other than through its owner's own session.
 """
 
 from __future__ import annotations
 
-import threading
 import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Final
 
-from app.models.enums import MessageRole, RiskLevel
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
+#: Live sessions one user may hold at once; the oldest idle one is evicted first.
+MAX_SESSIONS_PER_USER = 20
 
 
 @dataclass
-class EphemeralMessage:
-    """One turn in an ephemeral session."""
+class EphemeralTurn:
+    """One in-memory message."""
 
     id: uuid.UUID
-    role: MessageRole
-    content: str
+    role: str
+    text: str
+    #: The stored four-tier risk (0-3) of the turn; 3 marks a crisis exchange.
+    risk: int
+    emotion: str | None
     created_at: datetime
-    risk_level: int = int(RiskLevel.NONE)
-    emotion: str | None = None
+
+    @property
+    def crisis(self) -> bool:
+        return self.risk >= 3
 
 
 @dataclass
 class EphemeralSession:
-    """A session that lives only in memory."""
+    """A conversation held only in memory."""
 
     id: uuid.UUID
     user_id: uuid.UUID
     created_at: datetime
-    last_active: datetime
-    messages: list[EphemeralMessage] = field(default_factory=list)
-    ended_at: datetime | None = None
-
-    @property
-    def is_expired(self) -> bool:
-        # Expiry is decided by the store using its TTL and clock; this is a
-        # convenience for callers that already hold the session.
-        return False
-
-    @property
-    def message_count(self) -> int:
-        return len(self.messages)
+    last_active: float
+    expires_at: float
+    turns: list[EphemeralTurn] = field(default_factory=list)
 
 
-DEFAULT_TTL_SECONDS: Final = 1800  # 30 min
-
-
-class EphemeralStore:
-    """In-memory session store with TTL."""
+class EphemeralSessionStore:
+    """Sessions keyed by id, expiring after ``ttl_seconds`` of inactivity."""
 
     def __init__(
         self,
-        ttl_seconds: int = DEFAULT_TTL_SECONDS,
         *,
-        clock: Callable[[], float] | None = None,
+        ttl_seconds: int = 1800,
+        max_sessions: int = 5000,
+        max_turns: int = 60,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         if ttl_seconds < 1:
-            raise ValueError("ttl_seconds must be positive")
+            raise ValueError("ttl_seconds must be at least 1")
+        if max_sessions < 1:
+            raise ValueError("max_sessions must be at least 1")
+        if max_turns < 2:
+            raise ValueError("max_turns must be at least 2")
         self._ttl = ttl_seconds
-        self._clock = clock or time.monotonic
+        self._max_sessions = max_sessions
+        self._max_turns = max_turns
+        self._clock = clock
         self._sessions: dict[uuid.UUID, EphemeralSession] = {}
-        self._lock = threading.RLock()
-        self._created = 0
-        self._expired = 0
 
     @property
     def ttl_seconds(self) -> int:
         return self._ttl
 
-    def _now_monotonic(self) -> float:
-        return self._clock()
+    def __len__(self) -> int:
+        return len(self._sessions)
 
-    def _is_expired_locked(self, sess: EphemeralSession, now_mono: float) -> bool:
-        # Store the monotonic expiry alongside? Simpler: use wall-clock age
-        # from last_active, but compare via monotonic delta from creation.
-        # We keep last_active as wall time and also track monotonic last active
-        # via a parallel dict.
-        # For simplicity, we store expiry as wall-clock: if now - last_active > ttl
-        # then expired. We use utcnow for that.
-        age = (_utcnow() - sess.last_active).total_seconds()
-        return age > self._ttl
+    def to_datetime(self, epoch_seconds: float) -> datetime:
+        """Epoch seconds from this store's clock as an aware UTC datetime."""
+        return datetime.fromtimestamp(epoch_seconds, tz=UTC)
 
-    def create(self, *, user_id: uuid.UUID) -> EphemeralSession:
-        sess = EphemeralSession(
+    def create(self, user_id: uuid.UUID) -> EphemeralSession:
+        """Open a session for ``user_id``, sweeping expired ones first."""
+        self.purge()
+        now = self._clock()
+        mine = sorted(
+            (s for s in self._sessions.values() if s.user_id == user_id),
+            key=lambda s: s.last_active,
+        )
+        while len(mine) >= MAX_SESSIONS_PER_USER:
+            self._sessions.pop(mine.pop(0).id, None)
+        while len(self._sessions) >= self._max_sessions:
+            oldest = min(self._sessions.values(), key=lambda s: s.last_active)
+            self._sessions.pop(oldest.id, None)
+        session = EphemeralSession(
             id=uuid.uuid4(),
             user_id=user_id,
-            created_at=_utcnow(),
-            last_active=_utcnow(),
+            created_at=self.to_datetime(now),
+            last_active=now,
+            expires_at=now + self._ttl,
         )
-        with self._lock:
-            self._sessions[sess.id] = sess
-            self._created += 1
-        return sess
+        self._sessions[session.id] = session
+        return session
 
-    def get(self, session_id: uuid.UUID) -> EphemeralSession | None:
-        with self._lock:
-            sess = self._sessions.get(session_id)
-            if sess is None:
-                return None
-            if self._is_expired_locked(sess, self._now_monotonic()):
-                del self._sessions[session_id]
-                self._expired += 1
-                return None
-            return sess
+    def get(
+        self, session_id: uuid.UUID, user_id: uuid.UUID, *, touch: bool = False
+    ) -> EphemeralSession | None:
+        """The session if it is live **and** owned by ``user_id``; else ``None``.
 
-    def get_for_user(self, session_id: uuid.UUID, user_id: uuid.UUID) -> EphemeralSession | None:
-        sess = self.get(session_id)
-        if sess is None:
+        ``touch=True`` slides the expiry forward (a message was sent). Reading
+        the history does not extend a session's life.
+        """
+        session = self._sessions.get(session_id)
+        if session is None:
             return None
-        if sess.user_id != user_id:
+        now = self._clock()
+        if session.expires_at <= now:
+            del self._sessions[session_id]
             return None
-        return sess
+        if session.user_id != user_id:
+            return None
+        if touch:
+            self._touch(session, now)
+        return session
 
-    def touch(self, session_id: uuid.UUID) -> None:
-        with self._lock:
-            sess = self._sessions.get(session_id)
-            if sess is not None:
-                sess.last_active = _utcnow()
-
-    def add_message(
+    def add_turn(
         self,
-        session_id: uuid.UUID,
+        session: EphemeralSession,
         *,
-        role: MessageRole,
-        content: str,
-        risk_level: int | RiskLevel = RiskLevel.NONE,
-        emotion: str | None = None,
-    ) -> EphemeralMessage | None:
-        with self._lock:
-            sess = self._sessions.get(session_id)
-            if sess is None:
-                return None
-            if self._is_expired_locked(sess, self._now_monotonic()):
-                del self._sessions[session_id]
-                self._expired += 1
-                return None
-            msg = EphemeralMessage(
-                id=uuid.uuid4(),
-                role=role,
-                content=content,
-                created_at=_utcnow(),
-                risk_level=int(risk_level),
-                emotion=emotion,
-            )
-            sess.messages.append(msg)
-            sess.last_active = _utcnow()
-            return msg
+        role: str,
+        text: str,
+        risk: int,
+        emotion: str | None,
+    ) -> EphemeralTurn:
+        """Append a turn (and slide the expiry); the oldest turns fall off the front."""
+        turn = EphemeralTurn(
+            id=uuid.uuid4(),
+            role=role,
+            text=text,
+            risk=risk,
+            emotion=emotion,
+            created_at=self.to_datetime(self._clock()),
+        )
+        session.turns.append(turn)
+        if len(session.turns) > self._max_turns:
+            del session.turns[: len(session.turns) - self._max_turns]
+        self._touch(session, self._clock())
+        return turn
 
-    def list_messages(
-        self, session_id: uuid.UUID, *, limit: int = 100, offset: int = 0
-    ) -> list[EphemeralMessage] | None:
-        with self._lock:
-            sess = self._sessions.get(session_id)
-            if sess is None:
-                return None
-            if self._is_expired_locked(sess, self._now_monotonic()):
-                del self._sessions[session_id]
-                self._expired += 1
-                return None
-            # oldest first, same as DB repo
-            ordered = sorted(sess.messages, key=lambda m: (m.created_at, m.id))
-            return ordered[offset : offset + limit]
+    def discard(self, session_id: uuid.UUID) -> None:
+        """Forget a session now (used on explicit end and in tests)."""
+        self._sessions.pop(session_id, None)
 
-    def list_for_user(
-        self, user_id: uuid.UUID, *, limit: int = 20, offset: int = 0
-    ) -> list[EphemeralSession]:
-        with self._lock:
-            now = self._now_monotonic()
-            # purge expired first
-            expired_ids = [
-                sid for sid, s in self._sessions.items() if self._is_expired_locked(s, now)
-            ]
-            for sid in expired_ids:
-                del self._sessions[sid]
-                self._expired += 1
-            sessions = [s for s in self._sessions.values() if s.user_id == user_id]
-            sessions.sort(key=lambda s: s.created_at, reverse=True)
-            return sessions[offset : offset + limit]
+    def purge(self) -> int:
+        """Drop every expired session; return how many went."""
+        now = self._clock()
+        expired = [sid for sid, s in self._sessions.items() if s.expires_at <= now]
+        for sid in expired:
+            del self._sessions[sid]
+        return len(expired)
 
-    def delete(self, session_id: uuid.UUID) -> bool:
-        with self._lock:
-            return self._sessions.pop(session_id, None) is not None
-
-    def purge_expired(self) -> int:
-        with self._lock:
-            now = self._now_monotonic()
-            expired = [sid for sid, s in self._sessions.items() if self._is_expired_locked(s, now)]
-            for sid in expired:
-                del self._sessions[sid]
-            self._expired += len(expired)
-            return len(expired)
-
-    def clear(self) -> None:
-        with self._lock:
-            self._sessions.clear()
-
-    def stats(self) -> dict[str, object]:
-        with self._lock:
-            return {
-                "sessions": len(self._sessions),
-                "created": self._created,
-                "expired": self._expired,
-                "ttl_seconds": self._ttl,
-            }
-
-
-# Process-wide singleton accessor (used by deps)
-_store: EphemeralStore | None = None
-_store_lock = threading.Lock()
-
-
-def get_ephemeral_store(ttl_seconds: int = DEFAULT_TTL_SECONDS) -> EphemeralStore:
-    global _store
-    with _store_lock:
-        if _store is None:
-            _store = EphemeralStore(ttl_seconds=ttl_seconds)
-        return _store
-
-
-def build_ephemeral_store(ttl_seconds: int = DEFAULT_TTL_SECONDS) -> EphemeralStore:
-    return EphemeralStore(ttl_seconds=ttl_seconds)
-
-
-__all__ = [
-    "DEFAULT_TTL_SECONDS",
-    "EphemeralMessage",
-    "EphemeralSession",
-    "EphemeralStore",
-    "build_ephemeral_store",
-    "get_ephemeral_store",
-]
+    def _touch(self, session: EphemeralSession, now: float) -> None:
+        session.last_active = now
+        session.expires_at = now + self._ttl

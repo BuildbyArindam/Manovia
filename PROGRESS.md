@@ -2,77 +2,54 @@
 
 ## Current status
 
-Day 11 (Chat orchestrator — the heart of the system) is complete and tested:
-**1549 backend tests pass** (the Day 10 suite plus **16 new Day 11 tests**),
-`ruff`, `ruff format` and `mypy --strict` are clean, and **89 frontend tests**
-pass unchanged. The orchestrator implements the exact 9-step pipeline from the
-brief: validate → safety (rules+ML ensemble) → crisis STOP (no LLM) → PII redaction
-→ emotion → retrieval stub → prompt build (system + window + emotion hint + safety hint)
-→ LLM via provider chain → output guard stub → persist encrypted.
+Day 11 (the chat orchestrator) is built and verified: **1700 backend tests pass,
+3 skip** (the optional `nlp`/`llm` extras are not installed here), `ruff`,
+`ruff format` and `mypy` (strict) are clean, and the **89 frontend tests** pass
+unchanged. Day 11 adds **167 tests**: `tests/chat/` (159: orchestrator, ephemeral
+store, prompting, repository, and the HTTP/SSE API) plus 8 settings tests.
+Nothing in them touches the network or needs a key; the model is the Fake.
 
-Sessions are either persistent (requires store_chat consent, encrypted in DB) or
-ephemeral (in-memory TTL 30 min, no DB rows). Ownership is enforced (403/404).
-HIGH messages never reach the LLM (call count 0). MEDIUM includes a gentle check-in.
-Redaction is applied and verified via Fake provider payload capture. LLM outage
-falls through to the canned reply (degraded, not 500). Streaming is SSE with token
-events and a final metadata event {risk_level, emotion, response_type, resources}.
-**Streaming bug fixed**: `Resource` contains `HttpUrl` fields; `model_dump()` without
-`mode="json"` returns `HttpUrl` objects which `json.dumps` cannot serialize, causing
-`TypeError: Object of type HttpUrl is not JSON serializable` and truncating the stream
-after token events. Fixed by `model_dump(mode="json")` in orchestrator + `jsonable_encoder`
-in `_sse_event`. Verified live via `curl -N` — token events + final metadata now stream
-correctly for both neutral and HIGH.
+One message now runs the whole stack in a fixed order
+([docs/architecture.md](docs/architecture.md), [ADR 0011](docs/adr/0011-chat-orchestrator.md)):
+**validate → rate limit → input safety (rules + ML ensemble) → [HIGH/IMMINENT:
+deterministic Day 8 reply, no LLM call] → redact → emotion → retrieval (stub) →
+prompt → LLM chain → output guard (stub) → persist.** Endpoints:
+`POST /api/v1/chat/sessions`, `GET /chat/sessions/{id}`, `GET …/messages`,
+`POST …/messages` (JSON), and `POST`/`GET …/stream` (SSE: `token` events, then a
+`final` event with `{risk_level, emotion, response_type, resources, crisis, check_in, …}`
+for the CrisisCard). Sessions are **ephemeral by default** (in-memory, 30-minute
+TTL, no `chat_sessions`/`messages` rows); `save_history=true` needs the
+`store_chat` consent and stores Fernet-encrypted text. Another user's session is
+a `404`, identical to a missing one.
 
-Day 10 (LLM provider layer and PII redaction) is complete and verified:
-**1534 backend tests pass** (the Day 9 suite plus **298 new Day 10 tests**),
-`ruff`, `ruff format` and `mypy --strict` are clean, and **89 frontend tests**
-pass unchanged. Total backend coverage is **97 %**. Nothing in the Day 10 suite
-touches the network, needs an API key, or downloads a model — the whole layer is
-exercised through a deterministic Fake.
+The order is covered by mutation: disabling the `allow_llm` gate fails 16 tests,
+skipping redaction fails 5, and dropping the ownership check fails the
+cross-user read.
 
-The layer is one interface and four implementations:
-`app/services/llm/base.py` declares `LLMProvider` (`complete` + `stream`) plus a
-typed error tree whose `retryable` flag — not a list of exception names — decides
-what the retry machinery does. Around it sit **Anthropic** (hosted), **Ollama**
-(local), **Fake** (offline, scriptable) and **Canned** (the terminal link, which
-cannot fail). `ResilientProvider` wraps any of them in **exponential backoff with
-full jitter**, a **hard timeout spent across all attempts** (not per attempt), and
-a **circuit breaker with a half-open probe**.
-
-The chain is `primary → ollama → canned`, and because the last link cannot fail,
-"a missing API key is a degradation, not a 500" is true **by construction**
-rather than by careful error handling in an endpoint. Two things run on the way
-out, before any provider sees a byte: **PII redaction** (emails, Indian and
-international phone numbers, Aadhaar/PAN/SSN-like ids, Luhn-checked card numbers,
-URLs; names opt-in and off by default) and the **token/cost guard** (input
-truncation at a word boundary plus a conversation window that never drops the
-newest turn). The system prompt is a **versioned, hashed, load-time-validated
-file** under `app/content/prompts/` carrying all ten rules from the brief.
-
-**No model id is hard-coded anywhere.** `ANTHROPIC_MODEL` unset means the
-provider reports "not configured" and the chain falls through; a test walks the
-repository and fails on any vendor model id outside `.env.example`.
+**⚠ The most important finding of Day 11 is not in the Day 11 code.** With the
+committed Day 9 ML artifact and the shipped thresholds, *ordinary* messages are
+classified HIGH by the ML backstop and answered with the crisis response, with no
+LLM call — 7 of 11 hand-written ordinary messages in the live check (including
+"hello" and "What's a good way to plan my study schedule?"). With
+`SAFETY_ML_ENABLED=false` (rules only) the same messages behave correctly. The
+orchestrator is doing exactly what the gate tells it to; the gate is too
+trigger-happy for a conversation. See *Known issues → Day 11 chat notes* and
+step 1 of *Next steps*. **This needs a human decision before the chat is shown to
+anyone.** I did not retune safety thresholds inside a "wire it up" day.
 
 What could **not** be verified here, and needs a human on their own machine:
 
-- **No real model has ever seen this prompt.** `ANTHROPIC_API_KEY` is not set in
-  the sandbox and Ollama is not installed, so every number below comes from the
-  Fake. Run `python3 scripts/llm_probe.py` with a key and a model set to make
-  one real call ("Say hello in one sentence") and see the latency.
-- **The prompt has never been read by the model it was written for.** The
-  requirement checks are regexes over the file, not judgements about behaviour.
-- **Redaction has never met real traffic.** The property tests say no
-  identifier-shaped text survives; they say nothing about whether the model can
-  still be useful when an address is gone.
+- **No real model has seen the orchestrator's prompt or hints.** Everything above
+  ran against the Fake (and an unreachable Ollama for the outage case).
+- **The SSE stream has been read with `curl -N` only**, not by a browser. Buffering
+  proxies (nginx, Cloudflare) can still batch events; `X-Accel-Buffering: no` is
+  set but unverified against a real proxy.
+- **The Docker stack was not run** (carried from Day 7).
 
-Work is on `arena/3dcc0082-manovia` — the branch this Arena session is pinned
-to, **not** the requested `day-10-llm-provider-layer-pii`; the session cannot
-create or push to another branch name. The pull request therefore comes from the
-session branch, matching how Days 7, 8 and 9 landed. Days 1-8 are merged on
-`main` (through PR #10). Day 10 also ships **ADR 0010**, not the
-`0003-llm-abstraction.md` the brief asked for: 0003 is the published data-layer
-ADR, ADR numbers are permanent, and the filename is called out at the top of the
-document.
+Work is on `arena/366c5ba5-manovia` — the branch this Arena session is pinned to,
+**not** the requested `day-11-chat-orchestrator-heart-system`; the session cannot
+create or push to another branch name. The pull request comes from the session
+branch, as for Days 7–10.
 
 ## Completed
 
@@ -562,253 +539,122 @@ fails on any vendor model id outside `.env.example`.
 `app/content/prompts/CHANGELOG.md`; `.env.example` knobs; `scripts/redaction_demo.py`
 and `scripts/llm_probe.py` for the two hand-checks.
 
+### Day 11 (branch `arena/366c5ba5-manovia`) — the chat orchestrator
 
-### Day 11 (branch `arena/df236691-manovia`) — chat orchestrator (the heart)
+- `app/services/chat/orchestrator.py` — the nine-step pipeline. Collaborators are
+  injected (rules engine, ML classifier, escalator, redactor, emotion analyser,
+  retriever, output guard, LLM), so a test replaces exactly one.
+- `app/services/safety/pipeline.py` — `run_ensemble` (rules → ML → combine),
+  lifted out of `/crisis/assess` so the endpoint and the orchestrator share one
+  implementation. The endpoint's behaviour is unchanged (same tests, same output).
+- `app/services/chat/`: `validation.py` (length, control characters, lone
+  surrogates), `prompting.py` (emotion/safety/retrieval hints, window, MEDIUM
+  check-in composition), `ephemeral.py` (TTL/caps store), `conversation.py` +
+  `sessions.py` (ephemeral and saved conversations behind one interface; ownership),
+  `retrieval.py` (stub → `[]`, Day 13), `output_guard.py` (pass-through, Day 14).
+- `app/api/v1/chat.py` rewritten: sessions, history reads, messages, SSE stream.
+- `ChatRepository.recent_messages`; chat settings in `Settings` and `.env.example`
+  (`CHAT_MAX_MESSAGE_CHARS`, `CHAT_RATE_LIMIT_PER_MINUTE`, `CHAT_HISTORY_TURNS`,
+  `CHAT_EPHEMERAL_*`).
+- Tests: `tests/chat/` (159) + 8 settings tests; includes the brief's five:
+  HIGH ⇒ LLM calls 0; MEDIUM ⇒ check-in; redaction applied; LLM outage ⇒ fallback;
+  cross-user read ⇒ 404.
 
-**The pipeline** (`app/services/chat/orchestrator.py`): nine steps, in the exact
-order the brief demands, implemented as `ChatOrchestrator.handle_message` and
-`stream_message`:
-
-1. **Validate length/encoding; rate limit per user.** `chat_max_message_chars`
-   (4000 default) and no null bytes; `InMemoryRateLimiter` per user id (20/min),
-   429 with Retry-After. Tested via ApiError and rate-limit unit tests.
-2. **Input safety: rules + ML ensemble → RiskAssessment.** `RuleEngine.assess`
-   plus `SafetyClassifier.predict` via `ensemble.decide` (raise-only, pragmatics
-   gate). If HIGH/IMMINENT: STOP. Return deterministic crisis copy from Day 8
-   (RenderedTemplate concatenated), do NOT call LLM (assert call count 0),
-   persist user+assistant encrypted and a `SafetyEvent` (metadata only), mark
-   `response_type="crisis"`.
-3. **PII redaction** of text going to LLM: `Redactor.redact` (emails, phones,
-   IDs, cards, URLs) — original kept for emotion + storage, redacted for LLM.
-   Verified by Fake provider payload capture.
-4. **Emotion analysis** (Day 6) of original text: `EmotionAnalyzer.analyze`
-   → primary/valence/arousal, used for hint.
-5. **Retrieval stub** (`retrieval.py` returns [] today; Day 13 fills it).
-6. **Build prompt**: `system_v1.md` (hashed, versioned) + conversation window
-   (last `chat_history_window` turns, oldest-first) + emotion hint
-   ("User emotion: sadness (valence -0.7)...") + safety hint
-   ("MEDIUM risk: include gentle check-in") + retrieval context (empty).
-7. **Call LLM via provider chain**: `LLMChain.complete` / `stream`, with its
-   own redaction+guard. Degraded flag surfaces canned fallback.
-8. **Output guard stub** (`output_guard.py` passes through; Day 14 fills it).
-9. **Persist assistant message** encrypted and return `OrchestratorResult`
-   with metadata for UI CrisisCard.
-
-**Ephemeral sessions** (`ephemeral.py`): `EphemeralStore` — dict + RLock,
-TTL 30 min from last active, checked on every access, no background thread.
-`create` / `get` / `get_for_user` / `add_message` / `list_messages` /
-`purge_expired`. No DB rows — verified by `SELECT COUNT(*) FROM messages`
-after ephemeral send. Process-wide singleton on `app.state.ephemeral_store`.
-
-**Endpoints** (`app/api/v1/chat.py`):
-
-* `POST /chat/sessions` — body `{"store": bool}`. `store=False` (default):
-  ephemeral, requires AI disclosure + terms. `store=True`: persistent,
-  requires `store_chat` consent in addition.
-* `GET /chat/sessions` — list own sessions, persistent + ephemeral merged,
-  newest first.
-* `GET /chat/sessions/{id}` — ownership enforced (403 if other user).
-* `GET /chat/sessions/{id}/messages` — list decrypted.
-* `POST /chat/sessions/{id}/messages` — JSON reply with metadata
-  `{risk_level, stored_risk_level, emotion, response_type, resources, emergency, crisis, degraded, provider}`.
-* `GET .../stream?content=...` and `POST .../stream` — SSE:
-  `event: token` + `data: {"token": "..."}` per chunk, then
-  `event: done` + final metadata plus `data: {"type":"final", ...}`.
-
-**Wiring** (`app/main.py`, `app/api/deps.py`): `app.state` holds
-`emotion_analyzer`, `llm_chain` (with redactor), `redactor`, `ephemeral_store`,
-`rate_limit_chat`. `get_orchestrator` builds `ChatOrchestrator` from those
-singletons. `app/services/chat/__init__.py` exports the package.
-
-**Config** (`app/core/config.py`, `.env.example`): `CHAT_RATE_LIMIT_PER_MINUTE=20`,
-`CHAT_EPHEMERAL_TTL_SECONDS=1800`, `CHAT_MAX_MESSAGE_CHARS=4000`,
-`CHAT_HISTORY_WINDOW=12`, validated at startup.
-
-**Tests** (16 new, 1549 total backend):
-
-* `tests/unit/test_chat_orchestrator.py` (6): HIGH→LLM call count 0, MEDIUM→check-in,
-  redaction applied, outage→canned fallback, ephemeral leaves no rows, persistent encrypted.
-* `tests/integration/test_chat_api.py` (10): create ephemeral/persistent with consent gates,
-  neutral message metadata, HIGH→0 calls + crisis resources, MEDIUM→check-in,
-  redaction payload capture, ownership 403/404, ephemeral no DB rows, SSE order,
-  outage fallback 200 not 500.
-
-**Docs**: `docs/architecture.md` now contains the full pipeline diagram (ASCII +
-mermaid-style), session types, SSE format, fallback and privacy guarantees;
-`PROGRESS.md` updated; `.env.example` new knobs.
+**Docs**: [ADR 0011](docs/adr/0011-chat-orchestrator.md);
+[docs/architecture.md](docs/architecture.md) (pipeline diagram).
 
 ## Verification (Day 11 — real command output)
 
-Everything below was run for real in this sandbox (Python 3.11.2). No model download,
-no API key — Fake LLM throughout.
-
-### 1. Unit + integration — 16 new tests
-
-```
-$ pytest backend/tests/unit/test_chat_orchestrator.py backend/tests/integration/test_chat_api.py -v
-test_high_message_llm_not_called PASSED
-test_medium_message_contains_check_in PASSED
-test_redaction_applied_no_pii_reaches_provider PASSED
-test_llm_outage_fallback_template PASSED
-test_ephemeral_sessions_leave_no_db_rows PASSED
-test_persistent_messages_are_encrypted PASSED
-test_create_ephemeral_session_by_default PASSED
-test_create_persistent_session_requires_store_chat PASSED
-test_send_neutral_message_returns_metadata PASSED
-test_high_message_llm_not_called PASSED
-test_medium_message_contains_check_in PASSED
-test_redaction_applied PASSED
-test_session_ownership_enforced PASSED
-test_ephemeral_leaves_no_db_rows PASSED
-test_stream_sse_order PASSED
-test_llm_outage_fallback PASSED
-16 passed in 2.06s
-```
-
-Full suite: **1549 passed, 3 skipped** (skips: nlp extra ×2, llm extra ×1).
-
-### 2. `scripts/verify_day11.py` — the 7-step checklist from the brief
-
-```
-$ python3 scripts/verify_day11.py
-=== Step 2: Send 4 messages via API (neutral, sad, MEDIUM, HIGH) ===
-neutral  => risk_level=none      response_type=normal       emotion=neutral degraded=False llm_calls=1
-sad      => risk_level=none      response_type=normal       emotion=loneliness degraded=False llm_calls=1
-medium   => risk_level=none      response_type=normal       emotion=sadness degraded=False llm_calls=1
-high     => risk_level=high      response_type=crisis       emotion=neutral degraded=False llm_calls=0
-  HIGH check: LLM call count is 0 -> PASS
-  HIGH check: resources present (3) -> PASS
-
-=== Step 3: Stream a response (via API client streaming) ===
-Stream status: 200, content-type: text/event-stream; charset=utf-8
-  token event: 'Thanks for telling me '
-  token event: 'that. That sounds like '
-  token event: 'a lot to carry. '
-  token event: 'What has today been '
-  token event: 'like for you?'
-  final event: risk_level=none emotion=neutral response_type=normal resources=0
-  total events: 7, token: 5, final: 1
-  SSE order check -> PASS
-
-=== Step 4: LLM outage fallback ===
-Outage response status: 200
-  degraded=True provider=canned response_type=fallback
-  Fallback graceful, no 500 -> PASS
-
-=== Step 5: Session ownership enforced ===
-  B reading A's session: status=403 (expect 403/404)
-  Ownership enforced -> PASS
-
-=== Step 6: DB encryption + ephemeral no rows ===
-  DB messages count: 12
-  Stored message bodies are encrypted -> PASS
-  Ephemeral session ... DB message count: 0 (expect 0)
-  Ephemeral session DB session count: 0 (expect 0)
-  Ephemeral leaves no rows -> PASS
-
-=== Step 7: Latency p50/p95 for 20 messages (Fake LLM) ===
-  20 messages: min=10.38ms max=17.25ms mean=13.91ms
-  p50=14.34ms p95=17.25ms
-  Latency measured -> PASS
-```
-
-Notes:
-
-- `medium` text `"I don't know if I can keep going"` stays `none/normal` in this env
-  because the ML crisis mass (0.296) is under `crisis_mass_floor=0.30` and the rules
-  engine sees no hit. The MEDIUM→check-in path is exercised by other fixtures
-  (e.g. `"I feel sad and lonely"` raises to HIGH via `ml.crisis_mass` 0.34, and
-  `"I feel okay"` raises to `ensemble.uncertain` → MEDIUM). The integration test
-  `test_medium_message_contains_check_in` uses a phrasing that does trigger MEDIUM
-  and passes.
-- HIGH → `llm_calls=0` verified both in unit test (Fake counter) and in this script
-  (call count on Fake provider) — the orchestrator STOPs before LLM.
-- SSE order: `token` events first, then `final` metadata with `risk_level`,
-  `emotion`, `response_type`, `resources` — verified via ASGI client and via live
-  `curl -N`.
-
-### 3. Live uvicorn — `curl -N` streaming, the bug that was fixed
-
-Initial run hit `TypeError: Object of type HttpUrl is not JSON serializable` in
-`_sse_event` when serializing `resources` containing `HttpUrl` fields. Root cause:
-`Resource.model_dump()` defaults to `mode="python"` returning `HttpUrl` objects,
-while `json.dumps` needs strings. Fix:
-
-- `orchestrator.py`: `r.model_dump(mode="json")` for all resources/emergency/crisis
-- `chat.py`: `_sse_event` now uses `fastapi.encoders.jsonable_encoder` before `json.dumps`,
-  plus `model_dump(mode="json")` for emergency/crisis
-
-After fix, live server (sqlite `/tmp/manovia_stream.db`, `FIELD_ENCRYPTION_KEY` from
-`/tmp/manovia_key.txt`, `LLM_PROVIDER=fake`):
-
-```
-$ curl -s -X POST .../sessions/{id}/messages -d '{"content":"It was a nice day today"}'
-risk_level=none response_type=normal emotion=neutral degraded=False provider=fake -> PASS
-
-$ curl -s -X POST .../messages -d '{"content":"I want to die right now"}'
-risk_level=high response_type=crisis resources=3 provider=crisis -> PASS
-
-$ curl -s -N -X POST .../messages/stream -d '{"content":"It was a nice day today"}' --no-buffer
-event: token
-data: {"token": "Thanks for telling me "}
-event: token
-data: {"token": "that. That sounds like "}
-...
-event: done
-data: {"risk_level": "none", "emotion": "neutral", "response_type": "normal", "resources": [], "degraded": false}
-data: {"type": "final", "risk_level": "none", "emotion": "neutral", "response_type": "normal", "resources": [], "degraded": false}
-SSE token + final order -> PASS
-
-$ curl -s -N -X POST .../messages/stream -d '{"content":"I want to die right now"}' --no-buffer
-event: token
-data: {"token": "What you're feeling is real, "}
-...
-event: done
-data: {"risk_level": "high", "emotion": "neutral", "response_type": "crisis", "resources": [3], "degraded": false}
-data: {"type": "final", ...}
-Crisis streaming -> PASS, no HttpUrl error
-```
-
-Ownership, encryption, ephemeral checks from `verify_day11.py` already cover:
-
-- `GET /sessions/{other_user_id}` → 403 PASS
-- `SELECT content_encrypted FROM messages` → blobs start with `gAAAAA` (Fernet), no plaintext PASS
-- Ephemeral session DB counts 0/0 PASS
-
-### 4. Lint + types
-
-```
-$ ruff check .                 All checks passed!
-$ ruff format --check .        157 files already formatted
-$ mypy app                     Success: no issues found in 151 source files
-```
-
-### PASS/FAIL table (Message 2 checklist)
+Live server: `uvicorn app.main:app` on SQLite with a throwaway
+`FIELD_ENCRYPTION_KEY`, `LLM_PROVIDER=fake`. Two configurations were run
+because of the finding above: **default** (ML backstop on) and
+**rules-only** (`SAFETY_ML_ENABLED=false`).
 
 | # | check | result |
-|---|-------|--------|
-| 1 | `pytest tests/unit/test_chat_orchestrator.py tests/integration/test_chat_api.py -q` — HIGH→call count 0 | **PASS** — 16 passed, HIGH llm_calls 0 |
-| 2 | MEDIUM contains check-in | **PASS** — `test_medium_message_contains_check_in` + ensemble path |
-| 3 | PII redaction applied (Fake payload capture) | **PASS** — email/phone → `[EMAIL]`/`[PHONE]` in provider payload |
-| 4 | LLM outage → fallback template, not 500 | **PASS** — `degraded=True provider=canned` 200 |
-| 5 | Ownership enforced (B reading A → 403/404) | **PASS** — 403 |
-| 6 | `curl -N POST .../messages/stream` SSE order token + final metadata | **PASS** — after HttpUrl fix |
-| 7 | DB encryption + ephemeral no rows | **PASS** — `gAAAAA` blobs, 0 rows for ephemeral |
-| 8 | Latency p50/p95 20 messages Fake LLM | **PASS** — p50 14.34ms p95 17.25ms |
-| 9 | Full suite | **PASS** — 1549 passed 3 skipped |
-| 10 | Lint/types | **PASS** — ruff clean, mypy strict clean |
+| --- | --- | --- |
+| 1 | `make test` | **PASS** — 1700 passed, 3 skipped (backend, 97 % coverage); 89 passed (frontend). Orchestrator tests: 19 selected (`-k "high or medium or outage or redact or ownership"`) all pass, incl. `test_high_risk_never_calls_the_llm[…]` ×2, `…_when_streaming[…]` ×2. |
+| 2 | Fake LLM via API, neutral / sad / MEDIUM / HIGH | **PASS (rules-only)**, **FAIL (default config)** — see below |
+| 3 | `curl -N` stream | **PASS** — `token`×6 then `final`; headers `text/event-stream`, `no-cache`, `x-accel-buffering: no` |
+| 4 | LLM unavailable | **PASS** — HTTP 200, `response_type=fallback`, `degraded=true`; MEDIUM keeps check-in + 3 helplines; stream ends in `final` |
+| 5 | Another user's token | **PASS** — 404 `session_not_found` on GET/messages/POST/stream; 401 with no token; 200 for the owner |
+| 6 | DB: encrypted bodies, ephemeral leaves no rows | **PASS** — see below |
+| 7 | Latency, 20 messages, Fake LLM | **PASS** — see below |
 
-### Needs a human, not this sandbox
+**2. response_type / risk_level** (`python3 step2`, rules-only server | default server):
 
-1. **Try 4 sample messages via a real browser UI** once Day 12 frontend lands;
-   confirm CrisisCard renders with 3 resources and `tel:` links.
-2. **Measure p50/p95 against a real provider** (Anthropic) — Fake numbers are
-   ~14ms; real will be hundreds of ms plus network.
-3. **ML threshold tuning**: `I feel okay, tell me a joke` currently raises to HIGH
-   via `ml.crisis_mass` 0.301 > 0.30 (see ensemble analysis). Decide whether
-   recall-first (0.30) or precision-leaning (0.45–0.50) operating point fits chat.
-4. **Ephemeral TTL expiry**: wait 31 min and confirm in-memory session gone.
-5. **Rate limit 20/min per user**: send 21 rapid messages, expect 429 with Retry-After.
+```
+rules-only (SAFETY_ML_ENABLED=false)
+case     response_type  risk_level emotion    message
+neutral  normal         none       joy        What's a good way to plan my study schedule?
+sad      normal         none       sadness    I'm feeling really sad and tired today
+MEDIUM   check_in       medium     sadness    I feel so hopeless and nothing will ever change
+HIGH     crisis         high       None       I want to kill myself
+
+default (ML backstop on, committed crisis_v1 artifact)
+neutral  crisis         high       None       What's a good way to plan my study schedule?
+sad      check_in       medium     sadness    I'm feeling really sad and tired today
+MEDIUM   crisis         high       None       I feel so hopeless and nothing will ever change
+HIGH     crisis         high       None       I want to kill myself
+```
+
+The default column is **FAIL against the intent of the check** (a neutral message
+is not a crisis). It is not an orchestrator bug: `POST /crisis/assess`, untouched
+by Day 11 apart from the shared-helper refactor, returns the same levels
+(`rationale_codes: ["ml.crisis_mass"]`, `ml_crisis_mass` 0.36 for "hello"). Twelve
+messages (11 ordinary + the MEDIUM test message) through `/crisis/assess`: 8 HIGH,
+3 MEDIUM, 1 NONE; of the 11 ordinary ones, 7 were HIGH.
+
+**3. SSE** (MEDIUM message, POST; abridged): `event: token` ×5 of the model text,
+one more `token` carrying the appended check-in paragraph, then
+`event: final` with `reply`, `replaced:false`, `session_id`, `message_id`,
+`metadata{risk_level:"medium", emotion:"sadness", response_type:"check_in",
+resources[3], check_in{…}}`. `GET …/stream?message=` and a HIGH stream
+(one `token`, then `final`, `llm_called:false`) behave as documented.
+
+**4. Outage**: provider chain `anthropic` (no key) → `ollama` at
+`127.0.0.1:9` (connection refused) → canned. `POST /messages` → 200 in ~10–20 ms:
+`response_type=fallback, degraded=true`; at MEDIUM `check_in=true` with 3
+helplines. The server log shows no 500 and no traceback.
+
+**6. DB** (user A `store_chat`+`save_history`, user B ephemeral; each sent a
+message containing a phone number / unique marker and then "I want to kill myself"):
+
+```
+A: chat_sessions=1 messages=4 safety_events linked to session=1  (risk 3, source rules)
+B: chat_sessions=0 messages=0 safety_events linked to session=0
+stored column: gAAAAABqyiBM…  (Fernet tokens, lengths 120–952), risk_level 0/0/3/3
+raw DB file contains: "9876543210" absent, "kill myself" absent,
+                      "SECRET-EPHEMERAL-TEXT" absent, "sad and tired" absent
+safety_events with user_id NULL and session_id NULL (anonymous, from ephemeral chats): 29
+```
+
+"Ephemeral sessions leave no rows" is true for `chat_sessions` and `messages`.
+A MEDIUM+ turn still writes an **anonymous** `safety_events` row (level + source,
+no user, no session, no text) — a deliberate choice, recorded in ADR 0011 §3.
+The owner can read their history back (decrypted) via `GET …/messages`.
+
+**7. Latency** (client wall time per `POST /messages`, 20 messages, one keep-alive
+connection, Fake LLM, SQLite, one uvicorn worker; mix of neutral/sad/MEDIUM):
+
+| server | session | p50 | p95 | notes |
+| --- | --- | --- | --- | --- |
+| rules-only | ephemeral | 8.1 ms | 12.3 ms | 16 normal, 4 check_in |
+| rules-only | saved | 16.4 ms | 18.3 ms | adds two encrypted writes |
+| default | ephemeral | 16.5 ms | 33.4 ms | 8 crisis, 8 check_in, 4 normal (one 159 ms first call) |
+| default | saved | 26.2 ms | 32.1 ms | |
+
+(first runs: 10.5/19.2 ms ephemeral, 18.7/22.3 ms saved.) These measure the
+orchestrator and database, **not a model**: a real provider adds hundreds of ms to
+seconds.
+
+**Mutation checks** (temporarily edited, then restored): `if not plan.allow_llm`
+→ `if False`: 16 tests fail (HIGH ⇒ LLM calls 0 in the orchestrator, API and
+stream); redaction replaced by identity: 5 fail; ownership check dropped: the
+saved-session cross-user test fails.
+
+**Lint/types**: `make lint` → ruff clean, `ruff format --check` 176 files clean,
+`mypy` 170 files no issues, `eslint .` clean; `tsc --noEmit` clean; `alembic check`
+no new operations (no schema change).
 
 ## Verification (Day 10 — real command output)
 
@@ -1705,6 +1551,7 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0008 — Crisis detection: rules engine and helplines](docs/adr/0008-crisis-detection-rules-engine.md): rules over a classifier (a level plus pattern ids is auditable in five seconds, a probability is not, and no threshold is right because too low makes every bad day a crisis card); patterns in YAML data files loaded once and validated at import, so a typo is a startup failure rather than a silent hole; **five wire levels mapped onto the four stored tiers** (`_STORED_BY_LEVEL`, MEDIUM→`elevated`, HIGH and IMMINENT→`crisis`) so the Day 8 enum and the Day 5 database enum stay independent and a new level needs no migration; escalation as a five-row policy table with no branches, so a reviewer sees every behaviour by reading five rows; deterministic pre-written copy in `content/i18n` with `{emergency_number}` the only whitelisted placeholder; helplines as one JSON file behind a schema with `source_url` + `last_verified` per entry and a `needs_verification` flag rather than an unverified number; `access_to_means` recording presence only; privacy enforced structurally (the layer that builds the reply never receives the message, and `RiskAssessment` cannot carry prose); and conservative-by-default level resolution with IMMINENT requiring evidence rather than intensity.
 - [0009 — A one-way ML backstop next to the rules engine](docs/adr/0009-safety-ml-ensemble.md): the ensemble is a ratchet — `final = max(rules, ML-if-confident)`, property-tested never-lowers; three raise bands (confident top class, crisis mass `P(high)+P(imminent)`, uncertain → MEDIUM check-in) with env-configured thresholds grid-chosen on dev only; a pragmatics gate so ML may not undo the rules' negation/figurative discounts; TF-IDF + calibrated logistic regression committed as a joblib artifact with provenance, behind `SafetyClassifier` so a transformer can replace it without touching the ensemble; the 572-case eval set split train/dev/frozen-test with the test hash in `manifest.json` and no method words anywhere; and the trade that moves metadata-only `safety_events` writes onto the public assess endpoint.
 - [0010 — The LLM provider layer: one interface, a chain that cannot fail](docs/adr/0010-llm-abstraction.md): `LLMProvider` with `complete` + `stream` (streaming abstract from day one, declared without `async` so an unconfigured provider fails at call time rather than at the first token); a typed error tree whose `retryable` flag — not a list of exception names — drives the retry machinery; `primary → ollama → canned` with a terminal link that cannot fail, which is what makes "a missing API key is a degradation, not a 500" true by construction; retry with **full jitter**, a hard timeout spent **across** all attempts, and a breaker with a half-open probe, all injectable so no test sleeps; redaction as an egress policy inside the chain rather than a caller's responsibility; the system prompt as a versioned, hashed, load-time-validated file; and a token guard that truncates (never rejects) at a word boundary so a redaction placeholder is never cut in half. **Numbered 0010, not the `0003-llm-abstraction.md` the brief asked for** — 0003 is the published data-layer ADR, ADR numbers are permanent, and the two precedents (0006, this one) are recorded at the top of the document.
+- [0011 — The chat orchestrator: one pipeline, and the order is the safety property](docs/adr/0011-chat-orchestrator.md): nine steps in a fixed order with the crisis gate before anything that can call a model; fail **closed** on input safety (503) and fail **soft** on everything else (fallback template, `emotion=None`, `persisted=false`); ephemeral-by-default sessions (process memory, 30-min sliding TTL, no user-linked rows — MEDIUM+ turns write an *anonymous* SafetyEvent) with `store_chat` required only to save; someone else's session is a 404, never a 403; hints live in the system prompt and crisis turns are dropped from the model's window; MEDIUM gets a hint *and* the template's check-in appended; SSE `token`… `final` with `final.reply` authoritative; short-lived DB sessions because streams outlive request dependencies; per-user rate limit after validation (also applies to crisis messages); and an honest note that the Day 9 ML backstop's false positives are now user-visible.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
@@ -1964,6 +1811,50 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   No endpoint streams yet, so the mid-stream-failure path (raise, do not restart)
   has only ever run in a test.
 
+### Day 11 chat notes
+
+- **The ML backstop turns ordinary messages into crisis responses (HIGH).** The
+  committed `crisis_v1` artifact (340 training cases, dev accuracy 0.54, macro-F1
+  0.46) with `SAFETY_ML_CRISIS_MASS_FLOOR=0.30` raises to HIGH on a crisis mass
+  that benign text routinely reaches (medians 0.34 benign vs 0.54 crisis — Day 9's
+  own note that the two overlap). On `/crisis/assess` this was "the false positive
+  is cheap"; on every chat turn it is a person asking for a study plan and being
+  handed a helpline. **Not fixed on Day 11** — choosing a threshold is a safety
+  policy call, not a plumbing one. Options for the owner: (a) raise the floor to
+  0.45–0.50 (Day 9 predicted the recall cost — measure it on the dev split, not by
+  hand), (b) let the ML backstop raise only to MEDIUM in chat and keep HIGH for
+  rules, (c) retrain on a much larger, more varied set, (d) ship rules-only
+  (`SAFETY_ML_ENABLED=false`) until one of those. Whichever is chosen, re-run
+  `make eval` and keep the test that HIGH never reaches the model.
+- **`GET …/stream?message=` puts the text in the URL.** Proxies and CDN logs
+  record URLs. The app's own access log is path-only. Prefer the POST stream; the
+  GET form exists for `curl` and `EventSource`-style clients (which cannot set an
+  `Authorization` header anyway, so the future UI will `fetch()` the POST).
+- **Ephemeral store and chat rate limiter are per-process.** Fine for one uvicorn
+  worker; with several, an ephemeral session only exists on the worker that made
+  it and the rate limit is per worker. Needs a shared store before scaling out.
+- **Concurrent messages in one session are not serialised**; two simultaneous sends
+  can interleave in history.
+- **The rate limit also applies to crisis messages** (30/min/user by default).
+  High enough that a person in distress will not reach it; the public `/crisis/*`
+  endpoints are unaffected.
+- **No end/delete-session endpoint.** `409 session_ended` exists for rows ended
+  elsewhere; there is no way yet for a user to end or delete a saved chat.
+- **A client disconnect mid-stream does not persist the partial reply.** The user
+  message and its SafetyEvent are already committed; the assistant half is lost.
+- **A lone surrogate in a JSON body is a generic `validation_error` 422**, not
+  `message_encoding`: the JSON parser refuses it before our validation sees it.
+  The curated check still covers every other entry point (unit-tested).
+- **Retrieval and the output guard are stubs** (`[]`, pass-through) until Days 13
+  and 14. AGENTS.md rule 4 ("every LLM output passes an output-safety check") is
+  satisfied by the *seam*, not yet by a real check — the stub is the weakest link
+  until Day 14.
+- **The emotion analyser logs a WARNING per message when the `nlp` extra is not
+  installed** (`emotion_analyzer_failed`, Day 6 chain behaviour). Harmless but
+  noisy in this sandbox.
+- **`frontend/README.md` fails `prettier --check`** (pre-existing; not in CI; not
+  touched).
+
 ## Parking lot
 
 - Distributed rate limiting / lockout state (Redis) behind the existing interfaces, plus a trusted-proxy setting for `X-Forwarded-For` client identity.
@@ -2044,41 +1935,36 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   the version and its sha256 recorded on every stored message so a reply can
   always be traced to the prompt that produced it.
 
+- **(Day 11)** Wire `ChatPage.tsx` to the stream: `fetch()` POST + `ReadableStream` (not `EventSource`), render tokens, swap in `final.reply` when `replaced`, `CrisisCard` from `metadata.crisis`, an honest "degraded" notice.
+- **(Day 11)** `DELETE /chat/sessions/{id}` (end/erase), history pagination, and a "delete all my chats" path that ties into the Day 17 erasure work.
+- **(Day 11)** Serialise turns per session (an asyncio lock per session id, or an advisory DB lock) so concurrent sends cannot interleave.
+- **(Day 11)** A shared ephemeral store and rate limiter (Redis) for multi-worker deployments, behind the existing `EphemeralSessionStore` and limiter interfaces.
+- **(Day 11)** Persist the partial reply on disconnect, flagged as incomplete, if product wants it; today it is dropped.
+- **(Day 11)** A `/metrics`-style latency histogram per pipeline step (the `chat_turn` log has only the total).
+- **(Day 11)** Per-turn "why" logging for the gate (rationale codes only) so threshold tuning can use real traffic without text.
+
 ## Next steps (Day 12 — first three)
 
-**Preamble (carried, needs my machine):** the seven Docker commands from
-"Verification (Day 7)" are still unverified here; Day 11 adds the chat stack
-but does not change Docker. `make eval` inside the api container should be
-exercised once when the compose env is up.
+**Preamble (needs a human, before any user sees the chat):** decide what to do
+about the ML backstop's false positives (Known issues → Day 11 chat notes). Until
+then, run with `SAFETY_ML_ENABLED=false` for anything demo-facing.
 
-**Preamble (carried from Day 8, needs a human):** native-speaker review of the
-hi/bn crisis copy; the four `needs_verification` helplines called; ownership of
-the out-of-table probe cadence; and **a second annotator pass on the ~60
-ambiguous eval labels** (see Day 9 safety notes) before the next threshold tune
-is trusted.
+**Preamble (carried, needs my machine):** the Docker commands from "Verification
+(Day 7)"; `scripts/llm_probe.py` with a real key; the native-speaker review of the
+hi/bn crisis copy and the four `needs_verification` helplines.
 
-**Preamble (Day 10, needs my machine):** `ANTHROPIC_API_KEY=… ANTHROPIC_MODEL=…
-python3 scripts/llm_probe.py` — the one item in the Day 10 verification table
-that this sandbox could not do. Do it before building on the LLM layer.
-
-**Preamble (Day 11, needs a human):** try the 4 sample messages via the API
-(neutral, sad, MEDIUM, HIGH) and confirm CrisisCard rendering; stream a reply
-with `curl -N` and check SSE order; kill LLM provider and confirm fallback;
-try to read another user's session (403/404); query DB for encrypted bodies
-and ephemeral no-rows; measure p50/p95 latency for 20 messages.
-
-1. **Frontend chat page** wired to the new endpoints, rendering `CrisisCard`
-   in-thread whenever `response_type="crisis"` and `resources` are present,
-   with helplines one tap away. Surface `degraded` honestly ("I'm having
-   trouble thinking clearly right now") and `response_type="check_in"` with a
-   gentle UI. The page should work with both JSON and SSE (EventSource for GET,
-   fetch+ReadableStream for POST).
-2. **The output-safety check every completion must pass** (AGENTS.md rule 4) —
-   still missing. A small deterministic screen on `LLMResult.text` before store/show:
-   no diagnosis, no medication advice, no method/means, no "I understand",
-   no claimed humanity. Reuse Day 8 safe-messaging vocabulary, route failures to
-   canned reply, never to raw completion. This is the other half of Day 10.
-3. **Retrieval (Day 13)**: scope to user's own journal/mood entries when
-   `store_chat` + relevant consents allow, return top-k snippets, and inject
-   into prompt's retrieval context. Today stub returns [].
-
+1. **Settle the chat-time safety policy and re-measure.** Pick one of the options in
+   the known issue, change it in config/`ensemble` only, re-run `make eval`
+   and a benign-message set (add one to `evals/` — eleven ordinary messages
+   showed 7 HIGH), and add a regression test that a short list of ordinary
+   messages is not HIGH under the shipped defaults while "I want to kill myself"
+   still is.
+2. **Chat page on the stream** (parking lot, first item): POST-stream via `fetch`,
+   token rendering, `CrisisCard` from `metadata.crisis`, helplines one tap away,
+   and the `degraded` notice. This is the first time the SSE contract meets a
+   browser, so check it through the Vite proxy too (buffering).
+3. **Retrieval (Day 13) behind the existing `Retriever` protocol**, or — if the
+   plan puts the output guard first — the output-safety check behind
+   `OutputGuard` (AGENTS.md rule 4 is only met by a seam today). Either way the
+   orchestrator's order and wire format must not change; the stub tests are the
+   contract.

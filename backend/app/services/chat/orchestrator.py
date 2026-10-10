@@ -1,952 +1,651 @@
-"""Chat orchestrator — the heart of the system (Day 11).
+"""The chat orchestrator: the one place a user message becomes a reply.
 
-Pipeline per user message (spec order):
+The pipeline, in this order, for every message (Day 11 brief)::
 
- 1. Validate length/encoding; rate limit per user.
- 2. Input safety: rules + ML ensemble -> RiskAssessment. If HIGH or IMMINENT:
-    STOP. Return deterministic crisis response (Day 8). Do not call the LLM.
-    Persist the message (encrypted) and a SafetyEvent. Mark response type "crisis".
- 3. PII redaction of the text going to the LLM.
- 4. Emotion analysis (Day 6) of the original text.
- 5. Retrieval stub (returns [] today; Day 13 fills it).
- 6. Build the prompt: system prompt + short conversation window + emotion hint
-    + safety hint (e.g. "user may be at MEDIUM risk: include a gentle check-in")
-    + retrieval context.
- 7. Call the LLM via the provider chain.
- 8. Output guard stub (passes through today; Day 14 fills it).
- 9. Persist assistant message (encrypted) and return.
+    1. validate length/encoding; rate-limit per user          admit()
+    2. input safety: rules + ML ensemble -> RiskAssessment    _triage()
+         HIGH / IMMINENT -> STOP. Deterministic crisis reply.
+         The LLM is not called. Message + SafetyEvent stored.  _crisis_reply()
+    3. PII redaction of the text going to the LLM             _prepare()
+    4. emotion analysis of the *original* text                _prepare()
+    5. retrieval (stub: [] until Day 13)                      _prepare()
+    6. build the prompt: system + window + emotion hint +
+       safety hint + retrieval context                        _prepare()
+    7. call the LLM through the provider chain                _generate()
+    8. output guard (stub: pass-through until Day 14)         _guard()
+    9. persist the assistant message and return               _finish()
 
-The orchestrator is deliberately synchronous in its CPU-bound parts (safety
-rules, emotion lexicons) and async only where it must be (LLM, DB). The
-blocking analyzers run in a threadpool at the call site when the orchestrator
-is used from an async endpoint.
+Design rules the code below holds itself to:
 
-Privacy:
+* **Safety first, and fail closed.** Step 2 runs before anything that could reach
+  a model. If the safety stage itself breaks there is *no verdict*, so the
+  answer is a 503 — never "answer anyway".
+* **The model cannot make a crisis response worse.** At HIGH/IMMINENT the model is
+  never constructed into a request, let alone called. The reply is the
+  pre-written, localised template from ``content/i18n``, and it is delivered even
+  if storing it fails.
+* **Nothing the model says is trusted.** It passes the output guard (a seam
+  today) and, if it cannot answer at all, a pre-written fallback stands in. An
+  LLM outage is a degraded reply, never a 500.
+* **Nothing identifying goes out.** The text and the history window are redacted
+  before the prompt is built; the user id never enters the prompt; if redaction
+  itself fails the model is not called.
+* **Never log what was said.** Log lines carry a fingerprint, a length, tiers and
+  timings (AGENTS.md rule 5).
 
-* No raw text at INFO or above.
-* Emotion is analyzed on the original text; redaction happens only on the
-  text that leaves for the LLM.
-* Ephemeral sessions never touch the DB.
+The orchestrator is built from interfaces (LLM provider, emotion analyzer,
+classifier, retriever, output guard), each with a Fake, so the whole pipeline
+runs offline in tests.
 """
 
 from __future__ import annotations
 
+import time
 import uuid
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Final
 
 import structlog
-from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
+from app.content.i18n import RenderedTemplate
 from app.core.config import Settings
 from app.core.errors import ApiError
-from app.core.ratelimit import InMemoryRateLimiter
-from app.db.repos import ChatRepository, SafetyEventRepository
-from app.models.enums import MessageRole, SafetyEventSource
-from app.models.user import User
-from app.services.chat.ephemeral import EphemeralStore
-from app.services.chat.output_guard import GuardResult, guard_output
-from app.services.chat.retrieval import RetrievalResult, retrieve
-from app.services.llm.base import LLMMessage
-from app.services.llm.chain import LLMChain
-from app.services.llm.prompts import render_system_prompt
-from app.services.nlp.base import EmotionResult
+from app.core.ratelimit import InMemoryRateLimiter, RateLimiter
+from app.models.enums import SafetyEventSource
+from app.services.chat.conversation import Conversation
+from app.services.chat.output_guard import OutputGuard, PassthroughOutputGuard
+from app.services.chat.prompting import (
+    build_window,
+    compose_system,
+    emotion_hint,
+    retrieval_block,
+    safety_hint,
+    to_llm_messages,
+)
+from app.services.chat.retrieval import NullRetriever, RetrievedChunk, Retriever
+from app.services.chat.types import (
+    ChatMetadata,
+    ChatReply,
+    FinalEvent,
+    ResponseType,
+    StreamEvent,
+    TokenEvent,
+)
+from app.services.chat.validation import validate_message
+from app.services.llm.base import LLMMessage, LLMProvider
+from app.services.llm.canned import CANNED_REPLY, split_for_stream
+from app.services.llm.prompts import DEFAULT_MAX_WORDS, PROMPT_VERSION, render_system_prompt
+from app.services.nlp.base import EmotionAnalyzer, EmotionResult
 from app.services.nlp.redaction import Redactor
-from app.services.safety.base import RiskAssessment, text_fingerprint
-from app.services.safety.base import RiskLevel as SafetyRiskLevel
-from app.services.safety.ensemble import EnsembleDecision, apply_decision, decide
+from app.services.safety.base import RiskLevel, text_fingerprint
+from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision
 from app.services.safety.escalation import EscalationPlan, Escalator
 from app.services.safety.ml_classifier import SafetyClassifier
+from app.services.safety.pipeline import run_ensemble
 from app.services.safety.rules import RuleEngine
 
-logger = structlog.get_logger(__name__)
+#: Shown only if an escalation plan somehow has no message at HIGH/IMMINENT. The
+#: helpline loader validates every template at startup, so this is a last resort
+#: that costs nothing: it names no number (those live only in ``helplines.json``).
+LAST_RESORT_CRISIS_TEXT: Final = (
+    "I'm really glad you told me. What you're describing needs a person, not an app. "
+    "If you are in danger, please call your local emergency number now, or contact a "
+    "crisis helpline. You don't have to go through this alone."
+)
 
-# --- Validation -------------------------------------------------------------
+#: Curated rejection messages. Never an echo of the input.
+RATE_LIMITED_MESSAGE: Final = "You're sending messages quite quickly. Please wait a moment."
+SAFETY_UNAVAILABLE_MESSAGE: Final = (
+    "I couldn't check that message safely just now, so I haven't replied. "
+    "Please try again in a moment. If you are in danger, call your local emergency number."
+)
 
-MAX_MESSAGE_CHARS_DEFAULT: Final = 4000
-MIN_MESSAGE_CHARS: Final = 1
-
-# Control chars that are never valid in a chat message, except \n \r \t
-# Null byte is always rejected — it breaks logging, DB drivers and many UIs.
-FORBIDDEN_CHARS = {"\x00"}
-
-
-def _validate_encoding(text: str) -> None:
-    # Python str is already decoded, but we can still check for surrogates,
-    # null bytes and non-printable control chars that indicate binary paste.
-    if "\x00" in text:
-        raise ApiError(400, "invalid_message", "Message contains invalid characters.")
-    # Check for unpaired surrogates (can appear when JS sends bad UTF-16)
-    try:
-        text.encode("utf-8")
-    except UnicodeEncodeError as exc:
-        raise ApiError(400, "invalid_encoding", "Message encoding is invalid.") from exc
-
-
-def _validate_length(text: str, max_chars: int) -> None:
-    stripped = text.strip()
-    if len(stripped) < MIN_MESSAGE_CHARS:
-        raise ApiError(400, "empty_message", "Message must not be empty.")
-    if len(text) > max_chars:
-        raise ApiError(
-            400,
-            "message_too_long",
-            f"Message is too long (max {max_chars} characters).",
-        )
-
-
-# --- Result types -----------------------------------------------------------
+_log = structlog.get_logger()
 
 
 @dataclass(frozen=True)
-class ChatMessageOut:
-    """One persisted (or ephemeral) message, decrypted for the response."""
+class OrchestratorConfig:
+    """Tunables, all sourced from ``Settings`` (none hard-coded in the pipeline)."""
 
-    id: uuid.UUID
-    role: MessageRole
-    content: str
-    created_at: Any
-    risk_level: int
-    emotion: str | None = None
+    max_message_chars: int = 4000
+    history_turns: int = 10
+    max_tokens: int = 400
+    temperature: float = 0.7
+    prompt_version: str = PROMPT_VERSION
+    max_words: int = DEFAULT_MAX_WORDS
+    retrieval_limit: int = 3
+    ml_min_confidence: float = 0.70
+    ml_crisis_mass_floor: float = 0.30
+    ml_suspicion_floor: float = 0.25
+    rate_limit_enabled: bool = True
+
+    @classmethod
+    def from_settings(cls, settings: Settings) -> OrchestratorConfig:
+        return cls(
+            max_message_chars=settings.chat_max_message_chars,
+            history_turns=settings.chat_history_turns,
+            max_tokens=settings.llm_max_tokens,
+            temperature=settings.llm_temperature,
+            prompt_version=settings.llm_prompt_version,
+            ml_min_confidence=settings.safety_ml_min_confidence,
+            ml_crisis_mass_floor=settings.safety_ml_crisis_mass_floor,
+            ml_suspicion_floor=settings.safety_ml_suspicion_floor,
+            rate_limit_enabled=settings.rate_limit_enabled,
+        )
 
 
 @dataclass(frozen=True)
-class OrchestratorResult:
-    """What the orchestrator returns to the API layer."""
+class AdmittedMessage:
+    """A message that passed step 1: valid, normalised, and within the user's budget.
 
-    # The assistant reply, ready to show
-    reply_text: str
-    # Metadata for the UI
-    risk_level: str  # wire form: none/low/medium/high/imminent
-    stored_risk_level: str  # DB form: none/caution/elevated/crisis
-    emotion: str | None
-    emotion_result: EmotionResult | None
-    response_type: str  # crisis | check_in | supportive | normal | fallback
-    resources: tuple[Any, ...] = ()
-    emergency: Any | None = None
-    crisis_message: Any | None = None
-    # Provenance
-    degraded: bool = False
-    fallbacks_used: int = 0
-    provider: str | None = None
-    prompt_version: str | None = None
-    # The two messages (user + assistant) for persistence verification
-    user_message: ChatMessageOut | None = None
-    assistant_message: ChatMessageOut | None = None
-    # Safety
-    assessment: RiskAssessment | None = None
-    decision: EnsembleDecision | None = None
-    plan: EscalationPlan | None = None
-    # Redaction report (metadata only)
-    redaction_summary: str | None = None
+    The only way to run the rest of the pipeline is to hold one of these, so
+    "forgot to validate / rate-limit" is a type error, not a code-review catch.
+    """
 
-
-# --- Prompt building --------------------------------------------------------
-
-
-def _emotion_hint(emotion: EmotionResult | None) -> str | None:
-    if emotion is None:
-        return None
-    # Keep it short and safe — no user text, only metadata
-    return (
-        f"User emotion: {emotion.primary} "
-        f"(valence {emotion.valence:.2f}, arousal {emotion.arousal:.2f}). "
-        f"Respond with empathy appropriate to this feeling."
-    )
-
-
-def _safety_hint(level: SafetyRiskLevel) -> str | None:
-    if level == SafetyRiskLevel.MEDIUM:
-        return (
-            "User may be at MEDIUM risk: include a gentle check-in, "
-            "encourage reaching out to a trusted person or helpline, "
-            "and show you are listening. Do not repeat risk language."
-        )
-    if level == SafetyRiskLevel.LOW:
-        return "User may be at LOW risk: use a supportive tone, acknowledge their feelings gently."
-    return None
-
-
-def _build_system_prompt(
-    base_version: str,
-    language: str | None,
-    max_words: int,
-    emotion_hint: str | None,
-    safety_hint: str | None,
-    retrieval: list[RetrievalResult],
-) -> str:
-    rendered = render_system_prompt(version=base_version, language=language, max_words=max_words)
-    parts = [rendered.text]
-    guidance: list[str] = []
-    if emotion_hint:
-        guidance.append(f"- {emotion_hint}")
-    if safety_hint:
-        guidance.append(f"- {safety_hint}")
-    if retrieval:
-        # Stub: include snippets if any
-        ctx = "\n".join(f"- {r.text}" for r in retrieval[:3])
-        guidance.append(f"- Retrieval context:\n{ctx}")
-    if guidance:
-        parts.append("\nAdditional guidance for this turn:\n" + "\n".join(guidance))
-    return "\n".join(parts)
-
-
-def _conversation_window_to_llm_messages(messages: list[Any], limit: int) -> list[LLMMessage]:
-    """Take oldest-first messages and keep the most recent ``limit`` turns."""
-    # messages are either DB Message rows (need decrypt) or EphemeralMessage
-    # The caller already decrypted for persistent; for ephemeral they are plain.
-    # This helper expects objects with role and content attributes.
-    # We keep at most limit*2 messages? The setting is turns, so we keep last N.
-    recent = messages[-limit:] if limit > 0 else messages
-    out: list[LLMMessage] = []
-    for m in recent:
-        role = getattr(m, "role", None)
-        content = getattr(m, "content", None)
-        if role is None or content is None:
-            continue
-        # Map to LLM roles: user/assistant only; system messages are not in history
-        role_str = role.value if hasattr(role, "value") else str(role)
-        if role_str not in ("user", "assistant"):
-            continue
-        out.append(LLMMessage(role=role_str, content=content))  # type: ignore[arg-type]
-    return out
-
-
-# --- Orchestrator -----------------------------------------------------------
-
-
-class ChatOrchestrator:
-    """Implements the Day 11 pipeline."""
-
-    def __init__(
-        self,
-        settings: Settings,
-        *,
-        rule_engine: RuleEngine,
-        ml_classifier: SafetyClassifier,
-        escalator: Escalator,
-        emotion_analyzer: Any,  # EmotionAnalyzer
-        llm_chain: LLMChain,
-        redactor: Redactor,
-        ephemeral_store: EphemeralStore,
-        chat_rate_limiter: InMemoryRateLimiter | None = None,
-    ) -> None:
-        self._settings = settings
-        self._rule_engine = rule_engine
-        self._ml_classifier = ml_classifier
-        self._escalator = escalator
-        self._emotion_analyzer = emotion_analyzer
-        self._llm_chain = llm_chain
-        self._redactor = redactor
-        self._ephemeral = ephemeral_store
-        self._limiter = chat_rate_limiter or InMemoryRateLimiter(
-            limit=settings.chat_rate_limit_per_minute
-        )
-
-    # ---- Public API -------------------------------------------------------
-
-    async def handle_message(
-        self,
-        *,
-        db_session: AsyncSession | None,
-        user: User,
-        session_id: uuid.UUID,
-        content: str,
-        is_ephemeral: bool,
-        region: str | None = None,
-        locale: str | None = None,
-    ) -> OrchestratorResult:
-        """Run the full pipeline for one user message.
-
-        ``db_session`` may be None for ephemeral sessions; when persistent it
-        must be a live AsyncSession.
-        """
-        # 1. Validate length/encoding; rate limit per user
-        _validate_encoding(content)
-        _validate_length(content, self._settings.chat_max_message_chars)
-
-        rl = self._limiter.hit(str(user.id))
-        if not rl.allowed:
-            raise ApiError(
-                429,
-                "rate_limited",
-                "Too many messages. Please slow down.",
-                headers={"Retry-After": str(rl.retry_after)},
-            )
-
-        # 2. Input safety: rules + ML ensemble -> RiskAssessment
-        # Run CPU-bound work in threadpool? The orchestrator itself is async,
-        # but the analyzers are sync. For simplicity we run them directly here;
-        # the endpoint can also offload if needed. The safety engine is fast
-        # (0.3ms) so direct call is fine.
-        try:
-            assessment = self._rule_engine.assess(content)
-        except Exception:
-            # Safety must never be the reason a message goes unanswered;
-            # degrade to NONE and log.
-            logger.warning("safety_assess_failed", user_id=str(user.id))
-            from app.services.safety.base import empty_assessment
-
-            assessment = empty_assessment(rationale="safety.error")
-
-        decision = decide(
-            assessment,
-            self._ml_classifier,
-            text=content,
-            min_confidence=self._settings.safety_ml_min_confidence,
-            crisis_mass_floor=self._settings.safety_ml_crisis_mass_floor,
-            suspicion_floor=self._settings.safety_ml_suspicion_floor,
-        )
-        final_assessment = apply_decision(assessment, decision)
-        plan = self._escalator.plan(final_assessment, region=region, locale=locale)
-
-        # Logging: fingerprint only
-        logger.info(
-            "chat_safety_assessed",
-            user_id=str(user.id),
-            session_id=str(session_id),
-            text_sha=text_fingerprint(content),
-            text_length=len(content),
-            level=plan.level_code,
-            stored_level=plan.stored_level_code,
-            source=decision.source,
-            allow_llm=plan.allow_llm,
-        )
-
-        # Emotion analysis of original text (Day 6) — before redaction
-        emotion_result: EmotionResult | None = None
-        try:
-            # EmotionAnalyzer.analyze is sync; call directly (fast for keyword)
-            emotion_result = self._emotion_analyzer.analyze(content)
-        except Exception:
-            logger.warning("emotion_analyze_failed", user_id=str(user.id))
-            emotion_result = None
-
-        # If HIGH or IMMINENT: STOP, crisis response, no LLM
-        if final_assessment.level.is_crisis:
-            return await self._handle_crisis(
-                db_session=db_session,
-                user=user,
-                session_id=session_id,
-                content=content,
-                is_ephemeral=is_ephemeral,
-                assessment=final_assessment,
-                decision=decision,
-                plan=plan,
-                emotion_result=emotion_result,
-            )
-
-        # 3. PII redaction of the text going to the LLM
-        redaction_result = self._redactor.redact(content)
-        redacted_text = redaction_result.text
-        redaction_summary = redaction_result.summary()
-
-        # 5. Retrieval stub
-        retrieval_results = await retrieve(redacted_text, session_id=session_id, user_id=user.id)
-
-        # 6. Build prompt
-        emotion_hint = _emotion_hint(emotion_result)
-        safety_hint = _safety_hint(final_assessment.level)
-        language = emotion_result.language if emotion_result and emotion_result.language else None
-        system_prompt = _build_system_prompt(
-            base_version=self._settings.llm_prompt_version,
-            language=language,
-            max_words=self._settings.llm_max_tokens,  # reuse as max_words? Use default 120
-            emotion_hint=emotion_hint,
-            safety_hint=safety_hint,
-            retrieval=retrieval_results,
-        )
-
-        # Conversation window
-        history_messages = await self._get_history(
-            db_session=db_session,
-            session_id=session_id,
-            is_ephemeral=is_ephemeral,
-            limit=self._settings.chat_history_window,
-        )
-        llm_messages = _conversation_window_to_llm_messages(
-            history_messages, limit=self._settings.chat_history_window
-        )
-        # Add the new user turn (redacted)
-        llm_messages.append(LLMMessage(role="user", content=redacted_text))
-
-        # 7. Call LLM via provider chain
-        try:
-            llm_result = await self._llm_chain.complete(
-                llm_messages,
-                system=system_prompt,
-                max_tokens=self._settings.llm_max_tokens,
-                temperature=self._settings.llm_temperature,
-            )
-        except Exception as exc:
-            # The chain should never raise (canned is terminal), but if it does,
-            # fall back to canned reply manually.
-            logger.warning(
-                "llm_chain_failed",
-                user_id=str(user.id),
-                error_type=type(exc).__name__,
-            )
-            # Build a fake result
-            from app.services.llm.base import LLMResult
-            from app.services.llm.canned import CANNED_REPLY
-
-            llm_result = LLMResult(
-                text=CANNED_REPLY,
-                provider="canned",
-                model=None,
-                degraded=True,
-                fallbacks_used=99,
-                prompt_version=self._settings.llm_prompt_version,
-            )
-
-        # 8. Output guard stub
-        guard_res: GuardResult = guard_output(llm_result.text)
-        final_text = guard_res.text
-
-        # 9. Persist assistant message (encrypted) and return
-        response_type = self._response_type_for_level(
-            final_assessment.level, degraded=llm_result.degraded
-        )
-
-        # Persist user message first (if not already persisted in crisis path)
-        user_msg_out: ChatMessageOut | None = None
-        assistant_msg_out: ChatMessageOut | None = None
-
-        if is_ephemeral:
-            # Ephemeral: in-memory only
-            um = self._ephemeral.add_message(
-                session_id,
-                role=MessageRole.USER,
-                content=content,
-                risk_level=int(final_assessment.to_stored_level()),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            am = self._ephemeral.add_message(
-                session_id,
-                role=MessageRole.ASSISTANT,
-                content=final_text,
-                risk_level=int(final_assessment.to_stored_level()),
-                emotion=None,
-            )
-            if um:
-                user_msg_out = ChatMessageOut(
-                    id=um.id,
-                    role=um.role,
-                    content=um.content,
-                    created_at=um.created_at,
-                    risk_level=um.risk_level,
-                    emotion=um.emotion,
-                )
-            if am:
-                assistant_msg_out = ChatMessageOut(
-                    id=am.id,
-                    role=am.role,
-                    content=am.content,
-                    created_at=am.created_at,
-                    risk_level=am.risk_level,
-                    emotion=None,
-                )
-        else:
-            assert db_session is not None
-            chat_repo = ChatRepository(db_session)
-            # User message
-            um_row = await chat_repo.add_message(
-                session_id=session_id,
-                role=MessageRole.USER,
-                content=content,
-                risk_level=final_assessment.to_stored_level(),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            # Assistant message
-            am_row = await chat_repo.add_message(
-                session_id=session_id,
-                role=MessageRole.ASSISTANT,
-                content=final_text,
-                risk_level=final_assessment.to_stored_level(),
-                emotion=None,
-            )
-            # Safety event if needed
-            if plan.record_event:
-                source = (
-                    SafetyEventSource.RULES if decision.source == "rules" else SafetyEventSource.ML
-                )
-                await SafetyEventRepository(db_session).record(
-                    risk_level=final_assessment.to_stored_level(),
-                    source=source,
-                    user_id=user.id,
-                    session_id=session_id,
-                )
-            await db_session.commit()
-            user_msg_out = ChatMessageOut(
-                id=um_row.id,
-                role=MessageRole.USER,
-                content=content,
-                created_at=um_row.created_at,
-                risk_level=int(um_row.risk_level),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            assistant_msg_out = ChatMessageOut(
-                id=am_row.id,
-                role=MessageRole.ASSISTANT,
-                content=final_text,
-                created_at=am_row.created_at,
-                risk_level=int(am_row.risk_level),
-                emotion=None,
-            )
-
-        return OrchestratorResult(
-            reply_text=final_text,
-            risk_level=plan.level_code,
-            stored_risk_level=plan.stored_level_code,
-            emotion=emotion_result.primary if emotion_result else None,
-            emotion_result=emotion_result,
-            response_type=response_type,
-            resources=tuple(plan.resources),
-            emergency=plan.emergency,
-            crisis_message=plan.message,
-            degraded=llm_result.degraded,
-            fallbacks_used=llm_result.fallbacks_used,
-            provider=llm_result.provider,
-            prompt_version=llm_result.prompt_version,
-            user_message=user_msg_out,
-            assistant_message=assistant_msg_out,
-            assessment=final_assessment,
-            decision=decision,
-            plan=plan,
-            redaction_summary=redaction_summary,
-        )
-
-    async def _handle_crisis(
-        self,
-        *,
-        db_session: AsyncSession | None,
-        user: User,
-        session_id: uuid.UUID,
-        content: str,
-        is_ephemeral: bool,
-        assessment: RiskAssessment,
-        decision: EnsembleDecision,
-        plan: EscalationPlan,
-        emotion_result: EmotionResult | None,
-    ) -> OrchestratorResult:
-        """Return deterministic crisis response without calling LLM."""
-        crisis_text = ""
-        if plan.message:
-            # RenderedTemplate: title is str, body and safety_steps are list[str]
-            parts: list[str] = []
-            title = getattr(plan.message, "title", None)
-            if title:
-                parts.append(title if isinstance(title, str) else str(title))
-            body = getattr(plan.message, "body", None)
-            if body:
-                if isinstance(body, (list, tuple)):
-                    parts.extend([str(p) for p in body if p])
-                else:
-                    parts.append(str(body))
-            emergency = getattr(plan.message, "emergency_instruction", None)
-            if emergency:
-                parts.append(str(emergency))
-            trusted = getattr(plan.message, "trusted_person", None)
-            if trusted:
-                parts.append(str(trusted))
-            safety_steps = getattr(plan.message, "safety_steps", None)
-            if safety_steps:
-                if isinstance(safety_steps, (list, tuple)):
-                    parts.extend([str(s) for s in safety_steps if s])
-                else:
-                    parts.append(str(safety_steps))
-            helpline_intro = getattr(plan.message, "helpline_intro", None)
-            if helpline_intro:
-                parts.append(str(helpline_intro))
-            closing = getattr(plan.message, "closing", None)
-            if closing:
-                parts.append(str(closing))
-            crisis_text = "\n\n".join(p for p in parts if p)
-            if not crisis_text:
-                crisis_text = str(plan.message)
-        if not crisis_text:
-            crisis_text = (
-                "What you're feeling is real, and you don't have to face it alone. "
-                "Please reach out for help right now."
-            )
-
-        user_msg_out: ChatMessageOut | None = None
-        assistant_msg_out: ChatMessageOut | None = None
-
-        if is_ephemeral:
-            um = self._ephemeral.add_message(
-                session_id,
-                role=MessageRole.USER,
-                content=content,
-                risk_level=int(assessment.to_stored_level()),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            am = self._ephemeral.add_message(
-                session_id,
-                role=MessageRole.ASSISTANT,
-                content=crisis_text,
-                risk_level=int(assessment.to_stored_level()),
-                emotion=None,
-            )
-            if um:
-                user_msg_out = ChatMessageOut(
-                    id=um.id,
-                    role=um.role,
-                    content=um.content,
-                    created_at=um.created_at,
-                    risk_level=um.risk_level,
-                    emotion=um.emotion,
-                )
-            if am:
-                assistant_msg_out = ChatMessageOut(
-                    id=am.id,
-                    role=am.role,
-                    content=am.content,
-                    created_at=am.created_at,
-                    risk_level=am.risk_level,
-                )
-        else:
-            assert db_session is not None
-            chat_repo = ChatRepository(db_session)
-            um_row = await chat_repo.add_message(
-                session_id=session_id,
-                role=MessageRole.USER,
-                content=content,
-                risk_level=assessment.to_stored_level(),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            am_row = await chat_repo.add_message(
-                session_id=session_id,
-                role=MessageRole.ASSISTANT,
-                content=crisis_text,
-                risk_level=assessment.to_stored_level(),
-                emotion=None,
-            )
-            # SafetyEvent
-            source = SafetyEventSource.RULES if decision.source == "rules" else SafetyEventSource.ML
-            await SafetyEventRepository(db_session).record(
-                risk_level=assessment.to_stored_level(),
-                source=source,
-                user_id=user.id,
-                session_id=session_id,
-            )
-            await db_session.commit()
-            user_msg_out = ChatMessageOut(
-                id=um_row.id,
-                role=MessageRole.USER,
-                content=content,
-                created_at=um_row.created_at,
-                risk_level=int(um_row.risk_level),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            assistant_msg_out = ChatMessageOut(
-                id=am_row.id,
-                role=MessageRole.ASSISTANT,
-                content=crisis_text,
-                created_at=am_row.created_at,
-                risk_level=int(am_row.risk_level),
-            )
-
-        return OrchestratorResult(
-            reply_text=crisis_text,
-            risk_level=plan.level_code,
-            stored_risk_level=plan.stored_level_code,
-            emotion=emotion_result.primary if emotion_result else None,
-            emotion_result=emotion_result,
-            response_type="crisis",
-            resources=tuple(plan.resources),
-            emergency=plan.emergency,
-            crisis_message=plan.message,
-            degraded=False,
-            fallbacks_used=0,
-            provider="crisis",
-            prompt_version=None,
-            user_message=user_msg_out,
-            assistant_message=assistant_msg_out,
-            assessment=assessment,
-            decision=decision,
-            plan=plan,
-            redaction_summary=None,
-        )
-
-    async def _get_history(
-        self,
-        *,
-        db_session: AsyncSession | None,
-        session_id: uuid.UUID,
-        is_ephemeral: bool,
-        limit: int,
-    ) -> list[Any]:
-        if is_ephemeral:
-            msgs = self._ephemeral.list_messages(session_id, limit=limit * 2)
-            return msgs or []
-        else:
-            assert db_session is not None
-            repo = ChatRepository(db_session)
-            rows = await repo.list_messages(session_id, limit=limit * 2)
-            # Decrypt
-            out = []
-            for r in rows:
-                try:
-                    text = repo.message_text(r)
-                except Exception:
-                    text = "[decryption failed]"
-                # Create a simple object with role/content
-                out.append(
-                    _SimpleMessage(
-                        role=r.role,
-                        content=text,
-                        created_at=r.created_at,
-                        risk_level=r.risk_level,
-                        emotion=r.emotion,
-                    )
-                )
-            return out
-
-    def _response_type_for_level(self, level: SafetyRiskLevel, degraded: bool) -> str:
-        if degraded:
-            return "fallback"
-        if level == SafetyRiskLevel.MEDIUM:
-            return "check_in"
-        if level == SafetyRiskLevel.LOW:
-            return "supportive"
-        return "normal"
-
-    # ---- Streaming ---------------------------------------------------------
-
-    async def stream_message(
-        self,
-        *,
-        db_session: AsyncSession | None,
-        user: User,
-        session_id: uuid.UUID,
-        content: str,
-        is_ephemeral: bool,
-        region: str | None = None,
-        locale: str | None = None,
-    ) -> Any:
-        """Async generator yielding SSE chunks for streaming endpoint.
-
-        Yields dicts that the API layer turns into SSE events:
-        - {"token": str} for each LLM token
-        - {"type": "final", "metadata": {...}} as last event
-        """
-        # Reuse handle_message logic but streaming LLM
-        # 1. Validate & rate limit
-        _validate_encoding(content)
-        _validate_length(content, self._settings.chat_max_message_chars)
-        rl = self._limiter.hit(str(user.id))
-        if not rl.allowed:
-            raise ApiError(
-                429,
-                "rate_limited",
-                "Too many messages. Please slow down.",
-                headers={"Retry-After": str(rl.retry_after)},
-            )
-
-        # 2. Safety
-        try:
-            assessment = self._rule_engine.assess(content)
-        except Exception:
-            logger.warning("safety_assess_failed", user_id=str(user.id))
-            from app.services.safety.base import empty_assessment
-
-            assessment = empty_assessment(rationale="safety.error")
-
-        decision = decide(
-            assessment,
-            self._ml_classifier,
-            text=content,
-            min_confidence=self._settings.safety_ml_min_confidence,
-            crisis_mass_floor=self._settings.safety_ml_crisis_mass_floor,
-            suspicion_floor=self._settings.safety_ml_suspicion_floor,
-        )
-        final_assessment = apply_decision(assessment, decision)
-        plan = self._escalator.plan(final_assessment, region=region, locale=locale)
-
-        logger.info(
-            "chat_safety_assessed_stream",
-            user_id=str(user.id),
-            session_id=str(session_id),
-            text_sha=text_fingerprint(content),
-            text_length=len(content),
-            level=plan.level_code,
-        )
-
-        emotion_result = None
-        try:
-            emotion_result = self._emotion_analyzer.analyze(content)
-        except Exception:
-            emotion_result = None
-
-        if final_assessment.level.is_crisis:
-            # Crisis: stream crisis text in chunks, then final metadata
-            result = await self._handle_crisis(
-                db_session=db_session,
-                user=user,
-                session_id=session_id,
-                content=content,
-                is_ephemeral=is_ephemeral,
-                assessment=final_assessment,
-                decision=decision,
-                plan=plan,
-                emotion_result=emotion_result,
-            )
-            # Stream crisis reply as tokens (split by words for demo)
-            for chunk in _split_for_stream(result.reply_text):
-                yield {"token": chunk}
-            # Final metadata
-            yield {
-                "type": "final",
-                "risk_level": result.risk_level,
-                "emotion": result.emotion,
-                "response_type": result.response_type,
-                "resources": [
-                    r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r)
-                    for r in result.resources
-                ],
-                "degraded": result.degraded,
-            }
-            return
-
-        # Normal path
-        redaction_result = self._redactor.redact(content)
-        redacted_text = redaction_result.text
-        retrieval_results = await retrieve(redacted_text, session_id=session_id, user_id=user.id)
-        emotion_hint = _emotion_hint(emotion_result)
-        safety_hint = _safety_hint(final_assessment.level)
-        language = emotion_result.language if emotion_result and emotion_result.language else None
-        system_prompt = _build_system_prompt(
-            base_version=self._settings.llm_prompt_version,
-            language=language,
-            max_words=self._settings.llm_max_tokens,
-            emotion_hint=emotion_hint,
-            safety_hint=safety_hint,
-            retrieval=retrieval_results,
-        )
-        history_messages = await self._get_history(
-            db_session=db_session,
-            session_id=session_id,
-            is_ephemeral=is_ephemeral,
-            limit=self._settings.chat_history_window,
-        )
-        llm_messages = _conversation_window_to_llm_messages(
-            history_messages, limit=self._settings.chat_history_window
-        )
-        llm_messages.append(LLMMessage(role="user", content=redacted_text))
-
-        # Stream from LLM chain
-        full_reply_parts: list[str] = []
-        degraded = False
-        provider_name = None
-        try:
-            async for chunk in self._llm_chain.stream(
-                llm_messages,
-                system=system_prompt,
-                max_tokens=self._settings.llm_max_tokens,
-                temperature=self._settings.llm_temperature,
-            ):
-                full_reply_parts.append(chunk)
-                yield {"token": chunk}
-        except Exception as exc:
-            logger.warning("llm_stream_failed", error_type=type(exc).__name__)
-            # Fallback to canned
-            from app.services.llm.canned import CANNED_REPLY
-
-            full_reply_parts = [CANNED_REPLY]
-            yield {"token": CANNED_REPLY}
-            degraded = True
-            provider_name = "canned"
-        else:
-            # If stream succeeded, we need to get provider info — we don't have
-            # result object from stream, so we assume not degraded unless chain
-            # stats say otherwise. For simplicity, we treat as not degraded.
-            pass
-
-        final_text = "".join(full_reply_parts)
-        guard_res = guard_output(final_text)
-        final_text = guard_res.text
-
-        # Persist
-        response_type = self._response_type_for_level(final_assessment.level, degraded=degraded)
-
-        if is_ephemeral:
-            self._ephemeral.add_message(
-                session_id,
-                role=MessageRole.USER,
-                content=content,
-                risk_level=int(final_assessment.to_stored_level()),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            self._ephemeral.add_message(
-                session_id,
-                role=MessageRole.ASSISTANT,
-                content=final_text,
-                risk_level=int(final_assessment.to_stored_level()),
-            )
-        else:
-            assert db_session is not None
-            chat_repo = ChatRepository(db_session)
-            await chat_repo.add_message(
-                session_id=session_id,
-                role=MessageRole.USER,
-                content=content,
-                risk_level=final_assessment.to_stored_level(),
-                emotion=emotion_result.primary if emotion_result else None,
-            )
-            await chat_repo.add_message(
-                session_id=session_id,
-                role=MessageRole.ASSISTANT,
-                content=final_text,
-                risk_level=final_assessment.to_stored_level(),
-            )
-            if plan.record_event:
-                source = (
-                    SafetyEventSource.RULES if decision.source == "rules" else SafetyEventSource.ML
-                )
-                await SafetyEventRepository(db_session).record(
-                    risk_level=final_assessment.to_stored_level(),
-                    source=source,
-                    user_id=user.id,
-                    session_id=session_id,
-                )
-            await db_session.commit()
-
-        yield {
-            "type": "final",
-            "risk_level": plan.level_code,
-            "emotion": emotion_result.primary if emotion_result else None,
-            "response_type": response_type,
-            "resources": [
-                r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r) for r in plan.resources
-            ],
-            "degraded": degraded,
-            "provider": provider_name,
-        }
+    text: str
+    user_id: uuid.UUID
+    #: Hints for the pre-written reply: region picks the helplines, locale the language.
+    region: str | None = None
+    locale: str | None = None
 
 
 @dataclass
-class _SimpleMessage:
-    role: Any
-    content: str
-    created_at: Any
-    risk_level: int
-    emotion: str | None = None
+class _Turn:
+    """Everything the LLM stage needs, built by steps 2-6."""
+
+    message: AdmittedMessage
+    plan: EscalationPlan
+    emotion: EmotionResult | None
+    #: ``None`` when redaction failed: the model must not be called.
+    messages: list[LLMMessage] | None
+    system: str
+    started: float
 
 
-def _split_for_stream(text: str, words_per_chunk: int = 5) -> list[str]:
-    words = text.split(" ")
-    out: list[str] = []
-    for i in range(0, len(words), words_per_chunk):
-        chunk = " ".join(words[i : i + words_per_chunk])
-        if i + words_per_chunk < len(words):
-            chunk += " "
-        out.append(chunk)
-    return out
+class ChatOrchestrator:
+    """Runs the nine-step pipeline over one message at a time."""
+
+    def __init__(
+        self,
+        *,
+        llm: LLMProvider,
+        engine: RuleEngine,
+        classifier: SafetyClassifier,
+        escalator: Escalator,
+        analyzer: EmotionAnalyzer,
+        redactor: Redactor,
+        retriever: Retriever | None = None,
+        output_guard: OutputGuard | None = None,
+        limiter: RateLimiter | None = None,
+        config: OrchestratorConfig | None = None,
+        rate_limit_per_minute: int = 30,
+    ) -> None:
+        self._llm = llm
+        self._engine = engine
+        self._classifier = classifier
+        self._escalator = escalator
+        self._analyzer = analyzer
+        self._redactor = redactor
+        self._retriever: Retriever = retriever or NullRetriever()
+        self._guard: OutputGuard = output_guard or PassthroughOutputGuard()
+        self._config = config or OrchestratorConfig()
+        self._limiter: RateLimiter = limiter or InMemoryRateLimiter(rate_limit_per_minute)
+        # Fail at construction, not on the first message, if the prompt is bad.
+        render_system_prompt(version=self._config.prompt_version, max_words=self._config.max_words)
+
+    @property
+    def llm(self) -> LLMProvider:
+        return self._llm
+
+    @property
+    def config(self) -> OrchestratorConfig:
+        return self._config
+
+    # ------------------------------------------------------------------ #
+    # Step 1 — validate, rate-limit                                        #
+    # ------------------------------------------------------------------ #
+
+    def admit(
+        self,
+        *,
+        user_id: uuid.UUID,
+        text: str,
+        region: str | None = None,
+        locale: str | None = None,
+    ) -> AdmittedMessage:
+        """Validate length/encoding, then charge the user's rate-limit budget.
+
+        Raises a curated ``ApiError``: 422 (``message_empty`` / ``message_too_long``
+        / ``message_encoding``) or 429 (``rate_limited``, with ``Retry-After``).
+        Validation comes first so a malformed request costs no budget.
+        """
+        clean = validate_message(text, max_chars=self._config.max_message_chars)
+        if self._config.rate_limit_enabled:
+            outcome = self._limiter.hit(str(user_id))
+            if not outcome.allowed:
+                raise ApiError(
+                    429,
+                    "rate_limited",
+                    RATE_LIMITED_MESSAGE,
+                    headers={"Retry-After": str(outcome.retry_after)},
+                )
+        return AdmittedMessage(text=clean, user_id=user_id, region=region, locale=locale)
+
+    # ------------------------------------------------------------------ #
+    # Public entry points                                                  #
+    # ------------------------------------------------------------------ #
+
+    async def respond(self, message: AdmittedMessage, conversation: Conversation) -> ChatReply:
+        """Run the pipeline and return the whole reply (the JSON endpoint)."""
+        started = time.perf_counter()
+        plan, decision = await self._triage(message)
+        if not plan.allow_llm:
+            reply = await self._crisis_reply(message, conversation, plan, decision)
+            self._log_turn(message, plan, reply, started, streamed=False)
+            return reply
+
+        turn = await self._prepare(message, conversation, plan, decision, started)
+        text, template = await self._generate(turn)
+        if not template:
+            text, template = await self._guard_output(text, plan)
+        reply = await self._finish(turn, conversation, text, template=template)
+        self._log_turn(message, plan, reply, started, streamed=False)
+        return reply
+
+    async def stream(
+        self, message: AdmittedMessage, conversation: Conversation
+    ) -> AsyncIterator[StreamEvent]:
+        """Run the pipeline, yielding ``TokenEvent`` s and one closing ``FinalEvent``.
+
+        A crisis turn yields its pre-written text as a single token event and
+        never touches the model. Otherwise tokens are forwarded live — unless the
+        output guard says it needs the whole reply, in which case the stream is
+        buffered, checked, and only then released (see :mod:`output_guard`).
+
+        ``FinalEvent.reply`` is authoritative. If it differs from the tokens
+        already sent (a guard rewrite, or a failure part-way), ``replaced`` is
+        true and the client must swap its text for it.
+        """
+        started = time.perf_counter()
+        plan, decision = await self._triage(message)
+        if not plan.allow_llm:
+            reply = await self._crisis_reply(message, conversation, plan, decision)
+            self._log_turn(message, plan, reply, started, streamed=True)
+            yield TokenEvent(reply.reply)
+            yield FinalEvent(reply=reply, replaced=False)
+            return
+
+        turn = await self._prepare(message, conversation, plan, decision, started)
+        buffered = self._guard.requires_full_text
+        sent: list[str] = []  # tokens the client has actually been given
+        pieces: list[str] = []  # everything the model produced
+        failed = turn.messages is None
+
+        if not failed:
+            assert turn.messages is not None
+            try:
+                async for chunk in self._llm.stream(
+                    turn.messages,
+                    system=turn.system,
+                    max_tokens=self._config.max_tokens,
+                    temperature=self._config.temperature,
+                ):
+                    if not chunk:
+                        continue
+                    pieces.append(chunk)
+                    if not buffered:
+                        sent.append(chunk)
+                        yield TokenEvent(chunk)
+            except Exception as exc:
+                failed = True
+                _log.warning("chat_llm_stream_failed", error_type=type(exc).__name__)
+
+        text = "".join(pieces)
+        if failed or not text.strip():
+            text, template = CANNED_REPLY, True
+        else:
+            template = text == CANNED_REPLY  # the chain's terminal link answered
+            if not template:
+                text, template = await self._guard_output(text, plan)
+
+        # Release what the client has not seen. Nothing was sent when the stream
+        # was buffered for the guard, or when the model never produced a token:
+        # either way the final text goes out now. If live tokens *were* sent and
+        # the final text differs (guard rewrite, mid-stream failure) the client
+        # is told to replace what it rendered.
+        replaced = False
+        if not sent:
+            for part in split_for_stream(text):
+                sent.append(part)
+                yield TokenEvent(part)
+        else:
+            replaced = "".join(sent) != text
+
+        suffix = self._check_in_suffix(plan)
+        if suffix:
+            sent.append(suffix)
+            yield TokenEvent(suffix)
+
+        reply = await self._finish(turn, conversation, text, template=template)
+        self._log_turn(message, plan, reply, started, streamed=True)
+        yield FinalEvent(reply=reply, replaced=replaced)
+
+    # ------------------------------------------------------------------ #
+    # Step 2 — input safety                                                #
+    # ------------------------------------------------------------------ #
+
+    async def _triage(self, message: AdmittedMessage) -> tuple[EscalationPlan, EnsembleDecision]:
+        """Rules + ML ensemble, then the escalation plan. Fails closed."""
+        try:
+            assessment, decision = await run_ensemble(
+                message.text,
+                None,
+                self._engine,
+                self._classifier,
+                min_confidence=self._config.ml_min_confidence,
+                crisis_mass_floor=self._config.ml_crisis_mass_floor,
+                suspicion_floor=self._config.ml_suspicion_floor,
+            )
+            plan = self._escalator.plan(assessment, region=message.region, locale=message.locale)
+        except Exception as exc:
+            # No verdict means no reply: answering without the safety check is
+            # the one thing this module must never do.
+            _log.error(
+                "chat_safety_unavailable",
+                error_type=type(exc).__name__,
+                text_sha=text_fingerprint(message.text),
+            )
+            raise ApiError(503, "safety_unavailable", SAFETY_UNAVAILABLE_MESSAGE) from exc
+        return plan, decision
+
+    async def _crisis_reply(
+        self,
+        message: AdmittedMessage,
+        conversation: Conversation,
+        plan: EscalationPlan,
+        decision: EnsembleDecision,
+    ) -> ChatReply:
+        """The deterministic response. The model is not involved in any way.
+
+        Persistence is best-effort *on this path only*: if the database is down,
+        the person still gets the crisis response — the one reply that must never
+        depend on a dependency.
+        """
+        template = plan.message
+        text = _plain_text(template) if template is not None else LAST_RESORT_CRISIS_TEXT
+        risk = plan.assessment.to_stored_level()
+        message_id: uuid.UUID | None = None
+        persisted = False
+        try:
+            await conversation.store_user_turn(
+                message.text,
+                risk=risk,
+                emotion=None,
+                safety_event=_event_source(decision),
+            )
+            message_id = await conversation.store_assistant_turn(text, risk=risk)
+            persisted = conversation.stores_turns
+        except Exception as exc:
+            _log.error("chat_crisis_persist_failed", error_type=type(exc).__name__)
+
+        return ChatReply(
+            session_id=conversation.session_id,
+            message_id=message_id,
+            reply=text,
+            metadata=ChatMetadata(
+                risk_level=plan.level_code,
+                emotion=None,
+                response_type=ResponseType.CRISIS,
+                resources=list(plan.resources),
+                emergency=plan.emergency,
+                crisis=template,
+                persisted=persisted,
+                about_someone_else=plan.about_someone_else,
+                locale=plan.locale,
+                region=plan.region,
+            ),
+        )
+
+    # ------------------------------------------------------------------ #
+    # Steps 3-6 — redact, emotion, retrieval, prompt                       #
+    # ------------------------------------------------------------------ #
+
+    async def _prepare(
+        self,
+        message: AdmittedMessage,
+        conversation: Conversation,
+        plan: EscalationPlan,
+        decision: EnsembleDecision,
+        started: float,
+    ) -> _Turn:
+        # Prior turns, read *before* this message is stored so it is not echoed.
+        window = build_window(await conversation.history(self._config.history_turns))
+
+        # Step 4 — emotion, from the ORIGINAL text (redaction would blunt it).
+        emotion = await self._analyse_emotion(message.text)
+
+        # Step 3 — redact everything that will leave the process.
+        redacted = await self._redact([message.text, *(turn.text for turn in window.messages)])
+
+        # The user's turn is stored now (risk and emotion are known), so it
+        # survives even if the client disconnects mid-reply.
+        await conversation.store_user_turn(
+            message.text,
+            risk=plan.assessment.to_stored_level(),
+            emotion=emotion.primary if emotion is not None else None,
+            safety_event=_event_source(decision) if plan.record_event else None,
+        )
+
+        if redacted is None:
+            return _Turn(message, plan, emotion, None, "", started)
+
+        # Step 5 — retrieval over the redacted query.
+        chunks = await self._retrieve(redacted[0])
+
+        # Step 6 — the prompt.
+        base = render_system_prompt(
+            version=self._config.prompt_version,
+            language=emotion.language if emotion is not None else None,
+            max_words=self._config.max_words,
+        )
+        system = compose_system(
+            base.text,
+            emotion=emotion_hint(emotion),
+            safety=safety_hint(plan.level, recent_crisis=window.recent_crisis),
+            retrieval=retrieval_block(chunks),
+        )
+        messages = to_llm_messages(window, redacted[1:], redacted[0])
+        return _Turn(message, plan, emotion, messages, system, started)
+
+    async def _analyse_emotion(self, text: str) -> EmotionResult | None:
+        try:
+            return await run_in_threadpool(self._analyzer.analyze, text)
+        except Exception as exc:  # emotion is a tone cue; never a reason to fail
+            _log.warning("chat_emotion_failed", error_type=type(exc).__name__)
+            return None
+
+    async def _redact(self, texts: Sequence[str]) -> list[str] | None:
+        """Redact all outbound text. ``None`` means redaction failed: send nothing."""
+
+        def _run() -> list[str]:
+            return [self._redactor.redact(text).text for text in texts]
+
+        try:
+            return await run_in_threadpool(_run)
+        except Exception as exc:
+            _log.error("chat_redaction_failed", error_type=type(exc).__name__)
+            return None
+
+    async def _retrieve(self, query: str) -> list[RetrievedChunk]:
+        try:
+            return await self._retriever.retrieve(query, limit=self._config.retrieval_limit)
+        except Exception as exc:  # reference material is optional
+            _log.warning("chat_retrieval_failed", error_type=type(exc).__name__)
+            return []
+
+    # ------------------------------------------------------------------ #
+    # Steps 7-9 — LLM, output guard, persist                               #
+    # ------------------------------------------------------------------ #
+
+    async def _generate(self, turn: _Turn) -> tuple[str, bool]:
+        """Call the model. Returns ``(text, is_template)``; never raises."""
+        if turn.messages is None:
+            return CANNED_REPLY, True
+        try:
+            result = await self._llm.complete(
+                turn.messages,
+                system=turn.system,
+                max_tokens=self._config.max_tokens,
+                temperature=self._config.temperature,
+            )
+        except Exception as exc:
+            _log.warning("chat_llm_failed", error_type=type(exc).__name__)
+            return CANNED_REPLY, True
+        text = result.text
+        if not text.strip():
+            return CANNED_REPLY, True
+        return text, result.provider == "canned"
+
+    async def _guard_output(self, text: str, plan: EscalationPlan) -> tuple[str, bool]:
+        """Step 8. Returns ``(text, is_template)``; a crashing guard fails closed."""
+        try:
+            verdict = await self._guard.check(text, risk=plan.level)
+        except Exception as exc:
+            _log.error("chat_output_guard_failed", error_type=type(exc).__name__)
+            return CANNED_REPLY, True
+        if verdict.passed:
+            return verdict.text, False
+        _log.warning("chat_output_guard_replaced", reason=verdict.reason)
+        return verdict.text, True
+
+    def _check_in_suffix(self, plan: EscalationPlan) -> str:
+        """The deterministic MEDIUM check-in line, appended after the model's text.
+
+        The prompt *asks* the model for a gentle check-in; this makes sure one
+        exists even if the model ignores the hint, or is down. It is the last
+        body paragraph of the reviewed ``check_in.medium`` template ("We can keep
+        talking. If hearing a person's voice would help, the helplines below…").
+        """
+        template = _check_in_template(plan)
+        if template is None or not template.body:
+            return ""
+        return "\n\n" + template.body[-1]
+
+    async def _finish(
+        self, turn: _Turn, conversation: Conversation, text: str, *, template: bool
+    ) -> ChatReply:
+        """Append the check-in, store the assistant turn, build the metadata."""
+        plan = turn.plan
+        check_in = _check_in_template(plan)
+        suffix = self._check_in_suffix(plan)
+        final_text = text + suffix
+
+        message_id: uuid.UUID | None = None
+        persisted = False
+        try:
+            message_id = await conversation.store_assistant_turn(
+                final_text, risk=plan.assessment.to_stored_level()
+            )
+            persisted = conversation.stores_turns
+        except Exception as exc:
+            # The reply exists; losing it because the write failed would punish
+            # the person for our outage. The metadata says it was not stored.
+            _log.error("chat_assistant_persist_failed", error_type=type(exc).__name__)
+
+        if template:
+            response_type = ResponseType.FALLBACK
+        elif check_in is not None:
+            response_type = ResponseType.CHECK_IN
+        else:
+            response_type = ResponseType.NORMAL
+
+        return ChatReply(
+            session_id=conversation.session_id,
+            message_id=message_id,
+            reply=final_text,
+            metadata=ChatMetadata(
+                risk_level=plan.level_code,
+                emotion=turn.emotion.primary if turn.emotion is not None else None,
+                response_type=response_type,
+                resources=list(plan.resources),
+                check_in=check_in,
+                degraded=template,
+                persisted=persisted,
+                about_someone_else=plan.about_someone_else,
+                locale=plan.locale,
+                region=plan.region,
+            ),
+        )
+
+    # ------------------------------------------------------------------ #
+    # Logging                                                              #
+    # ------------------------------------------------------------------ #
+
+    def _log_turn(
+        self,
+        message: AdmittedMessage,
+        plan: EscalationPlan,
+        reply: ChatReply,
+        started: float,
+        *,
+        streamed: bool,
+    ) -> None:
+        """One metadata line per turn. No text, no ids that name a person."""
+        meta = reply.metadata
+        _log.info(
+            "chat_turn",
+            text_sha=text_fingerprint(message.text),
+            text_length=len(message.text),
+            risk_level=meta.risk_level,
+            emotion=meta.emotion,
+            response_type=meta.response_type.value,
+            degraded=meta.degraded,
+            persisted=meta.persisted,
+            streamed=streamed,
+            llm_called=meta.response_type is not ResponseType.CRISIS,
+            allow_llm=plan.allow_llm,
+            latency_ms=round((time.perf_counter() - started) * 1000, 1),
+        )
+
+
+# ---------------------------------------------------------------------- #
+# Helpers                                                                  #
+# ---------------------------------------------------------------------- #
+
+
+def _event_source(decision: EnsembleDecision) -> SafetyEventSource:
+    """Which detector earned the level, in ``safety_events`` vocabulary."""
+    return SafetyEventSource.RULES if decision.source == SOURCE_RULES else SafetyEventSource.ML
+
+
+def _check_in_template(plan: EscalationPlan) -> RenderedTemplate | None:
+    """The MEDIUM check-in copy, only when the model answers at MEDIUM."""
+    if plan.allow_llm and plan.level == RiskLevel.MEDIUM:
+        return plan.message
+    return None
+
+
+def _plain_text(template: RenderedTemplate) -> str:
+    """A plain-text rendering of a crisis template, for clients without the card.
+
+    Title, body, the emergency instruction and the closing line. Helplines are
+    deliberately *not* inlined: they travel as structured ``resources`` so the
+    card can render them as tappable links, and they live only in
+    ``helplines.json``.
+    """
+    parts = [template.title, *template.body]
+    if template.emergency_instruction:
+        parts.append(template.emergency_instruction)
+    if template.closing:
+        parts.append(template.closing)
+    return "\n\n".join(parts)
 
 
 __all__ = [
-    "ChatMessageOut",
+    "LAST_RESORT_CRISIS_TEXT",
+    "AdmittedMessage",
     "ChatOrchestrator",
-    "OrchestratorResult",
+    "OrchestratorConfig",
 ]

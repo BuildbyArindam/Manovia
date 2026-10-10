@@ -126,12 +126,22 @@ class Settings(BaseSettings):
     llm_redact_names: bool = False
 
     # --- Chat orchestrator (Day 11) ---
-    # Per-user message budget, ephemeral session TTL, and validation limits.
-    # The TTL is how long an in-memory session survives without history consent.
-    chat_rate_limit_per_minute: int = 20
-    chat_ephemeral_ttl_seconds: int = 1800
+    # One message may not be longer than this (characters, after NFC
+    # normalisation). Longer is a 422, not a silent truncation: the safety
+    # engine and the model must see exactly what the person wrote.
     chat_max_message_chars: int = 4000
-    chat_history_window: int = 12
+    # Sliding-window budget of chat messages per *user* (not per IP: a shared
+    # network must not throttle one person and one person must not borrow
+    # another's budget). Skipped when rate_limit_enabled is false.
+    chat_rate_limit_per_minute: int = 30
+    # How many prior messages the prompt may carry (the token guard trims
+    # further). "Short window": the model needs the thread, not the archive.
+    chat_history_turns: int = 10
+    # Ephemeral (not-saved) sessions live in process memory and expire after
+    # this much inactivity. 30 minutes by brief.
+    chat_ephemeral_ttl_seconds: int = 1800
+    chat_ephemeral_max_sessions: int = 5000
+    chat_ephemeral_max_turns: int = 60
 
     # --- Safety ML ensemble (Day 9) ---
     # The ML classifier can only RAISE the level the rules engine found, never
@@ -285,6 +295,21 @@ class Settings(BaseSettings):
             raise ValueError("llm_window_turns must be at least 1")
         if self.llm_window_tokens < 1:
             raise ValueError("llm_window_tokens must be at least 1")
+        return self
+
+    @model_validator(mode="after")
+    def _check_chat_settings(self) -> "Settings":
+        """Catch an unusable chat configuration at startup."""
+        if self.chat_max_message_chars < 1:
+            raise ValueError("chat_max_message_chars must be at least 1")
+        if self.chat_rate_limit_per_minute < 1:
+            raise ValueError("chat_rate_limit_per_minute must be at least 1")
+        if self.chat_history_turns < 0:
+            raise ValueError("chat_history_turns must not be negative")
+        if self.chat_ephemeral_ttl_seconds < 1:
+            raise ValueError("chat_ephemeral_ttl_seconds must be at least 1")
+        if self.chat_ephemeral_max_sessions < 1 or self.chat_ephemeral_max_turns < 2:
+            raise ValueError("ephemeral session limits are too small to hold a conversation")
         return self
 
     @property

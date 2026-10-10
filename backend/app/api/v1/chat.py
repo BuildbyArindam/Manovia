@@ -1,54 +1,91 @@
-"""Chat surface — Day 11 orchestrator, persistent + ephemeral sessions.
+"""Chat: sessions, messages, and the streaming reply.
 
-Endpoints:
+Every route here is a thin skin over :mod:`app.services.chat`. The endpoint's
+jobs are the HTTP ones — authenticate, enforce consent, resolve ``(user,
+session id)`` to a conversation the caller owns, and shape the response. The
+pipeline itself (validation, rate limit, crisis gate, redaction, emotion,
+prompt, LLM, output guard, persistence) lives in the orchestrator so there is one
+implementation for the JSON and the streaming surface.
 
-* POST   /chat/sessions
-* GET    /chat/sessions
-* GET    /chat/sessions/{id}
-* GET    /chat/sessions/{id}/messages
-* POST   /chat/sessions/{id}/messages          (JSON)
-* GET    /chat/sessions/{id}/messages/stream   (SSE)
-* POST   /chat/sessions/{id}/messages/stream   (SSE)
+==========================================================  =========================
+route                                                       what it does
+==========================================================  =========================
+``POST /chat/sessions``                                     open a session. Ephemeral
+                                                            (in memory, 30 min idle)
+                                                            unless ``save_history``,
+                                                            which needs ``store_chat``
+``GET  /chat/sessions/{id}``                                a session's public info
+``GET  /chat/sessions/{id}/messages``                       its history (owner only)
+``POST /chat/sessions/{id}/messages``                       one message, JSON reply
+``POST /chat/sessions/{id}/stream``                         one message, SSE reply
+``GET  /chat/sessions/{id}/stream?message=…``               the same, for clients
+                                                            that can only issue GETs
+==========================================================  =========================
 
-Ephemeral sessions live only in memory for 30 min when the user has not granted
-``store_chat`` consent or explicitly asks for an ephemeral session. No DB rows
-are written for them, which is verified by the Day 11 suite.
+**Ownership.** A session that is not yours is a ``404 session_not_found``,
+identical to one that does not exist. No route reveals that another user's
+session id is real.
 
-All message send paths run through :class:`~app.services.chat.orchestrator.ChatOrchestrator`
-which implements the 9-step pipeline: validate → safety (rules+ML) → redaction
-→ emotion → retrieval stub → prompt build → LLM → output guard stub → persist.
+**Consent.** Opening a chat and sending to one need ``ai_disclosure`` + ``terms``
+(unchanged since Day 4). *Saving* needs ``store_chat`` on top. Reading your own
+history needs only authentication — you do not need to consent again to see data
+you already have.
 
-If safety is HIGH/IMMINENT the LLM is never called (call count 0), the
-deterministic crisis copy is returned, and response_type is "crisis".
+**Streaming (SSE).** ``text/event-stream`` with two kinds of event::
+
+    event: token
+    data: {"text": "I hear that "}
+
+    event: final
+    data: {"reply": "...", "replaced": false, "session_id": "...",
+           "message_id": "...", "metadata": {"risk_level": "...", "emotion": "...",
+           "response_type": "...", "resources": [...], ...}}
+
+Problems that can be known before the first byte (bad token, 404, 422, 429,
+503) are ordinary HTTP errors, not in-stream events: the pipeline is advanced to
+its first event before the response starts. ``event: error`` exists only for a
+failure *after* streaming began. ``final.reply`` is authoritative; when
+``replaced`` is true the client must swap its rendered text for it.
+
+**GET streaming and privacy.** ``GET .../stream`` takes the message in the query
+string because that is the only way a GET can carry one. Query strings are
+recorded by proxies and CDNs far more often than bodies, so clients should
+prefer ``POST``. Authentication is the ``Authorization`` header either way.
 """
 
 from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Request
+import structlog
+from fastapi import APIRouter, Body, Depends, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.api.deps import (
-    ConsentDocumentsDep,
-    CurrentUser,
-    EphemeralStoreDep,
-    OrchestratorDep,
-    SessionDep,
-    require_consent,
-)
+from app.api.deps import CurrentUser, require_consent
 from app.core.errors import ApiError
-from app.db.repos import ChatRepository, ConsentRepository
 from app.models.enums import ConsentKind
 from app.models.user import User
-from app.services.chat.ephemeral import EphemeralSession
+from app.services.chat import (
+    AdmittedMessage,
+    ChatOrchestrator,
+    ChatReply,
+    ChatSessionService,
+    Conversation,
+    OpenedSession,
+    SessionInfo,
+    StreamEvent,
+    TokenEvent,
+    build_orchestrator,
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+#: A chat may only start (and continue) once these are granted at their current versions.
 ChatConsentGate = require_consent(ConsentKind.AI_DISCLOSURE, ConsentKind.TERMS)
 ChatStoreConsentGate = require_consent(
     ConsentKind.AI_DISCLOSURE, ConsentKind.TERMS, ConsentKind.STORE_CHAT
@@ -66,459 +103,295 @@ class CreateSessionIn(BaseModel):
     region: str | None = Field(default=None, max_length=16)
     locale: str | None = Field(default=None, max_length=16)
 
+#: Hard ceiling on the request body's message field, in characters. The
+#: configurable, user-facing limit (``CHAT_MAX_MESSAGE_CHARS``) is enforced by the
+#: orchestrator with a curated error; this only keeps an absurd payload from
+#: being parsed at all.
+MAX_PAYLOAD_CHARS = 20_000
+
+_log = structlog.get_logger()
+
+
+# --------------------------------------------------------------------------- #
+# Schemas                                                                       #
+# --------------------------------------------------------------------------- #
+
+
+class CreateSessionIn(BaseModel):
+    """Optional body for ``POST /chat/sessions``."""
+
+    #: Keep this conversation in the database (encrypted). Needs ``store_chat``.
+    #: The default is an ephemeral session that leaves no rows behind.
+    save_history: bool = False
+
 
 class ChatSessionOut(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     created_at: datetime
-    ended_at: datetime | None = None
-    ephemeral: bool = False
-    store: bool = False
-
-
-class ChatSessionListOut(BaseModel):
-    sessions: list[ChatSessionOut]
+    ended_at: datetime | None
+    #: True for a saved session; False for an in-memory one.
+    persistent: bool
+    #: When an ephemeral session lapses if nothing more is said; ``null`` if saved.
+    expires_at: datetime | None
 
 
 class MessageIn(BaseModel):
-    content: str = Field(min_length=1, max_length=10000)
+    """One user message. ``region`` / ``locale`` override the profile for this turn."""
+
+    message: str = Field(min_length=1, max_length=MAX_PAYLOAD_CHARS)
+    #: ISO region for the helplines (``IN``, ``US``, …). Falls back to the profile.
     region: str | None = Field(default=None, max_length=16)
+    #: UI language for pre-written replies (``en``, ``hi``, ``bn``). Falls back to the profile.
     locale: str | None = Field(default=None, max_length=16)
 
 
-class ResourceOut(BaseModel):
-    id: str
-    name: str
-    number: str | None = None
-    type: str | None = None
-    url: str | None = None
+class StoredMessageOut(BaseModel):
+    id: uuid.UUID
+    role: str
+    text: str
+    risk_level: int
+    emotion: str | None
+    created_at: datetime
 
 
-class CrisisMessageOut(BaseModel):
-    title: str | None = None
-    body: str | None = None
-    emergency_instruction: str | None = None
-    trusted_person: str | None = None
-    safety_steps: list[str] | None = None
-    helpline_intro: str | None = None
-    closing: str | None = None
-    disclaimer: str | None = None
-
-
-class ChatMessageResponse(BaseModel):
+class MessagesOut(BaseModel):
     session_id: uuid.UUID
-    ephemeral: bool
-    user_message: dict[str, Any]
-    assistant_message: dict[str, Any]
-    risk_level: str
-    stored_risk_level: str | None = None
-    emotion: str | None = None
-    response_type: str
-    resources: list[dict[str, Any]] = Field(default_factory=list)
-    emergency: dict[str, Any] | None = None
-    crisis: dict[str, Any] | None = None
-    degraded: bool = False
-    provider: str | None = None
+    persistent: bool
+    messages: list[StoredMessageOut]
 
 
-class MessageListOut(BaseModel):
-    session_id: uuid.UUID
-    ephemeral: bool
-    messages: list[dict[str, Any]]
+# --------------------------------------------------------------------------- #
+# Dependencies                                                                  #
+# --------------------------------------------------------------------------- #
 
 
-# --- Helpers -----------------------------------------------------------------
+def get_chat_service(request: Request) -> ChatSessionService:
+    """The session service installed by :func:`app.main.create_app`."""
+    service: ChatSessionService = request.app.state.chat_sessions
+    return service
 
 
-async def _resolve_session(
-    session_id: uuid.UUID,
-    user: User,
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
-) -> tuple[Any, bool]:
-    """Return (session_obj, is_ephemeral) or raise 404/403.
+def get_orchestrator(request: Request) -> ChatOrchestrator:
+    """The orchestrator, built on first use.
 
-    Checks ephemeral first, then DB. Ownership is enforced.
+    Building it loads the ML artifact and constructs the provider chain; none of
+    that should slow application start-up or fail it. Tests and scripts may set
+    ``app.state.chat_orchestrator`` to a prepared instance before the first
+    request.
     """
-    # Ephemeral first
-    eph = ephemeral_store.get(session_id)
-    if eph is not None:
-        if eph.user_id != user.id:
-            raise ApiError(403, "forbidden", "You do not own this session.")
-        return eph, True
-
-    # Persistent
-    repo = ChatRepository(db_session)
-    db_sess = await repo.get(session_id)
-    if db_sess is not None:
-        if db_sess.user_id != user.id:
-            raise ApiError(403, "forbidden", "You do not own this session.")
-        return db_sess, False
-
-    raise ApiError(404, "not_found", "Chat session not found.")
+    existing: ChatOrchestrator | None = request.app.state.chat_orchestrator
+    if existing is None:
+        existing = build_orchestrator(request.app.state.settings)
+        request.app.state.chat_orchestrator = existing
+    return existing
 
 
-def _ephemeral_to_out(s: EphemeralSession) -> ChatSessionOut:
+ChatServiceDep = Annotated[ChatSessionService, Depends(get_chat_service)]
+OrchestratorDep = Annotated[ChatOrchestrator, Depends(get_orchestrator)]
+ConsentedUser = Annotated[User, Depends(ChatConsentGate)]
+
+
+def _session_out(info: SessionInfo) -> ChatSessionOut:
     return ChatSessionOut(
-        id=s.id,
-        user_id=s.user_id,
-        created_at=s.created_at,
-        ended_at=s.ended_at,
-        ephemeral=True,
-        store=False,
+        id=info.id,
+        user_id=info.user_id,
+        created_at=info.created_at,
+        ended_at=info.ended_at,
+        persistent=info.persistent,
+        expires_at=info.expires_at,
     )
 
 
-def _db_to_out(s: Any, ephemeral: bool = False) -> ChatSessionOut:
-    return ChatSessionOut(
-        id=s.id,
-        user_id=s.user_id,
-        created_at=s.created_at,
-        ended_at=s.ended_at,
-        ephemeral=ephemeral,
-        store=not ephemeral,
-    )
+# --------------------------------------------------------------------------- #
+# Sessions                                                                      #
+# --------------------------------------------------------------------------- #
 
 
-def _message_to_dict(m: Any, content: str) -> dict[str, Any]:
-    return {
-        "id": str(m.id),
-        "role": m.role.value if hasattr(m.role, "value") else str(m.role),
-        "content": content,
-        "created_at": m.created_at.isoformat()
-        if hasattr(m.created_at, "isoformat")
-        else str(m.created_at),
-        "risk_level": getattr(m, "risk_level", 0),
-        "emotion": getattr(m, "emotion", None),
-    }
-
-
-# --- Session endpoints -------------------------------------------------------
-
-
-@router.post("/sessions", status_code=201)
+@router.post("/sessions", status_code=status.HTTP_201_CREATED)
 async def create_chat_session(
-    request: Request,
-    session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
-    documents: ConsentDocumentsDep,
-    user: CurrentUser,
-    payload: CreateSessionIn | None = None,
+    service: ChatServiceDep,
+    user: ConsentedUser,
+    payload: Annotated[CreateSessionIn | None, Body()] = None,
 ) -> ChatSessionOut:
     """Open a chat session.
 
-    * ``store=False`` (default): ephemeral, in-memory TTL 30 min, no DB rows.
-      Requires AI disclosure + terms.
-    * ``store=True``: persistent, encrypted in DB. Requires store_chat consent
-      in addition to the base consents.
+    Needs the AI-disclosure and terms consents. Without a body the session is
+    **ephemeral**: held in memory, forgotten after 30 idle minutes, never written
+    to the database. ``{"save_history": true}`` additionally needs ``store_chat``.
     """
-    data = payload or CreateSessionIn()
-    # Check base consents first (AI disclosure + terms)
-    # We reuse the consent repo logic directly so we can branch on store flag
-    repo = ConsentRepository(session)
-    base_missing = []
-    for kind in (ConsentKind.AI_DISCLOSURE, ConsentKind.TERMS):
-        version = documents.version_for(kind)
-        granted = await repo.is_granted(user_id=user.id, kind=kind, version=version)
-        if not granted:
-            base_missing.append(kind.value)
-    if base_missing:
-        raise ApiError(
-            403,
-            "consent_required",
-            f"Consent required: {', '.join(base_missing)}.",
-        )
-
-    if data.store:
-        # Need store_chat consent as well
-        version = documents.version_for(ConsentKind.STORE_CHAT)
-        granted = await repo.is_granted(
-            user_id=user.id, kind=ConsentKind.STORE_CHAT, version=version
-        )
-        if not granted:
-            raise ApiError(
-                403,
-                "consent_required",
-                "Consent required: store_chat.",
-            )
-        # Persistent
-        chat_session = await ChatRepository(session).create(user_id=user.id)
-        await session.commit()
-        return ChatSessionOut(
-            id=chat_session.id,
-            user_id=chat_session.user_id,
-            created_at=chat_session.created_at,
-            ended_at=chat_session.ended_at,
-            ephemeral=False,
-            store=True,
-        )
-    else:
-        # Ephemeral
-        eph = ephemeral_store.create(user_id=user.id)
-        return ChatSessionOut(
-            id=eph.id,
-            user_id=eph.user_id,
-            created_at=eph.created_at,
-            ended_at=eph.ended_at,
-            ephemeral=True,
-            store=False,
-        )
-
-
-@router.get("/sessions")
-async def list_chat_sessions(
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
-    user: CurrentUser,
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-) -> ChatSessionListOut:
-    """List sessions for the current user — both persistent and ephemeral."""
-    repo = ChatRepository(db_session)
-    db_sessions = await repo.list_for_user(user.id, limit=limit, offset=offset)
-    eph_sessions = ephemeral_store.list_for_user(user.id, limit=limit, offset=offset)
-
-    # Merge by created_at descending, then slice
-    all_sessions: list[ChatSessionOut] = []
-    for db_s in db_sessions:
-        all_sessions.append(_db_to_out(db_s, ephemeral=False))
-    for eph_s in eph_sessions:
-        all_sessions.append(_ephemeral_to_out(eph_s))
-
-    all_sessions.sort(key=lambda x: x.created_at, reverse=True)
-    # Re-apply limit/offset after merge (simple)
-    sliced = all_sessions[offset : offset + limit]
-    return ChatSessionListOut(sessions=sliced)
+    wants_history = payload.save_history if payload is not None else False
+    return _session_out(await service.create(user.id, persistent=wants_history))
 
 
 @router.get("/sessions/{session_id}")
 async def get_chat_session(
-    session_id: uuid.UUID,
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
-    user: CurrentUser,
+    session_id: uuid.UUID, service: ChatServiceDep, user: CurrentUser
 ) -> ChatSessionOut:
-    sess, is_eph = await _resolve_session(session_id, user, db_session, ephemeral_store)
-    if is_eph:
-        return _ephemeral_to_out(sess)
-    return _db_to_out(sess, ephemeral=False)
+    """A session's public info. 404 if it is not yours (or does not exist)."""
+    opened = await service.open(user.id, session_id)
+    return _session_out(opened.info)
 
 
 @router.get("/sessions/{session_id}/messages")
-async def list_messages(
+async def list_chat_messages(
     session_id: uuid.UUID,
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
+    service: ChatServiceDep,
     user: CurrentUser,
-    limit: int = Query(default=100, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-) -> MessageListOut:
-    _sess, is_eph = await _resolve_session(session_id, user, db_session, ephemeral_store)
-    if is_eph:
-        msgs = ephemeral_store.list_messages(session_id, limit=limit, offset=offset)
-        if msgs is None:
-            raise ApiError(404, "not_found", "Chat session not found.")
-        return MessageListOut(
-            session_id=session_id,
-            ephemeral=True,
-            messages=[_message_to_dict(m, m.content) for m in msgs],
-        )
-    else:
-        repo = ChatRepository(db_session)
-        rows = await repo.list_messages(session_id, limit=limit, offset=offset)
-        decrypted = []
-        for r in rows:
-            try:
-                text = repo.message_text(r)
-            except Exception:
-                text = "[decryption failed]"
-            decrypted.append(_message_to_dict(r, text))
-        return MessageListOut(
-            session_id=session_id,
-            ephemeral=False,
-            messages=decrypted,
-        )
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> MessagesOut:
+    """The newest ``limit`` messages, oldest first. Owner only; 404 otherwise."""
+    opened = await service.open(user.id, session_id)
+    turns = await service.messages(opened, limit=limit)
+    return MessagesOut(
+        session_id=opened.info.id,
+        persistent=opened.info.persistent,
+        messages=[
+            StoredMessageOut(
+                id=turn.id,
+                role=turn.role,
+                text=turn.text,
+                risk_level=turn.risk_level,
+                emotion=turn.emotion,
+                created_at=turn.created_at,
+            )
+            for turn in turns
+        ],
+    )
 
 
-# --- Message send (JSON) -----------------------------------------------------
+# --------------------------------------------------------------------------- #
+# Messages                                                                      #
+# --------------------------------------------------------------------------- #
+
+
+async def _admit(
+    orchestrator: ChatOrchestrator,
+    service: ChatSessionService,
+    user: User,
+    session_id: uuid.UUID,
+    payload: MessageIn,
+) -> tuple[AdmittedMessage, OpenedSession]:
+    """Step 1 plus session resolution, shared by the JSON and streaming routes.
+
+    Validation and the rate limit come first, then ownership; every failure here
+    is an ordinary HTTP error raised before any response bytes are written.
+    """
+    admitted = orchestrator.admit(
+        user_id=user.id,
+        text=payload.message,
+        region=payload.region or user.region,
+        locale=payload.locale or user.language,
+    )
+    opened = await service.open(user.id, session_id, for_send=True)
+    return admitted, opened
 
 
 @router.post("/sessions/{session_id}/messages")
-async def send_message(
+async def send_chat_message(
     session_id: uuid.UUID,
     payload: MessageIn,
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
+    service: ChatServiceDep,
     orchestrator: OrchestratorDep,
-    user: CurrentUser,
-) -> ChatMessageResponse:
-    """Send a message and get a JSON reply.
+    user: ConsentedUser,
+) -> ChatReply:
+    """Send one message and get the whole reply as JSON.
 
-    Runs the full orchestrator pipeline. Returns metadata so the UI can show
-    CrisisCard, emotion, etc.
+    ``metadata`` carries ``risk_level``, ``emotion``, ``response_type`` and the
+    ``resources`` the UI needs to show the CrisisCard. A ``crisis`` response never
+    involved the model.
     """
-    _sess, is_eph = await _resolve_session(session_id, user, db_session, ephemeral_store)
+    admitted, opened = await _admit(orchestrator, service, user, session_id, payload)
+    return await orchestrator.respond(admitted, opened.conversation)
 
-    # For persistent sessions, we pass db_session; for ephemeral, None
-    db_for_orch = None if is_eph else db_session
 
-    result = await orchestrator.handle_message(
-        db_session=db_for_orch,
-        user=user,
-        session_id=session_id,
-        content=payload.content,
-        is_ephemeral=is_eph,
-        region=payload.region,
-        locale=payload.locale,
-    )
+def _frame(event: str, data: dict[str, Any]) -> bytes:
+    """One Server-Sent Event frame. JSON on a single line, so no data is ever split."""
+    body = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event}\ndata: {body}\n\n".encode()
 
-    # Build response
-    user_msg = result.user_message
-    asst_msg = result.assistant_message
 
-    return ChatMessageResponse(
-        session_id=session_id,
-        ephemeral=is_eph,
-        user_message=_message_to_dict(user_msg, user_msg.content) if user_msg else {},
-        assistant_message=_message_to_dict(asst_msg, asst_msg.content)
-        if asst_msg
-        else {"content": result.reply_text},
-        risk_level=result.risk_level,
-        stored_risk_level=result.stored_risk_level,
-        emotion=result.emotion,
-        response_type=result.response_type,
-        resources=[
-            r.model_dump(mode="json") if hasattr(r, "model_dump") else dict(r) for r in result.resources
-        ],
-        emergency=result.emergency.model_dump(mode="json")
-        if result.emergency and hasattr(result.emergency, "model_dump")
-        else (dict(result.emergency) if result.emergency else None),
-        crisis=result.crisis_message.model_dump(mode="json")
-        if result.crisis_message and hasattr(result.crisis_message, "model_dump")
-        else None,
-        degraded=result.degraded,
-        provider=result.provider,
+def _event_frame(event: StreamEvent) -> bytes:
+    if isinstance(event, TokenEvent):
+        return _frame("token", {"text": event.text})
+    reply = event.reply
+    return _frame(
+        "final",
+        {
+            "reply": reply.reply,
+            "replaced": event.replaced,
+            "session_id": str(reply.session_id),
+            "message_id": str(reply.message_id) if reply.message_id else None,
+            "metadata": reply.metadata.model_dump(mode="json"),
+        },
     )
 
 
-# --- Streaming ---------------------------------------------------------------
+async def _sse_body(first: StreamEvent, rest: AsyncIterator[StreamEvent]) -> AsyncIterator[bytes]:
+    """Frame the primed first event, then the rest; close the pipeline on exit."""
+    try:
+        yield _event_frame(first)
+        async for event in rest:
+            yield _event_frame(event)
+    except ApiError as exc:
+        yield _frame("error", {"code": exc.code, "message": exc.message})
+    except Exception as exc:
+        _log.error("chat_stream_failed", error_type=type(exc).__name__)
+        yield _frame(
+            "error",
+            {"code": "internal_error", "message": "Something went wrong. Please try again."},
+        )
+    finally:
+        aclose = getattr(rest, "aclose", None)
+        if aclose is not None:
+            await aclose()
 
 
-def _sse_event(data: dict[str, Any], event: str | None = None) -> str:
-    """Format one SSE event."""
-    lines = []
-    if event:
-        lines.append(f"event: {event}")
-    lines.append(f"data: {json.dumps(data, ensure_ascii=False)}")
-    lines.append("")
-    lines.append("")
-    return "\n".join(lines)
-
-
-@router.get("/sessions/{session_id}/messages/stream")
-async def stream_messages_get(  # type: ignore[no-untyped-def]
-    session_id: uuid.UUID,
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
-    orchestrator: OrchestratorDep,
-    user: CurrentUser,
-    content: str = Query(..., min_length=1, max_length=10000),
-    region: str | None = Query(default=None, max_length=16),
-    locale: str | None = Query(default=None, max_length=16),
-):
-    """Stream a reply via SSE — GET variant with query param.
-
-    The query-param form is convenient for EventSource which cannot POST.
-    """
-    _sess, is_eph = await _resolve_session(session_id, user, db_session, ephemeral_store)
-    db_for_orch = None if is_eph else db_session
-
-    async def event_generator():  # type: ignore[no-untyped-def]
-        async for chunk in orchestrator.stream_message(
-            db_session=db_for_orch,
-            user=user,
-            session_id=session_id,
-            content=content,
-            is_ephemeral=is_eph,
-            region=region,
-            locale=locale,
-        ):
-            if "token" in chunk:
-                yield _sse_event({"token": chunk["token"]}, event="token")
-            elif chunk.get("type") == "final":
-                yield _sse_event(
-                    {
-                        "risk_level": chunk.get("risk_level"),
-                        "emotion": chunk.get("emotion"),
-                        "response_type": chunk.get("response_type"),
-                        "resources": chunk.get("resources", []),
-                        "degraded": chunk.get("degraded", False),
-                        "provider": chunk.get("provider"),
-                    },
-                    event="done",
-                )
-                # Also send a final data event with metadata for clients that
-                # only listen to data
-                yield _sse_event(
-                    {
-                        "type": "final",
-                        "risk_level": chunk.get("risk_level"),
-                        "emotion": chunk.get("emotion"),
-                        "response_type": chunk.get("response_type"),
-                        "resources": chunk.get("resources", []),
-                        "degraded": chunk.get("degraded", False),
-                    }
-                )
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")  # type: ignore[no-untyped-call]
-
-
-@router.post("/sessions/{session_id}/messages/stream")
-async def stream_messages_post(
-    session_id: uuid.UUID,
-    payload: MessageIn,
-    db_session: SessionDep,
-    ephemeral_store: EphemeralStoreDep,
-    orchestrator: OrchestratorDep,
-    user: CurrentUser,
+async def _stream_response(
+    orchestrator: ChatOrchestrator, admitted: AdmittedMessage, conversation: Conversation
 ) -> StreamingResponse:
-    """Stream a reply via SSE — POST variant with JSON body."""
-    _sess, is_eph = await _resolve_session(session_id, user, db_session, ephemeral_store)
-    db_for_orch = None if is_eph else db_session
+    """Advance the pipeline to its first event, then hand the rest to the client.
 
-    async def event_generator():  # type: ignore[no-untyped-def]
-        async for chunk in orchestrator.stream_message(
-            db_session=db_for_orch,
-            user=user,
-            session_id=session_id,
-            content=payload.content,
-            is_ephemeral=is_eph,
-            region=payload.region,
-            locale=payload.locale,
-        ):
-            if "token" in chunk:
-                yield _sse_event({"token": chunk["token"]}, event="token")
-            elif chunk.get("type") == "final":
-                yield _sse_event(
-                    {
-                        "risk_level": chunk.get("risk_level"),
-                        "emotion": chunk.get("emotion"),
-                        "response_type": chunk.get("response_type"),
-                        "resources": chunk.get("resources", []),
-                        "degraded": chunk.get("degraded", False),
-                        "provider": chunk.get("provider"),
-                    },
-                    event="done",
-                )
-                yield _sse_event(
-                    {
-                        "type": "final",
-                        "risk_level": chunk.get("risk_level"),
-                        "emotion": chunk.get("emotion"),
-                        "response_type": chunk.get("response_type"),
-                        "resources": chunk.get("resources", []),
-                        "degraded": chunk.get("degraded", False),
-                    }
-                )
+    Doing the first step *before* returning means a failure in it (no safety
+    verdict → 503) is a real HTTP status, not a 200 with an error buried in the
+    body.
+    """
+    events = orchestrator.stream(admitted, conversation)
+    try:
+        first = await anext(events)
+    except StopAsyncIteration as exc:  # pragma: no cover - the pipeline always yields
+        raise ApiError(500, "internal_error", "Internal server error") from exc
+    return StreamingResponse(
+        _sse_body(first, events),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")  # type: ignore[no-untyped-call]
+
+@router.post("/sessions/{session_id}/stream")
+async def stream_chat_message_post(
+    session_id: uuid.UUID,
+    payload: MessageIn,
+    service: ChatServiceDep,
+    orchestrator: OrchestratorDep,
+    user: ConsentedUser,
+) -> StreamingResponse:
+    """Send one message and stream the reply as Server-Sent Events."""
+    admitted, opened = await _admit(orchestrator, service, user, session_id, payload)
+    return await _stream_response(orchestrator, admitted, opened.conversation)
+
+
+@router.get("/sessions/{session_id}/stream")
+async def stream_chat_message_get(
+    session_id: uuid.UUID,
+    service: ChatServiceDep,
+    orchestrator: OrchestratorDep,
+    user: ConsentedUser,
+    message: Annotated[str, Query(min_length=1, max_length=MAX_PAYLOAD_CHARS)],
+    region: Annotated[str | None, Query(max_length=16)] = None,
+    locale: Annotated[str | None, Query(max_length=16)] = None,
+) -> StreamingResponse:
+    """The same stream for clients that can only issue GET (prefer POST — see module docs)."""
+    payload = MessageIn(message=message, region=region, locale=locale)
+    admitted, opened = await _admit(orchestrator, service, user, session_id, payload)
+    return await _stream_response(orchestrator, admitted, opened.conversation)

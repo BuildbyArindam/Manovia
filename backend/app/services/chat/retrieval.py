@@ -1,43 +1,41 @@
-"""Retrieval stub — Day 13 fills it.
+"""Step 5 — retrieval. A stub today; Day 13 fills it.
 
-Today it returns an empty list. The interface is intentionally tiny so that
-Day 13 can swap the implementation without touching the orchestrator.
+The seam is a one-method protocol so the orchestrator never changes when the
+vector store arrives. The query it is handed is the **redacted** text: a future
+embedding service may be external, and identifiers must not reach it any more
+than they reach the LLM (AGENTS.md rule 5).
 
-The orchestrator calls :func:`retrieve` with the redacted user text and the
-session id; it gets back a list of context snippets. Each snippet is a plain
-string today (later: source, score, etc.), and the prompt builder concatenates
-them when present.
+Whatever a retriever returns is *reference material the application selected*,
+not something the user said and not an instruction: the prompt builder frames it
+that way (:mod:`app.services.chat.prompting`).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from uuid import UUID
+from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
-class RetrievalResult:
-    """One retrieved snippet. Stub today, richer tomorrow."""
+class RetrievedChunk:
+    """One passage of curated self-help content."""
 
+    source_id: str
+    title: str
     text: str
-    source: str = "stub"
-    score: float = 0.0
 
 
-async def retrieve(
-    query: str,
-    *,
-    session_id: UUID | None = None,
-    user_id: UUID | None = None,
-    limit: int = 3,
-) -> list[RetrievalResult]:
-    """Return relevant context for ``query``. Stub: always empty.
+@runtime_checkable
+class Retriever(Protocol):
+    """Anything that can look up reference passages for a (redacted) query."""
 
-    The signature is future-proof: Day 13 will use ``user_id`` to scope
-    retrieval to the user's own journal/mood entries when consent allows it.
-    """
-    _ = (query, session_id, user_id, limit)
-    return []
+    async def retrieve(self, query: str, *, limit: int = 3) -> list[RetrievedChunk]:
+        """Return up to ``limit`` passages, best first. Empty is a valid answer."""
+        ...
 
 
-__all__ = ["RetrievalResult", "retrieve"]
+class NullRetriever:
+    """Returns nothing. Day 13 replaces it."""
+
+    async def retrieve(self, query: str, *, limit: int = 3) -> list[RetrievedChunk]:
+        return []
