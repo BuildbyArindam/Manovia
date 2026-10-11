@@ -14,6 +14,8 @@ import {
   MAX_FACTORS,
   MOOD_EMOTIONS,
   MOOD_FACTORS,
+  NEUTRAL_ENERGY_POINT,
+  NEUTRAL_VALENCE_POINT,
   NOTE_MAX_CHARS,
   SCALE_MAX,
   SCALE_MIN,
@@ -107,6 +109,18 @@ describe("mood vocabulary", () => {
     expect(valencePoint(0).value).toBe(3);
     expect(valencePoint(99).value).toBe(3);
     expect(energyPoint(-1).value).toBe(3);
+  });
+
+  it("falls back to the real middle point, word and face included", () => {
+    // Regression: the fallback used to be an array index that
+    // `noUncheckedIndexedAccess` correctly refuses to call safe, so it became an
+    // explicit constant. This pins the constant to the middle of each list, so a
+    // future reorder cannot make "out of range" render a second, differently
+    // worded middle point.
+    expect(NEUTRAL_VALENCE_POINT).toEqual(VALENCE_POINTS[2]);
+    expect(NEUTRAL_ENERGY_POINT).toEqual(ENERGY_POINTS[2]);
+    expect(valencePoint(0)).toEqual(VALENCE_POINTS[2]);
+    expect(energyPoint(6)).toEqual(ENERGY_POINTS[2]);
   });
 
   it("shows an unknown stored id as itself instead of losing it", () => {
