@@ -27,7 +27,9 @@ if TYPE_CHECKING:
     from app.models.exercise_completion import ExerciseCompletion
     from app.models.journal import JournalEntry
     from app.models.mood import MoodEntry
+    from app.models.plan import PlanItem
     from app.models.safety_event import SafetyEvent
+    from app.models.user_settings import UserSettings
 
 
 class User(Base, CreatedAtMixin):
@@ -72,6 +74,14 @@ class User(Base, CreatedAtMixin):
 
     exercise_completions: Mapped[list[ExerciseCompletion]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    plan_items: Mapped[list[PlanItem]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    settings: Mapped[UserSettings | None] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True, uselist=False
     )
 
     @property

@@ -12,6 +12,8 @@ from app.models.enums import (
     AssessmentInstrument,
     ConsentKind,
     MessageRole,
+    PlanItemKind,
+    PlanItemStatus,
     RiskLevel,
     SafetyEventCategory,
     SafetyEventSource,
@@ -20,9 +22,11 @@ from app.models.exercise_completion import ExerciseCompletion
 from app.models.journal import JournalEntry
 from app.models.message import Message
 from app.models.mood import MoodEntry
+from app.models.plan import PlanItem
 from app.models.refresh_token import RefreshToken
 from app.models.safety_event import SafetyEvent
 from app.models.user import User
+from app.models.user_settings import UserSettings
 
 __all__ = [
     "AssessmentBand",
@@ -38,10 +42,14 @@ __all__ = [
     "Message",
     "MessageRole",
     "MoodEntry",
+    "PlanItem",
+    "PlanItemKind",
+    "PlanItemStatus",
     "RefreshToken",
     "RiskLevel",
     "SafetyEvent",
     "SafetyEventCategory",
     "SafetyEventSource",
     "User",
+    "UserSettings",
 ]

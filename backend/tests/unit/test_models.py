@@ -40,6 +40,8 @@ def test_every_model_is_registered_with_a_table() -> None:
         "refresh_tokens",
         "exercise_completions",
         "cbt_records",
+        "plan_items",
+        "user_settings",
     }
 
 

@@ -35,6 +35,8 @@ SCHEMA_TABLES = {
     "refresh_tokens",
     "exercise_completions",
     "cbt_records",
+    "plan_items",
+    "user_settings",
 }
 
 

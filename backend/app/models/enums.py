@@ -77,3 +77,27 @@ class AssessmentBand(StrEnum):
     MODERATE = "moderate"
     MODERATELY_SEVERE = "moderately_severe"
     SEVERE = "severe"
+
+
+class PlanItemKind(StrEnum):
+    """What a daily-plan suggestion asks for.
+
+    The vocabulary is closed: the planner can only emit kinds the UI knows how
+    to render, and a stored row can only hold one of these values.
+    """
+
+    CHECK_IN = "check_in"
+    EXERCISE = "exercise"
+    THOUGHT_RECORD = "thought_record"
+    REST = "rest"
+    #: Support options shown after a positive PHQ-9 item-9 answer. This is the
+    #: *only* way an assessment answer may influence the plan.
+    SUPPORT = "support"
+
+
+class PlanItemStatus(StrEnum):
+    """Lifecycle of one suggestion: proposed, then done or skipped."""
+
+    PENDING = "pending"
+    DONE = "done"
+    SKIPPED = "skipped"

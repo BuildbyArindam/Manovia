@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 import pytest
 import sqlalchemy as sa
@@ -15,7 +16,9 @@ from app.db.repos import (
     ConsentRepository,
     JournalRepository,
     MoodRepository,
+    PlanRepository,
     SafetyEventRepository,
+    SettingsRepository,
     UserRepository,
 )
 from app.db.repos.exercises import ExerciseRepository
@@ -26,6 +29,7 @@ from app.models import (
     ChatSession,
     ConsentKind,
     MessageRole,
+    PlanItemKind,
     RiskLevel,
     SafetyEventSource,
     User,
@@ -41,6 +45,8 @@ CHILD_TABLES = (
     "assessment_results",
     "exercise_completions",
     "safety_events",
+    "plan_items",
+    "user_settings",
 )
 
 
@@ -87,6 +93,20 @@ async def seed_everything(session: AsyncSession, user_id: uuid.UUID) -> uuid.UUI
         exercise=exercise,
         pre_rating=2,
         post_rating=3,
+    )
+    await PlanRepository(session).create(
+        user_id=user_id,
+        plan_date=date(2026, 10, 11),
+        kind=PlanItemKind.CHECK_IN,
+        title="Take a first check-in",
+        why="Because there is no mood check-in yet.",
+    )
+    await SettingsRepository(session).upsert(
+        user_id=user_id,
+        preferred_exercise_tags=["breathing"],
+        quiet_hours_enabled=True,
+        quiet_start="22:00",
+        quiet_end="07:00",
     )
     await session.commit()
     return chat.id
