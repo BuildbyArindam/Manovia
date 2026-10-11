@@ -69,6 +69,7 @@ from app.services.chat.types import (
     ChatMetadata,
     ChatReply,
     FinalEvent,
+    KnowledgeDocRef,
     ResponseType,
     StreamEvent,
     TokenEvent,
@@ -129,6 +130,7 @@ class OrchestratorConfig:
             max_tokens=settings.llm_max_tokens,
             temperature=settings.llm_temperature,
             prompt_version=settings.llm_prompt_version,
+            retrieval_limit=settings.rag_retrieval_limit,
             ml_min_confidence=settings.safety_ml_min_confidence,
             ml_crisis_mass_floor=settings.safety_ml_crisis_mass_floor,
             ml_suspicion_floor=settings.safety_ml_suspicion_floor,
@@ -162,6 +164,10 @@ class _Turn:
     messages: list[LLMMessage] | None
     system: str
     started: float
+    #: Reference passages retrieved for this turn (possibly empty). They go
+    #: into the prompt *and* into the reply metadata as ``retrieved_docs`` /
+    #: ``retrieved_ids`` so the UI can render "Learn more" cards.
+    chunks: list[RetrievedChunk]
 
 
 class ChatOrchestrator:
@@ -439,10 +445,12 @@ class ChatOrchestrator:
         )
 
         if redacted is None:
-            return _Turn(message, plan, emotion, None, "", started)
+            return _Turn(message, plan, emotion, None, "", started, chunks=[])
 
         # Step 5 — retrieval over the redacted query.
-        chunks = await self._retrieve(redacted[0])
+        # Step 5 - retrieval over the redacted query, filtered by the turn's
+        # language so a hi-locale user is not served English cards by default.
+        chunks = await self._retrieve(redacted[0], language=message.locale)
 
         # Step 6 — the prompt.
         base = render_system_prompt(
@@ -457,7 +465,7 @@ class ChatOrchestrator:
             retrieval=retrieval_block(chunks),
         )
         messages = to_llm_messages(window, redacted[1:], redacted[0])
-        return _Turn(message, plan, emotion, messages, system, started)
+        return _Turn(message, plan, emotion, messages, system, started, chunks=chunks)
 
     async def _analyse_emotion(self, text: str) -> EmotionResult | None:
         try:
@@ -478,9 +486,11 @@ class ChatOrchestrator:
             _log.error("chat_redaction_failed", error_type=type(exc).__name__)
             return None
 
-    async def _retrieve(self, query: str) -> list[RetrievedChunk]:
+    async def _retrieve(self, query: str, *, language: str | None) -> list[RetrievedChunk]:
         try:
-            return await self._retriever.retrieve(query, limit=self._config.retrieval_limit)
+            return await self._retriever.retrieve(
+                query, limit=self._config.retrieval_limit, language=language
+            )
         except Exception as exc:  # reference material is optional
             _log.warning("chat_retrieval_failed", error_type=type(exc).__name__)
             return []
@@ -561,6 +571,11 @@ class ChatOrchestrator:
         else:
             response_type = ResponseType.NORMAL
 
+        # Reference material only when the model itself answered — a template
+        # reply never read the retrieved passages, so showing their cards
+        # would claim a connection that does not exist.
+        retrieved = [] if template else turn.chunks
+
         return ChatReply(
             session_id=conversation.session_id,
             message_id=message_id,
@@ -571,6 +586,10 @@ class ChatOrchestrator:
                 response_type=response_type,
                 resources=list(plan.resources),
                 check_in=check_in,
+                retrieved_docs=[
+                    KnowledgeDocRef(id=chunk.source_id, title=chunk.title) for chunk in retrieved
+                ],
+                retrieved_ids=[chunk.source_id for chunk in retrieved],
                 degraded=template,
                 persisted=persisted,
                 about_someone_else=plan.about_someone_else,

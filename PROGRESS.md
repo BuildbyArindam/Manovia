@@ -2,49 +2,47 @@
 
 ## Current status
 
-Day 12 (the chat UI) is built. `frontend/src/features/chat` reads the Day 11 SSE
-stream and renders it: tokens as they arrive, a calm typing indicator, the
-`CrisisCard` under a high-risk reply with the page softened around it, a composer
-that sends on Enter (and never on an IME's Enter), controls for saving / clearing
-/ restarting and for language, three generic starter chips, plain-language error
-and offline states with a retry that resends the exact message, and an opt-in
-emotion hint that is off by default. **Frontend: 162 tests pass, 3 skipped** (73
-of them new), `eslint`, `tsc --noEmit` and `prettier --check` clean, production
-build ok. **Backend: 2202 pass, 3 skipped, 97 % coverage; `ruff`, `ruff format`
-and `mypy` (strict) clean.** Decisions in
-[ADR 0012](docs/adr/0012-chat-ui.md).
+Day 13 (knowledge base and retrieval, RAG) is built. `backend/app/content/knowledge/`
+holds 40 curated self-help documents (34 en / 3 hi / 3 bn, front-matter with `id`,
+`title`, `tags`, `language`, `evidence_note`, `reviewed: false`); `app/services/rag/`
+chunks, embeds and stores them (FAISS flat-IP + JSON sidecar), and `app/services/rag/factory.py`
+wires a knowledge-backed retriever into the Day 11 orchestrator behind the unchanged
+`Retriever` seam. Retrieved passages enter the prompt as `- [<doc id>] <title>: <text>`
+under a non-instruction header, the same ids ride `final` SSE metadata as
+`retrieved_docs`/`retrieved_ids` (lockstep-validated), and system prompt v2 tells the
+model to use a passage only when it fits and otherwise give general supportive guidance
+plus professional help for persistent difficulties. **Backend: 2377 pass, 3 skipped
+(+175); `ruff`, `ruff format` and `mypy` (strict) clean.** `make ingest` is idempotent
+(RUN 2: 0 added / 0 updated / 0 removed). Decisions in
+[ADR 0013](docs/adr/0013-knowledge-retrieval-rag.md).
 
-**⚠ Day 12 began with the backend broken, and that is the day's most important
-finding.** At the Day 11 merge commit, `pytest` collected **zero** tests:
-`app/api/deps.py` imported `EphemeralStore` from
-`app.services.chat.ephemeral`, where the class is named `EphemeralSessionStore`.
-The merge had pasted a superseded Day 11 draft over the shipped code — two
-`CreateSessionIn` models in one file, two `_check_chat_settings` validators, five
-dead chat providers reading `app.state` names that are never set and calling a
-constructor that does not exist, and two test modules written against an API that
-never shipped. All of it is fixed in `b443d6d`, the deleted drafts' coverage is
-mapped test-by-test in *Verification (Day 12)*, and
-`tests/unit/test_import_graph.py` (502 tests) now fails on this class of drift.
-Day 11's "1700 tests pass, lint clean" cannot have been true of the merged
-commit.
+**The offline-embedder decision is the day's headline.** The sandbox cannot reach
+Hugging Face, and the obvious stand-in (feature hashing) measured unusably: on-topic and
+off-topic cosine scores overlapped almost completely. The shipped offline default is a
+**TF-IDF embedder fitted on the corpus at ingest** (stopwords + `min_df=2`, feature
+capping against single-word collisions, titles anchored twice in the embed text),
+persisted with the store; `embedder.json` makes the store the source of truth for its own
+vector space, and `auto` upgrades to the multilingual sentence-transformers model with no
+code change when the network exists. Calibration numbers (16 on-topic vs 10 off-domain
+queries): on-topic top scores 0.11–0.25, off-domain ≈ 0–0.14, recommended floor 0.12 —
+and the required behaviour holds: `"what is the capital of France"` retrieves nothing.
 
-What could **not** be verified here, and needs a human on their own machine:
+What could **not** be verified here, and needs a human or a networked machine:
 
-- **There is no browser in this sandbox.** `npx playwright install chromium`
-  fails (`cdn.playwright.dev` is unreachable) and there is no apt access, so the
-  14-test Playwright suite is written and lists but **was never run**. That also
-  means **no screenshots were added to `docs/assets/`**, and axe was run through
-  jest-axe in jsdom rather than in a real browser.
-- **There is no Docker**, so the stack ran natively (uvicorn + Vite) rather than
-  via `docker compose`.
-- The stream has now been read **through the Vite dev proxy** (chunked,
-  incremental, `x-accel-buffering: no`) — still not through a production proxy,
-  and still not by a browser.
+- The real `sentence-transformers` checkpoint never loaded in this sandbox (no HF
+  connectivity), so retrieval quality with the production embedder is unmeasured; the
+  TF-IDF calibration above is the offline stand-in's, and `make ingest` + the probe list
+  in *Verification (Day 13)* should be re-run after installing the `rag` extra.
+- No browser here, so the "Learn more" card has no end-to-end UI test; the ids the UI
+  needs are pinned at the API/metadata level.
+- The corpus is written and self-reviewed only: the human safety review in
+  `docs/knowledge-authoring-guide.md` (and a native-speaker read of the hi/bn docs) is
+  still outstanding, and every file ships `reviewed: false` for exactly that reason.
 
-Work is on `arena/737d054e-manovia` — the branch this Arena session is pinned to,
-**not** the requested `day-12-chat-ui`; the session cannot create or push to
-another branch name. The pull request comes from the session branch, as for
-Days 7–11.
+Work is on `arena/93a34e50-manovia` — the branch this Arena session is pinned to,
+**not** the requested `day-13-knowledge-base-retrieval-rag`; the session cannot create
+or push to another branch name (same situation as Days 7–12, and as recorded for Day 12
+above). The pull request comes from the session branch.
 
 ## Completed
 
@@ -614,6 +612,73 @@ keyboard-only, two axe scans, screenshots into `docs/assets/`, and a dropped
 stream via `page.route`. `playwright test --list` resolves all 14; **they were not
 run here** — this sandbox has no browser binary and `cdn.playwright.dev` is
 unreachable (see Verification, Day 12).
+
+### Day 13 (branch `day-13-knowledge-base-retrieval-rag`) — knowledge base and retrieval (RAG)
+
+- `backend/app/content/knowledge/` — 40 documents in three languages (34 en / 3 hi / 3 bn)
+  covering the brief's topics: grounding, paced breathing, sleep basics and racing-mind
+  nights, exam stress and results anxiety, overload, worry time, behavioural activation,
+  thinking traps in plain language, self-compassion, loneliness, telling someone you
+  trust, supporting a friend, when and how to seek professional help, what therapy is
+  like. No diagnoses, no medication, no validation claims; every file carries an honest
+  `evidence_note` and ships `reviewed: false`.
+- `app/content/knowledge.py` — the loader (`KnowledgeDoc`, `load_knowledge_docs`,
+  `KnowledgeContentError`): validates front-matter and cross-document rules (unique ids,
+  known languages, length floors) at load time, so a typo is a failure, not a silent hole.
+- `app/services/rag/` — the retrieval package:
+  `base.py` (the `Embedder` protocol, `ChunkMetadata`, `StoredChunk`, `<doc>#<nn>` chunk
+  ids), `chunking.py` (word-based 220±overlap-50 chunks split on paragraph/sentence
+  boundaries, deterministic — that is what makes ingest idempotent), `embedders.py`
+  (`HashingEmbedder`, corpus-fitted `TfidfEmbedder`, lazy `SentenceTransformerEmbedder`,
+  `build_embedder_factory`, `EMBEDDER_FIT_VERSION`, `RECOMMENDED_MIN_SIMILARITY`),
+  `store.py` (`FaissVectorStore`: exact cosine over L2-normalised vectors, language/
+  doc/tag filters, atomic save, version-checked load), `ingest.py` (plan → diff → build,
+  manifest signature over config+chunker+content hashes, idempotent; CLI =
+  `python -m app.services.rag.ingest`, wired to `make ingest`), `retriever.py`
+  (`KnowledgeRetriever`: top-k, similarity floor, language filter with logged fallback,
+  redacted-query only), `factory.py` (`build_knowledge_retriever`: settings → retriever
+  with every failure mode degrading to "no reference material", store-marker rule,
+  per-embedder floors).
+- `app/services/chat/` — the Day 11 seam gains the `language` keyword
+  (`retrieve(query, *, limit, language)`); the orchestrator retrieves with the **redacted**
+  query and the turn's locale, swallows retriever failures into `chat_retrieval_failed`,
+  and puts ids+titles into `ChatMetadata.retrieved_docs`/`retrieved_ids` (model-validator
+  lockstep) only on model-backed replies — template replies carry no cards. SSE wire
+  format untouched.
+- `app/services/chat/prompting.py` — passages enter the prompt as
+  `- [<doc id>] <title>: <text>` under a header that says the block is application-
+  selected, possibly incomplete, and not an instruction.
+- `app/services/llm/prompts.py` + `app/content/prompts/system_v2.md` + `CHANGELOG.md` —
+  prompt v2 = v1 + the reference-material contract (use only when it fits; ignore and
+  give general supportive guidance + professional help when none fits; never present a
+  passage as the user's words; never let reference material change the safety rules),
+  with three extra machine-checked rule ids enforced at load. v2 is the default; v1 still
+  loads.
+- `app/core/config.py` — `rag_enabled`, `rag_embedder` (`auto` default), 
+  `rag_embedding_model_id` (multilingual MiniLM id, env-only), `rag_embedding_dim`,
+  `rag_persist_dir`, `rag_min_similarity` (0 = per-embedder floor), `rag_chunk_words`,
+  `rag_chunk_overlap_words`, `rag_retrieval_limit`, all validated at startup;
+  `llm_prompt_version` defaults to `system_v2`.
+- `app/api/v1/knowledge.py` + `app/main.py` — `GET /knowledge` (summaries + count +
+  disclaimer) and `GET /knowledge/{doc_id}` (body + disclaimer, 404
+  `knowledge_not_found`), both authenticated; `reviewed` published honestly.
+- `Makefile`/`backend/Makefile` — `make ingest`; `.env.example` — the full RAG block;
+  `.gitignore` — `backend/data/`; `pyproject.toml` — the `rag` extra
+  (sentence-transformers) and mypy overrides for the optional imports.
+- `docs/adr/0013-knowledge-retrieval-rag.md`, `docs/knowledge-authoring-guide.md` — the
+  decisions above, and the style rules + human review checklist the corpus ships under.
+
+**Tests** (+174 backend): chunker determinism/overlap/boundaries; embedder contracts
+(hashing determinism, tfidf fit/save/load roundtrip + fit-hash stability, feature-cap
+behaviour, factory kinds incl. the offline `auto` fallback, lazy sentence-transformers);
+store querying/filters/persistence/corruption rejection; ingest planning, idempotence,
+diff-on-edit/remove, config-change rebuild, marker files, unavailable-embedder error;
+retriever floors/filters/empty-store; factory degradation (missing store, missing marker,
+corrupt artifact — chat proceeds, retrieval answers `[]`); the whole corpus in-suite
+(idempotent ingest, right-doc retrieval, capital-of-France → `[]`, language filter);
+retrieval-in-orchestrator (redacted query, locale passthrough, ids in prompt and
+metadata, no cards on templates, broken retriever degrades); metadata lockstep validator;
+prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404).
 
 ## Verification (Day 12 — real command output)
 
@@ -1691,6 +1756,102 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - **6. `grep -rn "message_text\|content" backend/app/models/safety_event.py`** → no matches (exit 1). Declared columns are only `id`, `user_id`, `session_id`, `risk_level`, `source`, `created_at`.
 - **Lint/format** — `make lint`: `ruff check .` all checks passed; `ruff format --check .` 60 files already formatted; `mypy app tests` (strict) "Success: no issues found in 57 source files". Root `make lint` / `make test` pass by delegation. Frontend: still README-only, nothing to lint or test.
 
+## Verification (Day 13 — real command output)
+
+Environment notes: this sandbox has **no Hugging Face connectivity** (TLS EOF on
+`huggingface.co`), so every retrieval run below uses `RAG_EMBEDDER=tfidf` — the
+shipped offline path — and the store was rebuilt from scratch for these runs.
+`faiss-cpu 1.15.1` + scikit-learn from PyPI; `sentence-transformers` never
+imported (it is an optional extra, and its model cannot download here).
+
+**`make ingest` twice (fresh `data/rag`):**
+
+```
+$ cd backend && RAG_EMBEDDER=tfidf make ingest      # RUN 1
+knowledge docs: 40   chunks: 59
+embedder: tfidf-v1:dfeca3a472e1   dim: 1574   store: data/rag
+added: 59   updated: 0   removed: 0   duplicates: 0
+store rebuilt
+
+$ cd backend && RAG_EMBEDDER=tfidf make ingest      # RUN 2
+knowledge docs: 40   chunks: 59
+embedder: tfidf-v1:dfeca3a472e1   dim: 1574   store: data/rag
+added: 0   updated: 0   removed: 0   duplicates: 0
+store already up to date
+```
+
+RUN 2 adds/updates/removes nothing — idempotence, including the fitted
+embedder's identity (`tfidf-v1:dfeca3a472e1`), which is restored from the
+manifest without re-fitting. Store files: `index.faiss`, `store.json`,
+`manifest.json`, `embedder.json`, `embedder.joblib`.
+
+**The 12-query probe** (top doc ids after the 0.12 floor and per-document
+dedupe; en queries unfiltered, hi/bn pass their language):
+
+```
+[en] "I can't sleep before exams"               -> sleep-when-mind-races, sleep-wind-down-hour, trust-telling-someone
+[en] 'how do I calm down quickly'               -> sleep-wind-down-hour, exams-day-of-nerves
+[en] 'my friend seems depressed'                -> self-compassion-inner-voice, friend-support-listen-first
+[en] 'worry takes over my whole day'            -> worry-time-box
+[en] 'i keep putting off starting to study'     -> []                       (best raw score 0.114 < 0.12 floor)
+[en] 'thinking the worst will happen'           -> traps-catastrophe, traps-mind-reading
+[en] 'I feel alone even when people are around' -> grounding-feet-floor, therapy-what-its-like, traps-should-statements
+[en] 'how do I tell someone I trust'            -> trust-telling-someone, grounding-cold-water, exams-results-waiting
+[en] 'what is therapy like'                     -> therapy-what-its-like
+[hi] 'रात को नींद नहीं आती'                      -> exams-plan-small-chunks-hi, trust-telling-someone-hi, breathing-slow-outbreath-hi
+[bn] 'পরীক্ষার দিনে ভয় লাগে'                     -> breathing-slow-outbreath-bn, loneliness-small-contacts-bn, exams-day-of-nerves-bn
+[en] 'what is the capital of France'            -> []                       (required: no forced context)
+```
+
+Calibration across a wider 26-query set: on-topic top scores 0.11–0.25 (median
+≈ 0.16), off-domain (football, recipe, stock market, travel, jokes…) ≈ 0–0.14.
+The floor sits between and is deliberately biased toward recall — one on-topic
+wording misses by 0.006 above, which is the intended trade (the v2 prompt tells
+the model to ignore references that do not fit, so a marginal card is low-harm).
+
+**E2E through the real HTTP path** (uvicorn on :8000, `LLM_PROVIDER=fake`,
+`RAG_EMBEDDER=tfidf`, migrated SQLite; guest auth → consent → session →
+`POST /api/v1/chat/sessions/{id}/stream`):
+
+```
+SSE events: ['token' × 5, 'final']                          # Day 11 wire format intact
+"I'm so stressed about exams"
+  -> response_type: normal | risk: none
+  -> retrieved_ids: ['self-compassion-inner-voice']
+  -> retrieved_docs: [('self-compassion-inner-voice', "Talking to yourself like you'd talk to a friend")]
+"what is the capital of France"
+  -> retrieved_ids: []
+GET /api/v1/knowledge            -> 200, count: 40, disclaimer present
+GET /api/v1/knowledge/exams-plan-small-chunks -> 200 (id + body + disclaimer)
+```
+
+(The exam-stress wording retrieved the self-compassion document through the
+API path — above floor and adjacent, but not the exams doc; wording-dependent,
+and exactly the kind of result to re-check with the real multilingual embedder.)
+
+**Plagiarism sanity check:** all 40 documents tokenised (7,605 words); zero
+12-gram sequences shared between any two documents, and zero 12-grams shared
+with a reference list of canonical public phrasings (box breathing, 4-7-8,
+grounding, cognitive distortions, behavioural activation, sleep hygiene,
+crisis boilerplate).
+
+**Safety grep over `app/content/knowledge/`:** zero matches for
+`antidepress|sertralin|fluoxet|xanax|benzo|paracetamol|ibuprofen|medicat|dose|dosage|prescri|diagnos|depressive
+disorder|generalized anxiety|you have (depression|…)|bipolar|proven|clinically
+(proven|validated|shown)|guarantee|cure` (one "not a cure" disclaimer phrasing
+was reworded to keep even the negative form out of future greps).
+
+**Backend suite:** `2377 passed, 3 skipped` (Day 12 state: 2202 passed),
+`ruff check .` + `ruff format --check .` clean, `mypy app` strict clean
+("Success: no issues found in 101 source files").
+
+**Not verifiable here** (needs a networked machine or a human): the
+sentence-transformers model path end to end (`pip install -e ".[rag]"`, then
+`make ingest` + the probe list above), a browser-level "Learn more" card
+render, and the human safety review of all 40 documents
+(`docs/knowledge-authoring-guide.md` checklist) — every file ships
+`reviewed: false` until that happens.
+
 ## Decisions (ADR index)
 
 - [0001 — Monorepo and stack](docs/adr/0001-monorepo-and-stack.md): FastAPI + Pydantic v2, SQLAlchemy 2 + Alembic + PostgreSQL, React + Vite + TypeScript + Tailwind, provider-abstracted LLM integrations with offline fakes, Docker for local orchestration.
@@ -1705,11 +1866,33 @@ Everything below was run for real in this sandbox (Node 22.22.3, npm 10.9.8, Pyt
 - [0010 — The LLM provider layer: one interface, a chain that cannot fail](docs/adr/0010-llm-abstraction.md): `LLMProvider` with `complete` + `stream` (streaming abstract from day one, declared without `async` so an unconfigured provider fails at call time rather than at the first token); a typed error tree whose `retryable` flag — not a list of exception names — drives the retry machinery; `primary → ollama → canned` with a terminal link that cannot fail, which is what makes "a missing API key is a degradation, not a 500" true by construction; retry with **full jitter**, a hard timeout spent **across** all attempts, and a breaker with a half-open probe, all injectable so no test sleeps; redaction as an egress policy inside the chain rather than a caller's responsibility; the system prompt as a versioned, hashed, load-time-validated file; and a token guard that truncates (never rejects) at a word boundary so a redaction placeholder is never cut in half. **Numbered 0010, not the `0003-llm-abstraction.md` the brief asked for** — 0003 is the published data-layer ADR, ADR numbers are permanent, and the two precedents (0006, this one) are recorded at the top of the document.
 - [0011 — The chat orchestrator: one pipeline, and the order is the safety property](docs/adr/0011-chat-orchestrator.md): nine steps in a fixed order with the crisis gate before anything that can call a model; fail **closed** on input safety (503) and fail **soft** on everything else (fallback template, `emotion=None`, `persisted=false`); ephemeral-by-default sessions (process memory, 30-min sliding TTL, no user-linked rows — MEDIUM+ turns write an *anonymous* SafetyEvent) with `store_chat` required only to save; someone else's session is a 404, never a 403; hints live in the system prompt and crisis turns are dropped from the model's window; MEDIUM gets a hint *and* the template's check-in appended; SSE `token`… `final` with `final.reply` authoritative; short-lived DB sessions because streams outlive request dependencies; per-user rate limit after validation (also applies to crisis messages); and an honest note that the Day 9 ML backstop's false positives are now user-visible.
 - [0012 — The chat UI: reading a stream, and staying calm while doing it](docs/adr/0012-chat-ui.md): `fetch` + `ReadableStream` because `EventSource` can do neither a POST nor an `Authorization` header, with a chunk-boundary-safe SSE parser of its own; an interrupted stream keeps its words, says it was cut off, and never resumes; `final.reply` is authoritative when `replaced`; **one polite live region per turn** (the visible text is `aria-hidden` while streaming so a screen reader hears one sentence, not every token); a crisis reply renders the pre-written card verbatim and sets a page-wide `data-softened` flag; auto-scroll follows only a reader already at the bottom; ephemeral by default with the save toggle as `store_chat` surfacing (and it applies to the *next* session, which the copy admits); eight plain-language failure kinds where the backend's own curated sentence wins; the emotion hint opt-in and off; and Enter-does-not-send while an IME is composing, for the two Indic languages this product exists to serve.
+- [0013 — Knowledge base and retrieval (RAG): grounding the companion in curated self-help](docs/adr/0013-knowledge-retrieval-rag.md): below-threshold means *no reference at all* (an irrelevant card is a broken promise; a missing one is nothing); FAISS flat-IP + JSON sidecar instead of a database at 40-doc scale; a corpus-fitted TF-IDF embedder persisted with the store as the offline default because raw feature hashing measured unusably, with `embedder.json` making the store the source of truth for its own vector space and `auto` upgrading to the multilingual model when the network exists; idempotent ingest via a manifest signature over embedder *configuration* + chunker version + content hashes (the up-to-date path never fits); measured quality levers (stopwords + `min_df=2`, BM25-style feature capping, title anchoring) behind a recommended 0.12 tfidf floor biased toward recall because the v2 prompt tells the model to ignore references that do not fit; the redacted query and the turn's locale are the only things retrieval sees, and every failure degrades to "no reference material"; prompt v2 carries the reference contract as three machine-checked rules; ids flow from prompt lines to `retrieved_docs`/`retrieved_ids` (lockstep-validated) so the UI's "Learn more" card and the model's mention trace to the same document; template replies carry no cards; and the corpus ships `reviewed: false` under a human safety-review checklist.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
 ## Known issues
+## Known issues
+
+### Day 13 (RAG) notes
+
+- **TF-IDF is a calibrated fallback, not a good embedder.** It is lexical:
+  synonyms miss ("procrastinating" does not match "putting off"), and one
+  on-topic wording in twelve missed the floor. The production path
+  (`RAG_EMBEDDER=auto` with the model installed) is expected to be clearly
+  better; re-calibrate `RECOMMENDED_MIN_SIMILARITY["sentence_transformers"]`
+  with the probe list above once it can run.
+- **The floor is tuned to this 40-doc corpus.** Growing the corpus means
+  re-checking the calibration (the in-suite corpus test pins the required
+  behaviours, not the numbers).
+- **`rag_language_fallback` is logged, not surfaced.** A Hindi turn that falls
+  back to English reference material is visible in logs only. A future card
+  could show "मर्मज्ञ सहायता लेख उपलब्ध नहीं" style notice if it matters.
+- **Emotion analyser degrades loudly offline** (pre-existing): with
+  `EMOTION_ANALYZER=hf` and no transformers installed, every turn logs
+  `emotion_analyzer_failed` and falls back to the lexicon. Unrelated to RAG;
+  noted here because the E2E logs show it.
+
 
 ### Top 5 technical debts — Week 1 code review (Day 7)
 
@@ -2052,6 +2235,10 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   nginx or Cloudflare is the case that could still batch.
 
 ## Parking lot
+## Parking lot
+
+- Retrieval upgrades for when the corpus or traffic grows: a cross-encoder reranker over the FAISS shortlist, hybrid BM25 + vector scoring, and per-document "related reading" links derived from the co-retrieval graph.
+- A knowledge browsing surface in the UI (the `/knowledge` endpoints already serve it), and "Learn more" cards rendered from `retrieved_docs` (frontend work; the backend contract is shipped and tested).
 
 - Distributed rate limiting / lockout state (Redis) behind the existing interfaces, plus a trusted-proxy setting for `X-Forwarded-For` client identity.
 - Breached-password screening (k-anonymity HIBP) and an email-verification / password-reset flow; unlock notification emails.
@@ -2161,7 +2348,7 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   provider (or a Fake with injected per-token latency), asserting tokens arrive
   spread out rather than in one body.
 
-## Next steps (Day 13 — first three)
+## Next steps (Day 14 — first three)
 
 **Preamble (needs a machine with a browser, closing Day 12's gap):** run
 `npm run test:e2e` against the Fake-LLM stack, commit the four `docs/assets/`

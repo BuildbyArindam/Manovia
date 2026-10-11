@@ -132,8 +132,13 @@ def test_the_required_rules_table_matches_the_tests_above() -> None:
         "responds_in_user_language",
     }
     assert {rule_id for rule_id, _ in prompts_module.REQUIRED_RULES} == expected
+    # v2 adds three retrieval-contract rules on top (tested below).
     document = load_prompt()
-    assert set(document.rules_present) == expected
+    assert set(document.rules_present) == expected | {
+        "reference_use_only_when_it_fits",
+        "reference_ignorable",
+        "reference_never_overrides_safety",
+    }
 
 
 # --- versioning --------------------------------------------------------------
@@ -141,7 +146,7 @@ def test_the_required_rules_table_matches_the_tests_above() -> None:
 
 def test_the_version_is_the_filename_and_the_setting_default() -> None:
     assert (CONTENT_DIR / f"{PROMPT_VERSION}.md").exists()
-    assert PROMPT_VERSION == "system_v1"
+    assert PROMPT_VERSION == "system_v2"  # Day 13: v2 adds the retrieval contract
 
 
 def test_the_hash_is_stable_and_matches_the_file() -> None:
@@ -309,3 +314,71 @@ def test_available_versions_includes_the_shipped_one() -> None:
     from app.services.llm.prompts import available_versions
 
     assert PROMPT_VERSION in available_versions()
+
+
+# --------------------------------------------------------------------------- #
+# Day 13: system_v2 — the retrieval contract                                    #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_default_prompt_version_is_system_v2() -> None:
+    assert PROMPT_VERSION == "system_v2"
+    # And the default version is the one that loads with every rule intact.
+    load_prompt()
+
+
+def test_system_v2_extra_rules_are_present_and_enforced() -> None:
+    from app.services.llm.prompts import EXTRA_REQUIRED_RULES
+
+    extra = EXTRA_REQUIRED_RULES["system_v2"]
+    ids = [rule_id for rule_id, _pattern in extra]
+    assert ids == [
+        "reference_use_only_when_it_fits",
+        "reference_ignorable",
+        "reference_never_overrides_safety",
+    ]
+    # Each rule's regex must actually match the file's rendering of that rule
+    # (the ids live in the table; the file carries the prose).
+    flattened = re.sub(r"\s+", " ", prompt_text("system_v2"))
+    for rule_id, pattern in extra:
+        assert re.search(pattern, flattened), f"{rule_id} rule text missing from system_v2.md"
+
+
+def test_system_v2_states_the_retrieval_contract() -> None:
+    text = re.sub(r"\s+", " ", prompt_text("system_v2"))
+    assert "Reference material" in text
+    assert "give general supportive guidance" in text
+    assert "professional help" in text
+    assert "never something the user wrote" in text
+
+
+def test_v1_does_not_carry_the_v2_only_rules() -> None:
+    from app.services.llm.prompts import EXTRA_REQUIRED_RULES
+
+    v1_ids = {rule_id for rule_id, _ in EXTRA_REQUIRED_RULES.get("system_v1", ())}
+    assert "reference_use_only_when_it_fits" not in v1_ids
+    text = re.sub(r"\s+", " ", prompt_text("system_v1"))
+    assert "Reference material" not in text
+
+
+def test_a_v2_file_missing_an_extra_rule_fails_the_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services.llm import prompts as mod
+
+    # Remove the "use only when it fits" sentence: the rule's regex must stop
+    # matching, and the load must fail naming the rule id.
+    rule_id, pattern = mod.EXTRA_REQUIRED_RULES["system_v2"][0]
+    broken = re.sub(
+        r"- Use a passage only when[^-]*?your own words\.",
+        "- Reference passages are usually relevant; use them freely.",
+        prompt_text("system_v2"),
+    )
+    assert re.search(pattern, re.sub(r"\s+", " ", broken)) is None, "mutation removed the rule"
+    monkeypatch.setattr(mod, "prompt_text", lambda version="": broken)
+    mod.load_prompt.cache_clear()
+    try:
+        with pytest.raises(PromptError, match=rule_id):
+            mod.load_prompt("system_v2")
+    finally:
+        mod.load_prompt.cache_clear()

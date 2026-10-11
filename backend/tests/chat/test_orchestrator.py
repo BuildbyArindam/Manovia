@@ -485,7 +485,11 @@ async def test_the_retrieval_stub_adds_nothing_to_the_prompt(
 
     call = llm.last_call
     assert call is not None and call.system is not None
-    assert "Reference material" not in call.system
+    # Since system_v2 the *static* prompt explains the reference-material
+    # contract, so absence is asserted on the parts only a retrieval hit adds:
+    # the labelled block header and the bracketed passage lines.
+    assert "Reference material selected by the application" not in call.system
+    assert "\n- [" not in call.system
 
 
 async def test_retrieved_passages_are_framed_as_reference_not_as_the_user(
@@ -494,7 +498,9 @@ async def test_retrieved_passages_are_framed_as_reference_not_as_the_user(
     queries: list[str] = []
 
     class OneChunk:
-        async def retrieve(self, query: str, *, limit: int = 3) -> list[RetrievedChunk]:
+        async def retrieve(
+            self, query: str, *, limit: int = 3, language: str | None = None
+        ) -> list[RetrievedChunk]:
             queries.append(query)
             return [RetrievedChunk("c1", "Box breathing", "Breathe in for four, out for four.")]
 
@@ -513,7 +519,9 @@ async def test_a_failing_retriever_degrades_to_no_context(
     make_orchestrator: Factory, conversation: FakeConversation
 ) -> None:
     class Broken:
-        async def retrieve(self, query: str, *, limit: int = 3) -> list[RetrievedChunk]:
+        async def retrieve(
+            self, query: str, *, limit: int = 3, language: str | None = None
+        ) -> list[RetrievedChunk]:
             raise RuntimeError("vector store down")
 
     llm = FakeLLMProvider()
@@ -521,6 +529,91 @@ async def test_a_failing_retriever_degrades_to_no_context(
 
     assert llm.call_count == 1
     assert reply.metadata.response_type is ResponseType.NORMAL
+
+
+# --------------------------------------------------------------------------- #
+# Day 13: knowledge retrieval wiring                                            #
+# --------------------------------------------------------------------------- #
+
+
+async def test_retrieval_receives_the_message_language(
+    make_orchestrator: Factory, conversation: FakeConversation
+) -> None:
+    seen: list[tuple[str, str | None]] = []
+
+    class Recording:
+        async def retrieve(
+            self, query: str, *, limit: int = 3, language: str | None = None
+        ) -> list[RetrievedChunk]:
+            seen.append((query, language))
+            return []
+
+    llm = FakeLLMProvider()
+    orch = make_orchestrator(llm, retriever=Recording())
+    admitted = orch.admit(user_id=conversation.user_id, text=SAD_MESSAGE, region="IN", locale="hi")
+    await orch.respond(admitted, conversation)
+    assert seen and seen[0][1] == "hi", "retrieval filters by the turn's locale"
+
+
+async def test_retrieved_documents_reach_the_final_metadata(
+    make_orchestrator: Factory, conversation: FakeConversation
+) -> None:
+    class TwoChunks:
+        async def retrieve(
+            self, query: str, *, limit: int = 3, language: str | None = None
+        ) -> list[RetrievedChunk]:
+            return [
+                RetrievedChunk("worry-time-box", "A window for worries", "Give worries one slot."),
+                RetrievedChunk(
+                    "breathing-slow", "Slow the out-breath", "Make the out-breath long."
+                ),
+            ]
+
+    llm = FakeLLMProvider()
+    reply = await _reply(make_orchestrator(llm, retriever=TwoChunks()), conversation, SAD_MESSAGE)
+
+    ids = [d.id for d in reply.metadata.retrieved_docs]
+    assert ids == ["worry-time-box", "breathing-slow"]
+    assert reply.metadata.retrieved_ids == ids  # lockstep by construction
+    assert reply.metadata.retrieved_docs[0].title == "A window for worries"
+    # The prompt labels each passage with the same ids the metadata carries.
+    call = llm.last_call
+    assert call is not None and call.system is not None
+    assert "[worry-time-box]" in call.system and "[breathing-slow]" in call.system
+
+
+async def test_template_replies_carry_no_document_cards(
+    make_orchestrator: Factory, conversation: FakeConversation
+) -> None:
+    class Willing:
+        async def retrieve(
+            self, query: str, *, limit: int = 3, language: str | None = None
+        ) -> list[RetrievedChunk]:
+            return [RetrievedChunk("worry-time-box", "A window for worries", "Slot your worries.")]
+
+    llm = FakeLLMProvider()
+    # A crisis turn stops the pipeline at the pre-written template: no LLM
+    # call, and the stand-in reply must not present reference cards.
+    reply = await _reply(make_orchestrator(llm, retriever=Willing()), conversation, HIGH_MESSAGE)
+    assert llm.call_count == 0
+    assert reply.metadata.response_type is ResponseType.CRISIS
+    assert reply.metadata.retrieved_docs == []
+    assert reply.metadata.retrieved_ids == []
+
+
+async def test_a_failing_retriever_leaves_metadata_empty(
+    make_orchestrator: Factory, conversation: FakeConversation
+) -> None:
+    class Broken:
+        async def retrieve(
+            self, query: str, *, limit: int = 3, language: str | None = None
+        ) -> list[RetrievedChunk]:
+            raise RuntimeError("vector store down")
+
+    llm = FakeLLMProvider()
+    reply = await _reply(make_orchestrator(llm, retriever=Broken()), conversation, SAD_MESSAGE)
+    assert reply.metadata.retrieved_docs == []
+    assert reply.metadata.retrieved_ids == []
 
 
 # --------------------------------------------------------------------------- #
