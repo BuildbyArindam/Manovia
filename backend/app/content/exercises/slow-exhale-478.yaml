@@ -1,0 +1,88 @@
+id: slow-exhale-478
+title:
+  en: 4-7-8 style slow exhale
+  hi: 4-7-8 शैली में धीरे साँस छोड़ना
+  bn: ৪-৭-৮ ছন্দে ধীরে শ্বাস ছাড়া
+instructions_language: en
+description: Try a longer, gentle out-breath. The seven-count pause is optional.
+duration_seconds: 120
+steps:
+- id: settle
+  duration_seconds: 20
+  instruction: Find a supported position. This uses a four-seven-eight style rhythm, not a rule. Shorten
+    any count and skip the hold if you prefer.
+  cue: instruction
+- id: inhale-1
+  duration_seconds: 4
+  instruction: Breathe in softly for up to four counts. An ordinary-sized breath is enough.
+  cue: inhale
+- id: hold-in-1
+  duration_seconds: 7
+  instruction: Only if comfortable, pause for up to seven counts. Otherwise breathe normally through
+    this step; there is no need to hold.
+  cue: hold-in
+- id: exhale-1
+  duration_seconds: 8
+  instruction: Breathe out slowly for up to eight counts, only as long as feels easy. Do not push
+    air out or struggle to finish.
+  cue: exhale
+- id: inhale-2
+  duration_seconds: 4
+  instruction: Breathe in softly for up to four counts. An ordinary-sized breath is enough.
+  cue: inhale
+- id: hold-in-2
+  duration_seconds: 7
+  instruction: Only if comfortable, pause for up to seven counts. Otherwise breathe normally through
+    this step; there is no need to hold.
+  cue: hold-in
+- id: exhale-2
+  duration_seconds: 8
+  instruction: Breathe out slowly for up to eight counts, only as long as feels easy. Do not push
+    air out or struggle to finish.
+  cue: exhale
+- id: inhale-3
+  duration_seconds: 4
+  instruction: Breathe in softly for up to four counts. An ordinary-sized breath is enough.
+  cue: inhale
+- id: hold-in-3
+  duration_seconds: 7
+  instruction: Only if comfortable, pause for up to seven counts. Otherwise breathe normally through
+    this step; there is no need to hold.
+  cue: hold-in
+- id: exhale-3
+  duration_seconds: 8
+  instruction: Breathe out slowly for up to eight counts, only as long as feels easy. Do not push
+    air out or struggle to finish.
+  cue: exhale
+- id: inhale-4
+  duration_seconds: 4
+  instruction: Breathe in softly for up to four counts. An ordinary-sized breath is enough.
+  cue: inhale
+- id: hold-in-4
+  duration_seconds: 7
+  instruction: Only if comfortable, pause for up to seven counts. Otherwise breathe normally through
+    this step; there is no need to hold.
+  cue: hold-in
+- id: exhale-4
+  duration_seconds: 8
+  instruction: Breathe out slowly for up to eight counts, only as long as feels easy. Do not push
+    air out or struggle to finish.
+  cue: exhale
+- id: finish
+  duration_seconds: 24
+  instruction: Let your breathing return to its own pace. Notice any sensations; feeling unchanged
+    is also fine.
+  cue: instruction
+contraindications:
+- If breath-holding makes you dizzy, breathless, or uncomfortable, breathe normally and stop.
+- Do not practise while driving, in water, or where a pause in attention could be unsafe.
+- Skip this if paced breathing is unsuitable for you because of a breathing or heart condition.
+notes:
+- The numbers describe a style, not a dose. Shorter breaths and no holds are valid choices.
+- There is no claim that this rhythm treats anxiety, sleep difficulties, or any medical condition.
+tags:
+- breathing
+- anxiety
+- slow-exhale
+evidence_note: Some research explores slow breathing as a relaxation practice. Evidence for this exact
+  four-seven-eight pattern is limited, and it does not establish a guaranteed result for an individual.

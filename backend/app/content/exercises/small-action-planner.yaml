@@ -1,0 +1,58 @@
+id: small-action-planner
+title:
+  en: One small action planner
+  hi: एक छोटे काम की योजना
+  bn: একটি ছোট কাজের পরিকল্পনা
+instructions_language: en
+description: Pick one manageable action that fits your time and energy.
+duration_seconds: 120
+steps:
+- id: arrive
+  duration_seconds: 15
+  instruction: Notice the time, energy, and resources you have. This is not a productivity test.
+  cue: instruction
+- id: choose
+  duration_seconds: 35
+  instruction: Pick one small action, or think of your own. Choose something safe and within reach;
+    you may change your mind.
+  cue: instruction
+  choices:
+  - id: water
+    label: Fill a glass of water, if that fits my needs
+  - id: stretch
+    label: Take one comfortable stretch or change position
+  - id: contact
+    label: Send a short hello to someone I trust
+  - id: tidy
+    label: Put one item back where it belongs
+  - id: own
+    label: Choose my own small action privately
+- id: make-smaller
+  duration_seconds: 35
+  instruction: 'Make the action smaller if needed: one item, one message, or one minute. Rest can
+    be the action if that is what fits.'
+  cue: instruction
+- id: when
+  duration_seconds: 25
+  instruction: Choose a possible time or cue, such as after this exercise. You can decide not to do
+    it; this is a plan, not a commitment.
+  cue: instruction
+- id: close
+  duration_seconds: 10
+  instruction: Keep the next step manageable. Nothing is lost if you need to adjust the plan or try
+    another day.
+  cue: instruction
+contraindications:
+- Avoid actions that are unsafe, physically unsuitable, costly beyond your means, or involve contacting
+  someone unsafe.
+- If planning feels pressuring or increases distress, pause or choose rest instead.
+notes:
+- The selected action stays in this tab only and is not sent with your completion.
+- A small action is not a test of willpower, and it does not have to change your mood.
+tags:
+- behavioural-activation
+- planning
+- sadness
+evidence_note: Behavioural activation is an established approach in supported psychological care.
+  This small-action self-help planner is only one limited idea from that approach, not therapy or
+  a claim to treat depression.

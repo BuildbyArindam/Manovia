@@ -33,6 +33,7 @@ SCHEMA_TABLES = {
     "assessment_results",
     "safety_events",
     "refresh_tokens",
+    "exercise_completions",
 }
 
 
@@ -105,6 +106,7 @@ def test_upgrade_is_idempotent_and_creates_the_indexes(settings: Settings) -> No
         "ix_chat_sessions_user_id_created_at",
         "ix_messages_session_id_created_at",
         "ix_mood_entries_user_id_created_at",
+        "ix_exercise_completions_user_id_created_at",
         "ix_journal_entries_user_id_created_at",
         "ix_assessment_results_user_id_created_at",
         "ix_safety_events_user_id_created_at",

@@ -29,6 +29,9 @@ dist/
 .env.*
 !.env.example
 
+# Local verification logs, browser runtimes, and scratch artifacts
+.cache/
+
 # Model and ML caches
 .cache/huggingface/
 **/.cache/huggingface/

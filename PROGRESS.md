@@ -2,6 +2,14 @@
 
 ## Current status
 
+**Day 18 — guided exercises — is in progress.** The content/API milestone is
+built: eight strict, audio-free YAML definitions; public catalogue/detail and
+rule-based recommendations with reasons; consented completion/history endpoints
+with optional strict 1–5 ratings, associative summaries, idempotent client UUIDs,
+and Alembic `0005`. The accessible, offline-in-a-loaded-tab runner and browser
+verification follow in the next milestone. Decisions:
+[ADR 0018](docs/adr/0018-guided-exercises.md).
+
 **Day 15 — mood check-ins — is built.** `POST /api/v1/mood` records a check-in
 (valence and energy 1–5, up to three emotion tags from the nine-label taxonomy
 the analyser already speaks, up to five of eight context factors, an optional
@@ -57,11 +65,11 @@ pattern misses and untranslated nuance remain human-review risks, not a claim of
 coverage. See [Verification (Day 14)](#verification-day-14--real-command-output) for
 actual lint, test, API, memory and safety-eval results.
 
-Work is on `arena/27573d41-manovia`, the branch this Arena session is pinned to. The
-requested name `day-15-mood-check-ins` cannot be used in this session: the Arena
-session is fixed to its own branch, so all commits, the push and any pull request come
-from `arena/27573d41-manovia`. The branch is created off `main`, never touches `main`,
-and can be renamed or retargeted on GitHub if the day-named branch is wanted.
+Work for Day 18 is on **`arena/6cb19df8-manovia`**, the branch this Arena
+session is pinned to, from the supplied base `963c3ba` (Day 17 merge). The
+requested `day-18-guided-exercises` name cannot be used in this session; all
+milestone commits and pushes use the session branch, never `main`. No pull
+request will be opened or merged during the build phase.
 
 ## Completed
 
@@ -731,6 +739,37 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   - Computes `sentiment` and `emotion_scores` in memory from the plaintext and stores only numeric values in the clear when `store_emotions=true` (default), or `NULL` when the user disables emotion scoring (`store_emotions=false`).
 - `frontend/src/features/journal/` (`JournalView.tsx`, `endpoints.ts`, `markdown.ts`) ships a distraction-free editor with debounced autosave, live word count, localised prompt chips, `Free writing` / `Gratitude` / `Worry dump` template pills, an expandable "Private by default" explainer (including honest threat-model limits), client-side search in browser memory (`filterEntriesClientSide`), two-step delete confirmation, and Export-to-Markdown (`.md`).
 - Docs & ADR: [ADR 0017](docs/adr/0017-encrypted-journal-and-envelope-encryption.md) and updated [docs/privacy-and-threat-model.md](docs/privacy-and-threat-model.md).
+
+### Day 18 (session branch `arena/6cb19df8-manovia`) — guided exercises
+
+- **Milestone 1:** eight definitions in `backend/app/content/exercises/`: box breathing,
+  optional-hold 4-7-8 style slow exhale, 5-4-3-2-1 grounding, short muscle relaxation,
+  short body scan, emotion labelling, exactly two-minute worry time, and a one-small-action
+  planner. Positive integer timings sum to the duration; all include safety opt-outs,
+  tags, English audio-free instructions, translated en/hi/bn titles, and evidence limits.
+- `services/exercises/engine.py` rejects malformed, duplicate-key, unsafe-constructor,
+  extra-field, duplicate-ID, and duration-mismatched YAML. App construction validates
+  the whole catalogue; a bad file is never silently omitted. The content ships in wheels.
+- Public catalogue/detail/recommendation routes; private consented completions/history.
+  Optional ratings are strict 1–5 integers; history includes lower/unchanged/missing
+  values with associative wording. Alembic `0005` stores only content provenance and
+  numeric metadata, with account cascade and an index. Identical retries, including
+  simultaneous ones, create exactly one record; different payload/owner is a conflict.
+- Decisions: [ADR 0018](docs/adr/0018-guided-exercises.md). Runner milestone pending.
+
+## Verification (Day 18 — real command output)
+
+- Untouched baseline: `make lint` passed (ruff, 264 formatted files, mypy 215 sources,
+  frontend ESLint). `make test` eventually finished: **2,886 backend passed / 3 skipped**,
+  95% coverage; **336 frontend passed / 3 skipped**. The first 180-second tool wait
+  timed out, but the command continued; the final log was read, not the command rerun.
+- Milestone 1: targeted YAML/API/schema/migration/cascade/seed checks:
+  **153 passed in 7.25s**. `make -C backend lint` passed (ruff, 272 formatted files,
+  mypy 222 sources). `python scripts/validate_exercises.py` validated all **8** files:
+  body-scan 120s, box-breathing 120s, emotion-labelling 90s, grounding-54321 180s,
+  muscle-relaxation 180s, slow-exhale-478 120s, small-action-planner 120s, worry-time 120s.
+- Full final suites, API probe, fake-timer runner checks, reduced-motion Playwright,
+  axe results, and copy review are pending the runner milestone; not claimed as passing.
 
 ## Verification (Day 17 — real command output)
 
@@ -2140,7 +2179,17 @@ other three jobs.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
+- [0018 — Guided exercises](docs/adr/0018-guided-exercises.md): strict YAML, public content/private idempotent numeric history, auditable emotion rules, associative comparisons, local timing and explicit loaded-tab offline scope.
+
 ## Known issues
+
+### Day 18 implementation notes
+
+- English instructions only; hi/bn titles are included but need fluent human review.
+- Offline support is for an already-loaded tab. No offline reload or persistent
+  personal-data queue is promised; closing the tab loses an unsaved completion.
+- Actual mobile vibration and screen-reader speech need manual device verification.
+- PR creation/merge is deferred until the user explicitly requests wrap-up.
 
 ### Week-2 review — top five risks/debts (Day 14)
 
@@ -2585,6 +2634,14 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   nginx or Cloudflare is the case that could still batch.
 
 ## Parking lot
+
+- **(Day 18)** Qualified content review and complete hi/bn instruction translations;
+  no runtime model-generated exercise advice.
+- **(Day 18)** Offline reload/PWA support with app shell and crisis resources designed
+  together; consider a durable, encrypted, account-scoped completion queue only with
+  explicit consent and deletion semantics.
+- **(Day 18)** Completion export and per-entry deletion as part of the planned privacy
+  settings work, rather than growing today's endpoints beyond the requested scope.
 
 - Retrieval upgrades for when the corpus or traffic grows: a cross-encoder reranker over the FAISS shortlist, hybrid BM25 + vector scoring, and per-document "related reading" links derived from the co-retrieval graph.
 - A knowledge browsing surface in the UI (the `/knowledge` endpoints already serve it), and "Learn more" cards rendered from `retrieved_docs` (frontend work; the backend contract is shipped and tested).

@@ -37,6 +37,8 @@ SEEDED_COUNTS = {
     # Session state, not user content: rows appear only when the demo account
     # signs in through POST /api/v1/auth/login (Day 4).
     "refresh_tokens": 0,
+    # Day 18 is intentionally not added to the historical demo fixture.
+    "exercise_completions": 0,
 }
 
 

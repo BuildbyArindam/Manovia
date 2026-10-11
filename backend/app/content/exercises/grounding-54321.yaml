@@ -1,0 +1,57 @@
+id: grounding-54321
+title:
+  en: 5-4-3-2-1 grounding
+  hi: 5-4-3-2-1 इंद्रिय अभ्यास
+  bn: ৫-৪-৩-২-১ ইন্দ্রিয় অনুশীলন
+instructions_language: en
+description: Use what you can notice around you as an outside anchor.
+duration_seconds: 180
+steps:
+- id: arrive
+  duration_seconds: 15
+  instruction: Stay somewhere safe. Look around with your eyes open if comfortable. You may replace
+    any sense with another one.
+  cue: instruction
+- id: five-see
+  duration_seconds: 35
+  instruction: Name five things you can see, silently or aloud. If sight is not available, name five
+    sounds or points of contact.
+  cue: instruction
+- id: four-feel
+  duration_seconds: 35
+  instruction: Notice four things you can feel, such as your chair or clothing. Avoid anything painful
+    or uncomfortable.
+  cue: instruction
+- id: three-hear
+  duration_seconds: 35
+  instruction: Notice three sounds. If hearing is not available, notice three shapes, textures, or
+    points of contact instead.
+  cue: instruction
+- id: two-smell
+  duration_seconds: 25
+  instruction: Notice two smells, or remember two familiar smells. Do not seek out or inhale any substance;
+    another sense is fine.
+  cue: instruction
+- id: one-taste
+  duration_seconds: 20
+  instruction: Notice one ordinary taste already in your mouth, or think of a familiar taste. You
+    do not need to eat or drink anything.
+  cue: instruction
+- id: close
+  duration_seconds: 15
+  instruction: Look around again. You have not failed if your feelings are still here. Choose whether
+    to continue your day or take another pause.
+  cue: instruction
+contraindications:
+- If any sensation or memory feels overwhelming, leave it out, choose a neutral object, or stop.
+- Do not move into an unsafe place, touch a hot or sharp object, or consume anything to complete a
+  count.
+notes:
+- The counts are optional. Accessible substitutions are part of the exercise, not a lesser version.
+- You may think the names rather than speaking them; no audio is needed.
+tags:
+- grounding
+- anxiety
+- outside-focus
+evidence_note: Sensory grounding is a common coping practice for directing attention to the present.
+  Evidence for this specific countdown is limited; it is not a treatment and may not suit everyone.

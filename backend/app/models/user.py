@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from app.models.assessment import AssessmentResult
     from app.models.chat_session import ChatSession
     from app.models.consent import Consent
+    from app.models.exercise_completion import ExerciseCompletion
     from app.models.journal import JournalEntry
     from app.models.mood import MoodEntry
     from app.models.safety_event import SafetyEvent
@@ -62,6 +63,10 @@ class User(Base, CreatedAtMixin):
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
     safety_events: Mapped[list[SafetyEvent]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    exercise_completions: Mapped[list[ExerciseCompletion]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
 

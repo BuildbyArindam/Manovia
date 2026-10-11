@@ -18,6 +18,7 @@ from app.db.repos import (
     SafetyEventRepository,
     UserRepository,
 )
+from app.db.repos.exercises import ExerciseRepository
 from app.models import (
     AssessmentBand,
     AssessmentInstrument,
@@ -29,6 +30,7 @@ from app.models import (
     SafetyEventSource,
     User,
 )
+from app.services.exercises.engine import get_catalog
 
 CHILD_TABLES = (
     "consents",
@@ -37,6 +39,7 @@ CHILD_TABLES = (
     "mood_entries",
     "journal_entries",
     "assessment_results",
+    "exercise_completions",
     "safety_events",
 )
 
@@ -76,6 +79,15 @@ async def seed_everything(session: AsyncSession, user_id: uuid.UUID) -> uuid.UUI
         risk_level=RiskLevel.ELEVATED,
         source=SafetyEventSource.RULES,
     )
+    exercise = get_catalog().get("body-scan")
+    assert exercise is not None
+    await ExerciseRepository(session).record(
+        completion_id=uuid.uuid4(),
+        user_id=user_id,
+        exercise=exercise,
+        pre_rating=2,
+        post_rating=3,
+    )
     await session.commit()
     return chat.id
 
@@ -86,6 +98,7 @@ async def test_hard_delete_of_a_user_removes_every_child_row(
     await seed_everything(session, demo_user.id)
     assert await count(session, "messages") == 3
     assert await count(session, "safety_events") == 1
+    assert await count(session, "exercise_completions") == 1
 
     assert await UserRepository(session).hard_delete(demo_user.id) is True
     await session.commit()
