@@ -17,7 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repos import MoodRepository
 from app.db.repos.users import UserRepository
+from app.models.assessment import AssessmentResult
 from app.models.cbt import CBTRecord
+from app.models.enums import AssessmentBand, AssessmentInstrument
+from app.models.user_settings import UserSettings
 
 ROOT = "/api/v1/plan"
 SETTINGS = "/api/v1/settings"
@@ -314,3 +317,79 @@ async def test_action_on_non_uuid_path_is_a_validation_error(
     response = await client.post(f"{ROOT}/not-a-uuid/{action}", headers=headers)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+async def test_item9_older_than_fourteen_days_does_not_make_the_plan_support_only(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """The item-9 window is finite: an old answer stops steering the plan."""
+    user_id, headers = await guest(client)
+    answers = {f"phq9_{index}": 0 for index in range(1, 10)}
+    answers["phq9_9"] = 2
+    session.add(
+        AssessmentResult(
+            user_id=user_id,
+            instrument=AssessmentInstrument.PHQ9,
+            answers=answers,
+            total=2,
+            band=AssessmentBand.MINIMAL,
+            created_at=datetime.now(UTC) - timedelta(days=20),
+        )
+    )
+    await session.commit()
+
+    body = (await client.get(f"{ROOT}/today", headers=headers)).json()
+    assert body["support_only"] is False
+    assert all(item["kind"] != "support" for item in body["items"])
+
+
+async def test_missing_safety_block_degrades_to_no_flag(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If the instrument content loses its safety block, the planner degrades.
+
+    Belt-and-braces: shipped content always has the block, but a planner that
+    crashed on its absence would be worse than one that simply stops flagging.
+    """
+    from app.api.v1 import plan as plan_api
+    from app.services.assessments.instruments import get_instruments
+
+    stripped = {
+        name: definition.model_copy(update={"safety": None})
+        for name, definition in get_instruments().items()
+    }
+    monkeypatch.setattr(plan_api, "get_instruments", lambda: stripped)
+
+    _, headers = await guest(client)
+    answers = {f"phq9_{index}": 0 for index in range(1, 10)}
+    answers["phq9_9"] = 1
+    submit = await client.post(
+        "/api/v1/assessments/phq9/submit", headers=headers, json={"answers": answers}
+    )
+    assert submit.status_code == 201, "the screening itself is unaffected"
+
+    body = (await client.get(f"{ROOT}/today", headers=headers)).json()
+    assert body["support_only"] is False
+    assert all(item["kind"] != "support" for item in body["items"])
+
+
+async def test_unparseable_quiet_hours_in_the_database_degrade_to_defaults(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """Writes validate quiet-hour bounds, but reads must not trust them."""
+    user_id, headers = await guest(client)
+    session.add(
+        UserSettings(
+            user_id=user_id,
+            quiet_hours_enabled=True,
+            quiet_start="99:99",
+            quiet_end="07:00",
+        )
+    )
+    await session.commit()
+
+    response = await client.get(f"{ROOT}/today", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body["items"], list)
+    assert body["support_only"] is False
