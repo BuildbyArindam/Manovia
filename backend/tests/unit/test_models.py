@@ -9,6 +9,7 @@ from app.models import (
     Base,
     ChatSession,
     Consent,
+    ExerciseCompletion,
     JournalEntry,
     Message,
     MoodEntry,
@@ -37,6 +38,7 @@ def test_every_model_is_registered_with_a_table() -> None:
         "assessment_results",
         "safety_events",
         "refresh_tokens",
+        "exercise_completions",
     }
 
 
@@ -194,6 +196,7 @@ def test_history_is_indexed_by_user_and_time() -> None:
         "messages": ("session_id", "created_at"),
         "mood_entries": ("user_id", "created_at"),
         "journal_entries": ("user_id", "created_at"),
+        "exercise_completions": ("user_id", "created_at"),
         "assessment_results": ("user_id", "created_at"),
         "safety_events": ("user_id", "created_at"),
     }
@@ -216,6 +219,9 @@ def test_enum_and_range_constraints_are_named_and_present() -> None:
         "ck_messages_risk_level_between_0_and_3",
         "ck_mood_entries_valence_between_1_and_5",
         "ck_mood_entries_energy_between_1_and_5",
+        "ck_exercise_completions_duration_seconds_between_1_and_1800",
+        "ck_exercise_completions_pre_rating_between_1_and_5",
+        "ck_exercise_completions_post_rating_between_1_and_5",
         "ck_assessment_results_instrument_in_assessmentinstrument",
         "ck_assessment_results_band_in_assessmentband",
         "ck_safety_events_source_in_safetyeventsource",
@@ -250,3 +256,21 @@ def test_enum_columns_are_bounded_varchar_on_both_dialects() -> None:
         for dialect in (_dialect("sqlite"), _dialect("postgresql")):
             ddl = str(sa.schema.CreateTable(table).compile(dialect=dialect))
             assert f"{column} VARCHAR(" in ddl, f"{name}.{column} is not a bounded VARCHAR"
+
+
+def test_exercise_completions_have_no_personal_text_or_planner_answer() -> None:
+    assert _columns(ExerciseCompletion) == {
+        "id",
+        "user_id",
+        "exercise_id",
+        "exercise_title",
+        "definition_sha256",
+        "duration_seconds",
+        "pre_rating",
+        "post_rating",
+        "created_at",
+    }
+    assert ExerciseCompletion.__table__.c.pre_rating.nullable
+    assert ExerciseCompletion.__table__.c.post_rating.nullable
+    assert isinstance(ExerciseCompletion.__table__.c.pre_rating.type, sa.SmallInteger)
+    assert isinstance(ExerciseCompletion.__table__.c.post_rating.type, sa.SmallInteger)

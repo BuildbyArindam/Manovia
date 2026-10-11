@@ -1,0 +1,47 @@
+id: worry-time
+title:
+  en: Two-minute worry time
+  hi: दो मिनट का चिंता समय
+  bn: দুই মিনিটের দুশ্চিন্তার সময়
+instructions_language: en
+description: Give one worry a short boundary, then decide whether there is a next step.
+duration_seconds: 120
+steps:
+- id: arrive
+  duration_seconds: 15
+  instruction: Settle somewhere safe. Choose one everyday worry, not an immediate safety concern.
+    You can keep it in mind or use your own paper.
+  cue: instruction
+- id: name
+  duration_seconds: 30
+  instruction: Name the worry in one short sentence. You do not need to solve it or list every possible
+    outcome.
+  cue: instruction
+- id: sort
+  duration_seconds: 30
+  instruction: 'Ask: Is there one part I can act on soon, or is this uncertain and outside my control?
+    Not knowing is also an answer.'
+  cue: instruction
+- id: one-step
+  duration_seconds: 30
+  instruction: If there is a manageable action, name one small step and a time to revisit it. Otherwise,
+    note that the uncertainty can wait for now.
+  cue: instruction
+- id: close
+  duration_seconds: 15
+  instruction: Close the paper or leave the thought here for now. Look around and return to an ordinary
+    activity. The worry may still be present.
+  cue: instruction
+contraindications:
+- Do not postpone getting help for an immediate danger, urgent practical problem, or safety concern.
+- If this becomes repetitive rumination or increases distress, stop and choose an outside-focus activity
+  instead.
+notes:
+- Two minutes is a boundary, not a deadline for solving a problem.
+- Manovia does not store the worry you think of. You can stop before the timer ends.
+tags:
+- worry
+- planning
+- attention
+evidence_note: Scheduled worry time appears in some cognitive-behavioural self-help approaches. This
+  brief adaptation is not the same as a full programme, and it offers no guarantee of less worry.

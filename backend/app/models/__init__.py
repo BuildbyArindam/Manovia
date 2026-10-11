@@ -15,6 +15,7 @@ from app.models.enums import (
     SafetyEventCategory,
     SafetyEventSource,
 )
+from app.models.exercise_completion import ExerciseCompletion
 from app.models.journal import JournalEntry
 from app.models.message import Message
 from app.models.mood import MoodEntry
@@ -30,6 +31,7 @@ __all__ = [
     "ChatSession",
     "Consent",
     "ConsentKind",
+    "ExerciseCompletion",
     "JournalEntry",
     "Message",
     "MessageRole",

@@ -6,7 +6,17 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "coverage", "node_modules", "*.tsbuildinfo"],
+    // Generated Playwright reports contain vendored/minified third-party JS,
+    // not application source. Running e2e must not make the next lint fail.
+    ignores: [
+      "dist",
+      "coverage",
+      "node_modules",
+      "*.tsbuildinfo",
+      "playwright-report/**",
+      "test-results/**",
+      ".playwright/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

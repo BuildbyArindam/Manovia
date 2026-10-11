@@ -18,6 +18,12 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.E2E_PORT ?? 5173);
 const API_URL = process.env.E2E_API_URL ?? "http://127.0.0.1:8000";
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+// Optional preinstalled Chromium for restricted/offline sandboxes. Default
+// remains Playwright's normal installed browser; no check is skipped.
+const chromiumArgs: unknown = JSON.parse(process.env.PLAYWRIGHT_CHROMIUM_ARGS ?? "[]");
+if (!Array.isArray(chromiumArgs) || !chromiumArgs.every((arg) => typeof arg === "string")) {
+  throw new Error("PLAYWRIGHT_CHROMIUM_ARGS must be a JSON array of strings");
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -32,6 +38,10 @@ export default defineConfig({
 
   use: {
     baseURL: BASE_URL,
+    launchOptions: {
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+      args: chromiumArgs,
+    },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",

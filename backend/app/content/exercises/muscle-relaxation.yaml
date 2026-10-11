@@ -1,0 +1,52 @@
+id: muscle-relaxation
+title:
+  en: Short muscle relaxation
+  hi: छोटा मांसपेशी विश्राम अभ्यास
+  bn: সংক্ষিপ্ত পেশি শিথিল করার অনুশীলন
+instructions_language: en
+description: Notice gentle tension and release in a few muscle groups.
+duration_seconds: 180
+steps:
+- id: settle
+  duration_seconds: 20
+  instruction: Sit or lie with support. Keep breathing normally. You may simply notice each area without
+    tensing it.
+  cue: instruction
+- id: hands
+  duration_seconds: 30
+  instruction: If comfortable, gently curl your hands for about three seconds, then let go. Notice
+    the difference and rest; there is no need to repeat.
+  cue: instruction
+- id: shoulders
+  duration_seconds: 30
+  instruction: Gently raise your shoulders a little for about three seconds, then let them settle.
+    Skip this if your neck or shoulders are sore.
+  cue: instruction
+- id: face
+  duration_seconds: 30
+  instruction: If comfortable, gently press your lips together for about three seconds, then soften.
+    Keep your jaw loose; do not clench your teeth.
+  cue: instruction
+- id: legs
+  duration_seconds: 30
+  instruction: Gently press your feet into their support for about three seconds, then release. Skip
+    injured or painful areas.
+  cue: instruction
+- id: rest
+  duration_seconds: 40
+  instruction: Rest without trying to make your body feel a certain way. Let your breathing stay ordinary.
+    Move only when you feel ready.
+  cue: instruction
+contraindications:
+- Skip any injured, painful, cramping, or recently operated area. Stop if tensing hurts.
+- If tension or inward attention feels overwhelming, notice a neutral object in the room instead.
+notes:
+- Use gentle effort, not maximum force, and never hold your breath while tensing.
+- Noticing without tensing is a complete option. This short version is not medical rehabilitation.
+tags:
+- muscle-relaxation
+- anger
+- body-awareness
+evidence_note: Progressive muscle relaxation has been studied as a relaxation skill, often in longer
+  programmes. Those findings do not guarantee a result from this brief adaptation or replace individual
+  care.

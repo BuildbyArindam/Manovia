@@ -1,0 +1,57 @@
+id: body-scan
+title:
+  en: Short body scan
+  hi: छोटा शरीर अवलोकन अभ्यास
+  bn: সংক্ষিপ্ত শরীর লক্ষ করার অনুশীলন
+instructions_language: en
+description: Briefly notice sensations, with no need to change them.
+duration_seconds: 120
+steps:
+- id: settle
+  duration_seconds: 15
+  instruction: Choose a supported position. Keep your eyes open if you wish. There is no need to relax
+    on command.
+  cue: instruction
+- id: feet
+  duration_seconds: 20
+  instruction: Notice your feet or their support. Sensation, numbness, or no clear sensation are all
+    things you may notice.
+  cue: instruction
+- id: legs
+  duration_seconds: 20
+  instruction: Let your attention move to your legs. Do not search for problems; simply notice or
+    skip this area.
+  cue: instruction
+- id: middle
+  duration_seconds: 20
+  instruction: Notice your middle body and the contact of clothing or support. Leave your breathing
+    alone; an outside object is also an option.
+  cue: instruction
+- id: upper
+  duration_seconds: 20
+  instruction: Notice your hands, arms, and shoulders. You do not need to release tension or make
+    anything happen.
+  cue: instruction
+- id: face
+  duration_seconds: 15
+  instruction: Notice your face or the air nearby. Leave any sensation alone, or look at a neutral
+    object instead.
+  cue: instruction
+- id: close
+  duration_seconds: 10
+  instruction: Look around the room. Decide what feels manageable next, without judging what you noticed.
+  cue: instruction
+contraindications:
+- If inward attention brings distress, painful memories, or a feeling of disconnection, open your
+  eyes, look around, and stop.
+- Skip uncomfortable areas. You may choose grounding instead.
+notes:
+- This is noticing, not checking for illness or diagnosing sensations.
+- Eyes open, seated, and outside-focus versions are welcome.
+tags:
+- body-awareness
+- mindfulness
+- attention
+evidence_note: Body scans are part of some mindfulness programmes. Programme-level research does not
+  tell us what this two-minute version will do for any one person; it is not a diagnostic or treatment
+  tool.

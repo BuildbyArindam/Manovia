@@ -197,6 +197,50 @@
   }
 }
 
+@layer components {
+  /* Decorative only: the instruction and countdown remain outside this SVG. */
+  .exercise-orb {
+    transform-origin: center;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+  }
+
+  .exercise-orb-inhale {
+    animation-name: exercise-inhale;
+  }
+
+  .exercise-orb-exhale {
+    animation-name: exercise-exhale;
+  }
+
+  .exercise-orb-hold-in {
+    transform: scale(1);
+  }
+
+  .exercise-orb-hold-out,
+  .exercise-orb-instruction {
+    transform: scale(0.55);
+  }
+
+  @keyframes exercise-inhale {
+    from {
+      transform: scale(0.55);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes exercise-exhale {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(0.55);
+    }
+  }
+}
+
 @layer utilities {
   /* Motion is decoration here, never information: honour the OS setting by
      collapsing animations and transitions to (effectively) zero. The same

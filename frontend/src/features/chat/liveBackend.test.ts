@@ -120,7 +120,9 @@ describeLive("the shipped chat client against a live backend", () => {
     expect(outcome.metadata.emotion).toBeNull();
     expect(outcome.reply).not.toContain(FAKE_LLM_MARKER);
     const streamed = events
-      .filter((event): event is Extract<ChatStreamEvent, { type: "token" }> => event.type === "token")
+      .filter(
+        (event): event is Extract<ChatStreamEvent, { type: "token" }> => event.type === "token",
+      )
       .map((event) => event.text)
       .join("");
     expect(streamed).not.toContain(FAKE_LLM_MARKER);

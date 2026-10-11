@@ -1,0 +1,135 @@
+id: box-breathing
+title:
+  en: Box breathing
+  hi: चार गिनती वाली साँस
+  bn: চার গুনে শ্বাস নেওয়া
+instructions_language: en
+description: Follow a gentle four-part rhythm, with optional pauses.
+duration_seconds: 120
+steps:
+- id: settle
+  duration_seconds: 16
+  instruction: Sit with support or stand somewhere steady. Let your breathing be ordinary. The counts
+    are a guide, not a target.
+  cue: instruction
+- id: inhale-1
+  duration_seconds: 4
+  instruction: Breathe in gently for up to four counts. Take a normal-sized breath; do not force it.
+  cue: inhale
+- id: hold-in-1
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. If holding feels uncomfortable, breathe
+    normally instead.
+  cue: hold-in
+- id: exhale-1
+  duration_seconds: 4
+  instruction: Breathe out gently for up to four counts. A shorter, comfortable breath is fine.
+  cue: exhale
+- id: hold-out-1
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. Breathe normally whenever you need to.
+  cue: hold-out
+- id: inhale-2
+  duration_seconds: 4
+  instruction: Breathe in gently for up to four counts. Take a normal-sized breath; do not force it.
+  cue: inhale
+- id: hold-in-2
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. If holding feels uncomfortable, breathe
+    normally instead.
+  cue: hold-in
+- id: exhale-2
+  duration_seconds: 4
+  instruction: Breathe out gently for up to four counts. A shorter, comfortable breath is fine.
+  cue: exhale
+- id: hold-out-2
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. Breathe normally whenever you need to.
+  cue: hold-out
+- id: inhale-3
+  duration_seconds: 4
+  instruction: Breathe in gently for up to four counts. Take a normal-sized breath; do not force it.
+  cue: inhale
+- id: hold-in-3
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. If holding feels uncomfortable, breathe
+    normally instead.
+  cue: hold-in
+- id: exhale-3
+  duration_seconds: 4
+  instruction: Breathe out gently for up to four counts. A shorter, comfortable breath is fine.
+  cue: exhale
+- id: hold-out-3
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. Breathe normally whenever you need to.
+  cue: hold-out
+- id: inhale-4
+  duration_seconds: 4
+  instruction: Breathe in gently for up to four counts. Take a normal-sized breath; do not force it.
+  cue: inhale
+- id: hold-in-4
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. If holding feels uncomfortable, breathe
+    normally instead.
+  cue: hold-in
+- id: exhale-4
+  duration_seconds: 4
+  instruction: Breathe out gently for up to four counts. A shorter, comfortable breath is fine.
+  cue: exhale
+- id: hold-out-4
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. Breathe normally whenever you need to.
+  cue: hold-out
+- id: inhale-5
+  duration_seconds: 4
+  instruction: Breathe in gently for up to four counts. Take a normal-sized breath; do not force it.
+  cue: inhale
+- id: hold-in-5
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. If holding feels uncomfortable, breathe
+    normally instead.
+  cue: hold-in
+- id: exhale-5
+  duration_seconds: 4
+  instruction: Breathe out gently for up to four counts. A shorter, comfortable breath is fine.
+  cue: exhale
+- id: hold-out-5
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. Breathe normally whenever you need to.
+  cue: hold-out
+- id: inhale-6
+  duration_seconds: 4
+  instruction: Breathe in gently for up to four counts. Take a normal-sized breath; do not force it.
+  cue: inhale
+- id: hold-in-6
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. If holding feels uncomfortable, breathe
+    normally instead.
+  cue: hold-in
+- id: exhale-6
+  duration_seconds: 4
+  instruction: Breathe out gently for up to four counts. A shorter, comfortable breath is fine.
+  cue: exhale
+- id: hold-out-6
+  duration_seconds: 4
+  instruction: If comfortable, pause for up to four counts. Breathe normally whenever you need to.
+  cue: hold-out
+- id: finish
+  duration_seconds: 8
+  instruction: Return to your usual breathing. Notice how you feel without expecting a particular
+    result.
+  cue: instruction
+contraindications:
+- If breath-holding makes you dizzy, breathless, or uncomfortable, breathe normally and stop.
+- Do not practise while driving, in water, or where a pause in attention could be unsafe.
+- If a breathing or heart condition makes paced breathing unsuitable for you, skip this and choose
+  an outside-focus exercise.
+notes:
+- No breath needs to be deep or forced. You can ignore the counts, skip every hold, pause, or stop.
+- Keep your eyes open if that feels steadier. This is self-help, not treatment.
+tags:
+- breathing
+- anxiety
+- attention
+evidence_note: Paced breathing is used in some relaxation practices. Research varies by method and
+  person; this short exercise is not a treatment or a promise of relief.

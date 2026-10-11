@@ -1,0 +1,40 @@
+id: emotion-labelling
+title:
+  en: 'Name it to tame it: labelling'
+  hi: भावना को नाम देना
+  bn: অনুভূতির নাম দেওয়া
+instructions_language: en
+description: Try a tentative name for a feeling, without needing to change it.
+duration_seconds: 90
+steps:
+- id: arrive
+  duration_seconds: 15
+  instruction: Pause somewhere safe. Notice what is here. You do not need a perfect description.
+  cue: instruction
+- id: name
+  duration_seconds: 30
+  instruction: 'Try a tentative label: I notice worry, sadness, anger, or something else. You can
+    also say I am not sure.'
+  cue: instruction
+- id: make-space
+  duration_seconds: 30
+  instruction: 'Try: I am noticing a feeling, not a definition of who I am. Let the label be a description
+    rather than a judgement.'
+  cue: instruction
+- id: close
+  duration_seconds: 15
+  instruction: Choose one ordinary next step, or simply stop here. The feeling does not have to disappear.
+  cue: instruction
+contraindications:
+- If naming a feeling makes it more intense, leave the label aside and notice a neutral object, or
+  stop.
+- Do not push yourself to revisit an upsetting event to find a label.
+notes:
+- Name it to tame it is a nickname, not a promise that naming will remove a feeling.
+- Keep the words in your mind or on your own paper. Manovia does not collect the label you think of.
+tags:
+- labelling
+- emotion-awareness
+- outside-focus
+evidence_note: Affect labelling has been explored in laboratory research. Everyday responses vary;
+  a brief label is not a treatment and does not guarantee that a feeling will become less intense.

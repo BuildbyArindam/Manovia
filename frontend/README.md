@@ -24,17 +24,17 @@ origin.
 
 ## Commands
 
-| Command                 | What it does                                            |
-| ----------------------- | ------------------------------------------------------- |
-| `npm run dev`           | Vite dev server with HMR                                |
-| `npm run build`         | Type-check, then a production build into `dist/`        |
-| `npm run preview`       | Serve the production build                              |
-| `npm run typecheck`     | `tsc --noEmit` (strict, plus `noUncheckedIndexedAccess`) |
-| `npm run lint`          | ESLint (flat config, typescript-eslint, react-hooks)    |
-| `npm test`              | Vitest in watch mode                                    |
-| `npm run test:run`      | Vitest, once                                            |
-| `npm run format`        | Prettier, write                                         |
-| `npm run format:check`  | Prettier, check                                         |
+| Command                | What it does                                             |
+| ---------------------- | -------------------------------------------------------- |
+| `npm run dev`          | Vite dev server with HMR                                 |
+| `npm run build`        | Type-check, then a production build into `dist/`         |
+| `npm run preview`      | Serve the production build                               |
+| `npm run typecheck`    | `tsc --noEmit` (strict, plus `noUncheckedIndexedAccess`) |
+| `npm run lint`         | ESLint (flat config, typescript-eslint, react-hooks)     |
+| `npm test`             | Vitest in watch mode                                     |
+| `npm run test:run`     | Vitest, once                                             |
+| `npm run format`       | Prettier, write                                          |
+| `npm run format:check` | Prettier, check                                          |
 
 ## Layout
 
@@ -68,7 +68,7 @@ These are asserted in the test suite, not left to review:
 - a real focus trap in every dialog, with focus restored to whatever opened it;
 - the helpline dialog reachable by keyboard from every route;
 - contrast ≥ 4.5:1 for text and ≥ 3:1 for UI boundaries, in both themes;
-- `prefers-reduced-motion` honoured in CSS *and* in JS
+- `prefers-reduced-motion` honoured in CSS _and_ in JS
   (`usePrefersReducedMotion`);
 - step changes in onboarding move focus to the new heading and are announced in
   a polite live region.

@@ -16,6 +16,7 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.crisis import router as crisis_router
 from app.api.v1.dev import router as dev_router
+from app.api.v1.exercises import router as exercises_router
 from app.api.v1.health import router as health_router
 from app.api.v1.insights import router as insights_router
 from app.api.v1.journal import router as journal_router
@@ -37,6 +38,7 @@ from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
 from app.services.chat import ChatOrchestrator, build_session_service
+from app.services.exercises.engine import get_catalog
 from app.services.nlp import build_analyzer
 
 API_TITLE = "Manovia API"
@@ -51,6 +53,8 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     """
     app_settings = settings or get_settings()
     configure_logging(app_settings.log_level)
+    # Reject the whole exercise catalogue before serving any request.
+    get_catalog()
 
     # Field encryption is process-wide configuration, decided once at startup.
     # Without a key the data layer refuses to write plaintext (see
@@ -132,6 +136,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(knowledge_router, prefix="/api/v1")
     app.include_router(mood_router, prefix="/api/v1")
+    app.include_router(exercises_router, prefix="/api/v1")
     app.include_router(journal_router, prefix="/api/v1")
     app.include_router(insights_router, prefix="/api/v1")
     app.include_router(crisis_router, prefix="/api/v1")

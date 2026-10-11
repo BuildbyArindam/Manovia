@@ -106,7 +106,9 @@ test("guest onboarding, then a message that streams back a reply", async ({ page
   await expect(page.getByTestId("chat-view")).toHaveAttribute("data-softened", "false");
 });
 
-test("a HIGH-risk message shows the CrisisCard and the model is not heard from", async ({ page }) => {
+test("a HIGH-risk message shows the CrisisCard and the model is not heard from", async ({
+  page,
+}) => {
   await send(page, ORDINARY);
   await expect(page.getByTestId("assistant-text").first()).toContainText(FAKE_LLM_MARKER);
 
@@ -197,6 +199,8 @@ test("a dropped connection mid-stream says so instead of pretending", async ({ p
   await send(page, ORDINARY);
 
   await expect(page.getByTestId("chat-error")).toContainText("The reply was cut off");
-  await expect(page.getByTestId("assistant-bubble").last()).toContainText("That sounds really hard.");
+  await expect(page.getByTestId("assistant-bubble").last()).toContainText(
+    "That sounds really hard.",
+  );
   await expect(page.getByTestId("chat-error-action")).toHaveText("Ask again");
 });
