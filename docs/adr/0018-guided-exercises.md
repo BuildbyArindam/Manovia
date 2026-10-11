@@ -36,7 +36,7 @@ mood metadata, shared motion preferences, and an Exercises navigation placeholde
    account-deletion cascade. Store the public title, definition hash and duration
    at completion so later content edits do not rewrite history. This is not a
    server-verified adherence or effectiveness score.
-4. **Association, not causation.** History says what the person *reported*
+4. **Association, not causation.** History says what the person _reported_
    before/after, including lower or unchanged ratings without failure wording.
    Each comparison explicitly says it is not proof the exercise caused a change.
    Missing ratings never become zero; a comparison requires both.
@@ -46,11 +46,15 @@ mood metadata, shared motion preferences, and an Exercises navigation placeholde
    Every result carries a “why this?” reason and no promise of benefit. A manual
    choice never claims to be a diagnosis. The selection is not persisted.
 6. **The runner owns timing locally.** CSS/SVG is decoration; the text and countdown
-   are authoritative. Pause/resume freezes active time; a hidden tab auto-pauses
-   rather than silently carrying a person through holds. Announce steps, not every
-   timer tick. Reduced motion (or an explicit text-only choice) removes the animated
-   SVG and uses a static countdown. Haptic cues are off by default, feature-detected,
-   optional, and independent of the text.
+   are authoritative. A 250ms interval consumes guarded `Date.now()` deltas (not a
+   monotonic clock). Manual pause includes the fraction since the last tick. A hidden
+   tab, negative clock delta, or delayed tick over two seconds pauses instead of
+   silently skipping instructions/holds; returning never auto-resumes. CSS phase
+   classes are literal so Tailwind retains them; a component-only generated-CSS test
+   and browser computed-animation check protect that boundary. Announce steps, not
+   every timer tick. Reduced motion (or an explicit text-only choice) removes the
+   animated SVG and uses a static countdown. Haptic cues are off by default,
+   feature-detected, optional, and independent of the text.
 7. **Offline means the already-loaded tab.** Fetch the entire catalogue once, then
    run without network access. A failed completion save stays only in React memory,
    clearly marked unsaved, with an explicit same-UUID retry. No personal rating or

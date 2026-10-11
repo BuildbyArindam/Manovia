@@ -2,13 +2,19 @@
 
 ## Current status
 
-**Day 18 — guided exercises — is in progress.** The content/API milestone is
-built: eight strict, audio-free YAML definitions; public catalogue/detail and
-rule-based recommendations with reasons; consented completion/history endpoints
-with optional strict 1–5 ratings, associative summaries, idempotent client UUIDs,
-and Alembic `0005`. The accessible, offline-in-a-loaded-tab runner and browser
-verification follow in the next milestone. Decisions:
-[ADR 0018](docs/adr/0018-guided-exercises.md).
+**Day 18 — guided exercises — build and verification are complete. Wrap-up awaits
+an explicit instruction.** Eight validated, audio-free YAML definitions; public
+catalogue/detail and explainable emotion rules; consented idempotent numeric
+completion/history APIs; Alembic `0005`; and the accessible local runner are built.
+The runner has pause/resume, visible SVG/text cues, reduced-motion/static countdown,
+optional default-off haptics, optional pre/post ratings, associative history,
+and explicit same-UUID loaded-tab offline retry. Final root `make test` passed:
+**3023 backend / 379 frontend**, 3 optional skips each; root lint, typecheck,
+formatting and production build passed. Real Chromium: **6/6 cases**, with **0
+violations in all 8 runner axe scans**. No PR or merge has been performed.
+Decisions: [ADR 0018](docs/adr/0018-guided-exercises.md); detailed PASS/FAIL table,
+API values, copy review and manual limits:
+[Day 18 verification](docs/verification/day18-guided-exercises.md).
 
 **Day 15 — mood check-ins — is built.** `POST /api/v1/mood` records a check-in
 (valence and energy 1–5, up to three emotion tags from the nine-label taxonomy
@@ -69,7 +75,8 @@ Work for Day 18 is on **`arena/6cb19df8-manovia`**, the branch this Arena
 session is pinned to, from the supplied base `963c3ba` (Day 17 merge). The
 requested `day-18-guided-exercises` name cannot be used in this session; all
 milestone commits and pushes use the session branch, never `main`. No pull
-request will be opened or merged during the build phase.
+request will be opened until explicit wrap-up instruction; then exactly one
+`Day 18: Guided exercises` PR. **Do not merge it.**
 
 ## Completed
 
@@ -755,7 +762,30 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   values with associative wording. Alembic `0005` stores only content provenance and
   numeric metadata, with account cascade and an index. Identical retries, including
   simultaneous ones, create exactly one record; different payload/owner is a conflict.
-- Decisions: [ADR 0018](docs/adr/0018-guided-exercises.md). Runner milestone pending.
+- **Milestone 2:** frontend catalogue, manual emotion/intensity suggestions with visible
+  “Why this?”, safe ID/ref-based runner entry/return focus, local step state machine,
+  pause/resume with fractional active time, hidden/delayed-tab pause without auto-resume,
+  CSS/SVG breathing decoration and visible text, OS/explicit static countdown, optional
+  default-off haptics, step-only screen-reader announcements, and finish focus.
+- Optional before/after face ratings and lower/unchanged/unrated associative history;
+  action-planner choice stays tab-local and never enters a completion payload.
+  A failed save is explicitly unsaved in React memory. First-save UUID/ratings are
+  frozen; an explicit identical-payload retry creates only one history record.
+- Browser verification fixed a real Tailwind purge defect using literal breathing-phase
+  classes. Component-only generated-CSS and real computed-animation regressions retained;
+  native keyboard ratings and viewport-safe navigation locators replace driver mistakes.
+  Generated browser reports are excluded from lint/formatting, not source or e2e tests;
+  lint-scope regression proves that boundary. Three pre-existing formatting differences
+  were corrected without behaviour changes.
+- **Milestone 3:** final root lint/tests/build, eight-file duration validation, real API
+  ratings/history/replay probe, all-six real-browser rerun with zero-violation axe scans,
+  and complete engineering copy review. Detailed evidence:
+  [Day 18 verification](docs/verification/day18-guided-exercises.md).
+- Checkpoints committed and pushed: content/API `9373ff1`, verification hygiene
+  `83b72b0`, frontend/browser `2e60b8f`. Final evidence is recorded here and in the
+  linked verification report.
+- Decisions: [ADR 0018](docs/adr/0018-guided-exercises.md). Build and verification done;
+  no additional Day 19 feature, PR or merge introduced.
 
 ## Verification (Day 18 — real command output)
 
@@ -768,8 +798,30 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   mypy 222 sources). `python scripts/validate_exercises.py` validated all **8** files:
   body-scan 120s, box-breathing 120s, emotion-labelling 90s, grounding-54321 180s,
   muscle-relaxation 180s, slow-exhale-478 120s, small-action-planner 120s, worry-time 120s.
-- Full final suites, API probe, fake-timer runner checks, reduced-motion Playwright,
-  axe results, and copy review are pending the runner milestone; not claimed as passing.
+- The initial baseline command's tool wait timed out, so its original root exit status
+  was unavailable. It is not used as final success evidence. The final post-fix root
+  run below completed with **exit 0**.
+
+| Check | Verdict | Actual evidence |
+| --- | --- | --- |
+| `PATH="$PWD/.venv/bin:$PATH" make test` | **PASS** | Exit 0; backend **3023 passed / 3 skipped / 32 warnings**, **95% coverage**, 229.13s; frontend **379 passed / 3 skipped**, 40 passed files / 1 skipped, 53.54s. |
+| Root `make lint`; frontend typecheck, Prettier and production build | **PASS** | All exit 0; Ruff clean, 272 formatted files, mypy 222 sources; ESLint/typecheck/format clean; Vite 754 modules, 6.49s. |
+| YAML validation | **PASS** | All eight duration sums above match; malformed, unsafe, duplicate and schema-invalid fixtures rejected in the real tests. |
+| Real API ratings → history | **PASS** | Fresh consented guest: POST 201 with **pre 2 / post 4 / change +2**; GET 200, exactly one row and noncausal summary; same replay 200, mismatch 409; missing auth/consent 401/403. |
+| Runner fake timers, privacy, motion, haptics, rules/history and CSS regressions | **PASS** | **43 focused tests**, 7 files; fractional pause, exact finish, background/delay pause; every interval handle cleared, 0 timers, finished stable for another 60s; no personal prose/planner payload. |
+| Real Playwright reduced motion and offline retry | **PASS** | **6/6 cases**, both 360×640 and 1280×800; all 26 real box-breathing steps, static countdown/text, keyboard ratings, API/history, loaded-tab offline/identical-payload retry. |
+| Real runner axe | **PASS** | **8 scans** (ready/paused × light/dark × both viewports), **0 violations** each. |
+| Copy review | **PASS (engineering)** | Read every YAML title/step/choice/contraindication/note/evidence note and interface/rule/history copy; no diagnosis/treatment or outcome guarantees. Not qualified human sign-off. |
+| Actual screen-reader speech / physical vibration | **NOT RUN (manual)** | Test-covered DOM/default-off/blocked paths; physical device and speech checks remain the short manual checklist below. |
+
+- Initial browser result was **5 failed / 1 passed**. Root fixes and regression tests,
+  not weakened assertions: Tailwind phase-class purge, desktop accessible-link locator,
+  hidden native-radio keyboard driver. Full rerun **6 passed (1.3m), exit 0**.
+- Skips: two optional NLP-extra modules and one optional Anthropic-extra backend test;
+  three opt-in live-backend chat tests on the frontend. **No Day 18 test is skipped.**
+- Session-local raw logs are ignored under `.cache/day18-*`; the durable record,
+  stored API row, initial failures/fixes, copy review and re-run commands are in
+  [Day 18 verification](docs/verification/day18-guided-exercises.md).
 
 ## Verification (Day 17 — real command output)
 
@@ -2188,8 +2240,16 @@ other three jobs.
 - English instructions only; hi/bn titles are included but need fluent human review.
 - Offline support is for an already-loaded tab. No offline reload or persistent
   personal-data queue is promised; closing the tab loses an unsaved completion.
-- Actual mobile vibration and screen-reader speech need manual device verification.
-- PR creation/merge is deferred until the user explicitly requests wrap-up.
+- Actual mobile vibration and screen-reader speech need manual device verification:
+  supported Android/iOS fallback and OS reduced motion; NVDA/Firefox + VoiceOver/Safari
+  step-only announcements, pause/resume, ratings and entry/finish/return focus.
+- Engineering copy review passed; qualified self-help/safety review and fluent hi/bn
+  title review remain required before wider use. No clinical effectiveness is asserted.
+- Full tests emit inherited scikit-learn artifact/runtime version warnings (1.5.2 vs
+  1.9.1) and existing mood React `act` warnings. They are visible, not suppressed;
+  no Day 18 model changes were made.
+- PR creation waits for explicit wrap-up instruction. Exactly one PR when asked,
+  titled `Day 18: Guided exercises`; **never merge it**.
 
 ### Week-2 review — top five risks/debts (Day 14)
 
@@ -2642,6 +2702,11 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   explicit consent and deletion semantics.
 - **(Day 18)** Completion export and per-entry deletion as part of the planned privacy
   settings work, rather than growing today's endpoints beyond the requested scope.
+- **(Day 18 verification)** Pin/rebuild the inherited safety artifact against the
+  approved scikit-learn runtime and clear existing mood `act` test warnings in a
+  dedicated follow-up; no model or unrelated behaviour changes today.
+- **(Deferred next-day candidate)** PHQ-9/GAD-7 self-check workflow from the previous
+  next-steps section is not Day 18 scope. Confirm the Day 19 brief before implementing it.
 
 - Retrieval upgrades for when the corpus or traffic grows: a cross-encoder reranker over the FAISS shortlist, hybrid BM25 + vector scoring, and per-document "related reading" links derived from the co-retrieval graph.
 - A knowledge browsing surface in the UI (the `/knowledge` endpoints already serve it), and "Learn more" cards rendered from `retrieved_docs` (frontend work; the backend contract is shipped and tested).
@@ -2778,8 +2843,12 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 17 parking lot)** Automatic background pagination or IndexedDB encrypted session cache for client-side journal search when a user has more than 50 entries.
 - **(Day 17 parking lot)** Full-account data export (ZIP of Markdown journal entries + CSV mood check-ins) for Day 20 privacy settings.
 
-## Next steps (Day 18 — first three)
+## Next steps (Day 19 — proposed first three)
 
-1. **Build the PHQ-9 and GAD-7 self-check assessment service (`backend/app/services/assessments/`).** Load validated question sets and severity bands (`minimal`, `mild`, `moderate`, `moderately_severe`, `severe`) with mandatory "not a diagnosis" framing, encrypt per-item answers in `assessment_results.answers_encrypted`, and screen item 9 of PHQ-9 (thoughts of self-harm) through the crisis escalator immediately.
+The earlier self-check next steps are carried forward as a **candidate**, not an
+approved Day 19 brief. Await the user's Day 18 wrap-up instruction (one PR, no
+merge) and confirm Day 19 scope before writing any of this code.
+
+1. **Confirm the Day 19 brief, then build the PHQ-9 and GAD-7 self-check assessment service (`backend/app/services/assessments/`).** Load validated question sets and severity bands (`minimal`, `mild`, `moderate`, `moderately_severe`, `severe`) with mandatory "not a diagnosis" framing, encrypt per-item answers in `assessment_results.answers_encrypted`, and screen item 9 of PHQ-9 (thoughts of self-harm) through the crisis escalator immediately.
 2. **Expose assessment endpoints (`/api/v1/assessments`) and wire safety escalation.** Provide endpoints to fetch localised instrument questions, submit an assessment (returning the band, non-clinical interpretation, and verified crisis resources whenever PHQ-9 item 9 > 0 or total band is severe), and list historical band scores.
 3. **Build the step-by-step frontend self-check flow and longitudinal band chart.** Render one question at a time with keyboard navigation, clear disclaimer copy before and after completion, immediate `CrisisCard` display when self-harm thoughts are indicated, and a calm score-band history view.
