@@ -2,7 +2,31 @@
 
 ## Current status
 
-**Day 14 — output guard, saved-chat memory and Week-2 review — is built.** The real
+**Day 15 — mood check-ins — is built.** `POST /api/v1/mood` records a check-in
+(valence and energy 1–5, up to three emotion tags from the nine-label taxonomy
+the analyser already speaks, up to five of eight context factors, an optional
+note), screens the note with the rules engine and the Day 9 ensemble *before*
+storing it, and returns the region's helplines plus the pre-written crisis
+message when the note reads HIGH or worse — while still saving the check-in that
+needed them. If the safety engine itself cannot run, the request fails closed
+(`503`) and nothing is written. `GET /api/v1/mood?from&to&tz` reads a local
+range (a date-only bound is a whole local day and `to` includes it),
+`GET /api/v1/mood/streak` returns the forgiving streak, and `DELETE
+/api/v1/mood/{id}` removes one check-in and reports the streak that is left.
+The streak is counted in the caller's IANA timezone with today still open, one
+missed day in any rolling seven bridged as a "freeze", and a gap that yields
+"welcome back" rather than a lost number — there is no `broken` state to render.
+The frontend `features/mood/` surface is a ten-second check-in (five labelled
+faces, an energy slider whose value is a word, tag chips, an optional note, one
+small optional action on the confirmation) with a device-local reminder
+preference and copy that is reviewed as copy. Decisions:
+[ADR 0015](docs/adr/0015-mood-check-ins.md); real command output in
+[Verification (Day 15)](#verification-day-15--real-command-output).
+`scripts/verify_day15.py` re-checks the whole contract end to end — 82/82 checks
+on the run recorded there — including raw-SQL proof that the note is ciphertext
+at rest.
+
+**Day 14 — output guard, saved-chat memory and Week-2 review — remains built.** The real
 orchestrator now uses the deterministic YAML-backed `RuleBasedOutputGuard` before
 persistence or delivery, retries a rejected draft exactly once with a stricter system
 instruction, then uses a pre-written locale-specific safe template. Production SSE buffers
@@ -33,9 +57,11 @@ pattern misses and untranslated nuance remain human-review risks, not a claim of
 coverage. See [Verification (Day 14)](#verification-day-14--real-command-output) for
 actual lint, test, API, memory and safety-eval results.
 
-Work is on `arena/9b5a10c8-manovia`, the branch this Arena session is pinned to. The
-requested name `day-14-output-guard-conversation-memory` cannot be used in this session;
-all changes, the push and any pull request must come from the pinned branch.
+Work is on `arena/27573d41-manovia`, the branch this Arena session is pinned to. The
+requested name `day-15-mood-check-ins` cannot be used in this session: the Arena
+session is fixed to its own branch, so all commits, the push and any pull request come
+from `arena/27573d41-manovia`. The branch is created off `main`, never touches `main`,
+and can be renamed or retargeted on GitHub if the day-named branch is wanted.
 
 ## Completed
 
@@ -680,6 +706,16 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
 - Saved chats get a deterministic extractive rolling summary built from redacted user text only, capped at about 300 tokens and encrypted in `chat_sessions`. `GET /api/v1/chat/memory` displays summaries; `DELETE` clears them and tombstones existing sessions so they cannot be reconstructed. Ephemeral chats never create memory. The Settings page has the “What Manovia remembers” panel and delete confirmation.
 - Alembic revision `0003` adds the event category constraint and encrypted memory/tombstone columns. Decisions: [ADR 0014](docs/adr/0014-output-guard-and-conversation-memory.md). Safety design and architecture docs updated.
 - Verification results and top-five Week-2 risks are in [Verification (Day 14)](#verification-day-14--real-command-output) and [Known issues](#known-issues). **Human review remains outstanding** for output patterns and Hindi/Bengali safe replies.
+
+### Day 15 (session branch `arena/27573d41-manovia`) — mood check-ins
+
+- `backend/app/services/mood/taxonomy.py` is the closed vocabulary: the nine emotion tags re-exported from `app.services.nlp.base.EMOTIONS` (a check-in choosing "sadness" and a chat message analysed as "sadness" mean the same thing), eight situational factors (sleep, study, work, family, friends, health, money, weather), `MAX_EMOTIONS=3`, `MAX_FACTORS=5`, `NOTE_MAX_CHARS=1000`, and the `1..5` scale bounds shared by the API, the validation messages and the frontend.
+- `backend/app/services/mood/streak.py` is the forgiving streak as a pure function over local dates: today is still open, one missed day in any rolling seven is bridged (each empty day buys its own freeze, so two in a row are a reset), the state enum is `never`/`today`/`open`/`returning` with no `broken`, and `load_timezone` treats a missing zone as UTC (reported) while an unknown one raises.
+- `backend/app/api/v1/mood.py` adds the four routes. A note of HIGH or IMMINENT returns crisis metadata shaped like `POST /crisis/assess` (level, stored tier, categories, rationale codes, rendered message, emergency number, regional helplines) plus a metadata-only `safety_events` row, and the check-in is stored regardless; an engine failure is `503 safety_unavailable` with nothing written. Consent is `terms` + `privacy` (no model is in this path). Ranges resolve date-only bounds to local midnights, a `to` day is inclusive, and another account's entry is a `404`, not a `403`.
+- `frontend/src/features/mood/` is the ten-second surface: `MoodFace` (a differently shaped 24×24 SVG per point), `FaceScale` (a real radio group with visually hidden inputs as label siblings), `EnergyScale` (a labelled range input with `aria-valuetext` words and five visible words under the track), `TagChips` (checkbox chips with a live cap line and the cap disabling the rest), `MoodCheckInForm`, `MoodConfirmation` (focus moves to the saved heading; the shared `CrisisCard` renders the backend's pre-written help verbatim when the note needed it), `StreakIndicator`, `ReminderPreference` (device-local, `manovia.mood.reminder.v1`), and `MoodHistory` (two-step delete). Nothing is colour-only.
+- Copy is a reviewable artefact: every sentence lives in `frontend/src/features/mood/copy.ts`, `copy.test.ts` fails on guilt-inducing or cheerleading wording, and `scripts/verify_day15.py` scans it again with an independent blocklist and prints all 95 sentences and 30 vocabulary words for a human read.
+- Tests: `tests/unit/test_mood_streak.py` (29 cases incl. midnight in Kolkata, both New York DST transitions, a leap day, a year boundary and naive timestamps), `tests/unit/test_mood_taxonomy.py`, `tests/unit/test_mood_request_schema.py`, `tests/integration/test_mood_api.py` (42 cases: bounds, caps, ownership, encryption at rest, the crisis path, streak states), and on the frontend `taxonomy/storage/suggestedAction/copy/endpoints` plus `components/controls.test.tsx`, `keyboardOnly.test.tsx` (a whole check-in with Tab/Space/arrows/typing/Enter) and `MoodView.test.tsx`. `frontend/e2e/mood.spec.ts` drives the same path in a real browser.
+- Decisions: [ADR 0015](docs/adr/0015-mood-check-ins.md). Verification results, including the two frontend defects this milestone found and fixed, are in [Verification (Day 15)](#verification-day-15--real-command-output).
 
 ## Verification (Day 12 — real command output)
 
@@ -1928,6 +1964,135 @@ service or human review not available in this environment; it is not counted as 
   `FakeLLMProvider`. Manual review by native Hindi/Bengali speakers and a clinician
   remains required before relying on the new copy/patterns.
 
+## Verification (Day 15 — real command output)
+
+Environment: Python 3.11.2 (`backend/.venv`, `pip install -e ".[dev]"`), Node
+22.22.3, SQLite test database, `SAFETY_ML_ENABLED=false` for the script, local
+Fakes only. No PostgreSQL server, no hosted provider and **no browser binary**
+was available, and `npx playwright install chromium` fails in this sandbox
+(`Failed to download Chrome for Testing … Download failure`), so the Playwright
+keyboard spec could not be executed; what was run instead is stated in the row.
+
+### PASS/FAIL table (Message 2 checklist)
+
+| # | check | result |
+| --- | --- | --- |
+| 1 | `make test` — backend + frontend suites, with the mood tests incl. timezone/streak edge cases | **PASS** — `PATH=backend/.venv/bin:$PATH make test`: backend **2612 passed, 3 skipped** (148s with coverage, total **95 %**), frontend **250 passed, 3 skipped** (30.85s); the Day 15 mood files alone **102 passed** (`test_mood_streak.py` 29 cases incl. midnight in Kolkata, both New York DST transitions, leap day, year boundary; `test_mood_taxonomy.py`; `test_mood_request_schema.py`; `test_mood_api.py` 42 cases). Frontend **250 passed, 3 skipped** in 26 files (+1 skipped file). Lint: Ruff check + format (250 files) clean, mypy (202 files) clean, ESLint clean, `tsc --noEmit` clean. |
+| 2 | A script creating ten check-ins with explicit timestamps + range queries | **PASS** — `backend/.venv/bin/python scripts/verify_day15.py` → **82/82 checks**. Ten check-ins across seven local days; date-only `to` is inclusive; timestamp bounds are exact instants; the API's local-day partition matches a partition computed independently from the timestamps in both `Asia/Kolkata` and `America/New_York` (and the two differ, which is the point). |
+| 3 | The HIGH test phrase in a note confirms crisis resources in the response metadata | **PASS** — `POST /api/v1/mood` with `"I want to kill myself"` → **201**; `crisis.level=high`, `stored_level=crisis`, `check_in_saved=true`, a rendered message ("What you're feeling is real…"), **3 helplines** (1 callable `tel:112`, the rest web resources) each with `last_verified`, rationale codes with no prose; the check-in is **stored anyway** and returned to its owner; exactly **one** `safety_events` row (`risk_level=crisis`, `source=rules`, `category=NULL`) and the table has no text column at all. An ordinary note produces `crisis=null`. With the engine forced to fail, the write is a **503 `safety_unavailable`** and nothing is stored. |
+| 4 | A database check that the note is encrypted at rest | **PASS** — the raw `note_encrypted` column is **164 bytes of ciphertext** for a 56-byte note, the plaintext appears in **none** of the 29 scanned mood rows (8 columns each) nor in any safety event, and the owner still reads their own note back through the API. A second account sees nothing of the first account's rows and gets a **404** when deleting them (a made-up id gives the same 404). |
+| 5 | Frontend vitest + a Playwright keyboard-only full check-in | **PASS (vitest) / NOT RUN (Playwright)** — vitest **250 passed, 3 skipped**; `keyboardOnly.test.tsx` completes a whole check-in with Tab, Space, arrows, typing and Enter only, then asserts the exact payload (valence 4, energy 2, `emotions: [joy, sadness]`, `factors: [sleep]`, the note, the device timezone), the focused `role="status"` confirmation, one small action and the entry appearing in the history. `frontend/e2e/mood.spec.ts` drives the same path with no mouse clicks **in a real browser**, and could not be run here (see the environment note and the manual checklist below); the spec itself parses — `npx playwright test --list e2e/mood.spec.ts` → **6 tests in 1 file** (3 specs × mobile 360x640 and desktop 1280x800). |
+| 6 | Every mood user-facing string printed and scanned for guilt-inducing / toxic-positivity wording | **PASS** — **95 sentences + 30 vocabulary words** printed by the script from the frontend source itself (`frontend/scripts/mood-copy-dump.ts`). No guilt phrase, no cheerleading phrase, no judgmental vocabulary word. The first run flagged the emotion label **"Shame"**; that was the scanner being too blunt — an emotion a person may name is not the app shaming them — so the vocabulary is now scanned with a judgment list (lazy/failure/weak/broken/…) and the sentences with the guilt/cheerleading lists. |
+
+### Fixed roots, not weakened checks
+
+- **The energy slider had no accessible name.** `EnergyScale` rendered a
+  `<fieldset><legend>` around the range input, which reads correctly to a human but
+  is not a label: jest-axe reported *"Form elements must have labels"* and
+  *"Only title used to generate label"* for `#mood-energy`. It now renders a real
+  `<label htmlFor>` (the fieldset was removed), and `controls.test.tsx` asserts the
+  slider is reachable by name and tabbable. No assertion was relaxed.
+- **The scale fallback was typed as possibly undefined.** `valencePoint`/`energyPoint`
+  fell back to `VALENCE_POINTS[2]`/`ENERGY_POINTS[2]`, which `noUncheckedIndexedAccess`
+  correctly refuses to call safe. The middle points are now explicit constants, and
+  `taxonomy.test.ts` pins that they match the middle of each list.
+  ([`taxonomy.test.ts`](frontend/src/features/mood/taxonomy.test.ts) asserts the
+  constants equal the middle of each list, not merely that they hold the value 3.)
+- **The verification script itself had four wrong expectations**, all fixed in the
+  script rather than hidden: the New York range check now computes the expected
+  partition from the timestamps instead of guessing counts; the midnight case asserts
+  the state the pinned clock actually implies; helpline reachability accepts a web
+  resource (not every line is a phone number); and the guilt scan no longer treats
+  the emotion vocabulary as app copy.
+
+### The secrets scan: what it caught, and why the branch was rewritten
+
+The first CI run on pull request #19 failed exactly one job —
+**`Secrets scan — gitleaks`** (`Leaks detected, see job summary for details`);
+backend, frontend and the dependency audit all passed.
+
+The finding was `generic-api-key` at `scripts/verify_day15.py:192`: a hard-coded
+signing-key literal for the throwaway in-process test server — a *fake* value, and
+deliberately so, but the scanner cannot tell a fake from a real one (which is the
+whole point of the scanner). The value is not repeated in this document: quoting
+it here would re-introduce exactly the line the check rejects. The job's log, its SARIF artifact and its job summary all live on
+hosts this sandbox cannot reach, so the finding was read through the API instead:
+a temporary workflow ran the same gitleaks binary over the same commit range and
+emitted each hit as a check-run annotation (rule, file, line, secret length and a
+three-character masked prefix — never the value), which `gh api
+…/check-runs/{id}/annotations` does return. That workflow is not in the branch.
+
+`gitleaks detect` scans **every commit in the range**, not the final tree, so a
+follow-up "remove the literal" commit would have kept failing forever: the commit
+that adds a secret keeps adding it. The Day 15 commits were therefore rewritten
+with `git filter-branch` (`023dfab..HEAD`, branch-only, then
+`git push --force-with-lease`) so the literal exists in no commit at all, and the
+signing key is generated at run time (`secrets.token_urlsafe(48)`) — the same
+treatment the Fernet key one line below already had.
+
+The identical string also sat in three files that are already on `main`
+(`scripts/verify_day11.py`, `backend/tests/conftest.py`,
+`backend/tests/unit/test_tokens.py`, the last two with slightly different but
+equally secret-shaped values). None of them fails today — gitleaks only reads the
+lines a commit *adds* — but each is a trip-wire for the next pull request that
+touches those lines. All three now generate their value at run time in a separate
+commit: `backend/tests/conftest.py` mints a fresh signing secret per test, exactly
+as its neighbouring line already does for the field cipher, and `test_tokens.py`
+does the same for its two seeded secrets. That is the honest fix for a *fake*
+secret: do not write something that looks like a credential, because the scanner
+is right to flag it and a human reviewer cannot tell the difference either.
+
+`git grep` for the three literals in the working tree now returns nothing, and
+`backend/tests/unit/test_tokens.py` plus the full backend suite
+(**2612 passed, 3 skipped**) passed with generated values.
+
+**Result:** after the rewrite and the generated-value fix, the same job on the same
+pull request is **green** (`Secrets scan — gitleaks` → success), together with the
+other three jobs.
+
+### Covered by which test, and the one jsdom cannot do
+
+- Bounds: `valence`/`energy` outside 1–5 are `422`; a fourth emotion, a sixth
+  factor, an unknown tag and a >1000-character note are all `422` with a field
+  pointer; a blank note is stored as no note. (`test_mood_api.py`,
+  `test_mood_request_schema.py`.)
+- Timezone: midnight either side (Kolkata), the 23-hour spring-forward day and the
+  25-hour fall-back day (New York), a naive timestamp read as UTC, a missing zone
+  reported as a UTC fallback, and an unknown zone as `422 invalid_timezone`.
+  (`test_mood_streak.py`, `test_mood_api.py`, and the script.)
+- Forgiving streak: yesterday-only is `open`; one missed day is bridged; two in a row
+  are `returning` with the best run still reported; a second freeze becomes available
+  once the window has moved on; duplicates on one day count once; a year-long gap does
+  not resurrect freezes. (`test_mood_streak.py`.)
+- **Not covered in jsdom:** arrow-key stepping on `<input type="range">` is not
+  implemented by jsdom, so the jsdom test drives a `change` event (what the browser
+  fires) and asserts the `aria-valuetext` word; the arrow-key behaviour itself is in
+  the Playwright spec. This is the one place where the automated pass is weaker than
+  the manual checklist below.
+
+### Needs a human, not this sandbox
+
+1. **Run the browser suite on a machine with Chromium:** `cd frontend && npm run
+   test:e2e -- mood.spec.ts` (with the backend running). It checks, with no mouse:
+   Tab into the radio group → Space → three arrow presses reaches "Good"; the energy
+   slider steps with `←` and its `aria-valuetext` word changes; Space toggles chips
+   and the cap disables the fourth; the note types; Enter saves; focus lands on the
+   "Saved." heading; the streak line never contains "broken"/"lost"/"missed"; a HIGH
+   note shows the crisis card with a `tel:` link and still lists the note in the
+   history; the reminder survives a reload.
+2. **Read the copy as a person would** (the script prints all 95 sentences). The
+   automated scan can find a blocked word; it cannot tell whether a sentence lands
+   wrong. Hindi and Bengali translations do not exist yet — the crisis copy is
+   localised, the mood UI copy is English only.
+3. **Check the crisis card on a real phone** for tap-target size and the `tel:`/`sms:`
+   behaviour, and confirm that the helpline shown for the user's region is the one a
+   local reviewer would expect (the region comes from the account; guests get
+   `DEFAULT`).
+4. **Decide the product question the code cannot:** whether "one missed day in any
+   rolling seven is bridged" is the right forgiveness rule for this audience. It is
+   a hard-coded product rule (`app/services/mood/streak.py`) precisely so it is
+   reviewable, not configurable.
+
 ## Decisions (ADR index)
 
 - [0001 — Monorepo and stack](docs/adr/0001-monorepo-and-stack.md): FastAPI + Pydantic v2, SQLAlchemy 2 + Alembic + PostgreSQL, React + Vite + TypeScript + Tailwind, provider-abstracted LLM integrations with offline fakes, Docker for local orchestration.
@@ -1944,6 +2109,7 @@ service or human review not available in this environment; it is not counted as 
 - [0012 — The chat UI: reading a stream, and staying calm while doing it](docs/adr/0012-chat-ui.md): `fetch` + `ReadableStream` because `EventSource` can do neither a POST nor an `Authorization` header, with a chunk-boundary-safe SSE parser of its own; an interrupted stream keeps its words, says it was cut off, and never resumes; `final.reply` is authoritative when `replaced`; **one polite live region per turn** (the visible text is `aria-hidden` while streaming so a screen reader hears one sentence, not every token); a crisis reply renders the pre-written card verbatim and sets a page-wide `data-softened` flag; auto-scroll follows only a reader already at the bottom; ephemeral by default with the save toggle as `store_chat` surfacing (and it applies to the *next* session, which the copy admits); eight plain-language failure kinds where the backend's own curated sentence wins; the emotion hint opt-in and off; and Enter-does-not-send while an IME is composing, for the two Indic languages this product exists to serve.
 - [0013 — Knowledge base and retrieval (RAG): grounding the companion in curated self-help](docs/adr/0013-knowledge-retrieval-rag.md): below-threshold means *no reference at all* (an irrelevant card is a broken promise; a missing one is nothing); FAISS flat-IP + JSON sidecar instead of a database at 40-doc scale; a corpus-fitted TF-IDF embedder persisted with the store as the offline default because raw feature hashing measured unusably, with `embedder.json` making the store the source of truth for its own vector space and `auto` upgrading to the multilingual model when the network exists; idempotent ingest via a manifest signature over embedder *configuration* + chunker version + content hashes (the up-to-date path never fits); measured quality levers (stopwords + `min_df=2`, BM25-style feature capping, title anchoring) behind a recommended 0.12 tfidf floor biased toward recall because the v2 prompt tells the model to ignore references that do not fit; the redacted query and the turn's locale are the only things retrieval sees, and every failure degrades to "no reference material"; prompt v2 carries the reference contract as three machine-checked rules; ids flow from prompt lines to `retrieved_docs`/`retrieved_ids` (lockstep-validated) so the UI's "Learn more" card and the model's mention trace to the same document; template replies carry no cards; and the corpus ships `reviewed: false` under a human safety-review checklist.
 - [0014 — Deterministic output guard and saved-chat memory](docs/adr/0014-output-guard-and-conversation-memory.md): compiled YAML output categories, one stricter retry then local safe template, full-response buffering for SSE, category-only `llm_output` audit events, and extractive redacted-user-only memory encrypted per saved chat with a deletion tombstone.
+- [0015 — Mood check-ins: a ten-second form, a screened note, and a streak that cannot be broken by a bad week](docs/adr/0015-mood-check-ins.md): two bounded scales and closed vocabularies with unknown tags as a field-naming `422` (never a silent drop); the optional note is screened by the rules engine + Day 9 ensemble **before** it is stored, and a HIGH/IMMINENT note returns the `crisis` metadata shaped like `POST /crisis/assess` plus a metadata-only `safety_events` row **while the check-in is still saved**, with a fail-closed `503` when the engine cannot run; mood needs `terms` + `privacy` and deliberately not `ai_disclosure` because no model is in this path; the streak is counted in the caller's IANA timezone with today still open, one missed day per rolling seven bridged (each empty day buys its own freeze), a reset that is only ever a count and never a welcome, and a state enum with no `broken`; local midnights (not `+24h`) define a day so DST days are 23 or 25 hours; one clock seam stamps the row and decides "today" together; the streak query projects timestamps only; another account's id is a `404` and there is no id-addressed read; the streak returns numbers while every sentence lives in one reviewable frontend copy module scanned by both a unit test and an independent verification script; and the suggested action is a deterministic mapping that never quotes a score.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
@@ -1979,6 +2145,41 @@ before the corresponding behaviour is trusted outside synthetic tests.
    suite uses SQLite and process-local ephemeral sessions/rate limits; it does not
    validate PostgreSQL or multi-worker locking. The Settings test is jsdom, not a
    real browser, and the existing Playwright run still needs a machine with Chromium.
+
+### Day 15 implementation notes
+
+- **The mood timezone is per request, not per account.** `users` has no timezone
+  column, so `tz` is sent by the client on every call and an unknown name is a
+  `422`. A device that sends the wrong zone gets a streak for the wrong calendar;
+  the response exposes `timezone` and `timezone_fallback_used`, and a user-level
+  timezone (or a device default with an explicit override) is the follow-up.
+- **The note is screened by the rules engine and the Day 9 ML backstop**, so a
+  quotation, fiction or a worry about somebody else is classified by the same
+  escalation policy as chat. The third-person handling was written for chat turns;
+  a note like "my brother keeps saying he wants to die" gets the supporter card, and
+  that judgement is inherited rather than re-derived for mood. It deserves a review
+  pass with the same clinical lens as the chat patterns.
+- **No reminder is sent.** The preference is device-local (`localStorage`) and the
+  copy says so; notifications, a service worker and scheduling are not built.
+- **The score line format (`valence`, `energy`) is deliberately not surfaced as a
+  number anywhere in the UI.** If a future trend chart shows averages, that is a new
+  product decision with its own copy review — a chart is where "your average mood is
+  2.4" could appear.
+- Frontend prettier `format:check` still reports the three pre-existing untouched
+  files recorded under Day 14; the Day 15 frontend files are formatted.
+- **The pre-commit gitleaks hook could not be run in this sandbox.** `.pre-commit-config.yaml`
+  pins `gitleaks` v8.24.3, and the hook is the intended local defence — but
+  `pre-commit` is not installed here, the hook builds with Go, and no Go toolchain
+  (or gitleaks binary) can be fetched from the hosts this sandbox reaches. The
+  CI job was the first thing to see the finding. Running `pre-commit run gitleaks
+  --all-files` on a developer machine is the check that would have caught it before
+  the push.
+- **`main`'s history still contains the old fake literal** (`git log -S` will find
+  it in the pre-rewrite commits of `backend/tests/conftest.py` and
+  `scripts/verify_day11.py`). It is a fake key for a throwaway server, so nothing
+  needs rotating, and no pull request sees it (only added lines are scanned);
+  a full-history scan (`gitleaks detect --all`) will still report it. Clearing it
+  means rewriting `main`, which is a coordinated decision, not a drive-by fix.
 
 ### Day 14 implementation notes
 
@@ -2351,7 +2552,6 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   nginx or Cloudflare is the case that could still batch.
 
 ## Parking lot
-## Parking lot
 
 - Retrieval upgrades for when the corpus or traffic grows: a cross-encoder reranker over the FAISS shortlist, hybrid BM25 + vector scoring, and per-document "related reading" links derived from the co-retrieval graph.
 - A knowledge browsing surface in the UI (the `/knowledge` endpoints already serve it), and "Learn more" cards rendered from `retrieved_docs` (frontend work; the backend contract is shipped and tested).
@@ -2467,6 +2667,19 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 14 parking lot)** Consider an LLM-judge second pass only after a clinician-reviewed
   adversarial corpus and a measured false-positive/false-negative comparison; the
   deterministic output guard must remain the mandatory floor.
+- **(Day 15 parking lot)** A mood trend surface: a small chart of the last four
+  weeks that shows *patterns* ("sleep shows up on low-energy days") without ever
+  turning a check-in into a score, plus a per-week summary the person can ignore.
+- **(Day 15 parking lot)** A user-level timezone (schema column plus a device default
+  it remembers) so the streak no longer depends on each client sending `tz`.
+- **(Day 15 parking lot)** Reminder delivery: a service worker + Notification
+  permission, or a scheduled email/push — behind an explicit opt-in, with the copy
+  reviewed first (a missed reminder must never nag).
+- **(Day 15 parking lot)** A "streak freeze" affordance the person can see: today a
+  bridged day is invisible until it happens, so the UI cannot say "you have one to
+  spend" — only "one quiet day is fine".
+- **(Day 15 parking lot)** Export/delete-all for check-ins (the note is their words;
+  account deletion already cascades, but a downloadable copy is not offered).
 - **(Day 14 parking lot)** Provider-specific tokenization for the 300-token memory cap,
   and per-session deletion/re-enable controls if product research asks for more than
   the current account-wide “delete existing memories” action.
