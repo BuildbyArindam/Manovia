@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.api.v1.assessments import router as assessments_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.cbt import router as cbt_router
 from app.api.v1.chat import router as chat_router
@@ -140,6 +141,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(exercises_router, prefix="/api/v1")
     app.include_router(journal_router, prefix="/api/v1")
     app.include_router(cbt_router, prefix="/api/v1")
+    app.include_router(assessments_router, prefix="/api/v1")
     app.include_router(insights_router, prefix="/api/v1")
     app.include_router(crisis_router, prefix="/api/v1")
     if not app_settings.is_production:
