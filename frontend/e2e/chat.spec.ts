@@ -64,6 +64,11 @@ async function completeGuestOnboarding(page: Page): Promise<void> {
   // 5: how to start.
   await page.getByRole("button", { name: "Continue as a guest" }).click();
 
+  // Day 21: onboarding now lands on the home screen, not on chat. Wait for the
+  // guest session to settle there, then navigate to the surface this spec is
+  // about.
+  await expect(page.getByTestId("home-page")).toBeVisible();
+  await page.goto("/chat");
   await expect(page.getByRole("heading", { level: 1, name: "Chat" })).toBeVisible();
 }
 

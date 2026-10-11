@@ -9,7 +9,17 @@ A privacy-first, safety-first mental wellbeing self-help companion—not therapy
 
 ## Features
 
-Day 1 was repository scaffolding; Day 2 added the FastAPI backend skeleton (configuration, structured logging with log redaction, request IDs, security headers, a consistent error envelope, and health/readiness endpoints); Days 3–4 added the data layer and authentication; Day 5 added the React frontend skeleton (design tokens, the app shell with its two navigations, the onboarding gate, the crisis helpline dialog, and the typed API client). Product features — starting with the chat surface and the crisis rules that must run before any model call — arrive with their safety requirements and tests in later milestones.
+- **Supportive chat** — a safety-first chat surface. Deterministic crisis rules run *before* any model call; high-risk messages get a pre-written support reply and helpline resources, never a generation. Everything else flows through PII redaction, curated retrieval, a provider chain (Anthropic / Ollama / canned local fallback), and a whole-reply output guard before anything is persisted or shown ([ADR 0011](docs/adr/0011-chat-orchestrator.md)).
+- **Safety evaluation** — rules-first + ML crisis detection with an ensemble, an offline eval set, and `evals/run_safety_eval.py` scoring the pipeline against labelled prompts.
+- **Mood check-ins** — 5-face valence and energy scales, emotion and factor tags, timezone-correct history and streaks, encrypted notes ([ADR 0015](docs/adr/0015-mood-check-ins.md)).
+- **Encrypted journal** — AES-256-GCM envelope-encrypted entries with per-entry keys ([ADR 0017](docs/adr/0017-encrypted-journal-and-envelope-encryption.md)).
+- **Guided exercises** — eight validated, audio-free exercises with a keyboard-operable local runner, pause/resume, and reduced-motion support ([ADR 0018](docs/adr/0018-guided-exercises.md)).
+- **CBT thought record** — a seven-step, owner-only encrypted wizard with per-step safety screening and a closed-set thinking-trap helper ([ADR 0019](docs/adr/0019-cbt-thought-record.md)).
+- **PHQ-9 & GAD-7 screenings** — the official instrument wording and published scoring, with support options shown before any score when PHQ-9 item 9 is positive ([ADR 0020](docs/adr/0020-phq-9-and-gad-7-screenings.md)).
+- **Daily plan** — a transparent, rule-based planner that suggests at most three things a day, each with a "why this?" explanation, honours quiet hours, and reduces to support-only after a positive item 9 ([ADR 0021](docs/adr/0021-daily-plan-and-week-3-review.md)).
+- **Foundations** — guest auth with consent gating, structured logging with log redaction, security headers, field-level encryption, and a React frontend with design tokens, two navigations, an onboarding gate, and a crisis helpline dialog.
+
+Manovia is a self-help companion, not therapy or diagnosis. See [docs/architecture.md](docs/architecture.md) for how a message travels, and [docs/model-card.md](docs/model-card.md) for the safety model's intended use and limits.
 
 ## Architecture
 
@@ -64,9 +74,9 @@ npm run dev
 | `make format`                 | Backend ruff format, frontend Prettier              |
 | `make db-upgrade`             | `alembic upgrade head`                              |
 | `make seed`                   | Create the demo user and its rows                   |
+| `make eval`                   | Run the Day 9 safety evaluation (`evals/run_safety_eval.py`) |
 
 The frontend's own commands live in [frontend/README.md](frontend/README.md).
-Only the evaluation target (`make eval`) is still a placeholder.
 
 ## Safety
 
@@ -78,10 +88,7 @@ Configuration comes only from environment variables (see `.env.example`); secret
 
 ## Roadmap
 
-- Day 1: repository structure, tooling placeholders, and agent memory.
-- Days 2–4: backend skeleton, data layer, and authentication with consent.
-- Day 5: frontend skeleton — tokens, shell, onboarding, crisis dialog, API client.
-- Day 6: NLP service — emotion and sentiment analysis behind one degradable interface.
-- Day 7: CI (backend/frontend/secrets/audit jobs), Docker images and compose stack, smoke test.
-- Next: the chat surface, behind the deterministic crisis rules that must run before any model call.
-- Later: evaluation tooling, deployment workflows, and the remaining product surfaces.
+- **Week 1** — repository scaffolding, backend skeleton, data layer, auth with consent, frontend skeleton, NLP service, CI and Docker stack.
+- **Week 2** — crisis rules before any model call, the safety ML classifier and first eval set, the LLM provider layer with PII redaction, the chat orchestrator and chat UI, knowledge base and retrieval, output guard and encrypted conversation memory.
+- **Week 3** — mood check-ins, encrypted journal, guided exercises, the CBT thought record, PHQ-9/GAD-7 screenings, and the daily plan with a Week-3 review.
+- **Next** — deployment workflows, clinician and native-speaker review of crisis content and safe replies (Hindi/Bengali first), and continued hardening of the safety surfaces.

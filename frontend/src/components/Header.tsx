@@ -13,7 +13,7 @@ export function Header(): ReactElement {
     <header data-print="hide" className="sticky top-0 z-30 border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link
-          to="/chat"
+          to="/"
           className="rounded-lg font-serif text-lg font-semibold tracking-tight text-ink"
         >
           Manovia

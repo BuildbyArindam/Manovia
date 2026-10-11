@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { deleteChatMemory, fetchChatMemory } from "@/features/chat/endpoints";
 import { useMoodHintPreference } from "@/features/chat/useMoodHint";
+import { PlanSettingsSection } from "@/features/plan/PlanSettingsSection";
 import { signOut } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
@@ -110,6 +111,8 @@ export function SettingsPage(): ReactElement {
           are {reduceMotion ? "off" : "on"}.
         </p>
       </section>
+
+      <PlanSettingsSection client={api} />
 
       <section
         aria-labelledby="chat-heading"

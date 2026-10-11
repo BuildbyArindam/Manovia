@@ -24,6 +24,8 @@ from app.api.v1.insights import router as insights_router
 from app.api.v1.journal import router as journal_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.mood import router as mood_router
+from app.api.v1.plan import router as plan_router
+from app.api.v1.settings import router as settings_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
 from app.core.errors import (
@@ -144,6 +146,8 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(assessments_router, prefix="/api/v1")
     app.include_router(insights_router, prefix="/api/v1")
     app.include_router(crisis_router, prefix="/api/v1")
+    app.include_router(plan_router, prefix="/api/v1")
+    app.include_router(settings_router, prefix="/api/v1")
     if not app_settings.is_production:
         # Dev-only surface: in production the route does not exist at all, so
         # it is absent from the schema and a request gets the generic 404.
