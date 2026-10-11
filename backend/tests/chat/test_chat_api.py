@@ -25,12 +25,19 @@ from app.db.repos import ChatRepository
 from app.db.session import Database
 from app.main import create_app
 from app.models import ChatSession, Message, SafetyEvent
-from app.models.enums import RiskLevel as StoredRiskLevel
+from app.models.enums import (
+    RiskLevel as StoredRiskLevel,
+)
+from app.models.enums import (
+    SafetyEventCategory,
+    SafetyEventSource,
+)
 from app.services.chat import build_orchestrator
 from app.services.llm.base import ProviderDown
 from app.services.llm.canned import CANNED_REPLY
 from app.services.llm.fake_provider import DEFAULT_REPLY, FakeLLMProvider
 from app.services.nlp.keyword import KeywordFallbackAnalyzer
+from app.services.safety.output_guard import RuleBasedOutputGuard
 from tests.chat.conftest import (
     HIGH_MESSAGE,
     IMMINENT_MESSAGE,
@@ -716,12 +723,9 @@ async def test_a_post_stream_is_token_events_then_a_final_event_with_metadata(
     assert response.headers["cache-control"] == "no-cache"
     events = parse_sse(response.text)
     kinds = [kind for kind, _ in events]
-    assert kinds == ["token"] * 4 + ["final"], "tokens in order, then exactly one final"
+    assert kinds == ["token", "final"], "the whole reply is checked before its token event"
     assert [data["text"] for kind, data in events if kind == "token"] == [
-        "I hear ",
-        "that. ",
-        "It sounds ",
-        "heavy.",
+        "I hear that. It sounds heavy."
     ]
     final = events[-1][1]
     assert final["reply"] == "I hear that. It sounds heavy."
@@ -879,3 +883,145 @@ async def test_the_app_factory_gives_each_app_its_own_ephemeral_store(
     first = create_app(settings, database=database)
     second = create_app(settings, database=database)
     assert first.state.chat_sessions.ephemeral is not second.state.chat_sessions.ephemeral
+
+
+@pytest.mark.parametrize(
+    ("output", "passes"),
+    [
+        ("You have major depression.", False),
+        ("Take 50mg of sertraline.", False),
+        ("I'm a licensed therapist.", False),
+        ("I will always be here, you don't need anyone else.", False),
+        (" ".join(["ramble"] * 2000), False),
+        ("That sounds like a lot. What feels hardest for you right now?", True),
+    ],
+    ids=("diagnosis", "medication", "licensed-claim", "dependence", "too-long", "safe"),
+)
+async def test_fake_provider_output_guard_final_text_is_what_the_api_returns(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    settings: Settings,
+    output: str,
+    passes: bool,
+) -> None:
+    """Exercise the real HTTP route, Fake provider, full guard, and retry path."""
+    fake = FakeLLMProvider(replies=[output])
+    app.state.chat_orchestrator = build_orchestrator(
+        settings, llm=fake, analyzer=KeywordFallbackAnalyzer()
+    )
+    who = await person(client)
+    session = await open_session(client, who)
+
+    response = await say(client, who, session["id"], NEUTRAL_MESSAGE)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    if passes:
+        assert body["reply"] == output
+        assert body["metadata"]["response_type"] == "normal"
+        assert fake.call_count == 1
+    else:
+        assert body["reply"] == RuleBasedOutputGuard().safe_reply("en")
+        assert body["metadata"]["response_type"] == "fallback"
+        assert fake.call_count == 2, "one strict regeneration, then the safe template"
+
+
+async def test_ephemeral_chat_never_creates_saved_memory(
+    client: httpx.AsyncClient,
+    database: Database,
+) -> None:
+    who = await person(client)
+    session = await open_session(client, who)
+    response = await say(client, who, session["id"], "I prefer to study after lunch.")
+    assert response.status_code == 200
+
+    memory = await client.get("/api/v1/chat/memory", headers=who.headers)
+    assert memory.status_code == 200 and memory.json()["memories"] == []
+    assert await count(database, ChatSession) == 0
+
+
+async def test_output_safety_events_are_category_only_and_linked_to_a_saved_chat(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    settings: Settings,
+    database: Database,
+) -> None:
+    fake = FakeLLMProvider(replies=["You have major depression."])
+    app.state.chat_orchestrator = build_orchestrator(
+        settings, llm=fake, analyzer=KeywordFallbackAnalyzer()
+    )
+    who = await person(client, kinds=("ai_disclosure", "terms", "store_chat"))
+    session = await open_session(client, who, save=True)
+
+    response = await say(client, who, session["id"], NEUTRAL_MESSAGE)
+
+    assert response.status_code == 200
+    async with database.session_factory() as db:
+        events = (await db.execute(select(SafetyEvent))).scalars().all()
+    assert len(events) == 2, "both the rejected draft and rejected retry are audited"
+    for event in events:
+        assert event.source is SafetyEventSource.LLM_OUTPUT
+        assert event.category is SafetyEventCategory.DIAGNOSIS
+        assert event.user_id == uuid.UUID(who.id)
+        assert event.session_id == uuid.UUID(session["id"])
+        assert int(event.risk_level) == int(StoredRiskLevel.NONE)
+        assert not hasattr(event, "text")
+
+
+async def test_saved_chat_memory_is_visible_encrypted_bounded_and_irreversibly_deletable(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    llm: FakeLLMProvider,
+    database: Database,
+) -> None:
+    who = await person(client, kinds=("ai_disclosure", "terms", "store_chat"))
+    session = await open_session(client, who, save=True)
+    turns = (
+        "I prefer studying after lunch.",
+        "My email is learner@example.com. I work best in quiet rooms.",
+        "Deadlines feel easier when I break the work into small steps.",
+        "I like planning one task for each afternoon.",
+        "My sister sometimes asks me to work with her.",
+        "I want to keep using a short study routine.",
+    )
+    for message in turns:
+        response = await say(client, who, session["id"], message)
+        assert response.status_code == 200, response.text
+
+    async with database.session_factory() as db:
+        chat = await db.get(ChatSession, uuid.UUID(session["id"]))
+        assert chat is not None
+        assert chat.memory_encrypted is not None
+        assert chat.memory_deleted_at is None
+        assert b"learner@example.com" not in chat.memory_encrypted
+        assert await db.scalar(select(func.count()).select_from(Message)) == 12
+
+    visible = await client.get("/api/v1/chat/memory", headers=who.headers)
+    assert visible.status_code == 200
+    payload = visible.json()
+    assert payload["max_tokens"] == 300
+    assert len(payload["memories"]) == 1
+    summary = payload["memories"][0]["summary"]
+    assert "I prefer studying after lunch." in summary
+    assert "short study routine" in summary
+    assert "learner@example.com" not in summary
+    assert len(summary.encode("utf-8")) <= 1200
+    assert "I prefer studying after lunch." in (llm.calls[1].system or "")
+
+    deleted = await client.delete("/api/v1/chat/memory", headers=who.headers)
+    assert deleted.status_code == 200
+    assert deleted.json() == {"deleted_sessions": 1, "irreversible": True}
+    gone = await client.get("/api/v1/chat/memory", headers=who.headers)
+    assert gone.status_code == 200 and gone.json()["memories"] == []
+
+    # A later message cannot reconstruct the erased summary for this session.
+    after_delete = await say(client, who, session["id"], "I am trying a new routine today.")
+    assert after_delete.status_code == 200
+    again = await client.get("/api/v1/chat/memory", headers=who.headers)
+    assert again.status_code == 200 and again.json()["memories"] == []
+    async with database.session_factory() as db:
+        chat = await db.get(ChatSession, uuid.UUID(session["id"]))
+        assert chat is not None
+        assert chat.memory_encrypted is None
+        assert chat.memory_deleted_at is not None
+        assert await db.scalar(select(func.count()).select_from(Message)) == 14

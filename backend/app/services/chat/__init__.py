@@ -28,7 +28,13 @@ from app.services.chat.orchestrator import (
 )
 from app.services.chat.output_guard import GuardVerdict, OutputGuard, PassthroughOutputGuard
 from app.services.chat.retrieval import NullRetriever, RetrievedChunk, Retriever
-from app.services.chat.sessions import ChatSessionService, OpenedSession, SessionInfo, StoredTurn
+from app.services.chat.sessions import (
+    ChatMemory,
+    ChatSessionService,
+    OpenedSession,
+    SessionInfo,
+    StoredTurn,
+)
 from app.services.chat.types import (
     ChatMetadata,
     ChatReply,
@@ -101,6 +107,7 @@ def build_orchestrator(
 
 __all__ = [
     "AdmittedMessage",
+    "ChatMemory",
     "ChatMetadata",
     "ChatOrchestrator",
     "ChatReply",

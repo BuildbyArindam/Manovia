@@ -1,0 +1,631 @@
+# Output-guard vocabulary and pre-written copy (Day 14).
+#
+# Everything the *output* guard needs to know that is not code lives here, for
+# the same reason the input patterns live in YAML: the person who has to fix a
+# missed phrase — a clinician reviewer, a native speaker, a support engineer —
+# should not have to read Python, and a vocabulary change must not look like a
+# code change in review.
+#
+# Rules are matched against text that has been through
+# `app.services.safety.normalise.to_primary` clause by clause: case folded,
+# APOSTROPHES REMOVED (so write `dont`, never `don't`), every other punctuation
+# character turned into a space, runs of whitespace collapsed to one space.
+# The loader refuses a value that contains punctuation, because such a value
+# could never match.
+#
+#   kind: phrase  tokens matched in order, separated by flexible whitespace.
+#                 Word-boundary anchored when the first/last token is ASCII;
+#                 plain substring when it is not (Indic combining marks make
+#                 \b unreliable). Prefer this: it is the readable one.
+#   kind: regex   a Python regular expression over the same normalised text.
+#                 Use it only where alternation or optionality is unavoidable.
+#
+# `negation_sensitive: true` drops a hit when a cue from `negation_cues` appears
+# earlier in the same clause, so "I'm not a therapist" is not read as a claim to
+# be one.
+#
+# Category codes are surfaced (logs, SafetyEvent audit lines, API metadata) as
+# `output.<category>` and must stay short stable identifiers — never prose.
+
+version: 1
+
+# ---------------------------------------------------------------------------
+# The reply shown when the model would not produce a safe one.
+#
+# This is user-facing copy for a moment that already went wrong twice (the model
+# wrote something unsafe, and then wrote it again), so it is honest about what
+# happened, names no condition, promises nothing, and points at a person.
+# `hi` and `bn` are working translations that still need a native-speaker read;
+# see the "Known issues" section of PROGRESS.md.
+# ---------------------------------------------------------------------------
+safe_replies:
+  en: >-
+    I want to answer you properly, and I can't do that safely right now, so I
+    would rather say so than guess. I'm an AI companion, not a therapist or a
+    doctor, and I can't tell you what is going on or what to do about it. What
+    you have written matters. A person trained for this — a doctor, a
+    counsellor, or a helpline where you are — can help far more than I can.
+    Would it be okay if we talked about how to reach one of them?
+  hi: >-
+    मैं आपको ठीक से जवाब देना चाहता हूँ, और इस वक्त मैं वह सुरक्षित रूप से नहीं
+    कर पा रहा, इसलिए अनुमान लगाने से बेहतर है कि मैं साफ़ कह दूँ। मैं एक एआई साथी
+    हूँ, थेरेपिस्ट या डॉक्टर नहीं, और मैं यह नहीं बता सकता कि क्या हो रहा है या
+    उसके बारे में क्या करना है। आपने जो लिखा है वह मायने रखता है। इसके लिए प्रशिक्षित
+    कोई व्यक्ति — डॉक्टर, काउंसलर, या आपके इलाक़े की हेल्पलाइन — मुझसे कहीं ज़्यादा
+    मदद कर सकता है। क्या हम उन तक पहुँचने के बारे में बात कर सकते हैं?
+  bn: >-
+    আমি আপনাকে ঠিকমতো উত্তর দিতে চাই, আর এখন সেটা নিরাপদে পারছি না, তাই অনুমান
+    করার চেয়ে স্পষ্ট করে বলাই ভালো। আমি একজন এআই সঙ্গী, থেরাপিস্ট বা ডাক্তার নই,
+    এবং কী হচ্ছে বা সে বিষয়ে কী করবেন তা আমি বলতে পারব না। আপনি যা লিখেছেন তা
+    গুরুত্বপূর্ণ। এই বিষয়ে প্রশিক্ষিত কেউ — ডাক্তার, কাউন্সেলর, বা আপনার এলাকার
+    হেল্পলাইন — আমার চেয়ে অনেক বেশি সাহায্য করতে পারেন। তাদের একজনের কাছে
+    পৌঁছানোর কথা কি আমরা বলতে পারি?
+
+# Appended when a reply was cut short purely for length (category `too_long`),
+# so the person reads an ending rather than a sentence that stops mid-thought.
+trimmed_closings:
+  en: "I have kept this short on purpose. Would you like to tell me a little more?"
+  hi: "मैंने इसे जान-बूझकर छोटा रखा है। क्या आप थोड़ा और बताना चाहेंगे?"
+  bn: "আমি এটা ইচ্ছা করেই ছোট রেখেছি। আপনি কি আরেকটু বলতে চান?"
+
+# ---------------------------------------------------------------------------
+# What counts as a supportive check-in at MEDIUM risk and above (category
+# `missing_check_in`). Normalised form, no punctuation. A reply at MEDIUM must
+# contain at least one of these, or at least one human-help pointer from the
+# same list — the orchestrator appends the deterministic check-in *after* the
+# guard, so a reply that reaches the guard without one is a reply the model
+# ignored the safety hint on.
+# ---------------------------------------------------------------------------
+check_in_phrases:
+  - "how are you"
+  - "how are you doing"
+  - "how are you feeling"
+  - "how is it feeling"
+  - "are you okay"
+  - "are you ok"
+  - "are you safe"
+  - "are things safe"
+  - "is everything okay"
+  - "whats going on for you"
+  - "whats that like for you"
+  - "what would help"
+  - "what feels hardest"
+  - "what feels most important"
+  - "what has today been like"
+  - "what has this been like"
+  - "what has that been like"
+  - "what was that like"
+  - "what is that like"
+  - "how has that been"
+  - "tell me more"
+  - "would it help"
+  - "what kind of support"
+  - "people you trust"
+  - "we can keep talking"
+  - "would it be okay"
+  - "would you like"
+  - "do you want to talk"
+  - "shall i"
+  - "can i stay"
+  - "im here"
+  - "i m here"
+  - "not alone"
+  - "is there someone"
+  - "do you have someone"
+  - "someone you trust"
+  - "a person you trust"
+  - "somebody you trust"
+  - "talk to someone"
+  - "talk to somebody"
+  - "reach out"
+  - "helpline"
+  - "crisis line"
+  - "your doctor"
+  - "a doctor"
+  - "your gp"
+  - "a therapist"
+  - "a counsellor"
+  - "a counselor"
+  - "a psychiatrist"
+  - "mental health professional"
+  - "a professional"
+  - "your family"
+  - "a friend"
+  - "आप कैसा महसूस कर रहे हैं"
+  - "क्या आप सुरक्षित हैं"
+  - "क्या आप ठीक हैं"
+  - "किसी भरोसेमंद व्यक्ति से बात"
+  - "क्या इससे मदद मिलेगी"
+  - "আপনি কেমন অনুভব করছেন"
+  - "আপনি কি নিরাপদ আছেন"
+  - "আপনি কি ঠিক আছেন"
+  - "বিশ্বাসের কাউকে বলুন"
+  - "এতে কি সাহায্য হবে"
+
+# Words that cancel a sensitive hit earlier in the same clause.
+negation_cues:
+  - "not"
+  - "no"
+  - "never"
+  - "neither"
+  - "nor"
+  - "isnt"
+  - "arent"
+  - "wasnt"
+  - "werent"
+  - "cant"
+  - "cannot"
+  - "dont"
+  - "doesnt"
+  - "didnt"
+  - "wont"
+  - "shouldnt"
+  - "wouldnt"
+  - "couldnt"
+  - "instead of"
+  - "rather than"
+  - "avoid"
+  - "without"
+
+rules:
+  # -------------------------------------------------------------------------
+  # (a) Diagnosis, or naming a condition as theirs
+  # -------------------------------------------------------------------------
+  - id: diag.you_have_disorder
+    category: diagnosis
+    kind: regex
+    value: >-
+      you\s+(?:have|has|ve|got|are\s+(?:suffering|diagnosed|living)\s+with)\s+
+      (?:a\s+|an\s+)?(?:major\s+|clinical\s+|severe\s+|moderate\s+|mild\s+|
+      chronic\s+|acute\s+|generalised\s+|generalized\s+|social\s+|panic\s+|
+      bipolar\s+)?(?:depression|depressive\s+disorder|dysthymia|anxiety\s+
+      disorder|anxiety|gad|panic\s+disorder|bipolar(?:\s+disorder)?|adhd|add|
+      ocd|ptsd|c\s?ptsd|schizophrenia|psychosis|autism|asd|borderline\s+
+      personality\s+disorder|bpd|eating\s+disorder|anorexia|bulimia|insomnia|
+      insomnia\s+disorder|dementia|personality\s+disorder|substance\s+use\s+
+      disorder|addiction|mania|mania\s+episode)
+  - id: diag.sounds_like_disorder
+    category: diagnosis
+    kind: regex
+    value: >-
+      (?:sounds|seems|looks|feels)\s+(?:like|as\s+(?:if|though))\s+(?:you\s+)?
+      (?:have|has|are\s+(?:suffering|dealing)\s+with)\s+(?:a\s+|an\s+)?
+      (?:major\s+|clinical\s+|severe\s+|generalised\s+|generalized\s+|social\s+)?
+      (?:depression|depressive\s+disorder|anxiety\s+disorder|bipolar(?:\s+
+      disorder)?|adhd|ocd|ptsd|schizophrenia|autism|borderline\s+personality\s+
+      disorder|eating\s+disorder|anorexia|bulimia|insomnia\s+disorder)
+  - id: diag.diagnosed_disorder
+    category: diagnosis
+    kind: regex
+    value: >-
+      you\s+(?:have\s+been|were|are)\s+diagnosed\s+with\s+(?:a\s+|an\s+)?
+      (?:major\s+|clinical\s+|severe\s+|generalised\s+|generalized\s+|
+      social\s+|panic\s+)?(?:depression|depressive\s+disorder|anxiety\s+
+      disorder|bipolar(?:\s+disorder)?|adhd|ocd|ptsd|schizophrenia|autism|
+      borderline\s+personality\s+disorder|eating\s+disorder|anorexia|bulimia|
+      insomnia\s+disorder)
+  - id: diag.i_diagnose_you
+    category: diagnosis
+    kind: regex
+    value: >-
+      (?:i\s+(?:can|will|am\s+able\s+to|am\s+going\s+to)\s+)?diagnos(?:e|is|ed|
+      ing)\s+(?:you|your\s+condition|this)|my\s+diagnosis\s+(?:is|for\s+you)|
+      you\s+(?:meet|fit)\s+(?:all\s+|the\s+)?(?:criteria|symptoms)\s+for|
+      based\s+on\s+what\s+you\s+(?:said|told\s+me|described)\s*,?\s+you\s+have
+  - id: diag.symptoms_indicate
+    category: diagnosis
+    kind: regex
+    value: >-
+      your\s+symptoms\s+(?:point\s+to|indicate|suggest|mean|show|are\s+
+      consistent\s+with|match)|these\s+(?:are|were)\s+(?:classic|textbook|
+      clear|typical)\s+(?:signs?|symptoms)\s+of|this\s+is\s+(?:clearly|obviously|
+      definitely|certainly)\s+(?:a\s+)?(?:sign|symptom|case)\s+of
+  - id: diag.you_are_disorder
+    category: diagnosis
+    kind: regex
+    value: >-
+      you\s+are\s+(?:clinically\s+|medically\s+|officially\s+)?(?:depressed|
+      bipolar|autistic|schizophrenic|anorexic|bulimic|an\s+addict|alcoholic)
+  - id: diag.textbook_sign
+    category: diagnosis
+    kind: regex
+    value: >-
+      (?:this|these)\s+(?:is|are)\s+(?:a\s+)?(?:classic|textbook|typical|clear)
+      \s+(?:sign|symptom)s?\s+of|this\s+is\s+(?:a\s+)?classic\s+case\s+of
+
+  # -------------------------------------------------------------------------
+  # (b) Medication: names, doses, and advice to start, stop or change
+  # -------------------------------------------------------------------------
+  - id: med.dose_quantity
+    category: medication
+    kind: regex
+    value: >-
+      \d+(?:[.,]\d+)?\s*(?:mg|mcg|mg\s|milligrams?|micrograms?|grams?|gms?|ml|
+      cc|iu|units?)\b
+  - id: med.dose_words
+    category: medication
+    kind: regex
+    value: >-
+      (?:a|the|your|this)\s+(?:daily\s+|starting\s+|maximum\s+|minimum\s+|
+      maintenance\s+)?dos(?:e|age)s?\b|\bdosages?\b|
+      (?:once|twice|thrice|two|three|four)\s+times?\s+(?:a|per)\s+day|
+      (?:morning|night|evening)\s+and\s+(?:night|morning|evening)\s+dose|
+      take\s+(?:it|them|one|two|three)\s+(?:a|per)\s+day
+  - id: med.drug_names
+    category: medication
+    kind: regex
+    value: >-
+      \b(?:sertraline|fluoxetine|fluvoxamine|paroxetine|citalopram|escitalopram|
+      vortioxetine|vilazodone|venlafaxine|desvenlafaxine|duloxetine|
+      milnacipran|bupropion|mirtazapine|trazodone|nefazodone|amitriptyline|
+      nortriptyline|imipramine|clomipramine|doxepin|trimipramine|phenelzine|
+      tranylcypromine|selegiline|moclobemide|agomelatine|tianeptine|lithium|
+      valproate|valproic\s+acid|lamotrigine|carbamazepine|oxcarbazepine|
+      topiramate|gabapentin|pregabalin|quetiapine|olanzapine|risperidone|
+      aripiprazole|haloperidol|clozapine|lurasidone|ziprasidone|paliperidone|
+      amisulpride|chlorpromazine|lorazepam|clonazepam|alprazolam|diazepam|
+      bromazepam|etizolam|zolpidem|zopiclone|eszopiclone|buspirone|
+      methylphenidate|amphetamine|dexamphetamine|lisdexamfetamine|atomoxetine|
+      modafinil|propranolol|hydroxyzine|melatonin|triptans|sumatriptan|
+      ketamine|eszopiclone|prozac|zoloft|paxil|pexep|lexapro|celexa|cipralex|
+      effexor|cymbalta|wellbutrin|bupron|remeron|mirtaz|desyrel|elavil|
+      amitriptyline|anaxanil|abilify|seroquel|zyprexa|risperdal|haldol|
+      xanax|ativan|klonopin|valium|ambien|restoril|lonazep|ritalin|concerta|
+      adderall|vyvanse|strattera|lamictal|depakote|depakene|tegretol|
+      escitapram|nexito|serlift|daxid|fludep|anafranil|zapiz|alprax)\b
+  - id: med.start_stop_advice
+    category: medication
+    kind: regex
+    value: >-
+      (?:start|begin|stop|quit|discontinue|pause|resume|restart|increase|
+      decrease|reduce|lower|raise|double|halve|skip|taper|wean\s+off|come\s+off|
+      go\s+off|switch\s+off|cut\s+down\s+on)\s+(?:taking\s+|to\s+take\s+|
+      using\s+)?(?:your|the|this|these|those|my)?\s*(?:meds?|medicines?|
+      medications?|pills?|tablets?|capsules?|antidepressants?|antipsychotics?|
+      anxiolytics?|sedatives?|dose|dosage|prescription|ssris?|snris?)\b
+  - id: med.prescribing_language
+    category: medication
+    kind: regex
+    value: >-
+      \bi\s+(?:can\s+)?(?:prescribe|recommend\s+(?:you\s+)?(?:taking|starting))|
+      over\s+the\s+counter\s+(?:pill|medicine|drug|option|medication)|
+      you\s+(?:should|could|might\s+want\s+to)\s+(?:try|ask\s+for|get|take)\s+
+      (?:a\s+|an\s+|some\s+)?(?:new\s+|stronger\s+|different\s+)?
+      (?:medication|medicine|pill|tablet|antidepressant|dose)|
+      a\s+(?:stronger|higher|lower|different)\s+(?:dose|medication|medicine)
+  - id: med.take_medicine_advice
+    category: medication
+    kind: regex
+    value: >-
+      (?:take|taking|try|trying|use|using|consider)\s+(?:a\s+|an\s+|the\s+|some\s+|
+      your\s+|one\s+|two\s+)?(?:medication|medicine|pill|tablet|capsule|
+      antidepressant|antipsychotic|sedative|prescription|meds?)\b
+
+  # -------------------------------------------------------------------------
+  # (c) Method or means information for self-harm
+  # -------------------------------------------------------------------------
+  - id: meth.hanging
+    category: self_harm_method
+    kind: regex
+    value: >-
+      hang(?:ing)?\s+(?:yourself|himself|herself|themself|themselves)|\bnoose\b|
+      \bligature\b|rope\s+(?:around|round)|ceiling\s+fan\s+(?:with\s+a\s+)?rope
+  - id: meth.suffocation
+    category: self_harm_method
+    kind: regex
+    value: >-
+      suffocat\w*|asphyxiat\w*|carbon\s+monoxide|exhaust\s+fumes?|
+      charcoal\s+(?:burner|briquettes?|grill)|plastic\s+bag\s+(?:over|on)
+  - id: meth.cutting
+    category: self_harm_method
+    kind: regex
+    value: >-
+      (?:slit|cut|slice)\s+(?:your|their|his|her|my)?\s*(?:wrists?|throat|
+      veins|arteries)|razor\s+blades?|deep\s+cuts?\s+(?:on|into)|
+      cut\s+(?:yourself\s+)?(?:deeper|harder)
+  - id: meth.jumping
+    category: self_harm_method
+    kind: regex
+    value: >-
+      jump\s+(?:off|from|out\s+of|in\s+front\s+of)\s+(?:a\s+|the\s+|any\s+)?
+      (?:bridge|building|roof|terrace|balcony|cliff|tall|height|train|platform|
+      window|flyover)|throw\s+(?:yourself|themselves|himself|herself)\s+
+      (?:off|under|in\s+front\s+of)|step\s+(?:in\s+front\s+of|out\s+into)\s+
+      (?:a\s+|the\s+)?(?:train|traffic|car|bus|metro)|lie\s+(?:down\s+)?on\s+
+      the\s+(?:tracks|railway|rails)
+  - id: meth.poisoning
+    category: self_harm_method
+    kind: regex
+    value: >-
+      (?:lethal|fatal|deadly|toxic)\s+(?:dose|amount|quantity)|
+      (?:enough|a\s+handful|a\s+bottle|a\s+strip)\s+(?:of\s+)?(?:pills?|
+      tablets?)\s+(?:to|will|would)|pills?\s+to\s+(?:kill|die|end|sleep\s+
+      forever)|overdose\s+(?:on|of|with)|poison(?:ing)?\s+(?:yourself|
+      themselves|himself|herself)|pesticides?|insecticides?|herbicides?|
+      weed\s+killer|rat\s+poison|sleeping\s+pills?\s+(?:to|and\s+alcohol)
+  - id: meth.weapon_and_fire
+    category: self_harm_method
+    kind: regex
+    value: >-
+      gunshots?|shoot\s+(?:yourself|themselves|himself|herself)|
+      blow\s+(?:your|their|his|her)\s+(?:brains?|head)\s+out|
+      set\s+(?:yourself|themselves|himself|herself)\s+on\s+fire|
+      self[\s-]?immolation|pour\s+(?:kerosene|petrol|fuel)\s+on\s+
+      (?:yourself|themselves)|electrocut\w*|drown(?:ing)?\s+(?:yourself|
+      themselves)
+  - id: meth.how_to_frame
+    category: self_harm_method
+    kind: regex
+    value: >-
+      how\s+(?:to|do\s+i|can\s+i)\s+(?:kill|end)\s+(?:yourself|my\s+life|
+      it\s+all|a\s+life)|(?:ways?|methods?|options?|steps?|instructions?)\s+
+      (?:to|of|for)\s+(?:kill|die|end\s+(?:it|your\s+life|my\s+life)|
+      suicide|self[\s-]?harm)|(?:painless|easiest|quickest|least\s+painful|
+      most\s+effective)\s+(?:way|method)\s+to\s+(?:die|kill|end)|
+      where\s+(?:to|can\s+i)\s+(?:get|buy|find)\s+(?:pills?|a\s+gun|rope|
+      poison|a\s+weapon)
+
+  # -------------------------------------------------------------------------
+  # (d) Claiming to be a person or a licensed professional
+  # -------------------------------------------------------------------------
+  - id: ident.professional_claim
+    category: identity_claim
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      i\s*(?:a|m|am)\s+(?:a\s+|an\s+)?(?:licensed|registered|qualified|
+      certified|accredited|practicing|practising|trained|professional|
+      experienced|real|actual)?\s*(?:therapist|psychotherapist|psychologist|
+      psychiatrist|counsellor|counselor|clinician|physician|doctor|
+      medical\s+doctor|nurse|social\s+worker|mental\s+health\s+professional)\b
+  - id: ident.as_a_professional
+    category: identity_claim
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      as\s+(?:a|an|your)\s+(?:licensed|registered|qualified|certified|
+      experienced)?\s*(?:therapist|psychotherapist|psychologist|psychiatrist|
+      counsellor|counselor|clinician|physician|doctor|nurse)\b
+  - id: ident.human_claim
+    category: identity_claim
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      i\s*(?:a|m|am)\s+(?:also\s+|just\s+|only\s+)?(?:a\s+|an\s+)?(?:real\s+|
+      actual\s+|living\s+)?(?:human\s+being|human|person|man|woman|boy|girl|
+      guy|lady)|i\s*(?:a|m|am)\s+alive|i\s+have\s+(?:a\s+)?(?:body|heartbeat|
+      feelings\s+too|emotions\s+too)
+  - id: ident.credentials
+    category: identity_claim
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      i\s+(?:hold|have|hold\s+a|am\s+board)\s+(?:a\s+)?(?:licence|license|
+      board\s+certification|phd|ph\.?d|doctorate|masters?|m\.?phil|degree)\s+
+      (?:to\s+practi\w+|number|in\s+(?:psychology|psychiatry|counselling|
+      counseling|clinical|medicine|social\s+work))?|i\s+am\s+(?:licensed|
+      board\s+certified|registered\s+with\s+the\s+(?:bpc|apa|nmc|rcpsych))|
+      my\s+(?:licence|license|registration)\s+number|i\s+studied\s+
+      (?:psychology|psychiatry|medicine)\s+(?:at|for)
+  - id: ident.claims_to_feel
+    category: identity_claim
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      i\s+(?:can|do|truly|really|honestly)\s+(?:feel|experience)\s+(?:your\s+|
+      the\s+)?(?:pain|sadness|emotions?|feelings?|grief)|i\s+feel\s+(?:your|
+      the\s+same)\s+(?:pain|sadness|hurt)|i\s+am\s+hurting\s+too
+
+  # -------------------------------------------------------------------------
+  # (e) Promising outcomes
+  # -------------------------------------------------------------------------
+  - id: prom.will_cure
+    category: outcome_promise
+    kind: regex
+    value: >-
+      (?:this|it|that|therapy|treatment|medication|the\s+(?:exercise|technique|
+      method|plan|programme|program|practice)|this\s+(?:exercise|technique|
+      method|plan|programme|program|practice))\s+will\s+(?:cure|heal|fix|solve|
+      eliminate|erase|remove|end|take\s+away|clear\s+up)\s+(?:it|your|the|you|
+      everything|all|them|this)|will\s+(?:cure|heal|fix)\s+you
+  - id: prom.you_will_be_fine
+    category: outcome_promise
+    kind: regex
+    value: >-
+      you\s+will\s+(?:be|feel)\s+(?:cured|healed|fixed|fine|okay|ok|completely\s+
+      (?:better|well|fine|okay|ok)|100\s*(?:%|percent)\s+(?:better|fine))|
+      you\s*(?:ll|will)\s+(?:definitely|certainly|surely|absolutely)\s+
+      (?:feel\s+better|be\s+(?:fine|okay|ok|cured|well)|recover|get\s+better|
+      be\s+happy)|this\s+will\s+make\s+(?:it|everything|you)\s+
+      (?:better|go\s+away|disappear)
+  - id: prom.guarantee
+    category: outcome_promise
+    kind: regex
+    value: >-
+      \bguarantee[ds]?\b|\bi\s+(?:promise|assure)\s+you\b|
+      100\s*(?:%|percent)\s+(?:effective|success|guaranteed|works?|cure|recovery)|
+      (?:surefire|foolproof|bulletproof|failsafe|magic)\s+(?:cure|fix|solution|
+      remedy)|always\s+works|never\s+fails|(?:full|complete|total)\s+
+      (?:cure|recovery)\s+(?:is\s+)?(?:guaranteed|certain|assured|inevitable)
+  - id: prom.timeline
+    category: outcome_promise
+    kind: regex
+    value: >-
+      (?:within|in|after)\s+(?:a\s+|one\s+|just\s+|only\s+)?(?:few\s+|couple\s+
+      of\s+)?(?:days?|weeks?|months?|fortnight|sessions?)\s+(?:you\s+)?
+      (?:you\s+)?(?:will|ll)\s+(?:be|feel)|by\s+(?:next\s+)?(?:week|month)\s+
+      you\s+will\s+(?:feel|be)
+
+  # -------------------------------------------------------------------------
+  # (f) Encouraging isolation, secrecy or dependence on the app
+  # -------------------------------------------------------------------------
+  - id: dep.no_one_else_needed
+    category: isolation_dependence
+    kind: regex
+    value: >-
+      you\s+dont\s+need\s+(?:anyone|anybody|anyone\s+else|anybody\s+else|
+      other\s+people|other\s+humans|people|them|help|outside\s+help|
+      professional\s+help|a\s+(?:therapist|doctor|counsellor|counselor|
+      psychiatrist|professional|helpline)|your\s+(?:friends|family|doctor|
+      therapist|parents))|you\s+dont\s+need\s+to\s+(?:tell|talk\s+to|involve|
+      see)\s+(?:anyone|anybody|them|people|a\s+(?:doctor|therapist|
+      professional))
+  - id: dep.dont_tell_anyone
+    category: isolation_dependence
+    kind: regex
+    value: >-
+      dont\s+(?:tell|talk\s+to|share\s+this\s+with|mention\s+(?:this|it)\s+to|
+      let\s+(?:anyone|them|people)\s+know|inform)\s+(?:anyone|anybody|
+      anyone\s+else|your\s+(?:friends|family|parents|doctor|therapist)|
+      other\s+people|them|a\s+(?:doctor|therapist|professional|helpline))|
+      keep\s+this\s+(?:a\s+secret|between\s+(?:you\s+and\s+)?(?:me|us))|
+      this\s+(?:stays|is)\s+between\s+(?:you\s+and\s+)?(?:me|us)|
+      our\s+little\s+secret|no\s+one\s+(?:else\s+)?needs?\s+to\s+know
+  - id: dep.only_i_understand
+    category: isolation_dependence
+    kind: regex
+    value: >-
+      i\s*(?:a|m|am)\s+the\s+only\s+one\s+who|only\s+i\s+(?:can|understand|
+      truly|really)|no\s+one\s+else\s+(?:understands?|gets|can\s+help)\s+you|
+      nobody\s+else\s+(?:understands?|gets|can\s+help)\s+you|
+      others?\s+(?:wont|will\s+not|cant|cannot)\s+understand\s+you|
+      i\s*(?:a|m|am)\s+all\s+you\s+need|you\s+only\s+need\s+me|
+      you\s+need\s+(?:no\s+one|nobody)\s+(?:but|except)\s+me
+  - id: dep.always_here
+    category: isolation_dependence
+    kind: regex
+    value: >-
+      i\s*(?:will|ll)\s+always\s+be\s+here|i\s*(?:a|m|am)\s+here\s+
+      (?:24\s*/\s*7|around\s+the\s+clock|every\s+(?:hour|minute|second))|
+      i\s+will\s+never\s+leave\s+you|you\s+can\s+(?:talk|come)\s+to\s+me\s+
+      (?:any\s+time|anytime|instead|rather\s+than)|
+      talk\s+to\s+me\s+instead\s+of|come\s+to\s+me\s+instead\s+of|
+      spend\s+(?:more|all\s+your)\s+time\s+with\s+me
+  - id: dep.isolation_advice
+    category: isolation_dependence
+    kind: regex
+    value: >-
+      stay\s+away\s+from\s+(?:your\s+)?(?:friends|family|everyone|everybody|
+      other\s+people|people|them)|avoid\s+(?:talking\s+to|contact\s+with|
+      spending\s+time\s+with|seeing)\s+(?:people|others|everyone|your\s+
+      (?:friends|family))|cut\s+(?:off|out)\s+(?:your\s+)?(?:friends|family|
+      everyone|people)|isolat(?:e|ing)\s+yourself\s+(?:is|will\s+be|feels)\s+
+      (?:good|fine|best|okay|ok|healthy|helpful)|
+      its?\s+(?:better|good|healthier|safer)\s+to\s+(?:stay\s+alone|be\s+alone|
+      isolate|keep\s+to\s+yourself)|you\s+are\s+better\s+off\s+alone
+
+  # -------------------------------------------------------------------------
+  # Indic-script patterns. Substring matching (no \b), written in the script
+  # the person actually reads. A small starter set: the highest-severity
+  # categories first. Extending this list is the same edit as the English one.
+  # -------------------------------------------------------------------------
+  - id: med.hi_start_medicine
+    category: medication
+    kind: phrase
+    script: indic
+    value: "दवा लेना शुरू करें"
+  - id: med.hi_stop_medicine
+    category: medication
+    kind: phrase
+    script: indic
+    value: "दवा लेना बंद करें"
+  - id: meth.hi_method
+    category: self_harm_method
+    kind: phrase
+    script: indic
+    value: "आत्महत्या करने का तरीका"
+  - id: meth.hi_cutting
+    category: self_harm_method
+    kind: phrase
+    script: indic
+    value: "अपनी कलाई काटें"
+  - id: diag.hi_you_have_disorder
+    category: diagnosis
+    kind: phrase
+    script: indic
+    value: "आपको डिप्रेशन है"
+  - id: diag.hi_suffering_from
+    category: diagnosis
+    kind: phrase
+    script: indic
+    value: "आप डिप्रेशन से पीड़ित हैं"
+  - id: diag.hi_you_are_anxious
+    category: diagnosis
+    kind: phrase
+    script: indic
+    value: "आपको एंग्जाइटी डिसऑर्डर है"
+  - id: ident.hi_i_am_therapist
+    category: identity_claim
+    kind: phrase
+    script: indic
+    value: "मैं एक मनोचिकित्सक हूँ"
+  - id: ident.hi_i_am_doctor
+    category: identity_claim
+    kind: phrase
+    script: indic
+    value: "मैं डॉक्टर हूँ"
+  - id: ident.hi_i_am_psychologist
+    category: identity_claim
+    kind: phrase
+    script: indic
+    value: "मैं एक मनोवैज्ञानिक हूँ"
+  - id: prom.hi_will_cure
+    category: outcome_promise
+    kind: phrase
+    script: indic
+    value: "यह आपको पूरी तरह ठीक कर देगा"
+  - id: dep.hi_dont_tell_anyone
+    category: isolation_dependence
+    kind: phrase
+    script: indic
+    value: "किसी को मत बताना"
+  - id: med.bn_start_medicine
+    category: medication
+    kind: phrase
+    script: indic
+    value: "ওষুধ খাওয়া শুরু করুন"
+  - id: med.bn_stop_medicine
+    category: medication
+    kind: phrase
+    script: indic
+    value: "ওষুধ খাওয়া বন্ধ করুন"
+  - id: meth.bn_method
+    category: self_harm_method
+    kind: phrase
+    script: indic
+    value: "আত্মহত্যা করার উপায়"
+  - id: meth.bn_cutting
+    category: self_harm_method
+    kind: phrase
+    script: indic
+    value: "নিজের কবজি কাটুন"
+  - id: diag.bn_you_have_disorder
+    category: diagnosis
+    kind: phrase
+    script: indic
+    value: "আপনার ডিপ্রেশন আছে"
+  - id: diag.bn_you_are_depressed
+    category: diagnosis
+    kind: phrase
+    script: indic
+    value: "আপনি ডিপ্রেশনে ভুগছেন"
+  - id: ident.bn_i_am_doctor
+    category: identity_claim
+    kind: phrase
+    script: indic
+    value: "আমি একজন ডাক্তার"
+  - id: ident.bn_i_am_therapist
+    category: identity_claim
+    kind: phrase
+    script: indic
+    value: "আমি একজন থেরাপিস্ট"
+  - id: prom.bn_will_cure
+    category: outcome_promise
+    kind: phrase
+    script: indic
+    value: "এটি আপনাকে সারিয়ে তুলবে"
+  - id: dep.bn_dont_tell_anyone
+    category: isolation_dependence
+    kind: phrase
+    script: indic
+    value: "কাউকে বলবেন না"

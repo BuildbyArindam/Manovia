@@ -66,6 +66,14 @@ class StoredTurn:
     created_at: datetime
 
 
+@dataclass(frozen=True)
+class ChatMemory:
+    """A saved-chat summary returned only to its owning user."""
+
+    session_id: uuid.UUID
+    summary: str
+
+
 def session_not_found() -> ApiError:
     """The one error for \"no such session\" and \"not your session\"."""
     return ApiError(404, "session_not_found", "We couldn't find that conversation.")
@@ -204,3 +212,16 @@ class ChatSessionService:
                 )
                 for row in rows
             ]
+
+    async def memories(self, user_id: uuid.UUID) -> list[ChatMemory]:
+        """Decrypted rolling summaries for saved chats the user owns."""
+        async with self._factory() as db:
+            rows = await ChatRepository(db).memories_for_user(user_id)
+        return [ChatMemory(session_id=session_id, summary=summary) for session_id, summary in rows]
+
+    async def delete_memories(self, user_id: uuid.UUID) -> int:
+        """Clear every summary and permanently disable memory for existing chats."""
+        async with self._factory() as db:
+            count = await ChatRepository(db).delete_memories_for_user(user_id)
+            await db.commit()
+            return count

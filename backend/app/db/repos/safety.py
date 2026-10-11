@@ -15,7 +15,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import RiskLevel, SafetyEventSource
+from app.models.enums import RiskLevel, SafetyEventCategory, SafetyEventSource
 from app.models.safety_event import SafetyEvent
 
 
@@ -30,6 +30,7 @@ class SafetyEventRepository:
         *,
         risk_level: RiskLevel | int,
         source: SafetyEventSource,
+        category: SafetyEventCategory | None = None,
         user_id: uuid.UUID | None = None,
         session_id: uuid.UUID | None = None,
     ) -> SafetyEvent:
@@ -39,6 +40,7 @@ class SafetyEventRepository:
             session_id=session_id,
             risk_level=int(risk_level),
             source=source,
+            category=category,
         )
         self._session.add(event)
         await self._session.flush()

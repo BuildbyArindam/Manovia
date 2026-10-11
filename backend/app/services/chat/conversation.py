@@ -33,7 +33,12 @@ from typing import Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repos import ChatRepository, SafetyEventRepository
-from app.models.enums import MessageRole, RiskLevel, SafetyEventSource
+from app.models.enums import (
+    MessageRole,
+    RiskLevel,
+    SafetyEventCategory,
+    SafetyEventSource,
+)
 from app.services.chat.ephemeral import EphemeralSession, EphemeralSessionStore
 from app.services.chat.prompting import HistoryTurn
 
@@ -76,12 +81,27 @@ class Conversation(Protocol):
         """Store the assistant's reply."""
         ...
 
+    async def get_memory(self) -> tuple[str | None, bool]:
+        """Return ``(summary, deleted)``; deleted sessions cannot rebuild it."""
+        ...
+
+    async def update_memory(self, summary: str) -> bool:
+        """Store an encrypted summary unless the user set a deletion tombstone."""
+        ...
+
+    async def record_output_guard_event(
+        self, *, category: SafetyEventCategory, risk: RiskLevel
+    ) -> None:
+        """Record a text-free LLM-output safety decision."""
+        ...
+
 
 async def _record_event(
     factory: SessionFactory | None,
     *,
     risk: RiskLevel,
     source: SafetyEventSource,
+    category: SafetyEventCategory | None,
     user_id: uuid.UUID | None,
     session_id: uuid.UUID | None,
 ) -> None:
@@ -90,7 +110,11 @@ async def _record_event(
         return
     async with factory() as db:
         await SafetyEventRepository(db).record(
-            risk_level=risk, source=source, user_id=user_id, session_id=session_id
+            risk_level=risk,
+            source=source,
+            category=category,
+            user_id=user_id,
+            session_id=session_id,
         )
         await db.commit()
 
@@ -176,6 +200,42 @@ class PersistentConversation:
             await db.commit()
         return message_id
 
+    async def get_memory(self) -> tuple[str | None, bool]:
+        if not self._store:
+            return None, True
+        async with self._factory() as db:
+            return await ChatRepository(db).memory_summary(self.session_id)
+
+    async def update_memory(self, summary: str) -> bool:
+        if not self._store:
+            return False
+        async with self._factory() as db:
+            updated = await ChatRepository(db).update_memory(self.session_id, summary)
+            await db.commit()
+            return updated
+
+    async def record_output_guard_event(
+        self, *, category: SafetyEventCategory, risk: RiskLevel
+    ) -> None:
+        if self._store:
+            await _record_event(
+                self._factory,
+                risk=risk,
+                source=SafetyEventSource.LLM_OUTPUT,
+                category=category,
+                user_id=self.user_id,
+                session_id=self.session_id,
+            )
+        else:
+            await _record_event(
+                self._factory,
+                risk=risk,
+                source=SafetyEventSource.LLM_OUTPUT,
+                category=category,
+                user_id=None,
+                session_id=None,
+            )
+
 
 async def _record_event_if(
     factory: SessionFactory | None, source: SafetyEventSource | None, *, risk: RiskLevel
@@ -183,7 +243,14 @@ async def _record_event_if(
     """Anonymous audit row, only when there is something to record."""
     if source is None:
         return
-    await _record_event(factory, risk=risk, source=source, user_id=None, session_id=None)
+    await _record_event(
+        factory,
+        risk=risk,
+        source=source,
+        category=None,
+        user_id=None,
+        session_id=None,
+    )
 
 
 class EphemeralConversation:
@@ -242,3 +309,21 @@ class EphemeralConversation:
             emotion=None,
         )
         return turn.id
+
+    async def get_memory(self) -> tuple[str | None, bool]:
+        return None, True
+
+    async def update_memory(self, summary: str) -> bool:
+        return False
+
+    async def record_output_guard_event(
+        self, *, category: SafetyEventCategory, risk: RiskLevel
+    ) -> None:
+        await _record_event(
+            self._factory,
+            risk=risk,
+            source=SafetyEventSource.LLM_OUTPUT,
+            category=category,
+            user_id=None,
+            session_id=None,
+        )

@@ -17,7 +17,7 @@ from structlog.testing import capture_logs
 
 from app.core.errors import ApiError
 from app.models.enums import RiskLevel as StoredRiskLevel
-from app.models.enums import SafetyEventSource
+from app.models.enums import SafetyEventCategory, SafetyEventSource
 from app.services.chat import (
     ChatOrchestrator,
     FinalEvent,
@@ -42,6 +42,7 @@ from app.services.nlp.fake import FakeEmotionAnalyzer
 from app.services.nlp.redaction import Redactor
 from app.services.safety.base import RiskLevel
 from app.services.safety.escalation import build_escalator
+from app.services.safety.output_guard import RuleBasedOutputGuard
 from app.services.safety.rules import RuleEngine
 from tests.chat.conftest import (
     HIGH_MESSAGE,
@@ -802,7 +803,9 @@ class _Guard:
         self._verdict = verdict
         self.seen: list[str] = []
 
-    async def check(self, text: str, *, risk: RiskLevel) -> GuardVerdict:
+    async def check(
+        self, text: str, *, risk: RiskLevel, expected_language: str | None = None
+    ) -> GuardVerdict:
         self.seen.append(text)
         return self._verdict or GuardVerdict(text=text)
 
@@ -828,9 +831,69 @@ async def test_a_guard_replacement_becomes_a_fallback_response(
     guard = _Guard(verdict=GuardVerdict(text="A SAFE REPLACEMENT", passed=False, reason="test"))
     reply = await _reply(make_orchestrator(output_guard=guard), conversation, NEUTRAL_MESSAGE)
 
-    assert reply.reply == "A SAFE REPLACEMENT"
+    assert reply.reply == RuleBasedOutputGuard().safe_reply("en")
     assert reply.metadata.response_type is ResponseType.FALLBACK
+    assert "A SAFE REPLACEMENT" not in conversation.assistant_calls[0].text
     assert DEFAULT_REPLY not in conversation.assistant_calls[0].text
+
+
+async def test_bad_output_is_regenerated_once_with_a_strict_instruction(
+    make_orchestrator: Factory,
+    conversation: FakeConversation,
+) -> None:
+    from app.services.chat.orchestrator import STRICT_OUTPUT_INSTRUCTION
+
+    llm = FakeLLMProvider(
+        replies=[
+            "You have major depression.",
+            "That sounds like a hard day. What feels hardest for you right now?",
+        ]
+    )
+
+    reply = await _reply(make_orchestrator(llm), conversation, NEUTRAL_MESSAGE)
+
+    assert llm.call_count == 2
+    assert reply.reply == "That sounds like a hard day. What feels hardest for you right now?"
+    assert reply.metadata.response_type is ResponseType.NORMAL
+    assert STRICT_OUTPUT_INSTRUCTION in (llm.calls[1].system or "")
+    assert conversation.output_events == [(SafetyEventCategory.DIAGNOSIS, StoredRiskLevel.NONE)]
+    assert "You have major depression" not in reply.reply
+
+
+async def test_a_repeated_bad_output_uses_the_safe_template_after_one_retry(
+    make_orchestrator: Factory,
+    conversation: FakeConversation,
+) -> None:
+    llm = FakeLLMProvider(replies=["You have major depression."])
+    safe = RuleBasedOutputGuard().safe_reply("en")
+
+    reply = await _reply(make_orchestrator(llm), conversation, NEUTRAL_MESSAGE)
+
+    assert llm.call_count == 2
+    assert reply.reply == safe
+    assert reply.metadata.response_type is ResponseType.FALLBACK
+    assert reply.metadata.degraded
+    assert conversation.output_events == [
+        (SafetyEventCategory.DIAGNOSIS, StoredRiskLevel.NONE),
+        (SafetyEventCategory.DIAGNOSIS, StoredRiskLevel.NONE),
+    ]
+    assert "You have major depression" not in conversation.assistant_calls[0].text
+
+
+async def test_output_guard_logs_categories_without_the_rejected_text(
+    make_orchestrator: Factory,
+    conversation: FakeConversation,
+) -> None:
+    rejected = "You have major depression. zzqx7-guard-canary"
+    llm = FakeLLMProvider(replies=[rejected])
+
+    with capture_logs() as logs:
+        await _reply(make_orchestrator(llm), conversation, NEUTRAL_MESSAGE)
+
+    output_logs = [event for event in logs if event.get("event") == "chat_output_guard_rejected"]
+    assert [event.get("category") for event in output_logs] == ["diagnosis", "diagnosis"]
+    assert "zzqx7-guard-canary" not in str(logs)
+    assert "You have major depression" not in str(logs)
 
 
 async def test_a_crashing_guard_fails_closed(
@@ -839,11 +902,15 @@ async def test_a_crashing_guard_fails_closed(
     class Crashing:
         requires_full_text = False
 
-        async def check(self, text: str, *, risk: RiskLevel) -> GuardVerdict:
+        async def check(
+            self, text: str, *, risk: RiskLevel, expected_language: str | None = None
+        ) -> GuardVerdict:
             raise RuntimeError("guard crashed")
 
     reply = await _reply(make_orchestrator(output_guard=Crashing()), conversation, NEUTRAL_MESSAGE)
-    assert reply.reply == CANNED_REPLY, "an unchecked reply must not get through"
+    assert reply.reply == RuleBasedOutputGuard().safe_reply("en"), (
+        "an unchecked reply must not get through"
+    )
     assert reply.metadata.response_type is ResponseType.FALLBACK
 
 
@@ -867,8 +934,8 @@ async def test_a_stream_is_tokens_in_order_then_one_final_event(
     events = await _stream(make_orchestrator(llm), conversation, SAD_MESSAGE)
 
     tokens = [e.text for e in events[:-1] if isinstance(e, TokenEvent)]
-    assert tokens == ["I hear ", "you. ", "That sounds ", "hard."]
-    assert len(tokens) == len(events) - 1, "only tokens before the final event"
+    assert tokens == ["I hear you. That sounds hard."], "the full reply is checked before release"
+    assert len(tokens) == len(events) - 1, "only checked tokens before the final event"
     final = events[-1]
     assert isinstance(final, FinalEvent)
     assert final.reply.reply == "".join(tokens)
@@ -924,8 +991,9 @@ async def test_a_failure_mid_stream_replaces_what_was_sent(
 
     final = events[-1]
     assert isinstance(final, FinalEvent)
-    assert final.replaced is True, "the client must swap its partial text"
+    assert final.replaced is False, "the buffered stream released no partial model text"
     assert final.reply.reply == CANNED_REPLY
+    assert "Half a" not in "".join(e.text for e in events[:-1] if isinstance(e, TokenEvent))
     assert final.reply.metadata.response_type is ResponseType.FALLBACK
 
 
@@ -938,7 +1006,7 @@ async def test_a_guard_rewrite_after_live_tokens_is_flagged_as_replaced(
     final = events[-1]
     assert isinstance(final, FinalEvent)
     assert final.replaced is True
-    assert final.reply.reply == "rewritten"
+    assert final.reply.reply == RuleBasedOutputGuard().safe_reply("en")
 
 
 async def test_a_full_text_guard_buffers_so_unchecked_text_is_never_sent(
@@ -950,11 +1018,14 @@ async def test_a_full_text_guard_buffers_so_unchecked_text_is_never_sent(
 
     sent = "".join(e.text for e in events if isinstance(e, TokenEvent))
     assert "UNSAFE" not in sent
-    assert sent == "A safe replacement."
+    assert sent == RuleBasedOutputGuard().safe_reply("en")
     final = events[-1]
     assert isinstance(final, FinalEvent)
     assert final.replaced is False, "nothing unchecked was ever shown, so nothing to replace"
-    assert guard.seen == ["UNSAFE MODEL OUTPUT that should never be seen"]
+    assert guard.seen == [
+        "UNSAFE MODEL OUTPUT that should never be seen",
+        "UNSAFE MODEL OUTPUT that should never be seen",
+    ]
 
 
 # --------------------------------------------------------------------------- #

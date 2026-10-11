@@ -20,6 +20,8 @@ route                                                       what it does
 ``POST /chat/sessions/{id}/stream``                         one message, SSE reply
 ``GET  /chat/sessions/{id}/stream?message=…``               the same, for clients
                                                             that can only issue GETs
+``GET  /chat/memory``                                       summaries for saved chats
+``DELETE /chat/memory``                                    erase summaries irreversibly
 ==========================================================  =========================
 
 **Ownership.** A session that is not yours is a ``404 session_not_found``,
@@ -72,6 +74,7 @@ from app.models.enums import ConsentKind
 from app.models.user import User
 from app.services.chat import (
     AdmittedMessage,
+    ChatMemory,
     ChatOrchestrator,
     ChatReply,
     ChatSessionService,
@@ -82,6 +85,7 @@ from app.services.chat import (
     TokenEvent,
     build_orchestrator,
 )
+from app.services.chat.memory import MEMORY_MAX_TOKENS
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -153,6 +157,23 @@ class MessagesOut(BaseModel):
     messages: list[StoredMessageOut]
 
 
+class ChatMemoryItemOut(BaseModel):
+    """One decrypted, user-visible summary for an owned saved chat."""
+
+    session_id: uuid.UUID
+    summary: str
+
+
+class ChatMemoriesOut(BaseModel):
+    memories: list[ChatMemoryItemOut]
+    max_tokens: int = MEMORY_MAX_TOKENS
+
+
+class ChatMemoryDeleteOut(BaseModel):
+    deleted_sessions: int
+    irreversible: bool = True
+
+
 # --------------------------------------------------------------------------- #
 # Dependencies                                                                  #
 # --------------------------------------------------------------------------- #
@@ -193,6 +214,30 @@ def _session_out(info: SessionInfo) -> ChatSessionOut:
         persistent=info.persistent,
         expires_at=info.expires_at,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Saved-chat memory                                                            #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/memory")
+async def list_chat_memory(service: ChatServiceDep, user: CurrentUser) -> ChatMemoriesOut:
+    """Show the user's summaries for saved chats (decrypted only for their owner)."""
+    memories: list[ChatMemory] = await service.memories(user.id)
+    return ChatMemoriesOut(
+        memories=[
+            ChatMemoryItemOut(session_id=memory.session_id, summary=memory.summary)
+            for memory in memories
+        ]
+    )
+
+
+@router.delete("/memory")
+async def delete_chat_memory(service: ChatServiceDep, user: CurrentUser) -> ChatMemoryDeleteOut:
+    """Erase every summary and tombstone existing chats so memory cannot be rebuilt."""
+    deleted = await service.delete_memories(user.id)
+    return ChatMemoryDeleteOut(deleted_sessions=deleted)
 
 
 # --------------------------------------------------------------------------- #

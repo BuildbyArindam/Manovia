@@ -137,9 +137,16 @@ def compose_system(
     emotion: str | None,
     safety: str | None,
     retrieval: str | None,
+    memory: str | None = None,
 ) -> str:
     """The product prompt, then the application's context block (if any)."""
-    parts = [part for part in (emotion, safety, retrieval) if part]
+    if memory:
+        from app.services.chat.memory import memory_context
+
+        memory_block = memory_context(memory)
+    else:
+        memory_block = None
+    parts = [part for part in (emotion, safety, retrieval, memory_block) if part]
     if not parts:
         return base
     return base.rstrip() + "\n\n" + CONTEXT_HEADER + "\n" + "\n\n".join(parts)
