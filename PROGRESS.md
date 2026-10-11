@@ -2,6 +2,28 @@
 
 ## Current status
 
+**Day 19 — CBT thought record built and verified in rules-only mode (2026-10-11).** Seven-step
+keyboard-operable wizard, owner-only encrypted CRUD, per-step and write-time
+safety screening, closed-set thinking-trap helper with output guard/redaction
+and deterministic fallback, before/after intensity and fixed what-helped tags.
+Final `make test`: **3061 backend / 381 frontend passed**, 3 optional skips
+each. Root lint, frontend typecheck/build/format, migration drift and real
+Chromium keyboard-only e2e **2/2** passed (rules-only mode).
+Decision: [ADR 0019](docs/adr/0019-cbt-thought-record.md). Results and limits:
+[Day 19 verification](docs/verification/day19-cbt-thought-record.md).
+This Arena session is fixed to **`arena/ee253d5a-manovia`**; the requested
+`day-19-cbt-thought-record` branch cannot be created in this session. Never
+push to main; open one PR from the pinned branch; do not merge.
+
+**Known issue (Day 19):** the existing default safety ML model rates ordinary
+exam phrases HIGH (including the requested sample). The wizard honours HIGH;
+no safety threshold was weakened. Rules-only (`SAFETY_ML_ENABLED=false`) works
+and was used for the browser API walkthrough. Re-evaluate the classifier with
+labelled false positives before changing production policy. "Continue later"
+keeps an unfinished draft only in open-tab memory; reload discards it.
+
+## Current status
+
 **Day 18 — guided exercises — build and verification are complete. Wrap-up awaits
 an explicit instruction.** Eight validated, audio-free YAML definitions; public
 catalogue/detail and explainable emotion rules; consented idempotent numeric
@@ -2843,12 +2865,22 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 17 parking lot)** Automatic background pagination or IndexedDB encrypted session cache for client-side journal search when a user has more than 50 entries.
 - **(Day 17 parking lot)** Full-account data export (ZIP of Markdown journal entries + CSV mood check-ins) for Day 20 privacy settings.
 
-## Next steps (Day 19 — proposed first three)
+## Next steps (Day 20 — first three)
 
-The earlier self-check next steps are carried forward as a **candidate**, not an
-approved Day 19 brief. Await the user's Day 18 wrap-up instruction (one PR, no
-merge) and confirm Day 19 scope before writing any of this code.
+1. Evaluate and label the exam-phrase HIGH false positives against the frozen
+   safety corpus; review changes with safety stakeholders before tuning the
+   ensemble or ML model. Do not weaken the HIGH gate in the CBT feature.
+2. Review the CBT wizard with keyboard/screen-reader users and a clinical copy
+   reviewer; particularly check the conditional thinking-trap language and
+   crisis interruption for non-English users.
+3. Decide whether users need encrypted server-side draft/resume and paginated
+   record history before implementing either; keep plaintext drafts off device
+   storage in the meantime.
 
-1. **Confirm the Day 19 brief, then build the PHQ-9 and GAD-7 self-check assessment service (`backend/app/services/assessments/`).** Load validated question sets and severity bands (`minimal`, `mild`, `moderate`, `moderately_severe`, `severe`) with mandatory "not a diagnosis" framing, encrypt per-item answers in `assessment_results.answers_encrypted`, and screen item 9 of PHQ-9 (thoughts of self-harm) through the crisis escalator immediately.
-2. **Expose assessment endpoints (`/api/v1/assessments`) and wire safety escalation.** Provide endpoints to fetch localised instrument questions, submit an assessment (returning the band, non-clinical interpretation, and verified crisis resources whenever PHQ-9 item 9 > 0 or total band is severe), and list historical band scores.
-3. **Build the step-by-step frontend self-check flow and longitudinal band chart.** Render one question at a time with keyboard navigation, clear disclaimer copy before and after completion, immediate `CrisisCard` display when self-harm thoughts are indicated, and a calm score-band history view.
+## Parking lot (Day 19)
+
+- Localise the ten trap explanations and keyword fallback beyond English after
+  human review; avoid translating cognitive labels mechanically.
+- Server-side encrypted draft resume across devices, only after deciding how
+  HIGH-risk drafts should be handled.
+- Paginate thought-record history beyond the current newest-100 limit.
