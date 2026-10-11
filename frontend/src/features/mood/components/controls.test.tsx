@@ -75,9 +75,9 @@ describe("FaceScale", () => {
   it("starts with nothing chosen — the app does not answer this question", () => {
     render(<FaceHarness />);
 
-    expect(screen.getAllByRole("radio").every((radio) => !(radio as HTMLInputElement).checked)).toBe(
-      true,
-    );
+    expect(
+      screen.getAllByRole("radio").every((radio) => !(radio as HTMLInputElement).checked),
+    ).toBe(true);
   });
 
   it.each(["Very low", "Low", "In the middle", "Good", "Very good"])(
@@ -125,7 +125,10 @@ describe("EnergyScale", () => {
 
     fireEvent.change(slider, { target: { value: "4" } });
 
-    expect(screen.getByRole("slider", { name: "Energy" })).toHaveAttribute("aria-valuetext", "Good");
+    expect(screen.getByRole("slider", { name: "Energy" })).toHaveAttribute(
+      "aria-valuetext",
+      "Good",
+    );
     expect(screen.getByTestId("mood-energy-readout")).toHaveTextContent("4 — Good");
   });
 

@@ -77,7 +77,9 @@ describe("deviceTimezone", () => {
 
 describe("mood endpoints", () => {
   it("posts a check-in with the timezone attached", async () => {
-    const client = clientWith(recordingFetch({ entry: moodEntry(), streak: moodStreak(), crisis: null }, 201));
+    const client = clientWith(
+      recordingFetch({ entry: moodEntry(), streak: moodStreak(), crisis: null }, 201),
+    );
 
     await createMoodCheckIn(
       { valence: 4, energy: 2, emotions: ["calm"], factors: ["sleep"], note: "ok" },
@@ -162,7 +164,10 @@ describe("mood endpoints", () => {
 
   it("surfaces the backend's error code rather than a bare status", async () => {
     const client = clientWith(async () =>
-      jsonResponse({ error: { code: "invalid_timezone", message: "nope", request_id: "r-1" } }, 422),
+      jsonResponse(
+        { error: { code: "invalid_timezone", message: "nope", request_id: "r-1" } },
+        422,
+      ),
     );
 
     await expect(fetchMoodStreak(client)).rejects.toThrowError(/nope/);

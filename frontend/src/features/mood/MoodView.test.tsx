@@ -216,7 +216,9 @@ describe("MoodView — the streak, in every state the server can report", () => 
     renderMoodView(fake.client);
 
     const streak = await screen.findByTestId("mood-streak");
-    expect(await within(streak).findByTestId("mood-streak-headline")).toHaveTextContent("Welcome back.");
+    expect(await within(streak).findByTestId("mood-streak-headline")).toHaveTextContent(
+      "Welcome back.",
+    );
     expect(within(streak).getByTestId("mood-streak-detail")).toHaveTextContent(
       /starting again counts the same/,
     );
@@ -225,7 +227,12 @@ describe("MoodView — the streak, in every state the server can report", () => 
 
   it("says a run is running without making it a target", async () => {
     const fake = makeMoodFake({
-      streak: moodStreak({ state: "today", current_streak: 14, longest_streak: 14, total_check_ins: 40 }),
+      streak: moodStreak({
+        state: "today",
+        current_streak: 14,
+        longest_streak: 14,
+        total_check_ins: 40,
+      }),
     });
     renderMoodView(fake.client);
 

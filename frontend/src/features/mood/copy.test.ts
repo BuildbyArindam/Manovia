@@ -146,8 +146,12 @@ describe("mood copy", () => {
 describe("streak wording", () => {
   it("never makes a gap sound like a loss", () => {
     const texts = [
-      streakHeadline(sampleStreak({ state: "returning", current_streak: 0, days_since_last_check_in: 6 })),
-      streakDetail(sampleStreak({ state: "returning", current_streak: 0, days_since_last_check_in: 6 })),
+      streakHeadline(
+        sampleStreak({ state: "returning", current_streak: 0, days_since_last_check_in: 6 }),
+      ),
+      streakDetail(
+        sampleStreak({ state: "returning", current_streak: 0, days_since_last_check_in: 6 }),
+      ),
       streakHeadline(sampleStreak({ state: "never", current_streak: 0, total_check_ins: 0 })),
     ].filter((text): text is string => text !== null);
 

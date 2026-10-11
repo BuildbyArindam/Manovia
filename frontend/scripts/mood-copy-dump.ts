@@ -16,7 +16,13 @@
  * Python script.
  */
 
-import { MOOD_COPY, allMoodStrings, pluralDays, streakHeadline, streakDetail } from "@/features/mood/copy";
+import {
+  MOOD_COPY,
+  allMoodStrings,
+  pluralDays,
+  streakHeadline,
+  streakDetail,
+} from "@/features/mood/copy";
 import {
   EMOTION_IDS,
   ENERGY_POINTS,

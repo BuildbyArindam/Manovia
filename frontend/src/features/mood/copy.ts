@@ -57,7 +57,8 @@ export const MOOD_COPY = {
   noteRemaining: (remaining: number): string => `${remaining} characters left`,
   noteOver: "That is longer than the note can be. Try shortening it a little.",
 
-  valenceRequired: "Choose the face that is closest. If none of them fit, pick the one you are nearest to.",
+  valenceRequired:
+    "Choose the face that is closest. If none of them fit, pick the one you are nearest to.",
   energyRequired: "Choose how much energy you have.",
 
   submit: "Save check-in",

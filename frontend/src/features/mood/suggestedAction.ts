@@ -23,7 +23,8 @@
 import type { MoodEntry } from "./types";
 
 /** The fallback: always available, always doable, always small. */
-export const FALLBACK_ACTION = "Two slow breaths, with the out-breath longer than the in. That's the whole task.";
+export const FALLBACK_ACTION =
+  "Two slow breaths, with the out-breath longer than the in. That's the whole task.";
 
 export const SUGGESTED_ACTIONS = {
   depleted: "Pick the next smallest thing and let the rest wait. A glass of water counts.",
@@ -44,7 +45,9 @@ export const SUGGESTED_ACTIONS = {
  * the smallest offer wins, so somebody at their lowest is never handed the
  * biggest task.
  */
-export function suggestedAction(entry: Pick<MoodEntry, "valence" | "energy" | "emotions" | "factors">): string {
+export function suggestedAction(
+  entry: Pick<MoodEntry, "valence" | "energy" | "emotions" | "factors">,
+): string {
   const { valence, energy, emotions, factors } = entry;
   const has = (...ids: string[]): boolean => ids.some((id) => factors.includes(id));
 

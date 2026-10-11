@@ -72,7 +72,9 @@ export async function fetchMoodEntries(
 
 /** The streak, counted by the server in this device's timezone. */
 export async function fetchMoodStreak(client: ApiClient = defaultClient): Promise<MoodStreak> {
-  return client.get<MoodStreak>(`${MOOD_ENDPOINTS.streak}?tz=${encodeURIComponent(deviceTimezone())}`);
+  return client.get<MoodStreak>(
+    `${MOOD_ENDPOINTS.streak}?tz=${encodeURIComponent(deviceTimezone())}`,
+  );
 }
 
 /** Delete one check-in. The response carries the streak that is left. */

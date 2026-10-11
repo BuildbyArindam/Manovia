@@ -87,7 +87,8 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
                   <MoodFace shape={valence.face} />
                 </span>
                 <p className="text-base">
-                  <time dateTime={entry.local_date}>{day}</time> · {valence.label} · energy {energy.label}
+                  <time dateTime={entry.local_date}>{day}</time> · {valence.label} · energy{" "}
+                  {energy.label}
                 </p>
               </div>
 
@@ -113,7 +114,9 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
               {confirming === entry.id ? (
                 <div className="mt-3 rounded-xl bg-surface-muted p-3">
                   <p className="font-semibold">{MOOD_COPY.historyDeleteConfirm}</p>
-                  <p className="mt-1 text-sm text-ink-muted">{MOOD_COPY.historyDeleteConfirmBody}</p>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {MOOD_COPY.historyDeleteConfirmBody}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -156,7 +159,6 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
           );
         })}
       </ul>
-
     </section>
   );
 }

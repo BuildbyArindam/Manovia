@@ -45,7 +45,11 @@ export function FaceScale({
   const hintId = `${name}-hint`;
 
   return (
-    <fieldset className="border-0 p-0" data-testid="mood-face-scale" aria-invalid={invalid || undefined}>
+    <fieldset
+      className="border-0 p-0"
+      data-testid="mood-face-scale"
+      aria-invalid={invalid || undefined}
+    >
       <legend className="text-base font-semibold">{legend}</legend>
       <p id={hintId} className="mt-1 text-sm text-ink-muted">
         {hint}

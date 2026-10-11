@@ -89,7 +89,11 @@ export function TagChips({
           );
         })}
       </ul>
-      <p className="mt-2 text-sm text-ink-muted" aria-live="polite" data-testid={`chips-${name}-cap`}>
+      <p
+        className="mt-2 text-sm text-ink-muted"
+        aria-live="polite"
+        data-testid={`chips-${name}-cap`}
+      >
         {atCap ? fullHint : `${selected.length} of ${max} chosen`}
       </p>
     </fieldset>

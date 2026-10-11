@@ -128,7 +128,12 @@ export function MoodCheckInForm({ onSaved, client }: MoodCheckInFormProps): Reac
         ) : null}
       </div>
 
-      <EnergyScale value={energy} onChange={setEnergy} legend={MOOD_COPY.energyLegend} hint={MOOD_COPY.energyHint} />
+      <EnergyScale
+        value={energy}
+        onChange={setEnergy}
+        legend={MOOD_COPY.energyLegend}
+        hint={MOOD_COPY.energyHint}
+      />
 
       <TagChips
         options={MOOD_EMOTIONS}

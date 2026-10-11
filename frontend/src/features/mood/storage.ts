@@ -32,7 +32,11 @@ function isMoodReminder(value: unknown): value is MoodReminder {
     return false;
   }
   const record = value as Record<string, unknown>;
-  return typeof record.enabled === "boolean" && typeof record.time === "string" && isValidReminderTime(record.time);
+  return (
+    typeof record.enabled === "boolean" &&
+    typeof record.time === "string" &&
+    isValidReminderTime(record.time)
+  );
 }
 
 export function loadMoodReminder(storage: Storage = window.localStorage): MoodReminder {
@@ -48,7 +52,10 @@ export function loadMoodReminder(storage: Storage = window.localStorage): MoodRe
   }
 }
 
-export function saveMoodReminder(reminder: MoodReminder, storage: Storage = window.localStorage): void {
+export function saveMoodReminder(
+  reminder: MoodReminder,
+  storage: Storage = window.localStorage,
+): void {
   const safe: MoodReminder = {
     enabled: reminder.enabled,
     time: isValidReminderTime(reminder.time) ? reminder.time : DEFAULT_MOOD_REMINDER.time,

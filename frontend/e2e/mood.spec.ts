@@ -134,7 +134,9 @@ test("the daily reminder is stored on the device and says it is not sent", async
   const reminder = page.getByTestId("mood-reminder");
   await reminder.getByRole("checkbox", { name: "Remember to remind me" }).check();
   await reminder.getByLabel("Remind me at").fill("07:30");
-  await expect(reminder.getByTestId("mood-reminder-status")).toContainText("No reminders are sent yet");
+  await expect(reminder.getByTestId("mood-reminder-status")).toContainText(
+    "No reminders are sent yet",
+  );
 
   await page.reload();
   await expect(page.getByTestId("mood-reminder").getByRole("checkbox")).toBeChecked();

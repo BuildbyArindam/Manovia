@@ -70,12 +70,14 @@ export interface MoodFake {
  * that the list the user sees reflects what they did — the invalidation path, not
  * just the response.
  */
-export function makeMoodFake(options: {
-  streak?: MoodStreak;
-  history?: MoodEntry[];
-  crisis?: MoodCheckInResponse["crisis"];
-  failCheckIn?: Error;
-} = {}): MoodFake {
+export function makeMoodFake(
+  options: {
+    streak?: MoodStreak;
+    history?: MoodEntry[];
+    crisis?: MoodCheckInResponse["crisis"];
+    failCheckIn?: Error;
+  } = {},
+): MoodFake {
   const fake: MoodFake = {
     client: {} as ApiClient,
     sent: [],
