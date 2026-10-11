@@ -13,7 +13,23 @@ export const CHAT_ENDPOINTS = {
   sessions: "/chat/sessions",
   messages: (sessionId: string): string => `/chat/sessions/${sessionId}/messages`,
   stream: (sessionId: string): string => `/chat/sessions/${sessionId}/stream`,
+  memory: "/chat/memory",
 } as const;
+
+export interface ChatMemoryItem {
+  session_id: string;
+  summary: string;
+}
+
+export interface ChatMemoryResponse {
+  memories: ChatMemoryItem[];
+  max_tokens: number;
+}
+
+export interface ChatMemoryDeleteResponse {
+  deleted_sessions: number;
+  irreversible: boolean;
+}
 
 /**
  * Open a chat session.
@@ -37,6 +53,20 @@ export async function fetchChatMessages(
   limit = 100,
 ): Promise<StoredMessages> {
   return client.get<StoredMessages>(`${CHAT_ENDPOINTS.messages(sessionId)}?limit=${limit}`);
+}
+
+/** Saved-chat summaries shown under Settings → "What Manovia remembers". */
+export async function fetchChatMemory(
+  client: ApiClient = defaultClient,
+): Promise<ChatMemoryResponse> {
+  return client.get<ChatMemoryResponse>(CHAT_ENDPOINTS.memory);
+}
+
+/** Clear summaries and prevent existing saved chats from rebuilding them. */
+export async function deleteChatMemory(
+  client: ApiClient = defaultClient,
+): Promise<ChatMemoryDeleteResponse> {
+  return client.request<ChatMemoryDeleteResponse>(CHAT_ENDPOINTS.memory, { method: "DELETE" });
 }
 
 /** The body of `POST /chat/sessions/{id}/stream`. */

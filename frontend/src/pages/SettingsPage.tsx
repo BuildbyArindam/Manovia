@@ -8,8 +8,10 @@
  */
 
 import { useState, type FormEvent, type ReactElement } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { deleteChatMemory, fetchChatMemory } from "@/features/chat/endpoints";
 import { useMoodHintPreference } from "@/features/chat/useMoodHint";
 import { signOut } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -29,7 +31,26 @@ export function SettingsPage(): ReactElement {
   const [showMoodHint, setShowMoodHint] = useMoodHintPreference();
   const { record, reset } = useOnboarding();
   const reduceMotion = usePrefersReducedMotion();
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmMemoryDeletion, setConfirmMemoryDeletion] = useState(false);
+  const memoryQuery = useQuery({
+    queryKey: ["chat-memory"],
+    queryFn: () => fetchChatMemory(api),
+    enabled: record !== null,
+  });
+  const memories = memoryQuery.data?.memories ?? [];
+  const deleteMemory = useMutation({
+    mutationFn: () => deleteChatMemory(api),
+    onSuccess: async () => {
+      setConfirmMemoryDeletion(false);
+      setMessage("What Manovia remembers was deleted. Existing saved chats will not rebuild it.");
+      await queryClient.invalidateQueries({ queryKey: ["chat-memory"] });
+    },
+    onError: () => {
+      setMessage("Memory could not be deleted right now. Please try again.");
+    },
+  });
 
   async function handleSignOut(): Promise<void> {
     await signOut(api);
@@ -120,6 +141,85 @@ export function SettingsPage(): ReactElement {
           message you typed — it is a hint, not a measurement, and it is not a diagnosis. Turning it
           off changes nothing about how Manovia replies.
         </p>
+      </section>
+
+      <section
+        aria-labelledby="memory-heading"
+        className="rounded-2xl border border-border bg-surface p-6 shadow-soft"
+      >
+        <h2 id="memory-heading" className="text-lg">
+          What Manovia remembers
+        </h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          These short summaries are made only from redacted messages in chats you chose to save.
+          They are encrypted, kept to about {memoryQuery.data?.max_tokens ?? 300} tokens per chat,
+          and used as background in later turns. Deleting them does not delete your saved chat
+          messages.
+        </p>
+        {record === null ? (
+          <p className="mt-4 text-ink-muted">Sign in to see memory from saved chats.</p>
+        ) : memoryQuery.isLoading ? (
+          <p className="mt-4 text-ink-muted" role="status">
+            Loading saved-chat memory…
+          </p>
+        ) : memoryQuery.isError ? (
+          <p className="mt-4 text-ink-muted" role="alert">
+            Saved-chat memory could not be loaded right now.
+          </p>
+        ) : memories.length === 0 ? (
+          <p className="mt-4 text-ink-muted">Nothing is currently remembered from saved chats.</p>
+        ) : (
+          <>
+            <ul className="mt-4 space-y-3">
+              {memories.map((memory) => (
+                <li
+                  className="rounded-xl bg-surface-muted p-4 text-ink-muted"
+                  key={memory.session_id}
+                >
+                  {memory.summary}
+                </li>
+              ))}
+            </ul>
+            {confirmMemoryDeletion ? (
+              <div
+                className="mt-4 rounded-xl border border-border-strong p-4"
+                role="group"
+                aria-labelledby="memory-delete-confirmation"
+              >
+                <p id="memory-delete-confirmation" className="text-sm text-ink-muted">
+                  This cannot be undone. Summaries for existing saved chats will be erased and will
+                  not be rebuilt; the saved messages will remain.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={deleteMemory.isPending}
+                    onClick={() => deleteMemory.mutate()}
+                    className="rounded-xl border border-border-strong px-4 py-2 font-semibold disabled:opacity-60"
+                  >
+                    {deleteMemory.isPending ? "Deleting…" : "Confirm deletion"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleteMemory.isPending}
+                    onClick={() => setConfirmMemoryDeletion(false)}
+                    className="rounded-xl border border-border-strong px-4 py-2 font-semibold disabled:opacity-60"
+                  >
+                    Keep memory
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmMemoryDeletion(true)}
+                className="mt-4 rounded-xl border border-border-strong px-4 py-2 font-semibold"
+              >
+                Delete what Manovia remembers
+              </button>
+            )}
+          </>
+        )}
       </section>
 
       <section
