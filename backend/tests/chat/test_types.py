@@ -12,7 +12,7 @@ def metadata(**overrides: object) -> ChatMetadata:
         "response_type": ResponseType.NORMAL,
     }
     base.update(overrides)
-    return ChatMetadata(**base)  # type: ignore[arg-type]
+    return ChatMetadata(**base)
 
 
 def test_empty_by_default() -> None:

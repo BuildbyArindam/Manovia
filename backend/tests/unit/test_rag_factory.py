@@ -69,6 +69,7 @@ class TestBuildKnowledgeRetriever:
 
     def test_configured_floor_wins(self, ingested: Path) -> None:
         result = build_knowledge_retriever(settings(ingested, rag_min_similarity=0.42))
+        assert isinstance(result, KnowledgeRetriever)  # narrows the Retriever protocol
         assert result.min_similarity == pytest.approx(0.42)
 
     def test_store_marker_rule_tfidf(self, ingested: Path) -> None:
