@@ -34,6 +34,7 @@ SCHEMA_TABLES = {
     "safety_events",
     "refresh_tokens",
     "exercise_completions",
+    "cbt_records",
 }
 
 

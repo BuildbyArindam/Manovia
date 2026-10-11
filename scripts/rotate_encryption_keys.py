@@ -102,6 +102,7 @@ async def rotate(
             "active_key_id": report.active_key_id,
             "users_rotated": report.users_rotated,
             "journal_entries_rotated": report.journal_entries_rotated,
+            "cbt_records_rotated": report.cbt_records_rotated,
             "mood_entries_rotated": report.mood_entries_rotated,
             "chat_sessions_rotated": report.chat_sessions_rotated,
             "messages_rotated": report.messages_rotated,
@@ -159,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"active_key_id: {summary['active_key_id']}")
     print(f"users_rotated: {summary['users_rotated']}")
     print(f"journal_entries_rotated: {summary['journal_entries_rotated']}")
+    print(f"cbt_records_rotated: {summary['cbt_records_rotated']}")
     print(f"mood_entries_rotated: {summary['mood_entries_rotated']}")
     print(f"chat_sessions_rotated: {summary['chat_sessions_rotated']}")
     print(f"messages_rotated: {summary['messages_rotated']}")

@@ -39,6 +39,8 @@ SEEDED_COUNTS = {
     "refresh_tokens": 0,
     # Day 18 is intentionally not added to the historical demo fixture.
     "exercise_completions": 0,
+    # Day 19 records are opt-in; the historical demo fixture does not invent them.
+    "cbt_records": 0,
 }
 
 
