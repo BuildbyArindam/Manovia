@@ -77,6 +77,15 @@ def build_orchestrator(
             if settings.safety_ml_enabled
             else NullClassifier(reason="disabled")
         )
+    # Day 13: the knowledge-backed retriever when retrieval is enabled; the
+    # null one otherwise, and the pipeline is exactly what it was on Day 11.
+    # Store/embedder load failures degrade to "no reference material" inside
+    # the factory — never to a failed turn. (Imported here rather than at the
+    # top of the module because the rag package imports this one: a module
+    # level import would be a circular one.)
+    from app.services.rag.factory import build_knowledge_retriever
+
+    retriever = build_knowledge_retriever(settings) if settings.rag_enabled else NullRetriever()
     return ChatOrchestrator(
         llm=llm or build_llm_chain(settings),
         engine=build_engine(),
@@ -84,6 +93,7 @@ def build_orchestrator(
         escalator=build_escalator(),
         analyzer=analyzer or build_analyzer(settings),
         redactor=Redactor(),
+        retriever=retriever,
         limiter=InMemoryRateLimiter(settings.chat_rate_limit_per_minute),
         config=OrchestratorConfig.from_settings(settings),
     )

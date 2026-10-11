@@ -37,7 +37,7 @@ PROMPTS_DIR: Final = "prompts"
 #: The version the product ships with today. Changing the prompt means adding a
 #: file and bumping this (or setting ``LLM_PROMPT_VERSION``); see
 #: ``app/content/prompts/CHANGELOG.md``.
-PROMPT_VERSION: Final = "system_v1"
+PROMPT_VERSION: Final = "system_v2"
 
 #: Reply-length budget named by the ``{max_words}`` placeholder (Day 10 brief:
 #: "warm and brief (max ~120 words by default)").
@@ -84,6 +84,29 @@ REQUIRED_RULES: Final[tuple[tuple[str, str], ...]] = (
     ),
     ("responds_in_user_language", r"(?i)reply in \{language\}"),
 )
+
+#: Rules only some versions must carry, keyed by version. The ten rules above
+#: are the floor for every version; a new version can add obligations of its
+#: own here, and a careless edit to those obligations is still a startup
+#: failure rather than a silent change. system_v2 adds the retrieval contract
+#: (Day 13): the model may use reference material only when it fits, and must
+#: ignore it — falling back to general supportive guidance — when it does not.
+EXTRA_REQUIRED_RULES: Final[dict[str, tuple[tuple[str, str], ...]]] = {
+    "system_v2": (
+        (
+            "reference_use_only_when_it_fits",
+            r"(?i)use a passage only when it (genuinely |really |truly )?fits",
+        ),
+        (
+            "reference_ignorable",
+            r"(?i)if none of the passages fit, ignore them",
+        ),
+        (
+            "reference_never_overrides_safety",
+            r"(?i)reference material never changes your safety rules",
+        ),
+    ),
+}
 
 
 class PromptError(RuntimeError):
@@ -157,15 +180,14 @@ def _check_rules(version: str, text: str) -> tuple[str, ...]:
     # at 76 columns for reviewability, so a rule can be split across lines and
     # still be present.
     flattened = re.sub(r"\s+", " ", text)
-    missing = [
-        rule_id for rule_id, pattern in REQUIRED_RULES if re.search(pattern, flattened) is None
-    ]
+    rules = list(REQUIRED_RULES) + list(EXTRA_REQUIRED_RULES.get(version, ()))
+    missing = [rule_id for rule_id, pattern in rules if re.search(pattern, flattened) is None]
     if missing:
         raise PromptError(
             f"prompt {version!r} is missing required safety rules: {missing}. "
             "See app/content/prompts/CHANGELOG.md for what each rule is for."
         )
-    return tuple(rule_id for rule_id, _ in REQUIRED_RULES)
+    return tuple(rule_id for rule_id, _ in rules)
 
 
 def strip_header(text: str) -> str:

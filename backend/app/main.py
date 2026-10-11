@@ -17,6 +17,7 @@ from app.api.v1.consent import router as consent_router
 from app.api.v1.crisis import router as crisis_router
 from app.api.v1.dev import router as dev_router
 from app.api.v1.health import router as health_router
+from app.api.v1.knowledge import router as knowledge_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
 from app.core.errors import (
@@ -126,6 +127,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(consent_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
+    app.include_router(knowledge_router, prefix="/api/v1")
     app.include_router(crisis_router, prefix="/api/v1")
     if not app_settings.is_production:
         # Dev-only surface: in production the route does not exist at all, so

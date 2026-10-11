@@ -11,7 +11,7 @@ import uuid
 from dataclasses import dataclass
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.content.crisis import CrisisResource
 from app.content.i18n import RenderedTemplate
@@ -36,6 +36,15 @@ class ResponseType(StrEnum):
     FALLBACK = "fallback"
 
 
+class KnowledgeDocRef(BaseModel):
+    """A retrieved knowledge document, as the UI's "Learn more" card needs it."""
+
+    #: The document id (``grounding-five-senses``) — the stable handle for
+    #: ``GET /api/v1/knowledge/{id}``.
+    id: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=120)
+
+
 class ChatMetadata(BaseModel):
     """Everything the UI needs besides the words: it renders the CrisisCard from this."""
 
@@ -54,6 +63,13 @@ class ChatMetadata(BaseModel):
     crisis: RenderedTemplate | None = None
     #: The pre-written MEDIUM check-in copy, only on ``check_in`` turns.
     check_in: RenderedTemplate | None = None
+    #: Knowledge documents retrieved for this turn (Day 13), best first —
+    #: the UI renders one "Learn more" card per entry. Empty when retrieval
+    #: found nothing above the similarity floor (or is disabled).
+    retrieved_docs: list[KnowledgeDocRef] = Field(default_factory=list)
+    #: The ids of :attr:`retrieved_docs`, kept as a flat list for simple
+    #: clients and log-safe telemetry. Kept in lockstep by the validator below.
+    retrieved_ids: list[str] = Field(default_factory=list)
     #: True when the reply is a stand-in for a model answer that could not be given.
     degraded: bool = False
     #: True when this turn was written to the database (history saved). Always
@@ -63,6 +79,12 @@ class ChatMetadata(BaseModel):
     about_someone_else: bool = False
     locale: str = "en"
     region: str = "DEFAULT"
+
+    @model_validator(mode="after")
+    def _retrieved_lists_agree(self) -> ChatMetadata:
+        if self.retrieved_ids != [doc.id for doc in self.retrieved_docs]:
+            raise ValueError("retrieved_ids must be exactly the ids of retrieved_docs, in order")
+        return self
 
 
 class ChatReply(BaseModel):
