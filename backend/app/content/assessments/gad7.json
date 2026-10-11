@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "instrument": "gad7",
+  "name": "Generalized Anxiety Disorder-7",
+  "short_name": "GAD-7",
+  "measures": "anxiety symptoms over the last two weeks",
+  "intro": "Over the last 2 weeks, how often have you been bothered by the following problems?",
+  "timeframe_days": 14,
+  "timeframe_label": "the last 2 weeks",
+  "response_options": [
+    {
+      "value": 0,
+      "label": "Not at all",
+      "detail": "0 days in the last two weeks"
+    },
+    {
+      "value": 1,
+      "label": "Several days",
+      "detail": "roughly 1-6 days in the last two weeks"
+    },
+    {
+      "value": 2,
+      "label": "More than half the days",
+      "detail": "roughly 8-13 days in the last two weeks"
+    },
+    {
+      "value": 3,
+      "label": "Nearly every day",
+      "detail": "roughly 14 days in the last two weeks"
+    }
+  ],
+  "items": [
+    {
+      "id": "gad7_1",
+      "position": 1,
+      "text": "Feeling nervous, anxious or on edge"
+    },
+    {
+      "id": "gad7_2",
+      "position": 2,
+      "text": "Not being able to stop or control worrying"
+    },
+    {
+      "id": "gad7_3",
+      "position": 3,
+      "text": "Worrying too much about different things"
+    },
+    {
+      "id": "gad7_4",
+      "position": 4,
+      "text": "Trouble relaxing"
+    },
+    {
+      "id": "gad7_5",
+      "position": 5,
+      "text": "Being so restless that it is hard to sit still"
+    },
+    {
+      "id": "gad7_6",
+      "position": 6,
+      "text": "Becoming easily annoyed or irritable"
+    },
+    {
+      "id": "gad7_7",
+      "position": 7,
+      "text": "Feeling afraid as if something awful might happen"
+    }
+  ],
+  "scoring": {
+    "method": "sum",
+    "total_min": 0,
+    "total_max": 21,
+    "bands": [
+      {
+        "id": "minimal",
+        "min": 0,
+        "max": 4,
+        "label": "Minimal",
+        "explanation": "Your answers point to few or no anxiety symptoms in the last two weeks. Worry is a normal part of life; what this result says is that it has not been constant or hard to carry lately.",
+        "what_helps": [
+          "Keep the routines that keep you steady: sleep, movement, meals, and time with people you do not have to perform for.",
+          "If you notice worry building around one topic, writing it down with a time limit (for example, ten minutes in the evening) often stops it from spreading through the day."
+        ],
+        "when_to_seek_help": "If anxious feelings start most days, keep you awake, or stop you doing things you want to do, it is worth talking to a doctor or counsellor. You do not need a high score to ask."
+      },
+      {
+        "id": "mild",
+        "min": 5,
+        "max": 9,
+        "label": "Mild",
+        "explanation": "Your answers point to some mild anxiety symptoms — probably some nervousness or worry that is present but mostly manageable.",
+        "what_helps": [
+          "Slow breathing helps most when practised before the moment you need it: a longer out-breath than in-breath, for two or three minutes at a time (there is a guided exercise in the app).",
+          "Notice what sets the worry off, and separate problems you can act on from ones you can only carry. One small step on the first kind often lowers the volume.",
+          "Cut back on caffeine and late-evening screens if either is feeding the restlessness — small changes, easy to test.",
+          "Try a worry time: fifteen minutes at a fixed hour to worry on purpose, and a note to come back to it if a worry shows up outside that window."
+        ],
+        "when_to_seek_help": "If this has been going on for more than a few weeks, is getting worse, or is starting to affect sleep, work, or study, talk to a doctor or counsellor. Guided self-help and talking therapy both work for this kind of difficulty."
+      },
+      {
+        "id": "moderate",
+        "min": 10,
+        "max": 14,
+        "label": "Moderate",
+        "explanation": "Your answers point to anxiety symptoms that are likely to be affecting your days — concentration, sleep, or simply being able to relax. A score of 10 or more is the usual point at which a fuller assessment is recommended.",
+        "what_helps": [
+          "Keep the basics steady and make the days smaller. Anxiety makes everything feel urgent; deciding in advance what actually has to happen today helps.",
+          "Use a grounding practice when worry spikes — there are short guided ones in the app, and they work better practised before you need them.",
+          "Reduce what fuels it: alcohol, very little sleep, and a non-stop news or social feed all make anxiety louder.",
+          "Write down your two or three biggest worries and one action for each. A worry with a plan behind it takes up less room."
+        ],
+        "when_to_seek_help": "Please talk to a doctor, counsellor, or other health professional soon. At this level, a fuller assessment is usually recommended, and talking therapy is often helpful. You do not need to be in crisis to ask for it."
+      },
+      {
+        "id": "severe",
+        "min": 15,
+        "max": 21,
+        "label": "Severe",
+        "explanation": "Your answers point to severe anxiety symptoms in the last two weeks. When worry is this constant it is hard to think, rest, or decide — and that is exhausting, not a personal failing. Fifteen or more is the point where the official guidance recommends active treatment rather than watchful waiting, and this level of distress does come down with support.",
+        "what_helps": [
+          "Make one priority: getting in front of someone who can help, as soon as possible.",
+          "Ask someone you trust to stay close by, or check in with you daily, until that happens.",
+          "Keep each day to the smallest useful set of things; anxiety punishes over-scheduling, and letting some things wait is a strategy.",
+          "Use the helplines below whenever you need to speak to someone right now — they are not only for emergencies."
+        ],
+        "when_to_seek_help": "Please contact a doctor or mental health professional today, and treat this as urgent. If anxiety turns into panic, or you have thoughts of hurting yourself, call your local emergency number or a crisis line right now."
+      }
+    ]
+  },
+  "cadence": {
+    "recommended_interval_days": 14,
+    "first_notice": "This is your first saved result. Doing it again in a couple of weeks starts a trend you can look back on.",
+    "due_notice": "Two weeks or more have passed since your last check-in, so this is a good moment to compare answers over time.",
+    "recent_notice": "You checked in sooner than the two weeks we usually suggest. That is completely fine, and your answers are saved — but scores move slowly, so a comparison after a few days says very little about how you are doing. This is a suggestion, not a limit: you can take the questionnaire whenever you want to."
+  },
+  "disclaimers": {
+    "screening_not_diagnosis": "This is a screening result, not a diagnosis. Only a qualified professional can diagnose an anxiety disorder, and they would do it by talking with you rather than from a questionnaire alone.",
+    "how_to_read": "A screening score describes how the last two weeks have been for you. It is not a mark, a grade, or a permanent label, and it says nothing about how the next two weeks will go."
+  },
+  "provenance": {
+    "instrument_id": "gad7",
+    "developers": "Developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc.",
+    "rights_holder": "Copyright © Pfizer Inc. All rights reserved.",
+    "licence_statement": "No permission required to reproduce, translate, display or distribute.",
+    "licence_source_url": "https://www.phqscreeners.com/images/sites/g/files/g10060481/f/201412/GAD-7_English.pdf",
+    "availability_note": "The official English GAD-7 sheet is published free of charge for clinical, research and educational use, and states that no permission is required to reproduce, translate, display or distribute it. Manovia reproduces the item wording unaltered for an individual's own self-help screening; it does not modify the instrument and it does not relicense it. Manovia does not offer translations until a qualified translator has reviewed them.",
+    "item_wording_source_url": "https://www.phqscreeners.com/images/sites/g/files/g10060481/f/201412/GAD-7_English.pdf",
+    "item_wording_verified_on": "2026-10-11",
+    "item_wording_verification": "All seven items were compared character by character against the official English GAD-7 PDF on phqscreeners.com (the Pfizer-hosted official screener site). The introductory stem and the four response option labels are taken verbatim from the same sheet.",
+    "scoring_source_url": "https://www.phqscreeners.com/images/sites/g/files/g10016261/f/201412/instructions.pdf",
+    "scoring_source_quote": "Scores of 5, 10, and 15 represent cutpoints for mild, moderate, and severe anxiety, respectively.",
+    "band_verification_note": "The four severity bands here (0-4, 5-9, 10-14, 15-21) follow the cutpoints of 5, 10 and 15 named in the official PHQ/GAD-7 Instruction Manual and are the bands printed on the official GAD-7 scoring sheet (0-4 minimal anxiety, 5-9 mild, 10-14 moderate, 15-21 severe).",
+    "citation": "Spitzer RL, Kroenke K, Williams JB, Löwe B. A brief measure for assessing generalized anxiety disorder: the GAD-7. Archives of Internal Medicine. 2006;166(10):1092-1097.",
+    "loinc": [
+      {
+        "code": "69737-5",
+        "display": "Generalized anxiety disorder 7 item (GAD-7) panel",
+        "url": "https://loinc.org/69737-5/"
+      },
+      {
+        "code": "70274-6",
+        "display": "Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]",
+        "url": "https://loinc.org/70274-6/"
+      }
+    ],
+    "loinc_verified_on": "2026-10-11",
+    "disclaimer": "Manovia is not affiliated with, endorsed by, or sponsored by Pfizer Inc. or the GAD-7 developers. The instrument is reproduced under its own public-domain-style terms, recorded above."
+  }
+}

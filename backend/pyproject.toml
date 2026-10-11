@@ -106,7 +106,7 @@ include = ["app*"]
 # Day 16 adds the localised insight templates (insights/*.json): they are the
 # sentences a person reads about their own numbers, and a missing file is a
 # startup error rather than a blank panel.
-"app.content" = ["*.json", "safety/*.yaml", "exercises/*.yaml", "i18n/*.json", "insights/*.json", "prompts/*.md"]
+"app.content" = ["*.json", "safety/*.yaml", "exercises/*.yaml", "i18n/*.json", "insights/*.json", "prompts/*.md", "assessments/*.json"]
 # Day 9 safety ML artifact (trained offline from evals/datasets; see
 # evals/train_safety_classifier.py). Missing artifact degrades to rules-only.
 "app.ml_artifacts.crisis_v1" = ["model.joblib", "metadata.json"]
