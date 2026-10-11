@@ -10,6 +10,7 @@ export function SideNav(): ReactElement {
   return (
     <nav
       aria-label="Primary"
+      data-print="hide"
       className="sticky top-20 hidden h-fit w-56 shrink-0 self-start md:block"
     >
       <ul className="space-y-1">

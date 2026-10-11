@@ -15,6 +15,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: "/journal", label: "Journal", icon: "journal", hint: "Write freely" },
   { to: "/cbt", label: "Thought record", icon: "journal", hint: "Reflect on a thought" },
   { to: "/exercises", label: "Exercises", icon: "exercises", hint: "Short practices" },
+  { to: "/assessments", label: "Screenings", icon: "assessments", hint: "PHQ-9 and GAD-7" },
   { to: "/insights", label: "Insights", icon: "insights", hint: "Patterns over time" },
   { to: "/settings", label: "Settings", icon: "settings", hint: "Your choices" },
 ];

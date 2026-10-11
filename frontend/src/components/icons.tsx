@@ -8,7 +8,8 @@
 
 import type { ReactElement } from "react";
 
-export type IconName = "chat" | "mood" | "journal" | "exercises" | "insights" | "settings";
+export type IconName =
+  "chat" | "mood" | "journal" | "exercises" | "assessments" | "insights" | "settings";
 
 const PATHS: Record<IconName, ReactElement> = {
   chat: (
@@ -36,6 +37,13 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <path d="M5 19c0-8 6-12 14-12 0 8-6 12-14 12Z" />
       <path d="M5 19c3-3.2 6-5.2 9-6.2" />
+    </>
+  ),
+  assessments: (
+    <>
+      <path d="M7 4h10v3H7z" />
+      <path d="M6 5.5H5.5A1.5 1.5 0 0 0 4 7v11.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V7a1.5 1.5 0 0 0-1.5-1.5H18" />
+      <path d="M8.5 12.5l2 2 4.5-5" />
     </>
   ),
   insights: (
