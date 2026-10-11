@@ -9,6 +9,7 @@ Steps:
 """
 
 import asyncio
+import secrets
 import time
 import uuid
 import json
@@ -34,7 +35,7 @@ async def main():
     settings = Settings(
         _env_file=None,
         app_env="test",
-        secret_key="test-secret-key-0123456789abcdef",
+        secret_key=secrets.token_urlsafe(48),
         field_encryption_key=key,
         allowed_origins="http://testserver",
         database_url=f"sqlite:///{tmp_path}",

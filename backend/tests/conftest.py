@@ -6,6 +6,7 @@ file, and the field cipher uses a key generated for that test only. No network,
 no PostgreSQL server, no committed key material.
 """
 
+import secrets
 from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -123,7 +124,7 @@ def isolate_cipher() -> Iterator[None]:
 def settings(clean_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Settings:
     """Valid test settings pointed at a private SQLite file in ``tmp_path``."""
     monkeypatch.setenv("APP_ENV", "test")
-    monkeypatch.setenv("SECRET_KEY", "test-secret-key-0123456789abcdef")
+    monkeypatch.setenv("SECRET_KEY", secrets.token_urlsafe(48))
     monkeypatch.setenv("FIELD_ENCRYPTION_KEY", crypto.FernetCipher.generate_key())
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://testserver")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'manovia-test.db'}")

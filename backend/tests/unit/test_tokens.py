@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -17,7 +18,9 @@ from app.core.tokens import (
     hash_token,
 )
 
-SECRET = "unit-test-signing-secret-0123456789abcdef"
+#: Generated per run: a key that looks real is a key a scanner must flag, and a
+#: committed literal teaches the wrong habit even when it is fake.
+SECRET = secrets.token_urlsafe(48)
 
 
 @pytest.fixture
@@ -73,7 +76,7 @@ def test_tampered_token_raises_invalid(service: TokenService) -> None:
 
 
 def test_token_signed_with_another_secret_is_invalid() -> None:
-    other = TokenService("a-completely-different-secret-0123456789")
+    other = TokenService(secrets.token_urlsafe(48))
     token, _ = other.issue_access(uuid.uuid4())
     with pytest.raises(TokenInvalidError):
         TokenService(SECRET).verify(token, expected_type=ACCESS_TOKEN_TYPE)
