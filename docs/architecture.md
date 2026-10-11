@@ -83,6 +83,41 @@ panel displays them. `DELETE /api/v1/chat/memory` clears summaries and tombstone
 existing sessions so later turns cannot rebuild what was deleted; it does not
 remove the encrypted chat transcript.
 
+## The daily plan
+
+Day 21's planner ([ADR 0021](adr/0021-daily-plan-and-week-3-review.md)) answers
+"what, if anything, should we suggest today?" with **no model**: a table of named
+rules in `app/services/plan/daily_plan.py`, each a pure function from a
+`PlannerContext` to an optional suggestion, evaluated in priority order.
+
+```mermaid
+flowchart LR
+    A["GET /plan/today?tz="] --> B["Consent gate + timezone seam"]
+    B --> C["Project metadata only:<br/>mood numbers/tags, completions,<br/>open records, item-9 flag, settings"]
+    C --> D{"PHQ-9 item 9<br/>positive ≤ 14d?"}
+    D -->|yes| E["Support card only<br/>(survives quiet hours)"]
+    D -->|no| F{"Quiet hours<br/>active now?"}
+    F -->|yes| G["Empty plan + reason"]
+    F -->|no| H["Rule table: first check-in,<br/>open record, low mood, anxiety,<br/>missed check-in, exercise habit"]
+    H --> I["≤ 3 items, one per kind,<br/>each with a why"]
+    I -->|nothing fired| J["Rest card if active today,<br/>else empty plan"]
+```
+
+Hard limits, enforced by construction: at most three suggestions; every
+suggestion carries a non-empty "why" (the dataclass rejects construction
+without one); rules fire on multi-day signals only; an empty plan is a valid
+answer. `plan_items` is unique per user+local-day+kind, so `GET /plan/today`
+is idempotent and `POST /plan/{id}/done|skip` settle items without requiring a
+reason.
+
+The privacy contract is the same one the rest of the app keeps: the API layer
+projects closed-vocabulary columns (local dates, valence, emotion tags,
+completion ids, whether a thought record has a "what helped" step) into the
+context; encrypted free text is never decrypted for planning. Preferences —
+preferred exercise tags and quiet hours, stored in `user_settings` with strict
+`HH:MM` bounds — are the only settings the planner reads, managed at
+`GET/PUT /settings`.
+
 ## Response contract
 
 JSON: `{reply, session_id, message_id, metadata}`.

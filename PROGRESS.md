@@ -2302,6 +2302,49 @@ other three jobs.
 - PR creation waits for explicit wrap-up instruction. Exactly one PR when asked,
   titled `Day 18: Guided exercises`; **never merge it**.
 
+### Week-3 review — top five risks/debts (Day 21)
+
+Ranked by safety impact and deployment blast radius; as in Week 2, the first two
+need human review before the corresponding behaviour is trusted outside synthetic
+tests. Quick wins fixed during the review: the README feature list was stale
+(stopped at Day 7 and claimed `make eval` was a placeholder when it has worked
+since Day 9), `docs/architecture.md` lacked the planner, and the Day 21
+screenshot expectations were undocumented — all three are corrected in this PR.
+
+1. **The safety ML classifier still escalates ordinary phrases to HIGH.** The
+   Day 19 known issue is open: the committed default model rates everyday exam
+   phrases HIGH, and the CBT wizard honours HIGH. The gate was not weakened and
+   must not be; the fix is labelling the false positives against the frozen
+   corpus and re-tuning with a second annotator before any public rollout.
+2. **Crisis content awaits clinical and native-speaker review, and helplines are
+   placeholders.** `backend/app/content/helplines.json` serves synthetic `555…` /
+   international entries for the `DEFAULT` region, and the Hindi/Bengali safe
+   replies and check-in phrases in `output_patterns.yaml` have had no
+   clinician/native-speaker pass (carried from Week 2, still open). The new home
+   screen's "Need help now?" button and the planner's support card both surface
+   this content, which raises the urgency.
+3. **Everything runs on SQLite in one process; PostgreSQL and multi-worker remain
+   unverified here.** That now includes the Day 21 `plan_items` / `user_settings`
+   tables and migration 0007, plus process-local rate limits and ephemeral chat
+   sessions. The compose stack's Postgres path needs a real run before deployment
+   claims are made.
+4. **Browser verification still depends on a machine with Chromium.** The sandbox
+   cannot install Playwright browsers, so the e2e suite (13 specs including the
+   new `home.spec.ts`) is verified here only against locally started servers where
+   possible, screenshots are listed as expected-but-not-generated, and axe/
+   keyboard claims from jsdom need one real-browser pass (Week-2 debt, unchanged).
+5. **No real LLM provider has been exercised end to end.** All chat tests use the
+   fake/canned providers; the Anthropic path is unit-tested against fakes only.
+   Streaming, output-guard buffering under real latency, and provider error
+   behaviour at production lengths are unverified until a key and a network are
+   available.
+
+Also noted, below the cut line: the committed safety ML artifact unpickles with an
+`InconsistentVersionWarning` (built with scikit-learn 1.5.2, sandbox runs 1.9.1) —
+functionally fine today, but the artifact should be rebuilt with the pinned toolchain;
+and the full e2e spec needs `RATE_LIMIT_AUTH_PER_MINUTE=60` because each spec
+registers its own guest (Day 20 known issue, shipping default intentionally kept).
+
 ### Week-2 review — top five risks/debts (Day 14)
 
 Ranked by safety impact and deployment blast radius; the first two need human review
