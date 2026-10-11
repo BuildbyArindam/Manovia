@@ -717,6 +717,32 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
 - Tests: `tests/unit/test_mood_streak.py` (29 cases incl. midnight in Kolkata, both New York DST transitions, a leap day, a year boundary and naive timestamps), `tests/unit/test_mood_taxonomy.py`, `tests/unit/test_mood_request_schema.py`, `tests/integration/test_mood_api.py` (42 cases: bounds, caps, ownership, encryption at rest, the crisis path, streak states), and on the frontend `taxonomy/storage/suggestedAction/copy/endpoints` plus `components/controls.test.tsx`, `keyboardOnly.test.tsx` (a whole check-in with Tab/Space/arrows/typing/Enter) and `MoodView.test.tsx`. `frontend/e2e/mood.spec.ts` drives the same path in a real browser.
 - Decisions: [ADR 0015](docs/adr/0015-mood-check-ins.md). Verification results, including the two frontend defects this milestone found and fixed, are in [Verification (Day 15)](#verification-day-15--real-command-output).
 
+### Day 17 (session branch `arena/098c81d3-manovia`) — encrypted journal & AES-256-GCM envelope encryption
+
+- `backend/app/services/journal/crypto.py` upgrades the Day-3 single-key Fernet stub (`app/core/crypto.py`) to full **AES-256-GCM envelope encryption**:
+  - Each user gets a random 256-bit (32-byte) Data Encryption Key (`DEK`) wrapped by the active master key (`FIELD_ENCRYPTION_KEY`) and stored in `users.data_key_encrypted` (`MDEK\x01` envelope) + `users.data_key_id`.
+  - Wrapping a `DEK` authenticates `manovia:dek:v1|user_id=<uuid>|key_id=<kid>` as Associated Data (AAD); `encrypt_field` and `decrypt_field` authenticate `manovia:field:v1|user_id=<uuid>|field=<field_name>` as AAD so ciphertexts cannot be swapped across users or across columns (`title_encrypted` vs `body_encrypted`).
+  - `MasterKeyRing` supports comma-separated keyrings (`"<active_id>:<active_b64>,<old_id>:<old_b64>"`) and `FIELD_ENCRYPTION_PREVIOUS_KEYS`.
+  - Alembic revision `0004_envelope_encryption_and_journal.py` adds the new `users` and `journal_entries` columns and migrates any legacy Day-3 Fernet ciphertexts into `MENV\x01` envelopes.
+  - `scripts/rotate_encryption_keys.py` rotates all user DEKs and re-encrypts `journal_entries`, `mood_entries`, `chat_sessions`, and `messages` under the new active master `key_id` so the old key ID can be retired.
+- `backend/app/content/journal_prompts.json` & `backend/app/services/journal/prompts.py` provide a curated, date-rotating set of writing prompts and optional `free`, `gratitude`, and `worry_dump` templates localised in English (`en`), Hindi (`hi`), and Bengali (`bn`).
+- `backend/app/api/v1/journal.py` adds `GET /api/v1/journal/prompts`, `POST /api/v1/journal`, `GET /api/v1/journal` (paginated), `GET /api/v1/journal/{id}`, `PUT /api/v1/journal/{id}`, and `DELETE /api/v1/journal/{id}`:
+  - Runs the safety ensemble (`run_ensemble` + `escalator.plan`) on `title + "\n" + body` before storage; fails closed with `503` on engine failure; returns verified crisis helplines in `metadata.resources` and `crisis` (and records a metadata-only `SafetyEvent`) on `HIGH`/`IMMINENT` risk.
+  - Computes `sentiment` and `emotion_scores` in memory from the plaintext and stores only numeric values in the clear when `store_emotions=true` (default), or `NULL` when the user disables emotion scoring (`store_emotions=false`).
+- `frontend/src/features/journal/` (`JournalView.tsx`, `endpoints.ts`, `markdown.ts`) ships a distraction-free editor with debounced autosave, live word count, localised prompt chips, `Free writing` / `Gratitude` / `Worry dump` template pills, an expandable "Private by default" explainer (including honest threat-model limits), client-side search in browser memory (`filterEntriesClientSide`), two-step delete confirmation, and Export-to-Markdown (`.md`).
+- Docs & ADR: [ADR 0017](docs/adr/0017-encrypted-journal-and-envelope-encryption.md) and updated [docs/privacy-and-threat-model.md](docs/privacy-and-threat-model.md).
+
+## Verification (Day 17 — real command output)
+
+| # | Check | Verdict | Evidence |
+| --- | --- | --- | --- |
+| 1 | `make test` — crypto unit & integration tests (round-trip, byte-flip tamper detection, cross-user & cross-field swap rejection, migration `0004`, key rotation) | **PASS** | `test_journal_crypto.py` (13 passed), `test_key_rotation.py` (3 passed), `test_journal_api.py` (7 passed); full backend + frontend suites pass. |
+| 2 | Create 3 journal entries via API, dump raw DB rows (`hex(substr(...))`), and `grep -a` the SQLite DB file for any plaintext substring | **PASS** | All 3 rows start with `4D454E560102763100444D44454B0102` (`MENV\x01\x02v1\x00DMDEK\x01\x02`); `grep -a -c` on DB file returned `0` (`exit=1`) for every title and body phrase. |
+| 3 | Rotate master key with `scripts/rotate_encryption_keys.py` (`v1` -> `v2`), remove `v1`, and confirm entries remain readable under `v2` only | **PASS** | `users_rotated: 1`, `journal_entries_rotated: 4`; restarting app with only `v2` returned `200 OK` on `GET /api/v1/journal` with `key_ids=['v2', 'v2', 'v2', 'v2']`, while `v1` alone raises `DecryptError`. |
+| 4 | Write an entry containing a HIGH test phrase (`"I want to kill myself tonight"`) and confirm crisis resources are returned in `metadata` | **PASS** | `POST /api/v1/journal` returned `201` with `metadata.risk_level="high"`, `metadata.stored_risk_level=3`, and 3 verified crisis resources in `metadata.resources` (`112`, `Find A Helpline`, `Befrienders Worldwide`). |
+| 5 | Frontend: type, wait for debounced autosave, reload page (remount), confirm content persists, and verify Markdown export | **PASS** | `JournalView.test.tsx` (`5 passed`) verified debounced `POST /api/v1/journal`, reload persistence via `sessionStorage` + `GET /api/v1/journal`, template scaffolds, prompt chips, client-side search, delete confirmation, and `.md` export with frontmatter. |
+| 6 | `grep` structured application logs for any entry title or body text | **PASS** | `grep -a -c` across captured JSON log lines returned `0` (`exit=1`) for every entry title and body phrase (`journal.created` logs only `entry_id`, `user_id`, `template`, `store_emotions`, `word_count`, `risk_level`). |
+
 ## Verification (Day 12 — real command output)
 
 Environment: Node 22.22.3, Python 3.11.2, `uvicorn app.main:app` on SQLite with
@@ -2146,6 +2172,13 @@ before the corresponding behaviour is trusted outside synthetic tests.
    validate PostgreSQL or multi-worker locking. The Settings test is jsdom, not a
    real browser, and the existing Playwright run still needs a machine with Chromium.
 
+### Day 17 implementation & crypto notes
+
+- **Server-side envelope encryption does NOT protect against a live server compromise.** Because the backend holds `FIELD_ENCRYPTION_KEY` in process memory to wrap/unwrap per-user DEKs on write and read, an attacker who compromises the running API container or steals both the database and environment variables simultaneously can decrypt entries. This is documented in `app/services/journal/crypto.py`, `docs/privacy-and-threat-model.md`, and the UI's "Private by default" explainer.
+- **Metadata remains in the clear.** Row timestamps (`created_at`, `updated_at`), ciphertext length (which correlates with plaintext byte length), `template`, `prompt_id`, and — unless the user unchecks `store_emotions` — numeric `sentiment` and `emotion_scores` are readable in SQL without the master key.
+- **Client-side search operates over the fetched page of entries.** `JournalView` fetches up to 50 entries initially (with a "Load more entries" button when `has_more` is true) and filters them in browser memory (`filterEntriesClientSide`). A user with hundreds of entries must load older pages before client-side search covers their entire multi-year archive.
+- **CPython strings are immutable in RAM.** Plaintext exists briefly in Python memory during safety screening and emotion scoring before encryption, and cannot be deterministically zeroed before garbage collection.
+
 ### Day 15 implementation notes
 
 - **The mood timezone is per request, not per account.** `users` has no timezone
@@ -2683,25 +2716,13 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 14 parking lot)** Provider-specific tokenization for the 300-token memory cap,
   and per-session deletion/re-enable controls if product research asks for more than
   the current account-wide “delete existing memories” action.
+- **(Day 17 parking lot)** Optional KMS / HSM integration (AWS KMS, GCP Cloud KMS, or HashiCorp Vault Transit) behind `MasterKeyRing` so the root master key never resides in application process memory.
+- **(Day 17 parking lot)** Length-hiding padding (e.g. padding plaintext to fixed 256-byte blocks before AES-GCM encryption) if ciphertext-length side channels become a concern.
+- **(Day 17 parking lot)** Automatic background pagination or IndexedDB encrypted session cache for client-side journal search when a user has more than 50 entries.
+- **(Day 17 parking lot)** Full-account data export (ZIP of Markdown journal entries + CSV mood check-ins) for Day 20 privacy settings.
 
-## Next steps (Day 15 — first three)
+## Next steps (Day 18 — first three)
 
-**Preamble (needs a machine with a browser):** run the Playwright suite against the
-Fake-LLM stack and review the memory Settings panel, confirmation flow and buffered
-SSE behaviour at mobile and desktop sizes. The current settings test is jsdom; it is
-not a browser-level accessibility or visual check.
-
-**Preamble (needs humans):** ask a clinician and native Hindi/Bengali speakers to
-review the new output patterns, safe fallback copy, check-in phrases and the 40-document
-knowledge corpus. Keep `reviewed: false` until those reviews are complete.
-
-1. **Review and expand output guard coverage.** Turn every clinician/native-speaker
-   disagreement and every newly observed unsafe paraphrase into a scripted Fake
-   regression case; keep the good-output table to prevent overblocking.
-2. **Validate deployment assumptions.** Run Alembic revision `0003` against PostgreSQL,
-   test the output retry/buffer path through the real proxy, and plan shared rate-limit /
-   ephemeral state plus per-session turn serialization before multi-worker deployment.
-3. **Re-measure real-model retrieval and crisis policy.** With approved model access,
-   run the RAG probe set using sentence-transformers, record the scores, and have a
-   second annotator review the crisis eval set before changing the recall-first
-   thresholds.
+1. **Build the PHQ-9 and GAD-7 self-check assessment service (`backend/app/services/assessments/`).** Load validated question sets and severity bands (`minimal`, `mild`, `moderate`, `moderately_severe`, `severe`) with mandatory "not a diagnosis" framing, encrypt per-item answers in `assessment_results.answers_encrypted`, and screen item 9 of PHQ-9 (thoughts of self-harm) through the crisis escalator immediately.
+2. **Expose assessment endpoints (`/api/v1/assessments`) and wire safety escalation.** Provide endpoints to fetch localised instrument questions, submit an assessment (returning the band, non-clinical interpretation, and verified crisis resources whenever PHQ-9 item 9 > 0 or total band is severe), and list historical band scores.
+3. **Build the step-by-step frontend self-check flow and longitudinal band chart.** Render one question at a time with keyboard navigation, clear disclaimer copy before and after completion, immediate `CrisisCard` display when self-harm thoughts are indicated, and a calm score-band history view.
