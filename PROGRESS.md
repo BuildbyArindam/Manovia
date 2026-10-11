@@ -2,7 +2,28 @@
 
 ## Current status
 
-**Day 15 — mood check-ins — is built.** `POST /api/v1/mood` records a check-in
+**Day 16 — insights and charts — is built.** `app/services/mood/insights.py` is a
+pure, heavily tested statistics module: 7- and 30-day rolling averages of valence
+and energy with a **minimum-data rule** (fewer than seven days with check-ins means
+`not_enough_data`, in as many words), factor associations that compare average mood
+on days with vs without each context tag and report **Cohen's d, a bootstrap 95 %
+interval and a permutation p-value** with **at least five days per group**, and
+hour-of-day / weekday patterns under the same rule. `GET /api/v1/insights/weekly`
+returns a localised, template-based summary (no LLM), and
+`GET /api/v1/insights/patterns` returns the rolling windows, the comparisons and the
+time buckets; both publish their own minimums. The wording is **associative and
+never causal** — "on days you tagged sleep, your mood was 1.1 points lower on
+average (n=19 vs 41). This is an association, not a causal link." — and that is
+enforced by a test, not a style guide. The frontend `features/insights/` surface has
+one Recharts chart per question, **each with a sentence stating the finding and a
+data table alternative**, an Okabe-Ito colour-blind-safe palette, an "About these
+insights" explainer that lists the limitations, and CSV export. `scripts/verify_day16.py`
+re-checks the whole contract — **51/51 checks** (50 without the frontend suite), including a measured
+**false-positive rate of 0/40 comparisons (0.0 %)** over twenty noise seeds. Decisions:
+[ADR 0016](docs/adr/0016-insights-and-charts.md); real command output in
+[Verification (Day 16)](#verification-day-16--real-command-output).
+
+**Day 15 — mood check-ins — remains built.** `POST /api/v1/mood` records a check-in
 (valence and energy 1–5, up to three emotion tags from the nine-label taxonomy
 the analyser already speaks, up to five of eight context factors, an optional
 note), screens the note with the rules engine and the Day 9 ensemble *before*
@@ -716,6 +737,204 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
 - Copy is a reviewable artefact: every sentence lives in `frontend/src/features/mood/copy.ts`, `copy.test.ts` fails on guilt-inducing or cheerleading wording, and `scripts/verify_day15.py` scans it again with an independent blocklist and prints all 95 sentences and 30 vocabulary words for a human read.
 - Tests: `tests/unit/test_mood_streak.py` (29 cases incl. midnight in Kolkata, both New York DST transitions, a leap day, a year boundary and naive timestamps), `tests/unit/test_mood_taxonomy.py`, `tests/unit/test_mood_request_schema.py`, `tests/integration/test_mood_api.py` (42 cases: bounds, caps, ownership, encryption at rest, the crisis path, streak states), and on the frontend `taxonomy/storage/suggestedAction/copy/endpoints` plus `components/controls.test.tsx`, `keyboardOnly.test.tsx` (a whole check-in with Tab/Space/arrows/typing/Enter) and `MoodView.test.tsx`. `frontend/e2e/mood.spec.ts` drives the same path in a real browser.
 - Decisions: [ADR 0015](docs/adr/0015-mood-check-ins.md). Verification results, including the two frontend defects this milestone found and fixed, are in [Verification (Day 15)](#verification-day-15--real-command-output).
+
+### Day 16 (session branch `arena/456f3f2f-manovia`) — insights and charts
+
+- `backend/app/services/mood/insights.py` is the statistics, and all of it is pure.
+  `rolling_average(window_days=7|30)` returns one point per local day with the
+  day's means and a trend that is `not_enough_data` below **7 days with
+  check-ins**. `factor_association` compares average valence on days with vs
+  without each of the eight tags, requiring **5 days per group**, and reports
+  Cohen's d, a 2000-resample bootstrap 95 % CI and a 2000-resample permutation
+  p-value — never a p-value alone. `time_patterns` does hour-of-day and weekday
+  under the same 5-per-bucket rule, and a thin bucket returns `None` with a note
+  saying how many more check-ins it needs, rather than a mean nobody should read.
+  `weekly_summary` composes a localised sentence from `en`/`hi`/`bn` templates —
+  no LLM. Bootstrap and permutation take an injected `random.Random`, so a report
+  can be re-run and compared.
+- **Two input shapes, and the difference is the guarantee.** `Entry` is
+  `(instant, valence, energy, emotions, factors)` with **no note field**, so no
+  statistic can be handed one; `ExportRow` adds the note, and only `mood_entries_to_csv`
+  takes it. The CSV is written with Python's `csv`, so a note containing commas,
+  quotes and newlines cannot shift a column — asserted by parsing the output back.
+- `backend/app/api/v1/insights.py` adds three routes. `GET /insights/weekly`
+  (localised summary), `GET /insights/patterns` (rolling windows, comparisons,
+  time buckets, plus the published minimums `min_entries_for_trend: 7` and
+  `min_entries_per_group: 5`), and `GET /insights/export` (three CSV bundles).
+  Consent is `terms` + `privacy` and explicitly **not** `ai_disclosure`: no model
+  is in this path. An omitted `tz` is UTC and the response says
+  `timezone_fallback_used: true`; an unknown zone is a `422 invalid_timezone`.
+  The clock is a seam (`_now`) and one reading of it drives both the 90-day fetch
+  window and the weekly window.
+- `frontend/src/features/insights/` is the surface: a weekly-summary card with a
+  language selector, three lazily-loaded Recharts charts, an "About these
+  insights" explainer, and CSV export. **Every chart renders a sentence that
+  states the finding with its numbers, a data table alternative in a native
+  `<details>`, and a described `role="img"`** — the text alternatives are the
+  first thing rendered. Each summary region is named uniquely
+  (`Text summary: 7-day rolling average`) because five identically named
+  landmarks are indistinguishable. The palette is Okabe-Ito and valence vs energy
+  differ by dash pattern as well as hue, so colour is never the only channel.
+- `frontend/src/features/insights/copy.ts` holds every string, and `copy.test.ts`
+  fails on causal, cheerleading or judgemental wording. The limitation list
+  ("Associations do not imply causation…", "Trends require at least 7 days…",
+  "Your check-in notes are never used for these calculations") is part of the
+  feature, not a footnote.
+- **Recharts is lazy.** The three charts load in their own chunk (347 kB / 103 kB
+  gzip) that only this route downloads; the main bundle contains no `recharts`
+  module. Without that, the chat surface would have paid +454 kB for a chart
+  library it never draws.
+- Tests: `tests/unit/test_mood_insights.py` (32: known answers on synthetic
+  series, both minimum-data boundaries at 6/7 and 4/5, determinism under an
+  injected RNG, CSV round-trip through `csv.reader`, i18n by script), and
+  `tests/integration/test_insights_api.py` (23: the planted-effect series through
+  HTTP, three check-ins claiming nothing, five noise seeds, the note canary,
+  ownership, consent, timezone, export shape). Frontend: 41 across
+  `copy.test.ts` (9), `endpoints.test.ts` (7), `charts/charts.test.tsx` (14,
+  including three axe scans) and `InsightsView.test.tsx` (11, including two axe
+  scans and a keyboard-only table disclosure).
+- `scripts/verify_day16.py` + `frontend/scripts/insights-copy-dump.ts` re-check
+  the whole contract end to end — **51/51 checks** — including the measured
+  false-positive rate.
+- Decisions: [ADR 0016](docs/adr/0016-insights-and-charts.md). Verification,
+  including the two accessibility defects and three copy defects this milestone
+  found and fixed, is in [Verification (Day 16)](#verification-day-16--real-command-output).
+
+## Verification (Day 16 — real command output)
+
+Environment: Python 3.11.2 (`backend/.venv`, `pip install -e ".[dev]"`), Node
+22.22.3, SQLite, `SAFETY_ML_ENABLED=false` for the script, local Fakes only. No
+PostgreSQL, no hosted provider and **no browser binary** was available. Everything
+below was run for real; nothing is claimed from documentation.
+
+`PATH=backend/.venv/bin:$PATH make test` → backend **2681 passed, 3 skipped**
+(79 s), frontend **291 passed, 3 skipped** in 30 files + 1 skipped.
+`make lint` → `ruff check` clean, `ruff format --check` **254 files already
+formatted**, `mypy app tests` *Success: no issues found in 206 source files*,
+`eslint .` clean, `tsc --noEmit` clean.
+
+`backend/.venv/bin/python scripts/verify_day16.py` → **50/50 checks**; with
+`--frontend` → **51/51**.
+
+### PASS/FAIL table (Message 2 checklist)
+
+| # | check | result |
+| --- | --- | --- |
+| 1 | `make test` — insights tests shown | **PASS** — backend 2681 passed / 3 skipped; the insights files alone **56** (`test_mood_insights.py` 33, `test_insights_api.py` 23). Frontend 291 passed / 3 skipped, of which **41** are insights. |
+| 2 | 60 days where poor sleep lowers mood ~1 point and friends raises it ~0.5 | **PASS — both effects found.** `sleep` n=19 vs 41, d=−1.07, 95 % CI [−1.63, −0.56] (entirely negative), p=0.001 → *"On days you tagged sleep, your mood was 1.1 points lower on average (n=19 vs 41). This is an association, not a causal link."* `friends` n=14 vs 46, d=+0.63, CI [−0.05, +1.42], p=0.058 → *"…0.7 points higher…"*. The six tags nobody used report **no effect size at all**, not a zero. |
+| 3 | A user with 3 entries says "not enough data" | **PASS** — `rolling_7.trend` and `rolling_30.trend` are both `not_enough_data` with *"Need at least 7 days with check-ins to show a trend."*; the sleep comparison returns `effect_size=None`, `ci_lower=None`, `p_value=None` and *"Not enough data to compare days with vs without sleep (need at least 5 days per group; have 2 with, 1 without)"*; all 24 hourly buckets withhold an average; the weekly summary says *"Not enough check-ins this week to show a trend (need 7 days with data)."* |
+| 4 | 20 noise seeds, report the false-positive rate | **PASS — 0.0 % (0/40 comparisons).** Rule stated in the script: false positive := permutation p < 0.05 **and** \|Cohen's d\| > 0.8. Per-seed breakdown printed (all 20 seeds: 0 strong). **1 of 40 (2.5 %)** reached p < 0.05 on its own with a small effect size — which is what a 5 % threshold is supposed to produce on noise. The same guarantee asserted through HTTP on 3 seeds (0/6) and in-suite on all 20. |
+| 5 | No causal language in generated summaries | **PASS — 44 generated sentences + 73 user-facing strings scanned, zero hits** on a 16-phrase causal blocklist plus separate cheerleading and diagnostic lists. Also asserted by `copy.test.ts` (frontend), `test_mood_insights.py` and `test_insights_api.py` with independent lists. |
+| 6 | Each chart has a text alternative and a data table; run axe | **PASS (jsdom)** — 14 chart tests + 11 view tests assert, per chart, a uniquely-named `role="region"` text summary carrying the numbers, a `<details>` data table with a row per bucket, and a described `role="img"`. **5 axe scans, 0 violations.** *Not run in a real browser* — `@axe-core/playwright` needs a browser this sandbox cannot download. |
+
+### What the app found (check 2, verbatim from the run)
+
+```
+[1] 60 days with a planted effect: sleep -1.0, friends +0.5
+
+  what the app found:
+    sleep     n=19 vs 41 d= -1.07 p= 0.001
+      On days you tagged sleep, your mood was 1.1 points lower on average (n=19 vs 41). This is an association, not a causal link.
+    study     n= 0 vs 60 d=   n/a p=   n/a
+      Not enough data to compare days with vs without study (need at least 5 days per group; have 0 with, 60 without).
+    ...
+    friends   n=14 vs 46 d= +0.63 p= 0.058
+      On days you tagged friends, your mood was 0.7 points higher on average (n=14 vs 46). This is an association, not a causal link.
+```
+
+**The honest reading of the friends result:** the planted +0.5 effect is recovered
+as +0.7, but the 95 % interval [−0.05, +1.42] **includes zero** and p = 0.058 sits
+just above 0.05. At n=14 vs 46 with a ±1.6 jitter, half a point is at the edge of
+what 60 days can resolve. The app is right not to be confident here, and it says
+so by printing the interval rather than only the difference. The sleep effect
+(−1.0 planted, −1.07 recovered) is unambiguous, and its interval is wholly
+negative — which is the case the wording is calibrated for.
+
+### The false-positive measurement (check 4, verbatim)
+
+```
+[3] Twenty noise seeds: how often does noise look like a pattern?
+    false positive := permutation p < 0.05 AND |Cohen's d| > 0.8
+    seed 5000: 0 strong  |  seed 5001: 0 strong  |  ...  |  seed 5019: 0 strong
+    comparisons made: 40
+    p < 0.05 (significant by the usual convention): 1 (2.5%)
+    significant AND |d| > 0.8 (a claim worth making): 0 (0.0%)
+```
+
+40 comparisons is a small denominator, so "0.0 %" means *"no false positive in 40
+tries"*, not "the true rate is zero" — the honest upper bound is roughly 7 % at 95 %
+confidence. The useful number is the pair: 1 comparison cleared p < 0.05 (the rate
+the threshold is designed to give) and **no** comparison cleared p < 0.05 *and* a
+large effect size, which is the claim the UI would actually put in a sentence.
+
+### Fixed roots, not weakened checks
+
+Five defects were found during this milestone and fixed at the source. Every one
+was caught by a check rather than by reading, and each has a regression test.
+
+1. **Two `role="region"` landmarks both named "Text summary"** (`landmark-unique`,
+   found by the axe scan in `InsightsView.test.tsx`). Five charts on one page meant
+   five indistinguishable landmarks. Each region is now named for its chart
+   (`Text summary: 30-day rolling average`), and the view test asserts the exact
+   list of five names.
+2. **A duplicate element id.** Both rolling-average charts rendered
+   `id="rolling-chart-title"`, so the 30-day section's `aria-labelledby` resolved
+   to the 7-day heading. All three charts now derive their heading id from
+   `useId()`.
+3. **The CSV export's note column was always empty.** `entries_to_csv` wrote a
+   `note` header and never a value — the file promised a column it did not fill.
+   Fixed by splitting the two input shapes (`Entry` without a note for statistics,
+   `ExportRow` with one for the export) and writing the file with `csv`, and
+   `test_a_note_with_commas_and_quotes_does_not_shift_the_columns` now parses the
+   output back so a half-escaped writer fails.
+4. **Three mixed-script words in the Bengali weekly template.** `रुझान`, `सबचे`
+   and `यिनिशे` were Devanagari inside Bengali sentences. Found by the
+   `verify_day16.py` mixed-script check (which had to whitelist U+0964/U+0965 —
+   the danda is shared punctuation, and flagging it would have reported a leak in
+   every correctly punctuated Bengali sentence). The templates now render
+   `প্রবণতা`, `সবচেয়ে` and `যাকে আপনি বিশ্বাস করেন`.
+5. **The p-value changed between page loads.** Bootstrap and permutation were
+   seeded from `random.Random()` — Monte Carlo that re-rolls itself, so the same
+   data returned p = 0.001 and then p = 0.002, and `verify_day16.py` printed
+   different numbers on consecutive runs. Both resamplers now default to
+   `DEFAULT_SEED`; the answer depends on the data and nothing else. Verified by
+   running the script twice and getting identical figures, and pinned by
+   `test_the_same_data_gives_the_same_answer_without_a_seed`.
+
+Three further defects were caught while writing the *checks* rather than the code,
+and are recorded because each one was a wrong expectation, not a wrong app: a
+chained comparison that read as "the interval excludes zero" but meant nothing; a
+canary containing a comma and a quote compared against the CSV's escaped text
+instead of its parsed cells; and a noise fixture whose ±1.2 jitter rounded every
+day to the same integer, making each group constant and every effect size
+undefined — a "noise" test that could not have failed.
+
+### Needs a human, not this sandbox
+
+1. **Run axe in a real browser.** `cd frontend && npm run test:e2e` (the Day 15
+   Playwright setup) or `@axe-core/playwright` over `/insights` with data
+   present. The jsdom scans cover structure; they cannot compute styles, so
+   colour-contrast in the charts is asserted only by reading the palette's hex
+   values against the token set.
+2. **Look at the charts at 360 px.** Recharts' `ResponsiveContainer` is verified
+   in jsdom only as far as "it renders"; whether axis labels collide on a narrow
+   phone is a visual question.
+3. **Read the three weekly summaries as a person would** (the script prints all
+   three). Hindi and Bengali have had **no native-speaker review** — the script
+   checks the script, the disclaimer and mixed-script leakage, and cannot say
+   whether a sentence sounds warm.
+4. **Decide whether averaging is the right thing to show at three check-ins.**
+   The weekly card prints "Average mood: 3.0/5 … over 3 check-in(s)" while
+   correctly refusing a trend. Both statements are true; a reader could find them
+   contradictory. This is a product judgement, not a bug.
+5. **Check the statistics against a real person's data** — a few weeks of real
+   check-ins in one zone, then read whether the patterns match what they know
+   about themselves. Synthetic series with planted effects prove the arithmetic,
+   not the usefulness.
+6. **The thresholds are unvalidated against clinical expectation.** Seven days and
+   five per group are defensible defaults chosen for this product, not numbers
+   from the literature. A clinician's opinion on both is worth having before they
+   are treated as settled.
 
 ## Verification (Day 12 — real command output)
 
@@ -2110,6 +2329,7 @@ other three jobs.
 - [0013 — Knowledge base and retrieval (RAG): grounding the companion in curated self-help](docs/adr/0013-knowledge-retrieval-rag.md): below-threshold means *no reference at all* (an irrelevant card is a broken promise; a missing one is nothing); FAISS flat-IP + JSON sidecar instead of a database at 40-doc scale; a corpus-fitted TF-IDF embedder persisted with the store as the offline default because raw feature hashing measured unusably, with `embedder.json` making the store the source of truth for its own vector space and `auto` upgrading to the multilingual model when the network exists; idempotent ingest via a manifest signature over embedder *configuration* + chunker version + content hashes (the up-to-date path never fits); measured quality levers (stopwords + `min_df=2`, BM25-style feature capping, title anchoring) behind a recommended 0.12 tfidf floor biased toward recall because the v2 prompt tells the model to ignore references that do not fit; the redacted query and the turn's locale are the only things retrieval sees, and every failure degrades to "no reference material"; prompt v2 carries the reference contract as three machine-checked rules; ids flow from prompt lines to `retrieved_docs`/`retrieved_ids` (lockstep-validated) so the UI's "Learn more" card and the model's mention trace to the same document; template replies carry no cards; and the corpus ships `reviewed: false` under a human safety-review checklist.
 - [0014 — Deterministic output guard and saved-chat memory](docs/adr/0014-output-guard-and-conversation-memory.md): compiled YAML output categories, one stricter retry then local safe template, full-response buffering for SSE, category-only `llm_output` audit events, and extractive redacted-user-only memory encrypted per saved chat with a deletion tombstone.
 - [0015 — Mood check-ins: a ten-second form, a screened note, and a streak that cannot be broken by a bad week](docs/adr/0015-mood-check-ins.md): two bounded scales and closed vocabularies with unknown tags as a field-naming `422` (never a silent drop); the optional note is screened by the rules engine + Day 9 ensemble **before** it is stored, and a HIGH/IMMINENT note returns the `crisis` metadata shaped like `POST /crisis/assess` plus a metadata-only `safety_events` row **while the check-in is still saved**, with a fail-closed `503` when the engine cannot run; mood needs `terms` + `privacy` and deliberately not `ai_disclosure` because no model is in this path; the streak is counted in the caller's IANA timezone with today still open, one missed day per rolling seven bridged (each empty day buys its own freeze), a reset that is only ever a count and never a welcome, and a state enum with no `broken`; local midnights (not `+24h`) define a day so DST days are 23 or 25 hours; one clock seam stamps the row and decides "today" together; the streak query projects timestamps only; another account's id is a `404` and there is no id-addressed read; the streak returns numbers while every sentence lives in one reviewable frontend copy module scanned by both a unit test and an independent verification script; and the suggested action is a deterministic mapping that never quotes a score.
+- [0016 — Insights: statistics that refuse to answer, and charts that can be read without seeing them](docs/adr/0016-insights-and-charts.md): one pure statistics module with no clock and no global RNG; the minimum-data rules **are** the contract (7 days with check-ins before any trend, 5 days per group before any comparison) and `not_enough_data` is a `Literal` value the UI must render rather than a null it can skip, with the thresholds published in the response so the copy states the rule instead of paraphrasing it; effect size + bootstrap interval + permutation p-value together, never a p-value alone; **the input type is the privacy guarantee** (`Entry` has no note field, so no statistic can read one, and only the export takes `ExportRow`) with a canary test proving it; associative wording enforced by four independent blocklists across backend, frontend and the verification script; every chart ships a sentence, a data table in a native `<details>` and a uniquely-named summary region, on an Okabe-Ito palette where valence and energy differ by dash pattern as well as hue; Recharts lazy-loaded so the chat route never pays for it; a localised template weekly summary with its limitation in every language, needing `terms` + `privacy` and not `ai_disclosure` because no model is in the path; CSV written with `csv` so a note with commas cannot shift a column; and a **measured false-positive rate** (0/40 comparisons over 20 noise seeds) reported by a script rather than asserted by a test.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
@@ -2145,6 +2365,45 @@ before the corresponding behaviour is trusted outside synthetic tests.
    suite uses SQLite and process-local ephemeral sessions/rate limits; it does not
    validate PostgreSQL or multi-worker locking. The Settings test is jsdom, not a
    real browser, and the existing Playwright run still needs a machine with Chromium.
+
+### Day 16 implementation notes
+
+- **The insights timezone is per request, not per account** — the same debt the
+  mood surface carries (no `users.timezone` column). Every insights call sends
+  `tz`, an omitted zone is UTC with `timezone_fallback_used: true` in the
+  response, and an unknown name is `422 invalid_timezone`. A user-level timezone
+  would close both surfaces at once.
+- **The `friends` effect is a fair example of the feature's own honesty limits.**
+  60 days with a planted +0.5 recovers +0.7 with a 95 % interval of
+  [−0.05, +1.42] and p = 0.058: close enough to zero that the app declines to be
+  confident. Longer windows would help; the 90-day fetch cap is what bounds it.
+- **The `sleep` effect is not a realistic effect size.** −1.0 on a 1–5 scale from a
+  synthetic generator is a large, clean effect. Real check-in data will be noisier,
+  and the minimums (7 days / 5 per group) may prove too optimistic in practice —
+  the false-positive rate is measured, but the *power* to detect a real 0.5-point
+  effect is not.
+- **The weekly summary prints an average at three check-ins while refusing a
+  trend.** Both are true (an average of what was recorded is a fact; a trend is a
+  claim) but a reader could find the combination contradictory. Product judgement,
+  recorded rather than fixed.
+- **Hindi and Bengali weekly-summary templates have had no native-speaker
+  review.** Structurally checked only: script, disclaimer present, no
+  mixed-script leakage. The English template is the reviewed artefact.
+- **The thresholds are unvalidated against clinical expectation.** 7 days and 5
+  per group are defensible defaults for this product, not numbers from the
+  literature, and they are pinned by tests so changing them is deliberate.
+- **`mypy` needed two explicit annotations that are worth knowing about.**
+  `_linear_trend` takes `Sequence[float]` rather than `list[float]` (a `list` is
+  invariant, so `list[int]` would not be accepted), and the trend locals are
+  annotated `Trend` so the `Literal` survives the branches — which is what makes
+  a future fifth direction a compile error rather than a string the UI has no copy
+  for.
+- **The charts are `React.lazy`, which the tests must wait for.** The view tests
+  raise their timeout to 20 s because a cold worker pays the Recharts transform;
+  they are not slow because the page is.
+- **`@axe-core/playwright` has not run against `/insights`.** The five jsdom scans
+  cover structure; colour contrast in the charts is enforced by reading the
+  palette's hex values, not by axe.
 
 ### Day 15 implementation notes
 
@@ -2683,25 +2942,62 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 14 parking lot)** Provider-specific tokenization for the 300-token memory cap,
   and per-session deletion/re-enable controls if product research asks for more than
   the current account-wide “delete existing memories” action.
+- **(Day 16 parking lot)** The sleep trend beside the tag: today the charts show a
+  tag's *average* effect, not its day-by-day overlap with a low stretch. A small
+  strip under the rolling average marking the days a tag was present would answer
+  "was it *this* week?" without adding a statistic.
+- **(Day 16 parking lot)** A machine-checked "no pattern without the interval"
+  guard over the API schema: today the rule that a p-value never travels alone is
+  kept by the copy and by review, not by a validator.
+- **(Day 16 parking lot)** Power analysis instead of fixed minimums: 7 days / 5 per
+  group are chosen for this product, not derived. A script that reports, for a
+  given effect size and jitter, how many days would be needed to detect it would
+  turn "not enough data yet" into "about seven more days", which is a better
+  sentence.
+- **(Day 16 parking lot)** Journal and chat signals in the same view. Journals have
+  a `sentiment` column from Day 3 and the analyser already produces valence; the
+  decision to keep the insights surface to check-ins only is one of scope, and it
+  should be revisited with the same minimum-data discipline.
+- **(Day 16 parking lot)** A downloadable PNG per chart, for anybody who wants to
+  take a picture of their month to a session. The text summary and the CSV are the
+  current answer; a picture is what people actually ask for.
+- **(Day 16 parking lot)** An "as of" parameter on both routes so a past window can
+  be re-rendered — the clock seam already exists and the response would then be
+  reproducible for a report, not only for a test.
+- **(Day 16 parking lot)** Surface the weekly summary inside the app as an optional
+  weekly card rather than only behind a language selector on one page; the copy is
+  written and reviewed, and the delivery mechanism (in-app, email, none) is a
+  product and consent question this milestone deliberately did not answer.
+- **(Day 16 parking lot)** RTL and other Indic scripts in the chart axis labels —
+  Recharts handles left-to-right only by default, and the three locales this
+  milestone ships are all LTR, so nothing here is tested against a script that
+  is not.
 
-## Next steps (Day 15 — first three)
+## Next steps (Day 16 — first three)
 
-**Preamble (needs a machine with a browser):** run the Playwright suite against the
-Fake-LLM stack and review the memory Settings panel, confirmation flow and buffered
-SSE behaviour at mobile and desktop sizes. The current settings test is jsdom; it is
-not a browser-level accessibility or visual check.
+**Preamble (needs a machine with a browser):** load `/insights` with real check-in
+data at 360 px and at desktop width, run `@axe-core/playwright` over it, and click
+through the export. The five axe scans so far are jsdom, which cannot compute
+styles — chart colour contrast is asserted by reading the palette, not by axe.
 
-**Preamble (needs humans):** ask a clinician and native Hindi/Bengali speakers to
-review the new output patterns, safe fallback copy, check-in phrases and the 40-document
-knowledge corpus. Keep `reviewed: false` until those reviews are complete.
+**Preamble (needs humans):** a native Hindi and Bengali speaker to read the two
+weekly-summary templates, and a clinician's view on whether 7 days and 5 per group
+are the right minimums. The check-in *notes* on this surface are still unreviewed
+copy in the same sense the crisis templates were on Day 8.
 
-1. **Review and expand output guard coverage.** Turn every clinician/native-speaker
-   disagreement and every newly observed unsafe paraphrase into a scripted Fake
-   regression case; keep the good-output table to prevent overblocking.
-2. **Validate deployment assumptions.** Run Alembic revision `0003` against PostgreSQL,
-   test the output retry/buffer path through the real proxy, and plan shared rate-limit /
-   ephemeral state plus per-session turn serialization before multi-worker deployment.
-3. **Re-measure real-model retrieval and crisis policy.** With approved model access,
-   run the RAG probe set using sentence-transformers, record the scores, and have a
-   second annotator review the crisis eval set before changing the recall-first
-   thresholds.
+1. **Validate the statistics on real data before adding to them.** Put a few weeks
+   of genuine check-ins through `/insights/patterns` and read whether the patterns
+   match what the person knows about themselves. The arithmetic is proven on
+   planted effects; whether a 0.5-point association is *useful* at real noise
+   levels is not. If it is not, the answer is a power analysis and better copy
+   ("about seven more days"), not a lower threshold.
+2. **Close the two structural debts the insights surface inherited.** A
+   user-level timezone column would remove the per-request `tz` on both mood and
+   insights at once, and a turn/session-scoped clock (`as of`) would make a past
+   window reproducible for a report. Both are schema-level changes and both are
+   already reachable through existing seams.
+3. **Carry the review load forward.** The outstanding human reviews are now: output
+   patterns (Day 14), the 40-document knowledge corpus (Day 13), the crisis copy in
+   `hi`/`bn` (Day 8), the mood copy (Day 15), and the two new weekly-summary
+   templates (Day 16). None of them are blocked on engineering, and every one of
+   them is blocking a claim the product currently makes.

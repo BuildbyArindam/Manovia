@@ -49,8 +49,15 @@ BOOTSTRAP_RESAMPLES: Final = 2000
 #: Number of permutations for the permutation test.
 PERMUTATION_RESAMPLES: Final = 2000
 
-#: Seed for deterministic bootstrap/permutation in tests. Production code should
-#: not set a seed; the functions accept an optional ``rng`` parameter.
+#: The seed every resampling run uses unless a caller passes its own.
+#:
+#: A count-based statistic would be reproducible by construction; bootstrap and
+#: permutation are Monte Carlo, so without a fixed default the same data returns
+#: "p = 0.001" on one page load and "p = 0.002" on the next. Nobody can
+#: investigate a number that re-rolls itself, and a person reading two screens
+#: should not see two answers. With a fixed seed the answer depends on the data
+#: and nothing else, and the sampling error (well inside the one decimal place
+#: the copy shows) is a property of the method, not of the moment.
 DEFAULT_SEED: Final = 20261011
 
 #: The four directions a trend can be reported in. ``not_enough_data`` is a
@@ -201,7 +208,7 @@ def _bootstrap_ci(
     """95% bootstrap CI for the difference in means (group1 - group2)."""
     if len(group1) < 2 or len(group2) < 2:
         return None, None
-    rng = rng or random.Random()
+    rng = rng or random.Random(DEFAULT_SEED)
     diffs: list[float] = []
     for _ in range(resamples):
         s1 = [rng.choice(group1) for _ in group1]
@@ -223,7 +230,7 @@ def _permutation_p_value(
     """Two-sided permutation test p-value for difference in means."""
     if len(group1) < 2 or len(group2) < 2:
         return None
-    rng = rng or random.Random()
+    rng = rng or random.Random(DEFAULT_SEED)
     observed_diff = mean(group1) - mean(group2)
     combined = group1 + group2
     n1 = len(group1)

@@ -313,6 +313,24 @@ def test_no_generated_sentence_claims_a_cause() -> None:
         assert "association" in association.note or "Not enough data" in association.note
 
 
+def test_the_same_data_gives_the_same_answer_without_a_seed() -> None:
+    """The API passes no RNG, so the default has to be reproducible.
+
+    Monte Carlo without a fixed seed returns a different p-value on every page
+    load — a number that re-rolls itself cannot be investigated, and somebody
+    refreshing the page should not see two answers.
+    """
+    series = planted_series(days=60, seed=42)
+
+    first = factor_association(series, zone="UTC")
+    second = factor_association(series, zone="UTC")
+
+    for left, right in zip(first, second, strict=True):
+        assert left.ci_lower == right.ci_lower
+        assert left.ci_upper == right.ci_upper
+        assert left.p_value == right.p_value
+
+
 def test_the_same_seed_gives_the_same_numbers() -> None:
     """Bootstrap and permutation are resampled from an injected RNG, so a report
     can be re-run and compared — otherwise a "0.03" could never be investigated."""
