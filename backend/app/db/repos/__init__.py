@@ -12,8 +12,10 @@ from app.db.repos.chats import ChatRepository
 from app.db.repos.consents import ConsentRepository
 from app.db.repos.journals import JournalRepository
 from app.db.repos.moods import MoodInsightRow, MoodRepository
+from app.db.repos.plans import PlanRepository
 from app.db.repos.refresh_tokens import RefreshTokenRepository
 from app.db.repos.safety import SafetyEventRepository
+from app.db.repos.settings import SettingsRepository
 from app.db.repos.users import UserRepository
 
 __all__ = [
@@ -23,7 +25,9 @@ __all__ = [
     "JournalRepository",
     "MoodInsightRow",
     "MoodRepository",
+    "PlanRepository",
     "RefreshTokenRepository",
     "SafetyEventRepository",
+    "SettingsRepository",
     "UserRepository",
 ]
