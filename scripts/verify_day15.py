@@ -51,18 +51,21 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from collections import Counter
+import re
+import secrets
 import subprocess
 import sys
 import uuid
+from collections import Counter
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
-from sqlalchemy import func, select, text as sa_text
+from sqlalchemy import select
+from sqlalchemy import text as sa_text
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_ROOT = REPO_ROOT / "backend"
@@ -71,7 +74,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core import crypto  # noqa: E402
 from app.core.config import Settings  # noqa: E402
-from app.db.repos import MoodRepository, UserRepository  # noqa: E402
+from app.db.repos import MoodRepository  # noqa: E402
 from app.db.session import build_database  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.models import Base  # noqa: E402
@@ -269,16 +272,96 @@ async def check_range_queries(client: httpx.AsyncClient, database: Any, report: 
     # Five consecutive local days in Kolkata, two check-ins on two of the days so
     # "days" and "check-ins" are not the same number anywhere in this script.
     plan: list[tuple[str, datetime, int, int, tuple[str, ...], tuple[str, ...], str | None]] = [
-        ("2026-03-09 08:10 IST", datetime(2026, 3, 9, 2, 40, tzinfo=UTC), 2, 3, ("sadness",), ("work",), "Monday."),
-        ("2026-03-09 21:30 IST", datetime(2026, 3, 9, 16, 0, tzinfo=UTC), 3, 2, ("calm",), (), None),
-        ("2026-03-10 07:05 IST", datetime(2026, 3, 10, 1, 35, tzinfo=UTC), 2, 2, ("anxiety", "fear"), ("sleep", "work"), "Slept badly."),
-        ("2026-03-11 23:55 IST", datetime(2026, 3, 11, 18, 25, tzinfo=UTC), 4, 4, ("joy",), ("friends",), "Dinner with friends."),
-        ("2026-03-12 00:05 IST", datetime(2026, 3, 11, 18, 35, tzinfo=UTC), 4, 3, (), ("family",), "Late call home."),
-        ("2026-03-12 19:00 IST", datetime(2026, 3, 12, 13, 30, tzinfo=UTC), 3, 3, ("neutral",), (), None),
-        ("2026-03-13 09:15 IST", datetime(2026, 3, 13, 3, 45, tzinfo=UTC), 1, 1, ("sadness", "loneliness"), ("health",), ORDINARY_NOTE),
-        ("2026-03-13 22:40 IST", datetime(2026, 3, 13, 17, 10, tzinfo=UTC), 2, 2, ("fear",), ("money",), None),
-        ("2026-03-14 11:00 IST", datetime(2026, 3, 14, 5, 30, tzinfo=UTC), 5, 4, ("joy", "calm"), ("weather",), "Sun came out."),
-        ("2026-03-15 09:30 IST", datetime(2026, 3, 15, 4, 0, tzinfo=UTC), 3, 3, ("neutral",), ("study",), None),
+        (
+            "2026-03-09 08:10 IST",
+            datetime(2026, 3, 9, 2, 40, tzinfo=UTC),
+            2,
+            3,
+            ("sadness",),
+            ("work",),
+            "Monday.",
+        ),
+        (
+            "2026-03-09 21:30 IST",
+            datetime(2026, 3, 9, 16, 0, tzinfo=UTC),
+            3,
+            2,
+            ("calm",),
+            (),
+            None,
+        ),
+        (
+            "2026-03-10 07:05 IST",
+            datetime(2026, 3, 10, 1, 35, tzinfo=UTC),
+            2,
+            2,
+            ("anxiety", "fear"),
+            ("sleep", "work"),
+            "Slept badly.",
+        ),
+        (
+            "2026-03-11 23:55 IST",
+            datetime(2026, 3, 11, 18, 25, tzinfo=UTC),
+            4,
+            4,
+            ("joy",),
+            ("friends",),
+            "Dinner with friends.",
+        ),
+        (
+            "2026-03-12 00:05 IST",
+            datetime(2026, 3, 11, 18, 35, tzinfo=UTC),
+            4,
+            3,
+            (),
+            ("family",),
+            "Late call home.",
+        ),
+        (
+            "2026-03-12 19:00 IST",
+            datetime(2026, 3, 12, 13, 30, tzinfo=UTC),
+            3,
+            3,
+            ("neutral",),
+            (),
+            None,
+        ),
+        (
+            "2026-03-13 09:15 IST",
+            datetime(2026, 3, 13, 3, 45, tzinfo=UTC),
+            1,
+            1,
+            ("sadness", "loneliness"),
+            ("health",),
+            ORDINARY_NOTE,
+        ),
+        (
+            "2026-03-13 22:40 IST",
+            datetime(2026, 3, 13, 17, 10, tzinfo=UTC),
+            2,
+            2,
+            ("fear",),
+            ("money",),
+            None,
+        ),
+        (
+            "2026-03-14 11:00 IST",
+            datetime(2026, 3, 14, 5, 30, tzinfo=UTC),
+            5,
+            4,
+            ("joy", "calm"),
+            ("weather",),
+            "Sun came out.",
+        ),
+        (
+            "2026-03-15 09:30 IST",
+            datetime(2026, 3, 15, 4, 0, tzinfo=UTC),
+            3,
+            3,
+            ("neutral",),
+            ("study",),
+            None,
+        ),
     ]
     seeded_instants = [at for _, at, *_ in plan]
     for label, at, valence, energy, emotions, factors, note in plan:
@@ -331,7 +414,7 @@ async def check_range_queries(client: httpx.AsyncClient, database: Any, report: 
         f"{MOOD}?from=2026-03-11&to=2026-03-13&tz=Asia/Kolkata", headers=headers
     )
     ranged_body = ranged.json()
-    report.expect("date range 11–13 March returns 5 check-ins", ranged_body["count"], 5)
+    report.expect("date range 11-13 March returns 5 check-ins", ranged_body["count"], 5)
     report.expect(
         "the `to` day is included",
         "2026-03-13" in {entry["local_date"] for entry in ranged_body["entries"]},
@@ -347,9 +430,9 @@ async def check_range_queries(client: httpx.AsyncClient, database: Any, report: 
         "the same instants partition differently in another zone",
         expected_ist != expected_ny,
         "Kolkata: "
-        + ", ".join(f"{day.isoformat()}×{count}" for day, count in sorted(expected_ist.items()))
+        + ", ".join(f"{day.isoformat()}x{count}" for day, count in sorted(expected_ist.items()))
         + " | New York: "
-        + ", ".join(f"{day.isoformat()}×{count}" for day, count in sorted(expected_ny.items())),
+        + ", ".join(f"{day.isoformat()}x{count}" for day, count in sorted(expected_ny.items())),
     )
     for zone_name, expected in (("Asia/Kolkata", expected_ist), ("America/New_York", expected_ny)):
         mismatches = []
@@ -376,9 +459,7 @@ async def check_range_queries(client: httpx.AsyncClient, database: Any, report: 
     report.expect("timestamp range is an exact-instant filter", instant_body["count"], 1)
 
     # A one-sided range, and a limit.
-    limited = await client.get(
-        f"{MOOD}?from=2026-03-10&limit=2&tz=Asia/Kolkata", headers=headers
-    )
+    limited = await client.get(f"{MOOD}?from=2026-03-10&limit=2&tz=Asia/Kolkata", headers=headers)
     limited_body = limited.json()
     report.expect("limit caps the page", limited_body["count"], 2)
     report.expect("limit echoed", limited_body["limit"], 2)
@@ -442,12 +523,19 @@ async def check_streak(
     report.add(
         "the same rows are one day in UTC (fallback reported)",
         utc_view["current_streak"] == 1 and utc_view["timezone_fallback_used"] is True,
-        f"UTC says {utc_view['current_streak']} day(s), fallback={utc_view['timezone_fallback_used']}",
+        (
+            f"UTC says {utc_view['current_streak']} day(s), "
+            f"fallback={utc_view['timezone_fallback_used']}"
+        ),
     )
 
     # ---- Spring forward, America/New_York: 8 March 2026 is 23 hours long -----
     dst_user, dst_headers = await make_person(client)
-    for local_day in (datetime(2026, 3, 7, 20, 0), datetime(2026, 3, 8, 20, 0), datetime(2026, 3, 9, 20, 0)):
+    for local_day in (
+        datetime(2026, 3, 7, 20, 0),
+        datetime(2026, 3, 8, 20, 0),
+        datetime(2026, 3, 9, 20, 0),
+    ):
         await seed(
             database,
             dst_user,
@@ -474,7 +562,9 @@ async def check_streak(
     # ---- A gap of two days is "returning", with the old numbers kept ---------
     gap_user, gap_headers = await make_person(client)
     for day in (2, 3, 4, 5):
-        await seed(database, gap_user, at=datetime(2026, 3, day, 9, 0, tzinfo=KOLKATA).astimezone(UTC))
+        await seed(
+            database, gap_user, at=datetime(2026, 3, day, 9, 0, tzinfo=KOLKATA).astimezone(UTC)
+        )
     monkeypatch.setattr("app.api.v1.mood._now", lambda: datetime(2026, 3, 10, 12, 0, tzinfo=UTC))
     body = (await client.get(f"{STREAK}?tz=Asia/Kolkata", headers=gap_headers)).json()
     report.expect("after a gap: returning, not broken", body["state"], "returning")
@@ -541,7 +631,9 @@ async def check_high_risk_note(
             and bool(callable_lines)
             and all(r.get("tel_href") or r.get("url") for r in resources),
             f"{len(resources)} resource(s), {len(callable_lines)} callable: "
-            + ", ".join(f"{r['name']} ({r.get('tel_href') or r.get('url')})" for r in resources[:3]),
+            + ", ".join(
+                f"{r['name']} ({r.get('tel_href') or r.get('url')})" for r in resources[:3]
+            ),
         )
         report.add(
             "  every helpline carries last_verified",
@@ -558,20 +650,28 @@ async def check_high_risk_note(
     # The entry exists, with its note, for its owner.
     listing = (await client.get(f"{MOOD}?tz=Asia/Kolkata", headers=headers)).json()
     report.expect("the check-in was stored anyway", listing["count"], 1)
-    report.expect("and its note comes back to its owner", listing["entries"][0]["note"], HIGH_RISK_NOTE)
+    report.expect(
+        "and its note comes back to its owner", listing["entries"][0]["note"], HIGH_RISK_NOTE
+    )
     report.expect("the streak includes it", body["streak"]["current_streak"], 1)
 
     # A metadata-only audit row, and nothing else.
     async with database.session_factory() as session:
         events = (
-            await session.execute(select(SafetyEvent).where(SafetyEvent.user_id == user_id))
-        ).scalars().all()
+            (await session.execute(select(SafetyEvent).where(SafetyEvent.user_id == user_id)))
+            .scalars()
+            .all()
+        )
     report.expect("one safety event was recorded", len(events), 1)
     row = events[0] if events else None
     report.add(
         "the safety event records the tier and the detector",
         row is not None and row.risk_level == 3 and row.source.value in {"rules", "ml"},
-        f"risk_level={getattr(row, 'risk_level', None)}, source={getattr(getattr(row, 'source', None), 'value', None)}, category={getattr(row, 'category', None)}",
+        (
+            f"risk_level={getattr(row, 'risk_level', None)}, "
+            f"source={getattr(getattr(row, 'source', None), 'value', None)}, "
+            f"category={getattr(row, 'category', None)}"
+        ),
     )
     report.add(
         "the safety event has no place to put text",
@@ -623,7 +723,7 @@ async def check_encryption_and_ownership(
     """The note in the raw column, and what a second account can see."""
     print("\n[4] Encryption at rest, and ownership")
 
-    owner_id, owner_headers = await make_person(client)
+    _owner_id, owner_headers = await make_person(client)
     stranger_id, stranger_headers = await make_person(client)
     monkeypatch.setattr("app.api.v1.mood._now", lambda: datetime(2026, 3, 15, 12, 0, tzinfo=UTC))
 
@@ -646,15 +746,11 @@ async def check_encryption_and_ownership(
     # not have leaked into any other column of any row either.
     async with database.session_factory() as session:
         blob = (
-            await session.execute(
-                select(MoodEntry.note_encrypted).where(MoodEntry.id == entry_id)
-            )
+            await session.execute(select(MoodEntry.note_encrypted).where(MoodEntry.id == entry_id))
         ).scalar_one()
         table_dump = (await session.execute(sa_text("SELECT * FROM mood_entries"))).all()
         events_dump = (await session.execute(sa_text("SELECT * FROM safety_events"))).all()
-        safety_columns = (
-            await session.execute(sa_text("PRAGMA table_info(safety_events)"))
-        ).all()
+        safety_columns = (await session.execute(sa_text("PRAGMA table_info(safety_events)"))).all()
     column_names = [row[1] for row in safety_columns]
     report.add(
         "the note is stored as ciphertext, not text",
@@ -770,29 +866,41 @@ def check_copy(report: Report) -> None:
     report.add(
         "no guilt-inducing wording in any mood string",
         not any(reason.startswith("guilt") for _, reason in flagged),
-        "; ".join(f"{value!r} ({reason})" for value, reason in flagged if reason.startswith("guilt"))
+        "; ".join(
+            f"{value!r} ({reason})" for value, reason in flagged if reason.startswith("guilt")
+        )
         or "clean",
     )
     report.add(
         "no toxic-positivity wording in any mood string",
         not any(reason.startswith("cheerleading") for _, reason in flagged),
-        "; ".join(f"{value!r} ({reason})" for value, reason in flagged if reason.startswith("cheerleading"))
+        "; ".join(
+            f"{value!r} ({reason})"
+            for value, reason in flagged
+            if reason.startswith("cheerleading")
+        )
         or "clean",
     )
 
     # The frontend vocabulary must be the backend vocabulary, or a check-in the
     # UI offers will be rejected by the server it was built for.
-    from app.services.mood import EMOTION_TAGS, MAX_EMOTIONS, MAX_FACTORS, MOOD_FACTORS, NOTE_MAX_CHARS
+    from app.services.mood import (
+        EMOTION_TAGS,
+        MAX_EMOTIONS,
+        MAX_FACTORS,
+        MOOD_FACTORS,
+        NOTE_MAX_CHARS,
+    )
 
     taxonomy = payload["taxonomy"]
-    report.expect("frontend emotion ids == backend taxonomy", taxonomy["emotions"], list(EMOTION_TAGS))
+    report.expect(
+        "frontend emotion ids == backend taxonomy", taxonomy["emotions"], list(EMOTION_TAGS)
+    )
     report.expect("frontend factor ids == backend factors", taxonomy["factors"], list(MOOD_FACTORS))
     report.expect("emotion cap matches", taxonomy["max_emotions"], MAX_EMOTIONS)
     report.expect("factor cap matches", taxonomy["max_factors"], MAX_FACTORS)
     report.expect("note cap matches", taxonomy["note_max_chars"], NOTE_MAX_CHARS)
-    report.note(
-        f"{len(sentences)} mood sentences and {len(vocabulary)} vocabulary words reviewed"
-    )
+    report.note(f"{len(sentences)} mood sentences and {len(vocabulary)} vocabulary words reviewed")
 
 
 def check_frontend_suite(report: Report) -> None:
@@ -804,11 +912,20 @@ def check_frontend_suite(report: Report) -> None:
         capture_output=True,
         text=True,
     )
-    tail = (result.stdout + result.stderr).strip().splitlines()[-3:]
+    # Pick the summary lines rather than the last lines of output: a passing run
+    # still ends with React warnings, which would make the table lie about itself.
+    # Colour codes are stripped because this text ends up in a table.
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
+    combined = ansi.sub("", result.stdout + result.stderr).splitlines()
+    summary = [
+        line.strip()
+        for line in combined
+        if "Test Files" in line or line.strip().startswith("Tests ")
+    ]
     report.add(
         "frontend vitest suite",
         result.returncode == 0,
-        " / ".join(line.strip() for line in tail if line.strip()),
+        " | ".join(summary[-2:]) if summary else "no summary line found",
     )
 
 
