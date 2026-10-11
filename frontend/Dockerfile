@@ -22,8 +22,10 @@ RUN npm run build
 # Runtime stage: static files behind nginx.
 FROM nginx:1.27-alpine AS runtime
 
-# SPA fallback + /api proxy + security headers (see docker/nginx.conf).
+# SPA fallback + /api proxy + security headers (see docker/nginx.conf, which
+# includes the shared header file next to it).
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

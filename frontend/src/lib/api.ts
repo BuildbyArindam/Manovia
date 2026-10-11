@@ -310,6 +310,55 @@ export class ApiClient {
     return response;
   }
 
+  /**
+   * Open a `GET` whose body is not JSON — the data export ZIP — and hand back
+   * the raw `Response` for the caller to read as a blob.
+   *
+   * Same contract as {@link postForStream}: refresh before sending when the
+   * access token is stale, replay exactly once after a 401, and turn a non-2xx
+   * into an {@link ApiError} carrying the backend's code and request id. The
+   * difference is the `Accept` header and that the caller wants bytes, not
+   * parsed JSON.
+   */
+  async getForDownload(path: string, options: RequestOptions = {}): Promise<Response> {
+    const headers: Record<string, string> = {
+      Accept: "*/*",
+      ...options.headers,
+    };
+    const tokens = await this.tokensForRequest();
+    if (tokens !== null) {
+      headers.Authorization = `Bearer ${tokens.accessToken}`;
+    }
+
+    let response = await this.fetchImpl(this.url(path), {
+      method: "GET",
+      headers,
+      signal: options.signal,
+    });
+    if (response.status === 401) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const retried = this.tokens.read();
+        if (retried !== null) {
+          headers.Authorization = `Bearer ${retried.accessToken}`;
+        }
+        response = await this.fetchImpl(this.url(path), {
+          method: "GET",
+          headers,
+          signal: options.signal,
+        });
+      }
+    }
+    if (!response.ok) {
+      const error = await toApiError(response);
+      if (response.status === 401) {
+        this.onAuthExpired?.(error);
+      }
+      throw error;
+    }
+    return response;
+  }
+
   /** Store the tokens from a sign-in/refresh response. */
   applySession(payload: SessionLike): AuthTokens {
     const tokens = toAuthTokens(payload, this.now());

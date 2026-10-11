@@ -40,3 +40,25 @@ export function formatShortDay(isoDate: string): string {
     timeZone: "UTC",
   });
 }
+
+/**
+ * An ISO timestamp from the server → a local date and time for the reader.
+ *
+ * Unlike the day helpers above, this one *wants* the reader's zone: a receipt
+ * or an agreement was recorded at an instant, and the honest rendering of an
+ * instant is in the clock the reader is actually looking at. An unparseable
+ * value is returned unchanged rather than shown as "Invalid Date".
+ */
+export function formatDateTime(isoTimestamp: string): string {
+  const parsed = new Date(isoTimestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return isoTimestamp;
+  }
+  return parsed.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
