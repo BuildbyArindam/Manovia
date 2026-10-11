@@ -153,9 +153,13 @@ what happens to their data. Every language's summary ends with its own
 "pattern summary, not a diagnosis" sentence, verified word by word — a summary
 that reads like a verdict is worse than no summary, in any language.
 
-The window is the seven **complete** days ending yesterday, so "this week" never
-changes shape depending on the hour it is opened. The clock is a seam
-(`app.api.v1.insights._now`) for the same reason the streak has one.
+The window is **today and the six days before it**, in the caller's zone. Ending
+on today rather than yesterday was a bug found by running the live server: with a
+window that ended yesterday, somebody who had just checked in read "No check-ins
+this week" — wrong-looking, and discouraging on the one day they did the thing. A
+partial day in the summary is a smaller cost than a summary that denies the
+check-in just made. The clock is a seam (`app.api.v1.insights._now`) for the same
+reason the streak has one.
 
 ### 8. CSV export, written by `csv`, with the note column honest
 

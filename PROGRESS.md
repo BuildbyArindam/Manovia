@@ -814,18 +814,21 @@ formatted**, `mypy app tests` *Success: no issues found in 206 source files*,
 `eslint .` clean, `tsc --noEmit` clean.
 
 `backend/.venv/bin/python scripts/verify_day16.py` → **50/50 checks**; with
-`--frontend` → **51/51**.
+`--frontend` → **51/51**. `frontend: npm run build` → 305 kB main bundle
+(94.8 kB gzip) **with no `recharts` module in it**, and the chart chunk
+(347 kB / 103 kB gzip) loaded only by this route.
 
 ### PASS/FAIL table (Message 2 checklist)
 
 | # | check | result |
 | --- | --- | --- |
-| 1 | `make test` — insights tests shown | **PASS** — backend 2681 passed / 3 skipped; the insights files alone **56** (`test_mood_insights.py` 33, `test_insights_api.py` 23). Frontend 291 passed / 3 skipped, of which **41** are insights. |
+| 1 | `make test` — insights tests shown | **PASS** — backend 2681 passed / 3 skipped; the insights files alone **57** (`test_mood_insights.py` 34, `test_insights_api.py` 23). Frontend 291 passed / 3 skipped, of which **41** are insights. |
 | 2 | 60 days where poor sleep lowers mood ~1 point and friends raises it ~0.5 | **PASS — both effects found.** `sleep` n=19 vs 41, d=−1.07, 95 % CI [−1.63, −0.56] (entirely negative), p=0.001 → *"On days you tagged sleep, your mood was 1.1 points lower on average (n=19 vs 41). This is an association, not a causal link."* `friends` n=14 vs 46, d=+0.63, CI [−0.05, +1.42], p=0.058 → *"…0.7 points higher…"*. The six tags nobody used report **no effect size at all**, not a zero. |
 | 3 | A user with 3 entries says "not enough data" | **PASS** — `rolling_7.trend` and `rolling_30.trend` are both `not_enough_data` with *"Need at least 7 days with check-ins to show a trend."*; the sleep comparison returns `effect_size=None`, `ci_lower=None`, `p_value=None` and *"Not enough data to compare days with vs without sleep (need at least 5 days per group; have 2 with, 1 without)"*; all 24 hourly buckets withhold an average; the weekly summary says *"Not enough check-ins this week to show a trend (need 7 days with data)."* |
 | 4 | 20 noise seeds, report the false-positive rate | **PASS — 0.0 % (0/40 comparisons).** Rule stated in the script: false positive := permutation p < 0.05 **and** \|Cohen's d\| > 0.8. Per-seed breakdown printed (all 20 seeds: 0 strong). **1 of 40 (2.5 %)** reached p < 0.05 on its own with a small effect size — which is what a 5 % threshold is supposed to produce on noise. The same guarantee asserted through HTTP on 3 seeds (0/6) and in-suite on all 20. |
 | 5 | No causal language in generated summaries | **PASS — 44 generated sentences + 73 user-facing strings scanned, zero hits** on a 16-phrase causal blocklist plus separate cheerleading and diagnostic lists. Also asserted by `copy.test.ts` (frontend), `test_mood_insights.py` and `test_insights_api.py` with independent lists. |
 | 6 | Each chart has a text alternative and a data table; run axe | **PASS (jsdom)** — 14 chart tests + 11 view tests assert, per chart, a uniquely-named `role="region"` text summary carrying the numbers, a `<details>` data table with a row per bucket, and a described `role="img"`. **5 axe scans, 0 violations.** *Not run in a real browser* — `@axe-core/playwright` needs a browser this sandbox cannot download. |
+| 7 | The whole contract against a **live** uvicorn over TCP (not the ASGI transport) | **PASS** — and it found a defect no test had: the weekly card read "No check-ins this week" for somebody who had just checked in. Fixed (window now ends today); regression test added. See *The live stack, end to end*. |
 
 ### What the app found (check 2, verbatim from the run)
 
@@ -867,10 +870,45 @@ confidence. The useful number is the pair: 1 comparison cleared p < 0.05 (the ra
 the threshold is designed to give) and **no** comparison cleared p < 0.05 *and* a
 large effect size, which is the claim the UI would actually put in a sentence.
 
+### The live stack, end to end
+
+The real server was started (`uvicorn app.main:app` on `0.0.0.0:8000`, a migrated
+SQLite file, `SAFETY_ML_ENABLED=false`, `EMOTION_ANALYZER=keyword`,
+`LLM_PROVIDER=fake`) and driven over TCP, not through the ASGI transport:
+
+```
+check-ins created through POST /mood: 1
+GET /insights/patterns -> HTTP 200
+  timezone=Asia/Kolkata fallback=False
+  rolling_7: 1 point(s), trend='not_enough_data'
+  trend note: Need at least 7 days with check-ins to show a trend.
+  min rules published: trend>=7 group>=5
+  sleep: n=0 vs 1
+    Not enough data to compare days with vs without sleep (need at least 5 days per group; have 0 with, 1 without).
+
+GET /insights/export -> entries 2 line(s)
+  local_date,created_at_utc,valence,energy,emotions,factors,note
+  2026-10-11,2026-10-11T11:03:12.119102,1,5,calm,,
+
+guard: an unknown locale -> HTTP 422
+guard: no token -> HTTP 401
+guard: bad timezone -> HTTP 422
+```
+
+**This run is what found the sixth defect**, and it is the reason the live check
+was worth doing: `GET /insights/weekly` answered *"No check-ins this week.
+Whenever you start, that's day one."* **for somebody who had just checked in.** The
+window ended yesterday — a decision made for tidiness ("seven complete days") that
+produced a card denying the check-in you just made, on the one day you made it.
+The window is now *today and the six days before it*; `test_a_check_in_made_today_is_never_missing_from_the_summary`
+is the regression test, and it asserts the one-day case specifically because that
+is the case that broke.
+
 ### Fixed roots, not weakened checks
 
-Five defects were found during this milestone and fixed at the source. Every one
-was caught by a check rather than by reading, and each has a regression test.
+Six defects were found during this milestone and fixed at the source. Every one
+was caught by a check or by running the thing rather than by reading, and each has
+a regression test.
 
 1. **Two `role="region"` landmarks both named "Text summary"** (`landmark-unique`,
    found by the axe scan in `InsightsView.test.tsx`). Five charts on one page meant
@@ -900,6 +938,11 @@ was caught by a check rather than by reading, and each has a regression test.
    `DEFAULT_SEED`; the answer depends on the data and nothing else. Verified by
    running the script twice and getting identical figures, and pinned by
    `test_the_same_data_gives_the_same_answer_without_a_seed`.
+
+6. **The weekly summary denied a check-in made today** (found by the live run
+   above, not by any test). A window ending yesterday is tidy; a card reading
+   "No check-ins this week" the moment somebody checks in is not. Fixed by ending
+   the window on today, with the one-day case asserted by its own test.
 
 Three further defects were caught while writing the *checks* rather than the code,
 and are recorded because each one was a wrong expectation, not a wrong app: a
@@ -2385,7 +2428,9 @@ before the corresponding behaviour is trusted outside synthetic tests.
 - **The weekly summary prints an average at three check-ins while refusing a
   trend.** Both are true (an average of what was recorded is a fact; a trend is a
   claim) but a reader could find the combination contradictory. Product judgement,
-  recorded rather than fixed.
+  recorded rather than fixed. The live run also settled the *other* half of this
+  question: the window now ends on today, because a summary that excluded the
+  check-in just made read as a denial.
 - **Hindi and Bengali weekly-summary templates have had no native-speaker
   review.** Structurally checked only: script, disclaimer present, no
   mixed-script leakage. The English template is the reviewed artefact.

@@ -554,19 +554,23 @@ def weekly_summary(
     now: datetime | None = None,
     rng: random.Random | None = None,
 ) -> WeeklySummary:
-    """Generate a localised weekly summary for the last 7 days.
+    """Generate a localised weekly summary for the last seven days.
 
-    ``now`` controls the clock (for tests). The summary covers the 7-day period
-    ending at the local day *before* ``now`` (so if ``now`` is today, the window
-    is the past 7 complete days). Uses templates — no LLM.
+    ``now`` controls the clock (for tests). The window is **today and the six
+    days before it**, in the caller's zone. Uses templates — no LLM.
+
+    Ending on *today* rather than yesterday is deliberate, and was a bug found by
+    running the live server: with a window that ends yesterday, somebody who has
+    just checked in reads "No check-ins this week", which is both wrong-looking
+    and discouraging on the one day they did the thing. A partial day at the end
+    of a summary is a smaller cost than a summary that denies the check-in just
+    made.
     """
     from zoneinfo import ZoneInfo
 
     tz = ZoneInfo(zone)
     now = now or datetime.now(UTC)
-    # Period end is the local day *before* now's local day (yesterday).
-    # This makes "this week" mean the 7 complete days ending yesterday.
-    period_end = now.astimezone(tz).date() - timedelta(days=1)
+    period_end = now.astimezone(tz).date()
     period_start = period_end - timedelta(days=6)  # inclusive 7-day window
 
     by_day = _to_local_days(entries, zone=zone)

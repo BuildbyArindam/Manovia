@@ -429,7 +429,7 @@ def test_a_full_week_summarises_itself() -> None:
         entry(i, 2 + i, 3, factors=({"sleep": 1} if i % 2 else {}), base=base) for i in range(7)
     ]
 
-    summary = weekly_summary(series, zone="UTC", locale="en", now=base + timedelta(days=7))
+    summary = weekly_summary(series, zone="UTC", locale="en", now=base + timedelta(days=6))
 
     assert isinstance(summary, WeeklySummary)
     assert summary.total_check_ins == 7
@@ -441,16 +441,34 @@ def test_a_full_week_summarises_itself() -> None:
     assert_no_causal_language(summary.text)
 
 
-def test_the_summary_window_is_the_seven_days_before_today() -> None:
-    """``now`` is the seam; the window ends yesterday, so "this week" is complete."""
+def test_the_summary_window_ends_on_today() -> None:
+    """``now`` is the seam, and the window includes **today**.
+
+    Ending on today rather than yesterday is a fix found by running the live
+    server: a person who has just checked in must not read "No check-ins this
+    week". Asserted at the boundary, because the off-by-one is the whole point.
+    """
     base = datetime(2026, 3, 9, 12, 0, 0, tzinfo=UTC)
     series = [entry(i, 3, 3, base=base) for i in range(10)]
 
-    summary = weekly_summary(series, zone="UTC", locale="en", now=base + timedelta(days=8))
+    summary = weekly_summary(series, zone="UTC", locale="en", now=base + timedelta(days=7))
 
     assert summary.period_start == date(2026, 3, 10)
     assert summary.period_end == date(2026, 3, 16)
     assert summary.total_check_ins == 7  # days 10..16 inclusive, one each
+
+
+def test_a_check_in_made_today_is_never_missing_from_the_summary() -> None:
+    """The one-day case, which is the case that produced the bug."""
+    base = datetime(2026, 3, 15, 12, 0, 0, tzinfo=UTC)
+    series = [entry(0, 4, 3, base=base)]
+
+    summary = weekly_summary(series, zone="UTC", locale="en", now=base)
+
+    assert summary.total_check_ins == 1
+    assert summary.period_end == date(2026, 3, 15)
+    assert summary.period_start == date(2026, 3, 9)
+    assert "No check-ins" not in summary.text
 
 
 def test_an_empty_week_says_so_instead_of_showing_zeros() -> None:
@@ -467,7 +485,7 @@ def test_six_days_in_the_window_still_means_no_trend() -> None:
     base = datetime(2026, 3, 9, 12, 0, 0, tzinfo=UTC)
     series = [entry(i, 1 + i, 3, base=base) for i in range(6)]
 
-    summary = weekly_summary(series, zone="UTC", locale="en", now=base + timedelta(days=7))
+    summary = weekly_summary(series, zone="UTC", locale="en", now=base + timedelta(days=5))
 
     assert summary.total_check_ins == 6
     assert summary.trend == "not_enough_data"
@@ -503,7 +521,7 @@ def test_an_unknown_locale_falls_back_to_english() -> None:
     base = datetime(2026, 3, 9, 12, 0, 0, tzinfo=UTC)
     series = [entry(i, 3, 3, base=base) for i in range(7)]
 
-    summary = weekly_summary(series, zone="UTC", locale="fr", now=base + timedelta(days=8))
+    summary = weekly_summary(series, zone="UTC", locale="fr", now=base + timedelta(days=6))
 
     assert "Your week in review" in summary.text
 
