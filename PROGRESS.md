@@ -1,5 +1,34 @@
 # Manovia — Progress
 
+**Day 20 — PHQ-9 and GAD-7 screenings — is built (2026-10-11).** Official English
+item wording, the published 0–3 response set and cutpoints, and a `provenance`
+block in `backend/app/content/assessments/phq9.json` / `gad7.json` name the
+developers, the licence sentence ("No permission required to reproduce,
+translate, display or distribute"), the source URL and the date the wording was
+checked. Pure scoring functions reject a missing answer instead of counting it
+as zero; PHQ-9 item 9 above zero returns the crisis flow **whatever the total
+says** — resources appear in the API metadata and, in the UI, before any score.
+Repeat check-ins get a cadence notice, never a block. Four endpoints
+(`/assessments`, `/assessments/{instrument}`, `…/submit`, `…/history`) with the
+definitions public and the results owner-gated, plus a pick → answer → result
+page, a print-only clinician summary and a hand-rolled SVG trend with a table
+twin. Tests: backend **3195 passed / 3 skipped** at the last full run (74 new
+unit + 34 new integration for this feature), frontend **404 passed / 3 skipped**
+(23 new), and real Chromium **12/12** for `e2e/assessments.spec.ts` at 360x640
+and 1280x800 with **0 axe violations** in both viewports. Decisions:
+[ADR 0020](docs/adr/0020-phq-9-and-gad-7-screenings.md); licence and availability
+statements: [model card](docs/model-card.md). Verification (Message 2) has not
+run yet; the PASS/FAIL table will follow. Commit points so far: content
+`498c0ca`, API `950e7a4`, integration tests `1ecd463`, frontend `5364b7e`,
+frontend tests `16e48ee`, browser e2e `1192e57`.
+
+**Known issue (Day 20, environment):** the browser spec registers one guest per
+test, so running the full spec needs the API started with a raised auth rate
+limit (`RATE_LIMIT_AUTH_PER_MINUTE=60`); the shipping default of 10/minute is
+unchanged and intentional. Postgres is not available in this sandbox, so the
+`postgres` extras and the sqlite→Postgres migration path remain unverified here.
+
+
 ## Current status
 
 **Day 19 — CBT thought record built and verified in rules-only mode (2026-10-11).** Seven-step

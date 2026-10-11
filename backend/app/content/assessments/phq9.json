@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "instrument": "phq9",
+  "name": "Patient Health Questionnaire-9",
+  "short_name": "PHQ-9",
+  "measures": "depressive symptoms over the last two weeks",
+  "intro": "Over the last 2 weeks, how often have you been bothered by any of the following problems?",
+  "timeframe_days": 14,
+  "timeframe_label": "the last 2 weeks",
+  "response_options": [
+    {
+      "value": 0,
+      "label": "Not at all",
+      "detail": "0 days in the last two weeks"
+    },
+    {
+      "value": 1,
+      "label": "Several days",
+      "detail": "roughly 1-6 days in the last two weeks"
+    },
+    {
+      "value": 2,
+      "label": "More than half the days",
+      "detail": "roughly 8-13 days in the last two weeks"
+    },
+    {
+      "value": 3,
+      "label": "Nearly every day",
+      "detail": "roughly 14 days in the last two weeks"
+    }
+  ],
+  "items": [
+    {
+      "id": "phq9_1",
+      "position": 1,
+      "text": "Little interest or pleasure in doing things"
+    },
+    {
+      "id": "phq9_2",
+      "position": 2,
+      "text": "Feeling down, depressed, or hopeless"
+    },
+    {
+      "id": "phq9_3",
+      "position": 3,
+      "text": "Trouble falling or staying asleep, or sleeping too much"
+    },
+    {
+      "id": "phq9_4",
+      "position": 4,
+      "text": "Feeling tired or having little energy"
+    },
+    {
+      "id": "phq9_5",
+      "position": 5,
+      "text": "Poor appetite or overeating"
+    },
+    {
+      "id": "phq9_6",
+      "position": 6,
+      "text": "Feeling bad about yourself \u2014 or that you are a failure or have let yourself or your family down"
+    },
+    {
+      "id": "phq9_7",
+      "position": 7,
+      "text": "Trouble concentrating on things, such as reading the newspaper or watching television"
+    },
+    {
+      "id": "phq9_8",
+      "position": 8,
+      "text": "Moving or speaking so slowly that other people could have noticed? Or the opposite \u2014 being so fidgety or restless that you have been moving around a lot more than usual"
+    },
+    {
+      "id": "phq9_9",
+      "position": 9,
+      "creates_crisis_response": true,
+      "text": "Thoughts that you would be better off dead or of hurting yourself in some way"
+    }
+  ],
+  "scoring": {
+    "method": "sum",
+    "total_min": 0,
+    "total_max": 27,
+    "bands": [
+      {
+        "id": "minimal",
+        "min": 0,
+        "max": 4,
+        "label": "Minimal",
+        "explanation": "Your answers point to few or no symptoms of depression in the last two weeks. Hard days are part of every life, and this result describes a fortnight, not who you are.",
+        "what_helps": [
+          "Keep doing what already works for you: sleep and wake at roughly the same time, move your body most days, and stay in touch with people you like.",
+          "If you have been under unusual strain, keep an eye on it and take the questionnaire again if things change."
+        ],
+        "when_to_seek_help": "If low mood, sleep problems, or loss of interest last longer than a couple of weeks, or they start to affect work or school, it is worth mentioning to a doctor or counsellor. Asking early is easier than waiting."
+      },
+      {
+        "id": "mild",
+        "min": 5,
+        "max": 9,
+        "label": "Mild",
+        "explanation": "Your answers point to some mild symptoms of depression. This is a common place to be, usually after a hard stretch rather than a lasting condition, and it often moves on its own with rest and support.",
+        "what_helps": [
+          "Protect the basics: a steady sleep and wake time, regular meals, some daylight, and movement you do not hate.",
+          "Try one small action a day for something you used to enjoy, even when the motivation is not there yet \u2014 motivation usually arrives after starting, not before.",
+          "Tell one person how the last two weeks have actually been. Being met honestly helps more than being told to cheer up.",
+          "Formal guided self-help (a book or a course based on CBT) is a reasonable next step if things are not shifting in a few weeks."
+        ],
+        "when_to_seek_help": "If this has lasted more than a few weeks, keeps coming back, or starts to interfere with work, study, or relationships, talk to a doctor or counsellor. There is no threshold you have to cross first."
+      },
+      {
+        "id": "moderate",
+        "min": 10,
+        "max": 14,
+        "label": "Moderate",
+        "explanation": "Your answers point to symptoms that are likely to be making daily life harder \u2014 energy, sleep, concentration, or interest, or often several of them. This is a common and treatable situation, and this is the point where talking to a professional usually helps most.",
+        "what_helps": [
+          "Keep the basics steady, but lower your expectations of yourself while you are unwell. Doing less on purpose is a strategy, not a failure.",
+          "Ask for one concrete piece of help \u2014 a deadline moved, a lift home, someone checking in \u2014 instead of hoping people will notice.",
+          "Keep going with small, regular activity, and expect good and bad days rather than a straight line.",
+          "Write down what you notice day to day (sleep, energy, mood). It makes a first appointment with a doctor or counsellor easier and more useful."
+        ],
+        "when_to_seek_help": "Please talk to a doctor, counsellor, or other health professional soon. A score of 10 or more is the usual threshold for a fuller assessment, and talking therapy or other support is often recommended at this level. You do not need to be in crisis to ask."
+      },
+      {
+        "id": "moderately_severe",
+        "min": 15,
+        "max": 19,
+        "label": "Moderately severe",
+        "explanation": "Your answers point to quite a lot of symptoms over the last two weeks, and they are likely to be affecting several parts of your day. This level of difficulty deserves support from someone qualified to give it.",
+        "what_helps": [
+          "Treat this as a reason to get help rather than a reason to try harder alone.",
+          "Keep the day small and predictable: one or two things, the basics of sleep and food, and contact with someone who is kind to you.",
+          "If you can, ask one person close to you to help with the practical steps \u2014 making the appointment, getting there, following up.",
+          "Keep the crisis numbers below within reach, and use them if things get worse, especially at night."
+        ],
+        "when_to_seek_help": "Please contact a doctor or a mental health professional now, within the next few days. At this level, active treatment is usually recommended. If you ever think about hurting yourself or feel unable to keep yourself safe, get help immediately \u2014 do not wait for an appointment."
+      },
+      {
+        "id": "severe",
+        "min": 20,
+        "max": 27,
+        "label": "Severe",
+        "explanation": "Your answers point to a lot of symptoms of depression in the last two weeks. This is a heavy thing to carry, and it is not something you should have to manage on your own. It is also treatable, and people do get better from here.",
+        "what_helps": [
+          "Make one priority: getting in front of someone who can help, as soon as you can.",
+          "Ask someone you trust to stay close by, or check in with you daily, until that happens.",
+          "Keep things as simple as possible, and let other people do the practical tasks you can hand over.",
+          "Use the helplines below whenever you need to speak to someone right now \u2014 they are not only for emergencies."
+        ],
+        "when_to_seek_help": "Please contact a doctor or mental health professional today, and treat this as urgent rather than something to raise at some later point. If you have thoughts of hurting yourself, or you cannot see how to keep yourself safe, call your local emergency number or a crisis line right now."
+      }
+    ]
+  },
+  "safety": {
+    "item_id": "phq9_9",
+    "rule": "answer_greater_than_zero",
+    "level": "high",
+    "rationale_code": "assessment.phq9_item9",
+    "explanation": "One of the questions asks about thoughts that you would be better off dead or of hurting yourself. You did not answer \u201cNot at all\u201d, so we are showing support and helplines before your score \u2014 whatever the rest of your answers add up to.",
+    "encouragement": "Thoughts like this are more common than most people admit, and they are a sign to reach out rather than a sign that something cannot be helped. Please talk to someone: a helpline, a doctor, or a person you trust.",
+    "paired_with_score": "Your total score is shown below as well, so you have the full picture. These thoughts matter on their own, separately from the number."
+  },
+  "cadence": {
+    "recommended_interval_days": 14,
+    "first_notice": "This is your first saved result. Doing it again in a couple of weeks starts a trend you can look back on.",
+    "due_notice": "Two weeks or more have passed since your last check-in, so this is a good moment to compare answers over time.",
+    "recent_notice": "You checked in sooner than the two weeks we usually suggest. That is completely fine, and your answers are saved \u2014 but scores move slowly, so a comparison after a few days says very little about how you are doing. This is a suggestion, not a limit: you can take the questionnaire whenever you want to."
+  },
+  "disclaimers": {
+    "screening_not_diagnosis": "This is a screening result, not a diagnosis. Only a qualified professional can diagnose depression, and they would do it by talking with you rather than from a questionnaire alone.",
+    "how_to_read": "A screening score describes how the last two weeks have been for you. It is not a mark, a grade, or a permanent label, and it says nothing about how the next two weeks will go."
+  },
+  "provenance": {
+    "instrument_id": "phq9",
+    "developers": "Developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc.",
+    "rights_holder": "Copyright \u00a9 1999 Pfizer Inc. All rights reserved. PRIME-MD\u00ae is a trademark of Pfizer Inc.",
+    "licence_statement": "No permission required to reproduce, translate, display or distribute.",
+    "licence_source_url": "https://www.phqscreeners.com/images/sites/g/files/g10060481/f/201412/PHQ-9_English.pdf",
+    "availability_note": "The official English PHQ-9 sheet is published free of charge for clinical, research and educational use, and states that no permission is required to reproduce, translate, display or distribute it. Manovia reproduces the item wording unaltered for an individual's own self-help screening; it does not modify the instrument and it does not relicense it. Manovia does not offer translations until a qualified translator has reviewed them.",
+    "item_wording_source_url": "https://www.phqscreeners.com/images/sites/g/files/g10060481/f/201412/PHQ-9_English.pdf",
+    "item_wording_verified_on": "2026-10-11",
+    "item_wording_verification": "All nine items were compared character by character against the official English PHQ-9 PDF on phqscreeners.com (the Pfizer-hosted official screener site). Typographic em dashes in items 6 and 8 are preserved; nothing else was changed. The introductory stem and the four response option labels are taken verbatim from the same sheet.",
+    "scoring_source_url": "https://www.phqscreeners.com/images/sites/g/files/g10016261/f/201412/instructions.pdf",
+    "scoring_source_quote": "Scores of 5, 10, 15, and 20 represent cutpoints for mild, moderate, moderately severe and severe depression, respectively.",
+    "band_verification_note": "The five severity bands here (0-4, 5-9, 10-14, 15-19, 20-27) are the cutpoints named in the official PHQ/GAD-7 Instruction Manual, table 4, and used throughout the validation literature.",
+    "citation": "Kroenke K, Spitzer RL, Williams JB. The PHQ-9: validity of a brief depression severity measure. Journal of General Internal Medicine. 2001;16(9):606-613.",
+    "loinc": [
+      {
+        "code": "44261-6",
+        "display": "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]",
+        "url": "https://loinc.org/44261-6/"
+      }
+    ],
+    "loinc_verified_on": "2026-10-11",
+    "disclaimer": "Manovia is not affiliated with, endorsed by, or sponsored by Pfizer Inc. or the PHQ developers. The instrument is reproduced under its own public-domain-style terms, recorded above."
+  }
+}

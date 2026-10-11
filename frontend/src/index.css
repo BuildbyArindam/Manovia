@@ -256,3 +256,35 @@
     }
   }
 }
+
+@layer utilities {
+  /* Print. A screening summary is the one thing a person may need to hand to a
+     clinician, so printing produces that page and nothing else: the shell, the
+     navigation and the interactive result view carry `data-print="hide"`, and
+     the summary — hidden on screen — becomes the page. */
+  .print-summary {
+    display: none;
+  }
+
+  @media print {
+    [data-print="hide"] {
+      display: none !important;
+    }
+
+    .print-summary {
+      display: block;
+    }
+
+    .print-summary table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .print-summary th,
+    .print-summary td {
+      border-bottom: 1px solid currentColor;
+      padding: 0.35rem 0.5rem;
+      text-align: left;
+    }
+  }
+}

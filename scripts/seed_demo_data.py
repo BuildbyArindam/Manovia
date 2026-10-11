@@ -78,6 +78,7 @@ async def seed(database_url: str | None, fresh: bool) -> dict[str, Any]:
         RiskLevel,
         SafetyEventSource,
     )
+    from app.services.assessments import item_ids
 
     settings = (
         Settings(_env_file=None, database_url=database_url) if database_url else Settings()
@@ -201,13 +202,16 @@ async def seed(database_url: str | None, fresh: bool) -> dict[str, Any]:
                 body="Closed the laptop at six and walked. Nothing burned down.",
                 sentiment=0.25,
             )
+            # Answers are keyed by the shipped item ids ("phq9_1"…"phq9_9"), the
+            # same keys POST /api/v1/assessments/phq9/submit accepts and the
+            # history endpoint reads back (Day 20).
+            answers = dict(
+                zip(item_ids(AssessmentInstrument.PHQ9), [2, 3, 2, 1, 1, 2, 2, 1, 0], strict=True)
+            )
             await assessments.record(
                 user_id=user_id,
                 instrument=AssessmentInstrument.PHQ9,
-                answers={
-                    str(question): answer
-                    for question, answer in enumerate([2, 3, 2, 1, 1, 2, 2, 1, 0], start=1)
-                },
+                answers=answers,
                 total=14,
                 band=AssessmentBand.MODERATE,
             )

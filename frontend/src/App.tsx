@@ -14,6 +14,7 @@ import { AppShell } from "@/components/AppShell";
 import { OnboardingProvider, useOnboarding } from "@/onboarding/OnboardingProvider";
 import { OnboardingFlow } from "@/onboarding/OnboardingFlow";
 import { createQueryClient } from "@/lib/queryClient";
+import { AssessmentsPage } from "@/pages/AssessmentsPage";
 import { CBTPage } from "@/pages/CBTPage";
 import { ChatPage } from "@/pages/ChatPage";
 import { ExercisesPage } from "@/pages/ExercisesPage";
@@ -57,6 +58,7 @@ function AppRoutes(): ReactElement {
         <Route path="/mood" element={<MoodPage />} />
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/cbt" element={<CBTPage />} />
+        <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/exercises" element={<ExercisesPage />} />
         <Route
           path="/insights"

@@ -10,7 +10,7 @@ import { CrisisHelpButton } from "@/components/CrisisHelpButton";
  */
 export function Header(): ReactElement {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-surface">
+    <header data-print="hide" className="sticky top-0 z-30 border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link
           to="/chat"

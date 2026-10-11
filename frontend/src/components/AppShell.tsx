@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
 
   return (
     <div className="min-h-screen bg-bg text-ink">
-      <a className="skip-link" href="#main">
+      <a className="skip-link" href="#main" data-print="hide">
         Skip to main content
       </a>
 
@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
 
       {isDesktop ? null : <BottomNav />}
 
-      <footer className="border-t border-border bg-surface">
+      <footer className="border-t border-border bg-surface" data-print="hide">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted">
           <p>
             Manovia is a self-help companion — not therapy, not a diagnosis, and not a crisis
