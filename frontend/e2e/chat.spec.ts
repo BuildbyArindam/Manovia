@@ -4,7 +4,8 @@
  * Run against the real backend with `LLM_PROVIDER=fake`:
  *
  *   # terminal 1 — the API (or: docker compose up, then E2E_API_URL=…)
- *   cd backend && LLM_PROVIDER=fake SECRET_KEY=dev-only FIELD_ENCRYPTION_KEY=… make dev
+ *   cd backend && LLM_PROVIDER=fake LLM_FAKE_LATENCY_MS=400 \
+ *     SECRET_KEY=dev-only FIELD_ENCRYPTION_KEY=… make dev
  *   # terminal 2
  *   cd frontend && npm run test:e2e
  *

@@ -200,3 +200,24 @@ async def test_a_redactor_can_be_injected_for_tests() -> None:
     assert isinstance(fake, FakeLLMProvider)
     await chain.complete(messages("call 9876543210"))
     assert "[PHONE]" in last_call(fake).user_text
+
+
+def test_the_fake_provider_latency_reaches_the_provider() -> None:
+    """The knob end-to-end runs use to make a transient state observable.
+
+    It is asserted through the provider's own recorded latency rather than by
+    timing a call: a test that measures a sleep is slow and flaky, and the
+    contract here is just "this setting is honoured".
+    """
+    chain = build_llm_chain(Settings(llm_provider="fake", llm_fake_latency_ms=250))
+    fake = chain.providers[0]
+    assert isinstance(fake, FakeLLMProvider)
+    assert fake.latency_ms == 250.0
+
+    # The default is instant: unit tests must not pay for the browser's needs.
+    assert build_llm_chain(Settings(llm_provider="fake")).providers[0].latency_ms == 0.0
+
+
+def test_a_negative_fake_latency_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(llm_provider="fake", llm_fake_latency_ms=-1)

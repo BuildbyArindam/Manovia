@@ -123,6 +123,13 @@ class Settings(BaseSettings):
     llm_window_tokens: int = 3000
     # Which versioned prompt file under app/content/prompts/ to load.
     llm_prompt_version: str = "system_v2"
+    # Only used when LLM_PROVIDER=fake: a deliberate pause before the first
+    # token. Zero (the default) answers instantly, which is right for unit
+    # tests. End-to-end runs set it to a few hundred milliseconds so the
+    # *transient* states a person sees (the typing indicator) last long enough
+    # for a browser to observe them — an assertion about a state that exists
+    # for 20ms is a race, not a test.
+    llm_fake_latency_ms: float = 0.0
     # Local Ollama model id (env OLLAMA_MODEL). Empty means "ask the server
     # what it has" and is only valid for the fallback provider.
     ollama_model: str = ""
@@ -324,6 +331,8 @@ class Settings(BaseSettings):
             )
         if self.llm_timeout_seconds <= 0:
             raise ValueError("llm_timeout_seconds must be positive")
+        if self.llm_fake_latency_ms < 0:
+            raise ValueError("llm_fake_latency_ms must not be negative")
         if self.llm_max_attempts < 1:
             raise ValueError("llm_max_attempts must be at least 1")
         if self.llm_retry_base_seconds <= 0 or self.llm_retry_max_seconds <= 0:

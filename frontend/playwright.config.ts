@@ -5,7 +5,11 @@
  * merely supported: 360x640 (the smallest phone this app targets) and
  * 1280x800. The same spec runs in both; only the viewport differs.
  *
- * The API is **not** started here on purpose. The e2e must run against the real
+ * The API is **not** started here on purpose. Run it with the Fake provider
+ * plus a small `LLM_FAKE_LATENCY_MS` (300-500) so the transient streaming
+ * states ("Manovia is typing") last long enough for a browser to observe:
+ * an assertion about a state that exists for 20ms is a race, not a test.
+ * The e2e must run against the real
  * backend with `LLM_PROVIDER=fake` — the whole point is that the SSE contract
  * meets a real server, a real safety gate and a real stream — so the operator
  * brings the stack up (docker compose, or `make dev` in `backend/`) and this

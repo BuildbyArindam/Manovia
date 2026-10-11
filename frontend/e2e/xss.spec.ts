@@ -103,7 +103,10 @@ test("a hostile mood note survives the round trip as text", async ({ page }) => 
   await page.goto("/mood");
   await expect(page.getByTestId("mood-page")).toBeVisible();
 
-  await page.getByRole("radio", { name: "In the middle" }).check();
+  // The radio itself is `sr-only` (the label is the visible target), so click
+  // the way a person does.
+  await page.getByTestId("mood-face-3").click();
+  await expect(page.getByRole("radio", { name: "In the middle" })).toBeChecked();
   await page.locator("#mood-note").fill(XSS);
   await page.getByRole("button", { name: "Save check-in" }).click();
 
