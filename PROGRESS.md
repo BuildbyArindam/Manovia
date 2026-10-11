@@ -2,47 +2,40 @@
 
 ## Current status
 
-Day 13 (knowledge base and retrieval, RAG) is built. `backend/app/content/knowledge/`
+**Day 14 — output guard, saved-chat memory and Week-2 review — is built.** The real
+orchestrator now uses the deterministic YAML-backed `RuleBasedOutputGuard` before
+persistence or delivery, retries a rejected draft exactly once with a stricter system
+instruction, then uses a pre-written locale-specific safe template. Production SSE buffers
+the complete answer until it passes. Rejections write category-only
+`SafetyEvent(source=llm_output)` metadata; neither output nor matched text is recorded.
+The scripted Fake corpus has 46 bad outputs that must be caught and 20 good outputs that
+must pass. A new schema revision adds the constrained event category and encrypted
+saved-chat memory fields. Saved chats get an extractive, redacted-user-only rolling
+summary capped at about 300 tokens; `/chat/memory` displays and irreversibly deletes it,
+with a database tombstone preventing a later turn from rebuilding deleted memory.
+Settings now has the accessible “What Manovia remembers” panel. Decisions:
+[ADR 0014](docs/adr/0014-output-guard-and-conversation-memory.md).
+
+Day 13 (knowledge base and retrieval, RAG) remains built: `backend/app/content/knowledge/`
 holds 40 curated self-help documents (34 en / 3 hi / 3 bn, front-matter with `id`,
 `title`, `tags`, `language`, `evidence_note`, `reviewed: false`); `app/services/rag/`
 chunks, embeds and stores them (FAISS flat-IP + JSON sidecar), and `app/services/rag/factory.py`
-wires a knowledge-backed retriever into the Day 11 orchestrator behind the unchanged
-`Retriever` seam. Retrieved passages enter the prompt as `- [<doc id>] <title>: <text>`
-under a non-instruction header, the same ids ride `final` SSE metadata as
-`retrieved_docs`/`retrieved_ids` (lockstep-validated), and system prompt v2 tells the
-model to use a passage only when it fits and otherwise give general supportive guidance
-plus professional help for persistent difficulties. **Backend: 2377 pass, 3 skipped
-(+175); `ruff`, `ruff format` and `mypy` (strict) clean.** `make ingest` is idempotent
-(RUN 2: 0 added / 0 updated / 0 removed). Decisions in
+wires a knowledge-backed retriever into the orchestrator. Retrieved passages enter the
+prompt under a non-instruction header, and ids ride final SSE metadata. System prompt v2
+tells the model to use a passage only when it fits and otherwise give general supportive
+guidance plus professional help for persistent difficulties. The offline default is a
+corpus-fitted TF-IDF embedder; `auto` uses multilingual sentence-transformers when
+available. `make ingest` is idempotent. Decisions in
 [ADR 0013](docs/adr/0013-knowledge-retrieval-rag.md).
 
-**The offline-embedder decision is the day's headline.** The sandbox cannot reach
-Hugging Face, and the obvious stand-in (feature hashing) measured unusably: on-topic and
-off-topic cosine scores overlapped almost completely. The shipped offline default is a
-**TF-IDF embedder fitted on the corpus at ingest** (stopwords + `min_df=2`, feature
-capping against single-word collisions, titles anchored twice in the embed text),
-persisted with the store; `embedder.json` makes the store the source of truth for its own
-vector space, and `auto` upgrades to the multilingual sentence-transformers model with no
-code change when the network exists. Calibration numbers (16 on-topic vs 10 off-domain
-queries): on-topic top scores 0.11–0.25, off-domain ≈ 0–0.14, recommended floor 0.12 —
-and the required behaviour holds: `"what is the capital of France"` retrieves nothing.
+**Week-2 top five risks/debts** are recorded under [Known issues](#known-issues); output
+pattern misses and untranslated nuance remain human-review risks, not a claim of complete
+coverage. See [Verification (Day 14)](#verification-day-14--real-command-output) for
+actual lint, test, API, memory and safety-eval results.
 
-What could **not** be verified here, and needs a human or a networked machine:
-
-- The real `sentence-transformers` checkpoint never loaded in this sandbox (no HF
-  connectivity), so retrieval quality with the production embedder is unmeasured; the
-  TF-IDF calibration above is the offline stand-in's, and `make ingest` + the probe list
-  in *Verification (Day 13)* should be re-run after installing the `rag` extra.
-- No browser here, so the "Learn more" card has no end-to-end UI test; the ids the UI
-  needs are pinned at the API/metadata level.
-- The corpus is written and self-reviewed only: the human safety review in
-  `docs/knowledge-authoring-guide.md` (and a native-speaker read of the hi/bn docs) is
-  still outstanding, and every file ships `reviewed: false` for exactly that reason.
-
-Work is on `arena/93a34e50-manovia` — the branch this Arena session is pinned to,
-**not** the requested `day-13-knowledge-base-retrieval-rag`; the session cannot create
-or push to another branch name (same situation as Days 7–12, and as recorded for Day 12
-above). The pull request comes from the session branch.
+Work is on `arena/9b5a10c8-manovia`, the branch this Arena session is pinned to. The
+requested name `day-14-output-guard-conversation-memory` cannot be used in this session;
+all changes, the push and any pull request must come from the pinned branch.
 
 ## Completed
 
@@ -679,6 +672,14 @@ corrupt artifact — chat proceeds, retrieval answers `[]`); the whole corpus in
 retrieval-in-orchestrator (redacted query, locale passthrough, ids in prompt and
 metadata, no cards on templates, broken retriever degrades); metadata lockstep validator;
 prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404).
+
+### Day 14 (session branch `arena/9b5a10c8-manovia`) — output safety, memory and Week-2 review
+
+- `backend/app/services/safety/output_guard.py` and `backend/app/content/safety/output_patterns.yaml` provide deterministic checks for diagnosis, medication, self-harm methods, human/professional identity claims, outcome promises, isolation/dependence, length, language and MEDIUM+ check-ins. The 46-case bad-output matrix and 20-case good-output matrix exercise the guard with scripted `FakeLLMProvider` replies.
+- `ChatOrchestrator` now defaults to the real guard. A rejected draft is retried once with a stricter system instruction; a rejected retry is replaced with the locale-specific safe template. SSE buffers the full draft before release. Rejection events store closed category codes only (`source=llm_output`); no model output is logged or written to `SafetyEvent`.
+- Saved chats get a deterministic extractive rolling summary built from redacted user text only, capped at about 300 tokens and encrypted in `chat_sessions`. `GET /api/v1/chat/memory` displays summaries; `DELETE` clears them and tombstones existing sessions so they cannot be reconstructed. Ephemeral chats never create memory. The Settings page has the “What Manovia remembers” panel and delete confirmation.
+- Alembic revision `0003` adds the event category constraint and encrypted memory/tombstone columns. Decisions: [ADR 0014](docs/adr/0014-output-guard-and-conversation-memory.md). Safety design and architecture docs updated.
+- Verification results and top-five Week-2 risks are in [Verification (Day 14)](#verification-day-14--real-command-output) and [Known issues](#known-issues). **Human review remains outstanding** for output patterns and Hindi/Bengali safe replies.
 
 ## Verification (Day 12 — real command output)
 
@@ -1852,6 +1853,81 @@ render, and the human safety review of all 40 documents
 (`docs/knowledge-authoring-guide.md` checklist) — every file ships
 `reviewed: false` until that happens.
 
+## Verification (Day 14 — real command output)
+
+Environment: Python 3.11.2, Node 22.22.3, backend SQLite test database, local
+Fakes only. No hosted LLM, PostgreSQL server or browser binary was used.
+
+### PASS/FAIL table
+
+“PASS” means the check ran and succeeded. “NOT RUN” means it needs a browser,
+service or human review not available in this environment; it is not counted as a pass.
+
+| Check | Status | Evidence / remaining work |
+| --- | --- | --- |
+| Backend + frontend lint and full test suites | **PASS** | `make lint && make test`: Ruff/format/mypy/ESLint clean; backend **2483 passed, 3 skipped**; frontend **163 passed, 3 skipped**. |
+| Frontend typecheck, production build and changed-file formatting | **PASS** | `npm run typecheck`, `npm run build` (124 modules), targeted Prettier check. |
+| Output guard, strict retry, safe fallback and metadata-only events | **PASS** | 46 unsafe / 20 safe scripted cases; Fake-provider API smoke; repeated-bad-output and category-only event regressions. |
+| Saved-chat memory and irreversible deletion | **PASS** | API test with 12 messages verifies redaction, encrypted storage, tombstone, deletion and no rebuild after another turn. |
+| Day 9 safety-eval comparison | **PASS** | 116 dev cases; precision **0.543**, recall **1.000**, false negatives **0**, benign crisis escalations **31/51** — unchanged from Day 9. |
+| PostgreSQL migration, real-browser/Playwright Settings check, hosted-provider behaviour, Hindi/Bengali native-speaker and clinician review | **NOT RUN** | Needs PostgreSQL/browser/provider access or qualified human review; see manual checks below and Week-2 risks. |
+
+- **Lint:** `PATH=/home/user/Manovia/backend/.venv/bin:$PATH make lint` → **PASS**.
+  `ruff check .` clean; `ruff format --check .` reports **242 files already
+  formatted**; `mypy app tests` → **Success: no issues found in 194 source files**;
+  frontend ESLint clean.
+- **Full suite:** `PATH=/home/user/Manovia/backend/.venv/bin:$PATH make test` →
+  **PASS**. Backend: **2483 passed, 3 skipped**, 95% coverage, 32 warnings in
+  150.08s. Frontend: **163 passed, 3 skipped**, 18 test files passed and one
+  file (live-backend tests) skipped. The skips require optional NLP/Anthropic
+  dependencies or a live backend. Existing sklearn version warnings and React
+  `act(...)` warnings remain non-failing.
+- **Additional frontend checks:** `npm run typecheck` → **PASS**;
+  `npm run build` → **PASS** (`vite 7.3.7`, 124 modules, 268.47 kB JS / 84.14 kB
+  gzip, 16.37 kB CSS / 4.33 kB gzip). Targeted Prettier check for changed files
+  is clean. Repo-wide `npm run format:check` still reports three untouched
+  pre-existing files: `frontend/e2e/chat.spec.ts`, `frontend/README.md`, and
+  `frontend/src/features/chat/liveBackend.test.ts`.
+- **Output-guard matrix:** `tests/safety/test_output_guard.py` has **46 bad outputs
+  caught** (diagnosis, medication, methods, identity, promises, dependence, length,
+  language, missing check-in) and **20 good outputs passed**, all delivered by the
+  scripted `FakeLLMProvider`. Its supporting corpus/safe-template checks also pass.
+- **Fake-provider HTTP smoke:** five unsafe drafts (diagnosis, `50mg sertraline`,
+  licensed-therapist claim, dependence, and 2,000 words) each returned HTTP 200 only
+  after **2 provider calls** and the same local safe template; a good reply returned
+  HTTP 200 unchanged after **1 call**. The safe template returned for each rejected
+  draft was:
+
+  > I want to answer you properly, and I can't do that safely right now, so I would
+  > rather say so than guess. I'm an AI companion, not a therapist or a doctor, and
+  > I can't tell you what is going on or what to do about it. What you have written
+  > matters. A person trained for this — a doctor, a counsellor, or a helpline where
+  > you are — can help far more than I can. Would it be okay if we talked about how
+  > to reach one of them?
+
+  The accepted reply in that run was: “That sounds hard to carry. What feels hardest
+  for you right now?”
+- **Retry and events:** regression tests confirm one strict regeneration, safe
+  template after a repeated bad output, and category-only guard logs. A saved-chat
+  HTTP test reads **2** `SafetyEvent` rows for the rejected diagnosis + retry; both
+  have `source=llm_output`, `category=diagnosis`, linked owner/session metadata, and
+  no text column.
+- **Memory:** the HTTP integration test created **12 encrypted chat messages** in a
+  saved chat, fetched the redacted summary via `GET /api/v1/chat/memory`, verified the
+  email was absent, deleted it via `DELETE` (`deleted_sessions=1`, `irreversible=true`),
+  confirmed no summary remained and `memory_encrypted IS NULL` with a deletion
+  tombstone, then sent another turn and confirmed the memory stayed gone. The 12/14
+  transcript rows remained, as documented.
+- **Safety eval:** `PATH=/home/user/Manovia/backend/.venv/bin:$PATH make eval` →
+  `split=dev cases=116`, crisis precision **0.543**, recall **1.000**, false negatives
+  **0**, benign crisis escalations **31/51**. This matches the Day 9 dev report exactly;
+  no regression. The run wrote `evals/reports/safety_2026-10-11.md`. sklearn warns that
+  the committed artifact was pickled under 1.5.2 and this environment has 1.9.1.
+- **Not run by design:** no Chromium/Playwright browser test or hosted-provider check
+  was possible/required; Settings was exercised in jsdom and the API path used only
+  `FakeLLMProvider`. Manual review by native Hindi/Bengali speakers and a clinician
+  remains required before relying on the new copy/patterns.
+
 ## Decisions (ADR index)
 
 - [0001 — Monorepo and stack](docs/adr/0001-monorepo-and-stack.md): FastAPI + Pydantic v2, SQLAlchemy 2 + Alembic + PostgreSQL, React + Vite + TypeScript + Tailwind, provider-abstracted LLM integrations with offline fakes, Docker for local orchestration.
@@ -1867,12 +1943,52 @@ render, and the human safety review of all 40 documents
 - [0011 — The chat orchestrator: one pipeline, and the order is the safety property](docs/adr/0011-chat-orchestrator.md): nine steps in a fixed order with the crisis gate before anything that can call a model; fail **closed** on input safety (503) and fail **soft** on everything else (fallback template, `emotion=None`, `persisted=false`); ephemeral-by-default sessions (process memory, 30-min sliding TTL, no user-linked rows — MEDIUM+ turns write an *anonymous* SafetyEvent) with `store_chat` required only to save; someone else's session is a 404, never a 403; hints live in the system prompt and crisis turns are dropped from the model's window; MEDIUM gets a hint *and* the template's check-in appended; SSE `token`… `final` with `final.reply` authoritative; short-lived DB sessions because streams outlive request dependencies; per-user rate limit after validation (also applies to crisis messages); and an honest note that the Day 9 ML backstop's false positives are now user-visible.
 - [0012 — The chat UI: reading a stream, and staying calm while doing it](docs/adr/0012-chat-ui.md): `fetch` + `ReadableStream` because `EventSource` can do neither a POST nor an `Authorization` header, with a chunk-boundary-safe SSE parser of its own; an interrupted stream keeps its words, says it was cut off, and never resumes; `final.reply` is authoritative when `replaced`; **one polite live region per turn** (the visible text is `aria-hidden` while streaming so a screen reader hears one sentence, not every token); a crisis reply renders the pre-written card verbatim and sets a page-wide `data-softened` flag; auto-scroll follows only a reader already at the bottom; ephemeral by default with the save toggle as `store_chat` surfacing (and it applies to the *next* session, which the copy admits); eight plain-language failure kinds where the backend's own curated sentence wins; the emotion hint opt-in and off; and Enter-does-not-send while an IME is composing, for the two Indic languages this product exists to serve.
 - [0013 — Knowledge base and retrieval (RAG): grounding the companion in curated self-help](docs/adr/0013-knowledge-retrieval-rag.md): below-threshold means *no reference at all* (an irrelevant card is a broken promise; a missing one is nothing); FAISS flat-IP + JSON sidecar instead of a database at 40-doc scale; a corpus-fitted TF-IDF embedder persisted with the store as the offline default because raw feature hashing measured unusably, with `embedder.json` making the store the source of truth for its own vector space and `auto` upgrading to the multilingual model when the network exists; idempotent ingest via a manifest signature over embedder *configuration* + chunker version + content hashes (the up-to-date path never fits); measured quality levers (stopwords + `min_df=2`, BM25-style feature capping, title anchoring) behind a recommended 0.12 tfidf floor biased toward recall because the v2 prompt tells the model to ignore references that do not fit; the redacted query and the turn's locale are the only things retrieval sees, and every failure degrades to "no reference material"; prompt v2 carries the reference contract as three machine-checked rules; ids flow from prompt lines to `retrieved_docs`/`retrieved_ids` (lockstep-validated) so the UI's "Learn more" card and the model's mention trace to the same document; template replies carry no cards; and the corpus ships `reviewed: false` under a human safety-review checklist.
+- [0014 — Deterministic output guard and saved-chat memory](docs/adr/0014-output-guard-and-conversation-memory.md): compiled YAML output categories, one stricter retry then local safe template, full-response buffering for SSE, category-only `llm_output` audit events, and extractive redacted-user-only memory encrypted per saved chat with a deletion tombstone.
 - Smaller calls made on Day 8, recorded here because they are not obvious from the code: negated ideation scores **LOW, not NONE** (somebody telling a mental-health companion about death, even in the negative, has said something worth a check-in); `cant`/`cannot`/`unable` are deliberately **not** negation cues because inability is not absence — "I can't go on" is a crisis; figurative suppression is per *occurrence* and requires positive evidence, never the absence of risk words; a derived view of the text (leet, corrected, collapsed, squashed) may **add** a hit the honest text hid but can never **cancel** one, because otherwise obfuscating a refusal made it escalate; third-person framing caps IMMINENT→HIGH but never for `acute_medical`; the supporter template requires third person *and* (fiction, quotation, or no speaker), so "my husband threatens to kill me" correctly gets the self-facing card; `resources_for(region)` intentionally mixes a region's own entries with the DEFAULT directories while dropping the DEFAULT emergency entry when the region has one; and `load_patterns`' `lru_cache` is permitted because its parameters are all keyword-only — a test asserts no cache in the package could be keyed on somebody's message.
 - Smaller calls made on Day 6, recorded here because they are not obvious from the code: the fallback order is keyword-then-sentiment (the keyword analyzer can name all nine emotions; sentiment only bands polarity but catches words the emotion lexicon misses); a zero-confidence neutral falls through while a *confident* neutral stops the chain; `scores` is normalised over the taxonomy even for a multi-label model, with the raw max kept as `confidence`; `truncated` on the model path is a conservative proxy (`len(text) > max_length`) because the true answer needs tokenising; keyword `confidence` is capped at 0.6 so a word match never looks like a probability; the cache key preserves case because shouting is a signal; failed-everything results are not cached so a transient outage cannot become sticky; and the fingerprint length constant was renamed from `KEY_BYTES` to `FINGERPRINT_HEX_LENGTH` because it was a hex length, not bytes.
 - Smaller calls made on Day 4, recorded here because they are not obvious from the code: login and upgrade return the same `invalid_credentials`/`email_taken` shapes whether or not the account exists (login is constant-time; registration cannot hide that an address is taken); logout is possession-based and idempotent so it never becomes an account oracle; `upgrade` revokes every refresh family because an identity change should sign everything out; a consent version bump closes gated features until re-consent (intended); `alembic/versions/0002` was autogenerated and hand-reviewed in the 0001 style (named constraints, explicit downgrade); models gained `as_utc()` because SQLite hands back naive datetimes and `expires_at` comparisons must not mix naive/aware.
 
 ## Known issues
-## Known issues
+
+### Week-2 review — top five risks/debts (Day 14)
+
+Ranked by safety impact and deployment blast radius; the first two need human review
+before the corresponding behaviour is trusted outside synthetic tests.
+
+1. **Output guard coverage and Indic wording need clinical/native-speaker review.**
+   The 46 bad / 20 good scripted cases cover the implemented categories, not every
+   paraphrase. Review `backend/app/content/safety/output_patterns.yaml`, especially
+   the Hindi/Bengali safe replies and check-in phrases, with clinicians and native
+   speakers; add every disagreement as a Fake-provider regression case.
+2. **Crisis-ensemble false alarms remain high on synthetic dev data.** The Day 14
+   rerun is identical to Day 9: crisis precision 0.543, recall 1.000; 31/51 benign
+   examples are escalated to a crisis card. Labels and phrases are synthetic and
+   single-author; confirm the operating point with a second annotator before a
+   public rollout.
+3. **RAG production quality and corpus review are unverified.** The real multilingual
+   sentence-transformers model was not loaded here; the offline TF-IDF fallback is
+   lexical, and all 40 knowledge documents still say `reviewed: false`. Re-run the
+   retrieval probes with the production embedder and finish the clinician/native-
+   speaker corpus review.
+4. **Memory is extractive and deletion is scoped to summary, not transcript.** The
+   300-token cap uses a conservative UTF-8 estimate, not the provider tokenizer. The
+   delete API irreversibly clears summaries for existing chats, but the encrypted
+   saved transcript remains by design and needs the separate chat/account erasure
+   path. Validate that distinction in product/legal review.
+5. **Production deployment and browser verification are still incomplete.** The
+   suite uses SQLite and process-local ephemeral sessions/rate limits; it does not
+   validate PostgreSQL or multi-worker locking. The Settings test is jsdom, not a
+   real browser, and the existing Playwright run still needs a machine with Chromium.
+
+### Day 14 implementation notes
+
+- `npm run format:check` reports three **pre-existing, untouched** files outside this
+  change (`frontend/e2e/chat.spec.ts`, `frontend/README.md`,
+  `frontend/src/features/chat/liveBackend.test.ts`). The Day 14 frontend files pass
+  targeted Prettier; `make lint`, `npm run typecheck` and the production build pass.
+- Automated output-pattern tests cannot establish that every supported-language
+  phrase is clinically appropriate. Provider-backed live checks were not run; the
+  committed verification uses only the Fake provider.
 
 ### Day 13 (RAG) notes
 
@@ -2348,32 +2464,31 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   provider (or a Fake with injected per-token latency), asserting tokens arrive
   spread out rather than in one body.
 
-## Next steps (Day 14 — first three)
+- **(Day 14 parking lot)** Consider an LLM-judge second pass only after a clinician-reviewed
+  adversarial corpus and a measured false-positive/false-negative comparison; the
+  deterministic output guard must remain the mandatory floor.
+- **(Day 14 parking lot)** Provider-specific tokenization for the 300-token memory cap,
+  and per-session deletion/re-enable controls if product research asks for more than
+  the current account-wide “delete existing memories” action.
 
-**Preamble (needs a machine with a browser, closing Day 12's gap):** run
-`npm run test:e2e` against the Fake-LLM stack, commit the four `docs/assets/`
-screenshots it writes, and read the `@axe-core/playwright` output in a real
-engine. Until that runs, Day 12's browser-level claims are unverified.
+## Next steps (Day 15 — first three)
 
-**Preamble (carried, needs a human):** the ML backstop's false positives
-(Known issues → Day 11 chat notes) — until it is decided, run anything
-demo-facing with `SAFETY_ML_ENABLED=false`. Plus the Day 7 Docker commands,
-`scripts/llm_probe.py` with a real key, and the native-speaker review of the
-hi/bn crisis copy.
+**Preamble (needs a machine with a browser):** run the Playwright suite against the
+Fake-LLM stack and review the memory Settings panel, confirmation flow and buffered
+SSE behaviour at mobile and desktop sizes. The current settings test is jsdom; it is
+not a browser-level accessibility or visual check.
 
-1. **Retrieval behind the existing `Retriever` protocol** (Day 13), or — if the
-   plan puts safety first — the output-safety check behind `OutputGuard`
-   (AGENTS.md rule 4 is met by a seam today, not by a check). Either way the
-   orchestrator's order and the SSE wire format must not change: `sse.ts`,
-   `stream.ts` and `chatState.ts` are written against `token`/`final` and
-   `final.reply` being authoritative, and their tests are the contract.
-2. **Chat history on reload.** Saved sessions are readable via
-   `GET …/messages`, but the UI never calls it: a reload loses the conversation
-   even when `store_chat` is on. Wire it (with the `incomplete`/crisis states
-   intact), and add `DELETE /chat/sessions/{id}` so "Clear" can mean delete for
-   somebody who asked to save.
-3. **Settle the chat-time safety policy and re-measure** (carried from Day 11,
-   now user-visible): pick an option from the known issue, change config or the
-   ensemble only, re-run `make eval` plus a benign-message set, and add the
-   regression test that ordinary messages are not HIGH under the shipped
-   defaults while "I want to kill myself" still is.
+**Preamble (needs humans):** ask a clinician and native Hindi/Bengali speakers to
+review the new output patterns, safe fallback copy, check-in phrases and the 40-document
+knowledge corpus. Keep `reviewed: false` until those reviews are complete.
+
+1. **Review and expand output guard coverage.** Turn every clinician/native-speaker
+   disagreement and every newly observed unsafe paraphrase into a scripted Fake
+   regression case; keep the good-output table to prevent overblocking.
+2. **Validate deployment assumptions.** Run Alembic revision `0003` against PostgreSQL,
+   test the output retry/buffer path through the real proxy, and plan shared rate-limit /
+   ephemeral state plus per-session turn serialization before multi-worker deployment.
+3. **Re-measure real-model retrieval and crisis policy.** With approved model access,
+   run the RAG probe set using sentence-transformers, record the scores, and have a
+   second annotator review the crisis eval set before changing the recall-first
+   thresholds.

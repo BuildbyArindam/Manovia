@@ -21,7 +21,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin, enum_check, enum_type, range_check
-from app.models.enums import RiskLevel, SafetyEventSource
+from app.models.enums import RiskLevel, SafetyEventCategory, SafetyEventSource
 
 if TYPE_CHECKING:
     from app.models.chat_session import ChatSession
@@ -46,6 +46,10 @@ class SafetyEvent(Base, CreatedAtMixin):
     )
     risk_level: Mapped[int] = mapped_column(sa.SmallInteger(), nullable=False)
     source: Mapped[SafetyEventSource] = mapped_column(enum_type(SafetyEventSource), nullable=False)
+    # Stable category code only; never a quotation, rule fragment or model text.
+    category: Mapped[SafetyEventCategory | None] = mapped_column(
+        enum_type(SafetyEventCategory), nullable=True
+    )
 
     user: Mapped[User | None] = relationship(back_populates="safety_events")
     chat_session: Mapped[ChatSession | None] = relationship(back_populates="safety_events")
@@ -54,5 +58,6 @@ class SafetyEvent(Base, CreatedAtMixin):
         sa.Index("ix_safety_events_user_id_created_at", "user_id", "created_at"),
         sa.Index("ix_safety_events_session_id_created_at", "session_id", "created_at"),
         enum_check("source", SafetyEventSource),
+        enum_check("category", SafetyEventCategory),
         range_check("risk_level", int(RiskLevel.NONE), int(RiskLevel.CRISIS)),
     )

@@ -11,10 +11,10 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import decrypt, encrypt
+from app.core.crypto import decrypt, decrypt_optional, encrypt
 from app.models.base import utcnow
 from app.models.chat_session import ChatSession
 from app.models.enums import MessageRole, RiskLevel
@@ -120,6 +120,79 @@ class ChatRepository:
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return list(reversed(rows))
+
+    async def memory_summary(self, session_id: uuid.UUID) -> tuple[str | None, bool]:
+        """Return ``(decrypted summary, deleted)`` for one saved session.
+
+        A deletion tombstone is deliberately returned separately from an empty
+        summary: a tombstoned session must never rebuild memory from old turns.
+        """
+        row = await self._session.get(ChatSession, session_id)
+        if row is None:
+            return None, True
+        return decrypt_optional(row.memory_encrypted), row.memory_deleted_at is not None
+
+    async def memories_for_user(self, user_id: uuid.UUID) -> list[tuple[uuid.UUID, str]]:
+        """Summaries visible to their owner, newest session first."""
+        stmt = (
+            select(ChatSession)
+            .where(
+                ChatSession.user_id == user_id,
+                ChatSession.memory_encrypted.is_not(None),
+                ChatSession.memory_deleted_at.is_(None),
+            )
+            .order_by(ChatSession.created_at.desc(), ChatSession.id)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [
+            (row.id, decrypt(row.memory_encrypted))
+            for row in rows
+            if row.memory_encrypted is not None
+        ]
+
+    async def update_memory(self, session_id: uuid.UUID, summary: str) -> bool:
+        """Encrypt and update a summary unless the user deleted that memory.
+
+        The conditional UPDATE makes the tombstone effective even if a reply
+        started before a concurrent delete request.
+        """
+        stmt = (
+            update(ChatSession)
+            .where(ChatSession.id == session_id, ChatSession.memory_deleted_at.is_(None))
+            .values(memory_encrypted=encrypt(summary))
+        )
+        result = await self._session.execute(stmt)
+        await self._session.flush()
+        return int(getattr(result, "rowcount", 0) or 0) == 1
+
+    async def delete_memory(self, *, user_id: uuid.UUID, session_id: uuid.UUID) -> bool:
+        """Irreversibly clear one saved-chat summary and set its tombstone."""
+        stmt = (
+            update(ChatSession)
+            .where(
+                ChatSession.id == session_id,
+                ChatSession.user_id == user_id,
+                ChatSession.memory_deleted_at.is_(None),
+            )
+            .values(memory_encrypted=None, memory_deleted_at=utcnow())
+        )
+        result = await self._session.execute(stmt)
+        await self._session.flush()
+        return int(getattr(result, "rowcount", 0) or 0) == 1
+
+    async def delete_memories_for_user(self, user_id: uuid.UUID) -> int:
+        """Irreversibly disable memory and clear summaries for every saved chat."""
+        stmt = (
+            update(ChatSession)
+            .where(
+                ChatSession.user_id == user_id,
+                ChatSession.memory_deleted_at.is_(None),
+            )
+            .values(memory_encrypted=None, memory_deleted_at=utcnow())
+        )
+        result = await self._session.execute(stmt)
+        await self._session.flush()
+        return max(0, int(getattr(result, "rowcount", 0) or 0))
 
     @staticmethod
     def message_text(message: Message) -> str:

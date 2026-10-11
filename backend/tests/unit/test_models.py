@@ -71,7 +71,17 @@ def test_consent_columns_match_the_spec() -> None:
 
 
 def test_chat_columns_match_the_spec() -> None:
-    assert _columns(ChatSession) == {"id", "user_id", "created_at", "ended_at"}
+    assert _columns(ChatSession) == {
+        "id",
+        "user_id",
+        "created_at",
+        "ended_at",
+        "memory_encrypted",
+        "memory_deleted_at",
+    }
+    assert isinstance(ChatSession.__table__.c.memory_encrypted.type, sa.LargeBinary)
+    assert ChatSession.__table__.c.memory_encrypted.nullable
+    assert ChatSession.__table__.c.memory_deleted_at.nullable
     assert _columns(Message) == {
         "id",
         "session_id",
@@ -132,6 +142,7 @@ def test_safety_event_has_no_textual_column() -> None:
         "session_id",
         "risk_level",
         "source",
+        "category",
         "created_at",
     }
     allowed = (sa.Uuid, sa.SmallInteger, sa.Enum, sa.DateTime)
@@ -144,6 +155,7 @@ def test_safety_event_has_no_textual_column() -> None:
     assert SafetyEvent.__table__.c.session_id.nullable
     assert not SafetyEvent.__table__.c.risk_level.nullable
     assert not SafetyEvent.__table__.c.source.nullable
+    assert SafetyEvent.__table__.c.category.nullable
 
 
 def test_personal_free_text_columns_are_binary() -> None:
@@ -199,6 +211,7 @@ def test_enum_and_range_constraints_are_named_and_present() -> None:
         "ck_assessment_results_instrument_in_assessmentinstrument",
         "ck_assessment_results_band_in_assessmentband",
         "ck_safety_events_source_in_safetyeventsource",
+        "ck_safety_events_category_in_safetyeventcategory",
     } <= named
 
 

@@ -33,6 +33,11 @@ class ChatSession(Base, CreatedAtMixin):
         nullable=False,
     )
     ended_at: Mapped[datetime | None] = mapped_column(TIMESTAMP_TYPE)
+    # Rolling summary of earlier user turns. Ciphertext only; NULL after an
+    # irreversible deletion. memory_deleted_at is a tombstone: future turns in
+    # this session may not silently rebuild deleted memory.
+    memory_encrypted: Mapped[bytes | None] = mapped_column(sa.LargeBinary())
+    memory_deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP_TYPE)
 
     user: Mapped[User] = relationship(back_populates="chat_sessions")
     messages: Mapped[list[Message]] = relationship(

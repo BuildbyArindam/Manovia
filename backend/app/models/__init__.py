@@ -12,6 +12,7 @@ from app.models.enums import (
     ConsentKind,
     MessageRole,
     RiskLevel,
+    SafetyEventCategory,
     SafetyEventSource,
 )
 from app.models.journal import JournalEntry
@@ -36,6 +37,7 @@ __all__ = [
     "RefreshToken",
     "RiskLevel",
     "SafetyEvent",
+    "SafetyEventCategory",
     "SafetyEventSource",
     "User",
 ]

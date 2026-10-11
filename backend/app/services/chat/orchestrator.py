@@ -8,12 +8,13 @@ The pipeline, in this order, for every message (Day 11 brief)::
          The LLM is not called. Message + SafetyEvent stored.  _crisis_reply()
     3. PII redaction of the text going to the LLM             _prepare()
     4. emotion analysis of the *original* text                _prepare()
-    5. retrieval (stub: [] until Day 13)                      _prepare()
+    5. language-filtered retrieval                            _prepare()
     6. build the prompt: system + window + emotion hint +
-       safety hint + retrieval context                        _prepare()
+       safety hint + retrieval + optional saved memory       _prepare()
     7. call the LLM through the provider chain                _generate()
-    8. output guard (stub: pass-through until Day 14)         _guard()
+    8. deterministic output guard, one strict retry           _guard_output()
     9. persist the assistant message and return               _finish()
+   10. update a bounded summary for saved chats only          _finish()
 
 Design rules the code below holds itself to:
 
@@ -24,9 +25,10 @@ Design rules the code below holds itself to:
   never constructed into a request, let alone called. The reply is the
   pre-written, localised template from ``content/i18n``, and it is delivered even
   if storing it fails.
-* **Nothing the model says is trusted.** It passes the output guard (a seam
-  today) and, if it cannot answer at all, a pre-written fallback stands in. An
-  LLM outage is a degraded reply, never a 500.
+* **Nothing the model says is trusted.** Every generated reply passes the
+  deterministic output guard. A rejection triggers one strict regeneration; a
+  second rejection uses the pre-written local safe reply. An LLM outage is a
+  degraded reply, never a 500.
 * **Nothing identifying goes out.** The text and the history window are redacted
   before the prompt is built; the user id never enters the prompt; if redaction
   itself fails the model is not called.
@@ -55,7 +57,8 @@ from app.core.errors import ApiError
 from app.core.ratelimit import InMemoryRateLimiter, RateLimiter
 from app.models.enums import SafetyEventSource
 from app.services.chat.conversation import Conversation
-from app.services.chat.output_guard import OutputGuard, PassthroughOutputGuard
+from app.services.chat.memory import MEMORY_MAX_TOKENS, build_rolling_summary
+from app.services.chat.output_guard import GuardVerdict, OutputGuard
 from app.services.chat.prompting import (
     build_window,
     compose_system,
@@ -79,11 +82,13 @@ from app.services.llm.base import LLMMessage, LLMProvider
 from app.services.llm.canned import CANNED_REPLY, split_for_stream
 from app.services.llm.prompts import DEFAULT_MAX_WORDS, PROMPT_VERSION, render_system_prompt
 from app.services.nlp.base import EmotionAnalyzer, EmotionResult
+from app.services.nlp.language import detect_language
 from app.services.nlp.redaction import Redactor
 from app.services.safety.base import RiskLevel, text_fingerprint
 from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision
 from app.services.safety.escalation import EscalationPlan, Escalator
 from app.services.safety.ml_classifier import SafetyClassifier
+from app.services.safety.output_guard import RuleBasedOutputGuard
 from app.services.safety.pipeline import run_ensemble
 from app.services.safety.rules import RuleEngine
 
@@ -101,6 +106,17 @@ RATE_LIMITED_MESSAGE: Final = "You're sending messages quite quickly. Please wai
 SAFETY_UNAVAILABLE_MESSAGE: Final = (
     "I couldn't check that message safely just now, so I haven't replied. "
     "Please try again in a moment. If you are in danger, call your local emergency number."
+)
+
+STRICT_OUTPUT_INSTRUCTION: Final = (
+    "The previous draft did not pass a deterministic safety review. Write a completely "
+    "fresh, brief reply in the requested language. Do not diagnose or name a condition; "
+    "do not mention medication or doses or advise starting, stopping or changing it; "
+    "do not describe self-harm methods; do not claim to be human or a licensed "
+    "professional; do not promise a cure or outcome; do not discourage human support or "
+    "invite dependence on this app. Keep the answer within the stated word limit. If the "
+    "risk hint is MEDIUM or higher, include one supportive check-in and keep a trusted "
+    "person or helpline in view. Do not mention this review instruction."
 )
 
 _log = structlog.get_logger()
@@ -168,6 +184,8 @@ class _Turn:
     #: into the prompt *and* into the reply metadata as ``retrieved_docs`` /
     #: ``retrieved_ids`` so the UI can render "Learn more" cards.
     chunks: list[RetrievedChunk]
+    #: Best-supported output language: user text first, then the saved locale.
+    expected_language: str = "en"
 
 
 class ChatOrchestrator:
@@ -195,8 +213,10 @@ class ChatOrchestrator:
         self._analyzer = analyzer
         self._redactor = redactor
         self._retriever: Retriever = retriever or NullRetriever()
-        self._guard: OutputGuard = output_guard or PassthroughOutputGuard()
         self._config = config or OrchestratorConfig()
+        self._guard: OutputGuard = output_guard or RuleBasedOutputGuard(
+            max_words=self._config.max_words
+        )
         self._limiter: RateLimiter = limiter or InMemoryRateLimiter(rate_limit_per_minute)
         # Fail at construction, not on the first message, if the prompt is bad.
         render_system_prompt(version=self._config.prompt_version, max_words=self._config.max_words)
@@ -255,7 +275,7 @@ class ChatOrchestrator:
         turn = await self._prepare(message, conversation, plan, decision, started)
         text, template = await self._generate(turn)
         if not template:
-            text, template = await self._guard_output(text, plan)
+            text, template = await self._guard_output(text, turn, conversation)
         reply = await self._finish(turn, conversation, text, template=template)
         self._log_turn(message, plan, reply, started, streamed=False)
         return reply
@@ -314,7 +334,7 @@ class ChatOrchestrator:
         else:
             template = text == CANNED_REPLY  # the chain's terminal link answered
             if not template:
-                text, template = await self._guard_output(text, plan)
+                text, template = await self._guard_output(text, turn, conversation)
 
         # Release what the client has not seen. Nothing was sent when the stream
         # was buffered for the guard, or when the model never produced a token:
@@ -426,14 +446,45 @@ class ChatOrchestrator:
         decision: EnsembleDecision,
         started: float,
     ) -> _Turn:
-        # Prior turns, read *before* this message is stored so it is not echoed.
+        # Prior turns and the rolling note are read *before* the current user
+        # message is stored, so neither one is echoed into this turn's context.
         window = build_window(await conversation.history(self._config.history_turns))
+        saved_memory: str | None = None
+        if conversation.persistent and conversation.stores_turns:
+            try:
+                saved_memory, deleted = await conversation.get_memory()
+                if deleted:
+                    saved_memory = None
+            except Exception as exc:
+                # Memory is optional context; a decryption or database failure
+                # must not interrupt a safe reply.
+                _log.warning("chat_memory_read_failed", error_type=type(exc).__name__)
+                saved_memory = None
 
         # Step 4 — emotion, from the ORIGINAL text (redaction would blunt it).
         emotion = await self._analyse_emotion(message.text)
+        detected = detect_language(message.text)
+        requested_language = (
+            (message.locale or plan.locale or "").split("-", maxsplit=1)[0].casefold()
+        )
+        expected_language = (
+            requested_language
+            if requested_language in {"en", "hi", "bn"}
+            else (
+                detected.lang
+                if detected.lang in {"en", "hi", "bn"} and detected.confidence >= 0.60
+                else "en"
+            )
+        )
+        if expected_language not in {"en", "hi", "bn"}:
+            expected_language = "en"
 
-        # Step 3 — redact everything that will leave the process.
-        redacted = await self._redact([message.text, *(turn.text for turn in window.messages)])
+        # Step 3 — redact the current message, history and stored memory before
+        # any of them are used in a prompt or summary.
+        outbound = [message.text, *(turn.text for turn in window.messages)]
+        if saved_memory:
+            outbound.append(saved_memory)
+        redacted = await self._redact(outbound)
 
         # The user's turn is stored now (risk and emotion are known), so it
         # survives even if the client disconnects mid-reply.
@@ -445,17 +496,29 @@ class ChatOrchestrator:
         )
 
         if redacted is None:
-            return _Turn(message, plan, emotion, None, "", started, chunks=[])
+            return _Turn(
+                message,
+                plan,
+                emotion,
+                None,
+                "",
+                started,
+                chunks=[],
+                expected_language=expected_language,
+            )
 
-        # Step 5 — retrieval over the redacted query.
-        # Step 5 - retrieval over the redacted query, filtered by the turn's
-        # language so a hi-locale user is not served English cards by default.
-        chunks = await self._retrieve(redacted[0], language=message.locale)
+        redacted_memory = redacted[-1] if saved_memory else None
+        history_end = 1 + len(window.messages)
+        redacted_history = redacted[1:history_end]
+
+        # Step 5 — retrieval over the redacted query, filtered to the language
+        # detected in the current turn when it is one of our supported languages.
+        chunks = await self._retrieve(redacted[0], language=expected_language)
 
         # Step 6 — the prompt.
         base = render_system_prompt(
             version=self._config.prompt_version,
-            language=emotion.language if emotion is not None else None,
+            language=expected_language,
             max_words=self._config.max_words,
         )
         system = compose_system(
@@ -463,9 +526,19 @@ class ChatOrchestrator:
             emotion=emotion_hint(emotion),
             safety=safety_hint(plan.level, recent_crisis=window.recent_crisis),
             retrieval=retrieval_block(chunks),
+            memory=redacted_memory,
         )
-        messages = to_llm_messages(window, redacted[1:], redacted[0])
-        return _Turn(message, plan, emotion, messages, system, started, chunks=chunks)
+        messages = to_llm_messages(window, redacted_history, redacted[0])
+        return _Turn(
+            message,
+            plan,
+            emotion,
+            messages,
+            system,
+            started,
+            chunks=chunks,
+            expected_language=expected_language,
+        )
 
     async def _analyse_emotion(self, text: str) -> EmotionResult | None:
         try:
@@ -518,17 +591,91 @@ class ChatOrchestrator:
             return CANNED_REPLY, True
         return text, result.provider == "canned"
 
-    async def _guard_output(self, text: str, plan: EscalationPlan) -> tuple[str, bool]:
-        """Step 8. Returns ``(text, is_template)``; a crashing guard fails closed."""
+    async def _guard_output(
+        self, text: str, turn: _Turn, conversation: Conversation
+    ) -> tuple[str, bool]:
+        """Check, regenerate once under a strict system instruction, then fail closed."""
         try:
-            verdict = await self._guard.check(text, risk=plan.level)
+            first = await self._guard.check(
+                text,
+                risk=turn.plan.level,
+                expected_language=turn.expected_language,
+            )
+        except Exception as exc:
+            # A broken guard cannot certify any generated text. Unlike a normal
+            # rejection, this is not a reason to ask another model to try again.
+            _log.error("chat_output_guard_failed", error_type=type(exc).__name__)
+            return self._safe_output(turn.expected_language), True
+        if first.passed:
+            return first.text, False
+
+        await self._record_output_categories(first, turn, conversation, attempt=1)
+        if turn.messages is None:
+            return self._safe_output(turn.expected_language), True
+
+        strict_system = (
+            f"{turn.system.rstrip()}\n\n{STRICT_OUTPUT_INSTRUCTION} "
+            f"The reply must be at most {self._config.max_words} words and in "
+            f"{turn.expected_language}."
+        )
+        try:
+            regenerated = await self._llm.complete(
+                turn.messages,
+                system=strict_system,
+                max_tokens=self._config.max_tokens,
+                temperature=self._config.temperature,
+            )
+            retry_text = regenerated.text
+        except Exception as exc:
+            _log.warning("chat_output_regeneration_failed", error_type=type(exc).__name__)
+            return self._safe_output(turn.expected_language), True
+        if not retry_text.strip():
+            return self._safe_output(turn.expected_language), True
+
+        try:
+            second = await self._guard.check(
+                retry_text,
+                risk=turn.plan.level,
+                expected_language=turn.expected_language,
+            )
         except Exception as exc:
             _log.error("chat_output_guard_failed", error_type=type(exc).__name__)
-            return CANNED_REPLY, True
-        if verdict.passed:
-            return verdict.text, False
-        _log.warning("chat_output_guard_replaced", reason=verdict.reason)
-        return verdict.text, True
+            return self._safe_output(turn.expected_language), True
+        if second.passed:
+            return second.text, False
+        await self._record_output_categories(second, turn, conversation, attempt=2)
+        return self._safe_output(turn.expected_language), True
+
+    async def _record_output_categories(
+        self,
+        verdict: GuardVerdict,
+        turn: _Turn,
+        conversation: Conversation,
+        *,
+        attempt: int,
+    ) -> None:
+        """Log/store only closed category codes; the reply itself never enters a log."""
+        for category in verdict.categories:
+            _log.warning(
+                "chat_output_guard_rejected",
+                category=category.value,
+                attempt=attempt,
+            )
+            try:
+                await conversation.record_output_guard_event(
+                    category=category,
+                    risk=turn.plan.assessment.to_stored_level(),
+                )
+            except Exception as exc:
+                # The response is already rejected. An audit-store outage must
+                # not put the unsafe model text back on the wire.
+                _log.error("chat_output_guard_event_failed", error_type=type(exc).__name__)
+
+    def _safe_output(self, language: str | None) -> str:
+        """Get the same local safe template even if a test-injected guard broke."""
+        if isinstance(self._guard, RuleBasedOutputGuard):
+            return self._guard.safe_reply(language)
+        return RuleBasedOutputGuard(max_words=self._config.max_words).safe_reply(language)
 
     def _check_in_suffix(self, plan: EscalationPlan) -> str:
         """The deterministic MEDIUM check-in line, appended after the model's text.
@@ -564,6 +711,8 @@ class ChatOrchestrator:
             # the person for our outage. The metadata says it was not stored.
             _log.error("chat_assistant_persist_failed", error_type=type(exc).__name__)
 
+        await self._update_memory(turn, conversation)
+
         if template:
             response_type = ResponseType.FALLBACK
         elif check_in is not None:
@@ -597,6 +746,29 @@ class ChatOrchestrator:
                 region=plan.region,
             ),
         )
+
+    async def _update_memory(self, turn: _Turn, conversation: Conversation) -> None:
+        """Append this redacted user turn to a saved chat's bounded summary."""
+        if not conversation.persistent or not conversation.stores_turns:
+            return
+        try:
+            previous, deleted = await conversation.get_memory()
+            if deleted:
+                return
+            redacted = await self._redact([turn.message.text])
+            if redacted is None or not redacted[0]:
+                return
+            summary = build_rolling_summary(
+                previous,
+                redacted[0],
+                max_tokens=MEMORY_MAX_TOKENS,
+            )
+            if summary:
+                await conversation.update_memory(summary)
+        except Exception as exc:
+            # Memory is an optional, user-controlled convenience; it must not
+            # fail a turn after the safe reply has already been constructed.
+            _log.warning("chat_memory_update_failed", error_type=type(exc).__name__)
 
     # ------------------------------------------------------------------ #
     # Logging                                                              #

@@ -26,7 +26,7 @@ from typing import Any
 import pytest
 
 from app.models.enums import RiskLevel as StoredRiskLevel
-from app.models.enums import SafetyEventSource
+from app.models.enums import SafetyEventCategory, SafetyEventSource
 from app.services.chat import ChatOrchestrator, OrchestratorConfig
 from app.services.chat.output_guard import OutputGuard
 from app.services.chat.prompting import HistoryTurn
@@ -71,6 +71,10 @@ class FakeConversation:
     scripted_history: list[HistoryTurn] = field(default_factory=list)
     fail_stores: bool = False
     calls: list[StoredCall] = field(default_factory=list)
+    memory_summary: str | None = None
+    memory_deleted: bool = False
+    memory_updates: int = 0
+    output_events: list[tuple[SafetyEventCategory, StoredRiskLevel]] = field(default_factory=list)
 
     @property
     def stores_turns(self) -> bool:
@@ -97,6 +101,21 @@ class FakeConversation:
             raise RuntimeError("database is down (test-simulated)")
         self.calls.append(StoredCall("assistant", text, risk))
         return uuid.uuid4()
+
+    async def get_memory(self) -> tuple[str | None, bool]:
+        return self.memory_summary, self.memory_deleted
+
+    async def update_memory(self, summary: str) -> bool:
+        if self.memory_deleted:
+            return False
+        self.memory_summary = summary
+        self.memory_updates += 1
+        return True
+
+    async def record_output_guard_event(
+        self, *, category: SafetyEventCategory, risk: StoredRiskLevel
+    ) -> None:
+        self.output_events.append((category, risk))
 
     @property
     def user_calls(self) -> list[StoredCall]:

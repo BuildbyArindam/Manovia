@@ -48,6 +48,20 @@ class SafetyEventSource(StrEnum):
     LLM_OUTPUT = "llm_output"
 
 
+class SafetyEventCategory(StrEnum):
+    """Closed, text-free vocabulary for why a safety event was recorded."""
+
+    DIAGNOSIS = "diagnosis"
+    MEDICATION = "medication"
+    SELF_HARM_METHOD = "self_harm_method"
+    IDENTITY_CLAIM = "identity_claim"
+    OUTCOME_PROMISE = "outcome_promise"
+    ISOLATION_DEPENDENCE = "isolation_dependence"
+    TOO_LONG = "too_long"
+    WRONG_LANGUAGE = "wrong_language"
+    MISSING_CHECK_IN = "missing_check_in"
+
+
 class AssessmentInstrument(StrEnum):
     """Self-help screening instruments. Results are never a diagnosis."""
 
