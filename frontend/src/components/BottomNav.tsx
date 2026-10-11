@@ -23,6 +23,7 @@ export function BottomNav(): ReactElement {
           <li key={item.to} className="flex-1">
             <NavLink
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 [
                   "flex min-h-[3rem] flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-xs font-medium",

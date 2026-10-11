@@ -18,6 +18,7 @@ export function SideNav(): ReactElement {
           <li key={item.to}>
             <NavLink
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 [
                   "flex items-center gap-3 rounded-xl px-3 py-2 text-base font-medium",

@@ -7,7 +7,7 @@
  */
 
 import { Suspense, lazy, useState, type ReactElement } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/AppShell";
@@ -18,6 +18,7 @@ import { AssessmentsPage } from "@/pages/AssessmentsPage";
 import { CBTPage } from "@/pages/CBTPage";
 import { ChatPage } from "@/pages/ChatPage";
 import { ExercisesPage } from "@/pages/ExercisesPage";
+import { HomePage } from "@/pages/HomePage";
 import { JournalPage } from "@/pages/JournalPage";
 import { MoodPage } from "@/pages/MoodPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -53,7 +54,7 @@ function AppRoutes(): ReactElement {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Navigate replace to="/chat" />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/mood" element={<MoodPage />} />
         <Route path="/journal" element={<JournalPage />} />

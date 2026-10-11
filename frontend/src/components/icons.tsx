@@ -9,9 +9,16 @@
 import type { ReactElement } from "react";
 
 export type IconName =
-  "chat" | "mood" | "journal" | "exercises" | "assessments" | "insights" | "settings";
+  "home" | "chat" | "mood" | "journal" | "exercises" | "assessments" | "insights" | "settings";
 
 const PATHS: Record<IconName, ReactElement> = {
+  home: (
+    <>
+      <path d="M4 10.5 12 4l8 6.5" />
+      <path d="M6 9.5V20h12V9.5" />
+      <path d="M10 20v-5h4v5" />
+    </>
+  ),
   chat: (
     <>
       <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Z" />
