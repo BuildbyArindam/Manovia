@@ -1,5 +1,36 @@
 # Manovia — Progress
 
+**Day 21 — Daily plan and Week-3 review — is built and verified (2026-10-12).**
+A transparent rule-based planner (`services/plan/daily_plan.py`): a table of
+six named rules over metadata-only context (mood trend, last check-in gap,
+unfinished thought record, anxiety tags, exercise habit, first check-in) that
+never suggests more than three things, always explains *why this?*, honours
+quiet hours (a 23:30 plan is a broken promise — except that a helpline is not
+a nudge), treats rest as an answer, and collapses to the support card only
+after a recent positive PHQ-9 item 9. `GET /api/v1/plan/today` is idempotent
+per user and local day; `POST /plan/{id}/done|skip` settle items with no
+reason required. `GET/PUT /settings` add preferred exercise types and quiet
+hours (strict `HH:MM`, midnight-crossing windows). The home screen greets by
+time of day with no name or gender assumptions, shows the plan card, a quick
+mood check-in, a chat link and the persistent "Need help now?" button. Final
+numbers: backend **3354 passed / 3 skipped** at 95% coverage (planner and plan
+API at 100%), frontend **438 passed / 3 skipped**, real-Chromium e2e
+**42 passed / 0 failed** at 360x640 and 1280x800, safety eval unchanged
+(crisis recall 1.000). Week-3 review: top-five risks recorded below with the
+quick wins fixed (stale README, missing planner section in
+`docs/architecture.md`, Day-21 screenshot expectations). The browser run also
+generated the long-listed Day-12 chat screenshots and exposed four latent
+test-suite defects, all fixed at the root cause. Decisions:
+[ADR 0021](docs/adr/0021-daily-plan-and-week-3-review.md). Evidence:
+[Day 21 verification](docs/verification/day21-daily-plan-week-3-review.md).
+This Arena session is fixed to **`arena/60ab9eba-manovia`**; the requested
+`day-21-daily-plan-week-3` branch cannot be created here. One PR, no merge.
+
+**Known issue (Day 21, environment):** no docker in the sandbox, so the compose
+stack and PostgreSQL remain unverified (Week-3 risk 3); the e2e ran against a
+locally started API with test-only raised rate limits (documented in the
+verification report; shipping defaults unchanged).
+
 **Day 20 — PHQ-9 and GAD-7 screenings — is built (2026-10-11).** Official English
 item wording, the published 0–3 response set and cutpoints, and a `provenance`
 block in `backend/app/content/assessments/phq9.json` / `gad7.json` name the
@@ -837,6 +868,49 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   linked verification report.
 - Decisions: [ADR 0018](docs/adr/0018-guided-exercises.md). Build and verification done;
   no additional Day 19 feature, PR or merge introduced.
+
+### Day 21 (session branch `arena/60ab9eba-manovia`) — daily plan and Week-3 review
+
+- **Planner.** `services/plan/daily_plan.py` is a tuple of six named rules in
+  priority order (first check-in, open thought record, low-mood trend, anxiety
+  tags, missed check-in, exercise habit), each a pure function from a
+  `PlannerContext` to an optional suggestion. `MAX_SUGGESTIONS = 3` stops the
+  collection; one suggestion per kind; `PlanSuggestion` rejects an empty title
+  or why at construction. Low mood needs ≥3 check-ins per window or a mean ≤2.0;
+  the habit rule needs ≥2 active days; the missed rule waits 2 full days. When
+  nothing fires, a rest card appears only for somebody already active today;
+  otherwise the plan is empty and the UI says so without apology or alarm.
+- **Item 9.** The flag enters the context as a boolean read from the
+  instrument's own `safety` metadata inside a 14-day window; the support branch
+  short-circuits every rule and survives quiet hours (safety outranks quiet).
+- **Quiet hours.** `user_settings` stores enabled + strict `HH:MM` bounds; the
+  window may cross midnight; a collapsed window counts as "all day"; while
+  active the plan is empty and carries the reason. The API recomputes
+  `quiet_hours_active` on read.
+- **API.** `GET /api/v1/plan/today` (consent TERMS+PRIVACY, 422 on unknown
+  timezone, idempotent per user+local day, metadata-only signal gathering —
+  encrypted free text is never decrypted for planning), `POST /plan/{id}/done`,
+  `POST /plan/{id}/skip` (idempotent, no reason, 404 for unknown/foreign items),
+  `GET/PUT /api/v1/settings` (tags validated against the exercise catalogue,
+  max 12, casefolded and deduped; `known_exercise_tags` for the UI).
+- **Storage.** `plan_items` (unique per user+date+kind) and `user_settings`
+  (one row per user) with account cascade; Alembic `0007` round-trips and the
+  migration drift check passes.
+- **Frontend.** Home at `/` (greeting by local time, plan card with why and
+  Done/Skip — support items show neither and read "Support" — quiet-hours and
+  empty states, quick check-in reusing the mood taxonomy components, chat link,
+  crisis button), Home in both navs, logo points at `/`, and a Daily plan
+  section in Settings. 34 new unit tests plus `e2e/home.spec.ts`.
+- **Week-3 review.** Top-five risks section added; README feature list and
+  roadmap refreshed (it had stopped at Day 7 and mislabelled `make eval`),
+  planner section added to `docs/architecture.md`, Day-21 screenshot
+  expectations documented, ADR 0021 written.
+- **Verification (real Chromium 153 from `@sparticuz/chromium`; the first run
+  of the whole six-spec e2e suite in this sandbox).** Fixed at the root cause: seed-script `SEEDED_COUNTS` missing
+  the two new tables; two e2e helpers assuming pre-Home onboarding landing; a
+  substring-matched "Good" face locator; and an e2e step assuming one shared
+  chip cap where the shipped product has separate emotion/factor caps. The run
+  also generated the six Day-12 chat screenshots listed in `docs/assets`.
 
 ## Verification (Day 18 — real command output)
 
@@ -2956,3 +3030,32 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - Server-side encrypted draft resume across devices, only after deciding how
   HIGH-risk drafts should be handled.
 - Paginate thought-record history beyond the current newest-100 limit.
+
+## Next steps (Day 22 — first three)
+
+1. Rebuild the committed safety ML artifact with the pinned scikit-learn
+   toolchain so the `InconsistentVersionWarning` (1.5.2 vs 1.9.1) disappears,
+   then rerun `evals/run_safety_eval.py` on both splits and confirm the crisis
+   recall target still holds before any threshold discussion.
+2. Exercise the compose stack and PostgreSQL on a machine with Docker: fresh
+   `alembic upgrade head` through `0007`, the seed script, and one full
+   Playwright pass against the stack, closing Week-3 risk 3.
+3. Run the clinician/native-speaker review loop for `helplines.json` and the
+   Hindi/Bengali safe replies (Week-3 risks 1–2), adding every disagreement as
+   a Fake-provider regression case; do not weaken the HIGH gate meanwhile.
+
+## Parking lot (Day 21)
+
+- A "past plans" view and per-plan history once the plan has more than one
+  day's worth of meaning; keep today's plan read-only-by-design for now.
+- Planner personalisation beyond preferences and time of day (e.g. patterns
+  from insights) — only behind the auditability and item-9 constraints ADR
+  0021 fixes, and only with visible "why" for every learned nudge.
+- Localise the home greeting, plan copy and the eight rule explanations into
+  hi/bn after the native-speaker pipeline exists (Week-3 risk 2).
+- Generate the Day-21 home-screen screenshots listed in `docs/assets/README.md`
+  in CI with a real browser (the Day-12 ones now exist; the home shots are the
+  remaining gap).
+- Move the Playwright suite into CI with `npx playwright install --with-deps
+  chromium` (carried from Day 12) so the browser pass stops depending on a
+  sandbox workaround.
