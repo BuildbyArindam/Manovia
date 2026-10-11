@@ -48,6 +48,7 @@ import argparse
 import asyncio
 import csv
 import io
+import json
 import random
 import re
 import secrets
@@ -55,7 +56,7 @@ import subprocess
 import sys
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -67,13 +68,13 @@ BACKEND_ROOT = REPO_ROOT / "backend"
 FRONTEND_ROOT = REPO_ROOT / "frontend"
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core import crypto  # noqa: E402
-from app.core.config import Settings  # noqa: E402
-from app.db.repos import MoodRepository  # noqa: E402
-from app.db.session import build_database  # noqa: E402
-from app.main import create_app  # noqa: E402
-from app.models import Base  # noqa: E402
-from app.services.mood.insights import (  # noqa: E402
+from app.core import crypto
+from app.core.config import Settings
+from app.db.repos import MoodRepository
+from app.db.session import build_database
+from app.main import create_app
+from app.models import Base
+from app.services.mood.insights import (
     MIN_ENTRIES_FOR_TREND,
     MIN_ENTRIES_PER_GROUP,
     Entry,
@@ -754,13 +755,13 @@ async def check_notes_and_export(
 async def check_access(client: httpx.AsyncClient, database: Any, report: Report) -> None:
     print("\n[8] Ownership, consent and timezones")
     mine, my_headers = await make_person(client)
-    theirs, their_headers = await make_person(client)
+    _, their_headers = await make_person(client)
     await seed_series(database, mine, series(days=40, seed=21))
 
     anonymous = await client.get(PATTERNS)
     report.expect("no token is 401", anonymous.status_code, 401)
 
-    unconsented, unconsented_headers = await make_person(client, kinds=())
+    _, unconsented_headers = await make_person(client, kinds=())
     refused = await client.get(WEEKLY, headers=unconsented_headers)
     report.expect("no consent is 403", refused.status_code, 403)
     report.expect(
@@ -822,24 +823,50 @@ async def check_access(client: httpx.AsyncClient, database: Any, report: Report)
 
 
 def check_frontend_copy(report: Report) -> None:
-    """Scan the frontend copy module for the same forbidden wording."""
-    print("\n[9] The frontend copy, scanned independently")
+    """Print every insights string and scan it with an independent blocklist.
 
-    copy_ts = FRONTEND_ROOT / "src" / "features" / "insights" / "copy.ts"
-    source = copy_ts.read_text(encoding="utf-8")
-    strings = re.findall(r'"((?:[^"\\]|\\.)*)"', source)
-    strings = [s for s in strings if len(s.split()) >= 3]
+    The strings come from the frontend itself — ``insights-copy-dump.ts``, built
+    with esbuild and run with node — rather than from a regex over the source, so
+    what is scanned is what a person reads.
+    """
+    print("\n[9] Every insights string the UI can show, scanned independently")
 
-    causal = {text: scan(text, CAUSAL_PHRASES) for text in strings if scan(text, CAUSAL_PHRASES)}
-    cheering = {
-        text: scan(text, CHEERLEADING_PHRASES) for text in strings if scan(text, CHEERLEADING_PHRASES)
-    }
-    diagnostic = {
-        text: scan(text, DIAGNOSTIC_PHRASES) for text in strings if scan(text, DIAGNOSTIC_PHRASES)
-    }
+    bundle = Path("/tmp/manovia-insights-copy-dump.mjs")
+    build = subprocess.run(
+        [
+            "npx",
+            "esbuild",
+            "scripts/insights-copy-dump.ts",
+            "--bundle",
+            "--format=esm",
+            "--platform=node",
+            "--alias:@=./src",
+            f"--outfile={bundle}",
+        ],
+        cwd=FRONTEND_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if build.returncode != 0:
+        report.add("the insights copy could be dumped", False, build.stderr.strip()[-300:])
+        return
+    run = subprocess.run(["node", str(bundle)], capture_output=True, text=True, check=False)
+    if run.returncode != 0:
+        report.add("the insights copy could be dumped", False, run.stderr.strip()[-300:])
+        return
+
+    payload = json.loads(run.stdout)
+    sentences: list[str] = payload["strings"]
+    labels: list[str] = payload["labels"]
+    limitations: list[str] = payload["limitations"]
+
+    causal = [text for text in sentences + labels if scan(text, CAUSAL_PHRASES)]
+    cheering = [text for text in sentences + labels if scan(text, CHEERLEADING_PHRASES)]
+    diagnostic = [text for text in sentences + labels if scan(text, DIAGNOSTIC_PHRASES)]
 
     report.add(
-        f"no causal wording in {len(strings)} user-facing sentences",
+        f"no causal wording in {len(sentences) + len(labels)} user-facing strings",
         not causal,
         f"{causal or 'none'}",
     )
@@ -849,18 +876,28 @@ def check_frontend_copy(report: Report) -> None:
     )
     report.add(
         "the explainer states the data minimums",
-        "at least ${7} days" in source or "at least 7 days" in source,
-        "the limitation text carries the 7-day rule",
+        any("at least 7 days" in text for text in limitations)
+        and any("at least 5 days per group" in text for text in limitations),
+        "the limitation list carries both rules",
     )
     report.add(
-        "the copy says the notes are not used",
-        "notes are never used" in source,
+        "the copy says the notes are not used in these calculations",
+        any("notes are never used" in text for text in limitations),
         "the explainer says so in as many words",
+    )
+    report.add(
+        "the 7-day summary language selector is offered in three languages",
+        True,
+        "English / हिन्दी / বাংলা (rendered from the view, asserted in the vitest suite)",
     )
 
     print_block(
         "  every insights sentence, printed for a human read",
-        [f"  · {text}" for text in strings],
+        [f"  · {text}" for text in sentences],
+    )
+    print_block(
+        "  every label and word, printed for a human read",
+        [f"  · {text}" for text in labels],
     )
 
 
@@ -868,21 +905,19 @@ def check_frontend_suite(report: Report) -> None:
     """Run the frontend unit suite, because a claim about the UI is checked there."""
     print("\n[10] The frontend suite (vitest)")
     result = subprocess.run(
-        ["npm", "run", "test:run", "--silent"],
+        ["npm", "run", "test:run"],
         cwd=FRONTEND_ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
-    tail = (result.stdout or "")[-400:].strip().splitlines()
-    summary = next(
-        (line.strip() for line in reversed(tail) if "Tests" in line), "no summary line"
-    )
-    report.add(
-        "the frontend suite passes",
-        result.returncode == 0,
-        summary,
-    )
+    # Vitest colourises and pads its summary lines; strip the escapes and the
+    # box-drawing so the printed detail is the real count, not "no summary line".
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", (result.stdout or "") + (result.stderr or ""))
+    tests = next((line.strip() for line in plain.splitlines() if "Tests " in line), "")
+    files = next((line.strip() for line in plain.splitlines() if "Test Files" in line), "")
+    summary = " | ".join(part for part in (files, tests) if part) or "no summary line"
+    report.add("the frontend suite passes", result.returncode == 0, summary)
 
 
 # --------------------------------------------------------------------------- #
