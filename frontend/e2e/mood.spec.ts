@@ -43,7 +43,11 @@ async function completeGuestOnboarding(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Continue as a guest" }).click();
 
-  await page.getByRole("link", { name: "Mood" }).click();
+  // Day 21: onboarding lands on the home screen, which has its own mood
+  // check-in link. Wait for the guest session to settle there, then go to the
+  // full mood page this spec exercises.
+  await expect(page.getByTestId("home-page")).toBeVisible();
+  await page.goto("/mood");
   await expect(page.getByRole("heading", { level: 1, name: "Mood" })).toBeVisible();
 }
 
@@ -65,7 +69,8 @@ test("a whole check-in is completable with the keyboard alone", async ({ page })
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("radio", { name: "Good" })).toBeChecked();
+  // exact: "Good" is also a substring of the "Very good" face's label.
+  await expect(page.getByRole("radio", { name: "Good", exact: true })).toBeChecked();
   await expect(page.getByTestId("mood-face-4")).toHaveAttribute("data-selected", "true");
 
   // 2. Energy: focus the slider and step it down with the arrow keys. This is the
@@ -77,16 +82,21 @@ test("a whole check-in is completable with the keyboard alone", async ({ page })
   await expect(slider).toHaveAttribute("aria-valuetext", "Running low");
   await expect(page.getByTestId("mood-energy-readout")).toContainText("2 — Running low");
 
-  // 3. Chips: Space toggles, and the cap is explained rather than silent.
+  // 3. Chips: Space toggles, and the emotions cap (three) is explained rather
+  //    than silent. Factors are a separate group with their own cap, so the
+  //    "Sleep" factor stays available once three emotions are chosen.
   await page.getByRole("checkbox", { name: "Calm" }).focus();
   await page.keyboard.press(" ");
   await page.getByRole("checkbox", { name: "Loneliness" }).focus();
   await page.keyboard.press(" ");
-  await page.getByRole("checkbox", { name: "Sleep" }).focus();
+  await page.getByRole("checkbox", { name: "Sadness" }).focus();
   await page.keyboard.press(" ");
   await expect(page.getByTestId("chip-calm")).toHaveAttribute("data-selected", "true");
   await expect(page.getByTestId("chip-joy")).toBeDisabled(); // three is the cap
   await expect(page.getByTestId("chips-mood-emotions-cap")).toContainText("That is three");
+  await page.getByRole("checkbox", { name: "Sleep" }).focus();
+  await page.keyboard.press(" ");
+  await expect(page.getByTestId("chip-sleep")).toHaveAttribute("data-selected", "true");
 
   // 4. The note, typed without touching the mouse.
   await page.getByLabel(/anything you want to add/i).focus();

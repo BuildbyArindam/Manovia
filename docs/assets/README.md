@@ -3,13 +3,13 @@
 Reserved for documentation images and other static assets. Do not place private
 or identifying user data here.
 
-## Day 12 chat screenshots — expected, not yet generated
+## Day 12 chat screenshots — generated 2026-10-11 in real Chromium 153
 
-The Day 12 Playwright suite writes these four files. **They are not in the
-repository yet**: the sandbox that built Day 12 has no browser binary
-(`npx playwright install chromium` cannot reach `cdn.playwright.dev`) and no apt
-access, so `e2e/chat.spec.ts` was written and listed but never run. Generate them
-on a machine with browsers:
+The Day 12 Playwright suite writes these six files. They were **generated during
+the Day 21 verification run** with real Chromium 153.0.8010.0 (obtained from npm's
+`@sparticuz/chromium@153.0.0`, because `cdn.playwright.dev` is unreachable from the
+build sandbox; see [docs/verification/day21-daily-plan-week-3-review.md](../verification/day21-daily-plan-week-3-review.md))
+against the live API and dev server. To regenerate them on a machine with browsers:
 
 ```bash
 # 1. the API, with the offline Fake model
