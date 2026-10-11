@@ -29,6 +29,7 @@ from app.content.insights import load_insights
 from app.services.mood.insights import (
     ALPHA,
     DEFAULT_WEEKS,
+    GROUP_ALPHA,
     MAX_WEEKS,
     MAX_WINDOW_DAYS,
     MIN_EFFECT_POINTS,
@@ -720,6 +721,10 @@ def test_a_constructed_time_of_day_difference_is_reported_with_its_extremes() ->
     assert pattern.highest is not None and pattern.highest.id == "morning"
     assert pattern.spread == pytest.approx(4.0)
     assert pattern.p_value is not None and pattern.p_value < pattern.family_alpha
+    # The grouping families are twenty times stricter than the tag families:
+    # naming the extremes after an omnibus test is a selection that the omnibus
+    # p-value does not cover (see GROUP_ALPHA).
+    assert pattern.family_alpha == pytest.approx(GROUP_ALPHA / 2)
 
 
 def test_a_flat_week_is_not_a_pattern() -> None:

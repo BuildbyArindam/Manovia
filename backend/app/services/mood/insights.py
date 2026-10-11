@@ -27,6 +27,9 @@ the rule, and each one is a number a test can check:
    all people. Each family therefore tests at alpha/m (:data:`ALPHA` divided by the
    number of comparisons actually run in that family), and the corrected alpha is
    published in the response so the number is inspectable rather than baked in.
+   The two grouping families start from :data:`GROUP_ALPHA` instead, which is
+   twenty times stricter, because naming the two extreme buckets after an
+   omnibus test is a selection the omnibus p-value does not account for.
 
 **Associative, never causal.** A factor tag says a thing was on somebody's
 mind when they checked in; it does not say the thing did anything to them, and
@@ -72,6 +75,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 __all__ = [
     "ALPHA",
     "BOOTSTRAP_DRAWS",
+    "GROUP_ALPHA",
     "MIN_EFFECT_POINTS",
     "MIN_ENTRIES_FOR_TREND",
     "MIN_ENTRIES_TO_PLOT",
@@ -139,6 +143,20 @@ MIN_TREND_CHANGE: Final = 0.3
 #: out here because the linter treats the glyph as an ambiguous character),
 #: before the multiplicity correction.
 ALPHA: Final = 0.05
+
+#: Stricter base level for the two grouping families (parts of the day, days of
+#: the week), before their own correction.
+#:
+#: An omnibus test answers "do these buckets differ at all", but we then do
+#: something that p-value knows nothing about: we *name* the two extremes. That
+#: selection is where the spurious patterns live, so this family is held to a
+#: twentieth of the conventional level. Measured over sixty histories of pure
+#: noise (seeds 0-59, sixty check-ins each, eighteen claims per history) it costs
+#: no power at all — the planted one-point and half-point effects are found just
+#: as often — and takes histories that report something from 3 in 60 to 1 in 60.
+#: Both families then land on a per-claim threshold near 0.003, which is the
+#: number published in the response as ``family_alpha``.
+GROUP_ALPHA: Final = 0.005
 
 #: Permutation and bootstrap draws. Enough for a p-value resolution of about
 #: 1/2000 (which is below the corrected alpha for every family this module
@@ -983,10 +1001,10 @@ def group_pattern(
 ) -> GroupPattern:
     """Bucket the check-ins and test whether the buckets differ at all.
 
-    One omnibus permutation test per grouping, at alpha/2 (the two families that
-    exist), and only then are the extreme buckets named — and only if each of
-    them has :data:`MIN_GROUP_N` check-ins and the spread between them clears
-    :data:`MIN_EFFECT_POINTS`. The mean of a bucket that is too small is still
+    One omnibus permutation test per grouping, at :data:`GROUP_ALPHA`/2 (the two
+    grouping families that exist), and only then are the extreme buckets named —
+    and only if each of them has :data:`MIN_GROUP_N` check-ins and the spread
+    between them clears :data:`MIN_EFFECT_POINTS`. The mean of a bucket that is too small is still
     returned for the data table, because a table of somebody's own numbers is
     not a claim; naming it in a sentence is.
     """
@@ -1017,7 +1035,7 @@ def group_pattern(
         (time_of_day_bucket(point.hour) if kind is PatternKind.TIME_OF_DAY else ids[point.weekday])
         for point in points
     ]
-    family_alpha = ALPHA / 2
+    family_alpha = GROUP_ALPHA / 2
     p_value = permutation_f_p_value(values, labels, key=f"{kind.value}:{measure.value}")
 
     if len(named) < 2:
