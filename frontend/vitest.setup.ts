@@ -35,3 +35,15 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+
+// Recharts measures its container with a ResizeObserver even when the chart is
+// given explicit width and height (the case in this app: no ResponsiveContainer,
+// because a container that measures zero in jsdom renders an empty chart and a
+// test that passes for the wrong reason). jsdom has no ResizeObserver.
+if (!window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  };
+}
