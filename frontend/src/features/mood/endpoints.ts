@@ -1,15 +1,13 @@
 /**
- * The mood endpoints, and the one piece of browser knowledge they need: the
- * device's own timezone.
+ * The mood endpoints.
  *
- * `Intl.DateTimeFormat().resolvedOptions().timeZone` is an IANA name
- * (`Asia/Kolkata`), which is exactly what the backend's streak arithmetic wants.
- * Sending it matters: without it the server counts days in UTC, and somebody
- * checking in at 00:30 in Delhi would see their streak disagree with their
- * calendar. It is a preference, not an identifier — the server stores no zone.
+ * The device timezone they send lives in `lib/timezone.ts` now, because insights
+ * (Day 16) needs the same fact and a fact with two homes drifts. It is
+ * re-exported here so this feature's callers — and their tests — did not move.
  */
 
 import { api as defaultClient, type ApiClient } from "@/lib/api";
+import { deviceTimezone } from "@/lib/timezone";
 
 import type {
   MoodCheckInPayload,
@@ -19,22 +17,14 @@ import type {
   MoodStreak,
 } from "./types";
 
+export { deviceTimezone };
+
 export const MOOD_ENDPOINTS = {
   checkIn: "/mood",
   list: "/mood",
   streak: "/mood/streak",
   entry: (id: string): string => `/mood/${id}`,
 } as const;
-
-/** The device's IANA timezone, or `"UTC"` when the browser will not say. */
-export function deviceTimezone(): string {
-  try {
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return typeof zone === "string" && zone.length > 0 ? zone : "UTC";
-  } catch {
-    return "UTC";
-  }
-}
 
 /**
  * Save one check-in.
