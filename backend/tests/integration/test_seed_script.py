@@ -45,6 +45,10 @@ SEEDED_COUNTS = {
     # for, and settings are created on first save; the seed invents neither.
     "plan_items": 0,
     "user_settings": 0,
+    # Day 22: privacy choices and deletion receipts are created by the person
+    # (or by their own deletion), never by a demo fixture.
+    "privacy_settings": 0,
+    "deletion_receipts": 0,
 }
 
 

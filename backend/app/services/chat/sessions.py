@@ -30,6 +30,7 @@ from app.services.chat.conversation import (
     SessionFactory,
 )
 from app.services.chat.ephemeral import EphemeralSessionStore
+from app.services.privacy.store import chat_storage_allowed
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,16 @@ class ChatSessionService:
                 version=self._documents.version_for(ConsentKind.STORE_CHAT),
             )
 
+    async def _chat_storage_allowed(self, user_id: uuid.UUID) -> bool:
+        """The Day 22 privacy floor: "do not save my chats" is a hard veto.
+
+        Consent and this setting are both required, and they are not redundant:
+        the consent record is the agreement, the setting is the off switch a
+        person can flip in Settings → Privacy without touching their consents.
+        """
+        async with self._factory() as db:
+            return await chat_storage_allowed(db, user_id)
+
     async def create(self, user_id: uuid.UUID, *, persistent: bool) -> SessionInfo:
         """Open a session. Saving history needs the ``store_chat`` consent."""
         if not persistent:
@@ -122,6 +133,12 @@ class ChatSessionService:
                 403,
                 "consent_required",
                 f"Consent required: {ConsentKind.STORE_CHAT.value}.",
+            )
+        if not await self._chat_storage_allowed(user_id):
+            raise ApiError(
+                403,
+                "chat_storage_disabled",
+                "Saving chats is switched off in your privacy settings.",
             )
         async with self._factory() as db:
             row = await ChatRepository(db).create(user_id=user_id)
@@ -173,7 +190,14 @@ class ChatSessionService:
             )
         if for_send and info.ended_at is not None:
             raise ApiError(409, "session_ended", "That conversation has ended. Start a new one.")
-        store = await self._store_chat_granted(user_id) if for_send else True
+        if for_send:
+            # Both the consent and the privacy setting must allow saving;
+            # either one turning off stops new turns from being written.
+            store = await self._store_chat_granted(user_id) and await self._chat_storage_allowed(
+                user_id
+            )
+        else:
+            store = True
         return OpenedSession(
             info=info,
             conversation=PersistentConversation(

@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest frontend-dev frontend-test frontend-lint frontend-format eval up down smoke
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
@@ -34,6 +34,19 @@ db-check:
 
 seed:
 	python3 scripts/seed_demo_data.py
+
+# Day 22 retention job. Deletes personal data older than each person's own
+# retention window (Settings → Privacy). Always dry-run first:
+#   make retention DRY_RUN=1
+# Add JSON=1 for a machine-readable report. Needs the same DATABASE_URL and
+# FIELD_ENCRYPTION_KEY as the API. Point PYTHON at the interpreter that has the
+# backend installed (the venv) when it is not the one on PATH:
+#   make retention PYTHON=.venv/bin/python DRY_RUN=1
+PYTHON ?= python3
+DRY_RUN ?=
+JSON ?=
+retention:
+	$(PYTHON) scripts/apply_retention.py $(if $(DRY_RUN),--dry-run,) $(if $(JSON),--json,)
 
 # Frontend. `frontend-dev` proxies /api to the backend on port 8000, so run
 # `make dev` in another terminal first.

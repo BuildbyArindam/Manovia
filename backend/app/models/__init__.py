@@ -23,12 +23,22 @@ from app.models.journal import JournalEntry
 from app.models.message import Message
 from app.models.mood import MoodEntry
 from app.models.plan import PlanItem
+from app.models.privacy import (
+    RETENTION_DAY_CHOICES,
+    RETENTION_MAX_DAYS,
+    RETENTION_MIN_DAYS,
+    DeletionReceipt,
+    PrivacySetting,
+)
 from app.models.refresh_token import RefreshToken
 from app.models.safety_event import SafetyEvent
 from app.models.user import User
 from app.models.user_settings import UserSettings
 
 __all__ = [
+    "RETENTION_DAY_CHOICES",
+    "RETENTION_MAX_DAYS",
+    "RETENTION_MIN_DAYS",
     "AssessmentBand",
     "AssessmentInstrument",
     "AssessmentResult",
@@ -37,6 +47,7 @@ __all__ = [
     "ChatSession",
     "Consent",
     "ConsentKind",
+    "DeletionReceipt",
     "ExerciseCompletion",
     "JournalEntry",
     "Message",
@@ -45,6 +56,7 @@ __all__ = [
     "PlanItem",
     "PlanItemKind",
     "PlanItemStatus",
+    "PrivacySetting",
     "RefreshToken",
     "RiskLevel",
     "SafetyEvent",

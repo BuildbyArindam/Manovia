@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from app.models.journal import JournalEntry
     from app.models.mood import MoodEntry
     from app.models.plan import PlanItem
+    from app.models.privacy import PrivacySetting
     from app.models.safety_event import SafetyEvent
     from app.models.user_settings import UserSettings
 
@@ -81,6 +82,10 @@ class User(Base, CreatedAtMixin):
     )
 
     settings: Mapped[UserSettings | None] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True, uselist=False
+    )
+
+    privacy_settings: Mapped[PrivacySetting | None] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True, uselist=False
     )
 
