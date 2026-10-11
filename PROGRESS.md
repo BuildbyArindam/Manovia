@@ -807,8 +807,9 @@ Environment: Python 3.11.2 (`backend/.venv`, `pip install -e ".[dev]"`), Node
 PostgreSQL, no hosted provider and **no browser binary** was available. Everything
 below was run for real; nothing is claimed from documentation.
 
-`PATH=backend/.venv/bin:$PATH make test` → backend **2681 passed, 3 skipped**
-(79 s), frontend **291 passed, 3 skipped** in 30 files + 1 skipped.
+`PATH=backend/.venv/bin:$PATH make test` → backend **2682 passed, 3 skipped**
+(201 s, **96 %** coverage), frontend **291 passed, 3 skipped** in 30 files + 1
+skipped.
 `make lint` → `ruff check` clean, `ruff format --check` **254 files already
 formatted**, `mypy app tests` *Success: no issues found in 206 source files*,
 `eslint .` clean, `tsc --noEmit` clean.
@@ -822,7 +823,7 @@ formatted**, `mypy app tests` *Success: no issues found in 206 source files*,
 
 | # | check | result |
 | --- | --- | --- |
-| 1 | `make test` — insights tests shown | **PASS** — backend 2681 passed / 3 skipped; the insights files alone **57** (`test_mood_insights.py` 34, `test_insights_api.py` 23). Frontend 291 passed / 3 skipped, of which **41** are insights. |
+| 1 | `make test` — insights tests shown | **PASS** — backend 2682 passed / 3 skipped; the insights files alone **57** (`test_mood_insights.py` 34, `test_insights_api.py` 23). Frontend 291 passed / 3 skipped, of which **41** are insights. |
 | 2 | 60 days where poor sleep lowers mood ~1 point and friends raises it ~0.5 | **PASS — both effects found.** `sleep` n=19 vs 41, d=−1.07, 95 % CI [−1.63, −0.56] (entirely negative), p=0.001 → *"On days you tagged sleep, your mood was 1.1 points lower on average (n=19 vs 41). This is an association, not a causal link."* `friends` n=14 vs 46, d=+0.63, CI [−0.05, +1.42], p=0.058 → *"…0.7 points higher…"*. The six tags nobody used report **no effect size at all**, not a zero. |
 | 3 | A user with 3 entries says "not enough data" | **PASS** — `rolling_7.trend` and `rolling_30.trend` are both `not_enough_data` with *"Need at least 7 days with check-ins to show a trend."*; the sleep comparison returns `effect_size=None`, `ci_lower=None`, `p_value=None` and *"Not enough data to compare days with vs without sleep (need at least 5 days per group; have 2 with, 1 without)"*; all 24 hourly buckets withhold an average; the weekly summary says *"Not enough check-ins this week to show a trend (need 7 days with data)."* |
 | 4 | 20 noise seeds, report the false-positive rate | **PASS — 0.0 % (0/40 comparisons).** Rule stated in the script: false positive := permutation p < 0.05 **and** \|Cohen's d\| > 0.8. Per-seed breakdown printed (all 20 seeds: 0 strong). **1 of 40 (2.5 %)** reached p < 0.05 on its own with a small effect size — which is what a 5 % threshold is supposed to produce on noise. The same guarantee asserted through HTTP on 3 seeds (0/6) and in-suite on all 20. |
