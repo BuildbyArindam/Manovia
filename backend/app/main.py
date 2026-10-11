@@ -17,6 +17,7 @@ from app.api.v1.consent import router as consent_router
 from app.api.v1.crisis import router as crisis_router
 from app.api.v1.dev import router as dev_router
 from app.api.v1.health import router as health_router
+from app.api.v1.insights import router as insights_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.mood import router as mood_router
 from app.core.config import Settings, get_settings
@@ -131,6 +132,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(knowledge_router, prefix="/api/v1")
     app.include_router(mood_router, prefix="/api/v1")
     app.include_router(crisis_router, prefix="/api/v1")
+    app.include_router(insights_router, prefix="/api/v1")
     if not app_settings.is_production:
         # Dev-only surface: in production the route does not exist at all, so
         # it is absent from the schema and a request gets the generic 404.
