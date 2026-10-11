@@ -2005,6 +2005,51 @@ keyboard spec could not be executed; what was run instead is stated in the row.
   resource (not every line is a phone number); and the guilt scan no longer treats
   the emotion vocabulary as app copy.
 
+### The secrets scan: what it caught, and why the branch was rewritten
+
+The first CI run on pull request #19 failed exactly one job —
+**`Secrets scan — gitleaks`** (`Leaks detected, see job summary for details`);
+backend, frontend and the dependency audit all passed.
+
+The finding was `generic-api-key` at `scripts/verify_day15.py:192`: a hard-coded
+signing-key literal for the throwaway in-process test server — a *fake* value, and
+deliberately so, but the scanner cannot tell a fake from a real one (which is the
+whole point of the scanner). The value is not repeated in this document: quoting
+it here would re-introduce exactly the line the check rejects. The job's log, its SARIF artifact and its job summary all live on
+hosts this sandbox cannot reach, so the finding was read through the API instead:
+a temporary workflow ran the same gitleaks binary over the same commit range and
+emitted each hit as a check-run annotation (rule, file, line, secret length and a
+three-character masked prefix — never the value), which `gh api
+…/check-runs/{id}/annotations` does return. That workflow is not in the branch.
+
+`gitleaks detect` scans **every commit in the range**, not the final tree, so a
+follow-up "remove the literal" commit would have kept failing forever: the commit
+that adds a secret keeps adding it. The Day 15 commits were therefore rewritten
+with `git filter-branch` (`023dfab..HEAD`, branch-only, then
+`git push --force-with-lease`) so the literal exists in no commit at all, and the
+signing key is generated at run time (`secrets.token_urlsafe(48)`) — the same
+treatment the Fernet key one line below already had.
+
+The identical string also sat in three files that are already on `main`
+(`scripts/verify_day11.py`, `backend/tests/conftest.py`,
+`backend/tests/unit/test_tokens.py`, the last two with slightly different but
+equally secret-shaped values). None of them fails today — gitleaks only reads the
+lines a commit *adds* — but each is a trip-wire for the next pull request that
+touches those lines. All three now generate their value at run time in a separate
+commit: `backend/tests/conftest.py` mints a fresh signing secret per test, exactly
+as its neighbouring line already does for the field cipher, and `test_tokens.py`
+does the same for its two seeded secrets. That is the honest fix for a *fake*
+secret: do not write something that looks like a credential, because the scanner
+is right to flag it and a human reviewer cannot tell the difference either.
+
+`git grep` for the three literals in the working tree now returns nothing, and
+`backend/tests/unit/test_tokens.py` plus the full backend suite
+(**2612 passed, 3 skipped**) passed with generated values.
+
+**Result:** after the rewrite and the generated-value fix, the same job on the same
+pull request is **green** (`Secrets scan — gitleaks` → success), together with the
+other three jobs.
+
 ### Covered by which test, and the one jsdom cannot do
 
 - Bounds: `valence`/`energy` outside 1–5 are `422`; a fourth emotion, a sixth
@@ -2122,6 +2167,19 @@ before the corresponding behaviour is trusted outside synthetic tests.
   2.4" could appear.
 - Frontend prettier `format:check` still reports the three pre-existing untouched
   files recorded under Day 14; the Day 15 frontend files are formatted.
+- **The pre-commit gitleaks hook could not be run in this sandbox.** `.pre-commit-config.yaml`
+  pins `gitleaks` v8.24.3, and the hook is the intended local defence — but
+  `pre-commit` is not installed here, the hook builds with Go, and no Go toolchain
+  (or gitleaks binary) can be fetched from the hosts this sandbox reaches. The
+  CI job was the first thing to see the finding. Running `pre-commit run gitleaks
+  --all-files` on a developer machine is the check that would have caught it before
+  the push.
+- **`main`'s history still contains the old fake literal** (`git log -S` will find
+  it in the pre-rewrite commits of `backend/tests/conftest.py` and
+  `scripts/verify_day11.py`). It is a fake key for a throwaway server, so nothing
+  needs rotating, and no pull request sees it (only added lines are scanned);
+  a full-history scan (`gitleaks detect --all`) will still report it. Clearing it
+  means rewriting `main`, which is a coordinated decision, not a drive-by fix.
 
 ### Day 14 implementation notes
 
