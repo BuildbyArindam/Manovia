@@ -1,4 +1,4 @@
-.PHONY: dev test lint format migrate migrate-down migrate-check revision eval
+.PHONY: dev test lint format migrate migrate-down migrate-check revision ingest eval
 
 # Development API server (install first: pip install -e ".[dev]")
 # --no-access-log: uvicorn's access log prints the full request line including
@@ -45,3 +45,10 @@ revision:
 SPLIT ?= dev
 eval:
 	python ../evals/run_safety_eval.py --split $(SPLIT)
+
+# Day 13 knowledge ingestion: chunk + embed + store the curated corpus,
+# idempotently (a second run is a no-op). RAG_EMBEDDER picks the embedder
+# (auto = sentence-transformers when installed, tfidf offline); settings come
+# from the environment or backend/.env like every other knob.
+ingest:
+	python -m app.services.rag.ingest

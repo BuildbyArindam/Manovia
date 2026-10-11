@@ -55,7 +55,7 @@ MAX_CLASSIFIER_CHARS: Final = DEFAULT_MAX_INPUT_CHARS
 
 try:  # scikit-learn is a base dependency, but the safety package must import
     # and degrade gracefully even in a minimal environment.
-    import joblib  # type: ignore[import-untyped]
+    import joblib
 except ImportError:  # pragma: no cover - exercised only without scikit-learn
     joblib = None
 

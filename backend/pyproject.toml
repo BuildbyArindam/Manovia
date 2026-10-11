@@ -67,6 +67,16 @@ llm = [
 ner = [
     "spacy>=3.7.0",
 ]
+# Semantic embeddings for the knowledge base (Day 13). Deliberately NOT a base
+# dependency: it pulls torch (a multi-GB wheel), and the offline path — the
+# corpus-fitted TF-IDF embedder — needs nothing beyond the base install. With
+# the extra installed and RAG_EMBEDDER=auto/sentence_transformers, the
+# checkpoint in RAG_EMBEDDING_MODEL_ID is downloaded from Hugging Face on
+# first use. See docs/adr/0013-knowledge-retrieval-rag.md.
+#   pip install -e ".[dev,rag]"
+rag = [
+    "sentence-transformers>=2.7.0",
+]
 dev = [
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.0",
@@ -129,6 +139,10 @@ known-first-party = ["app"]
 # which is exactly how the retry machinery reads them, and N818's "Error"
 # suffix would make that code noisier for no gain. Domain naming wins here.
 "app/services/llm/base.py" = ["N818"]
+# EmbedderUnavailable reads as a condition (the embedder is unavailable
+# here), exactly like the LLM provider errors above; same reasoning, same
+# waiver.
+"app/services/rag/base.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -138,6 +152,9 @@ plugins = ["pydantic.mypy"]
 # Third-party modules with no type information. langdetect ships no stubs;
 # transformers/torch are imported lazily inside app/services/nlp/hf.py.
 [[tool.mypy.overrides]]
-module = ["langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*"]
+module = [
+    "langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*",
+    "faiss.*", "sentence_transformers.*", "sklearn.*", "joblib.*",
+]
 ignore_missing_imports = true
 follow_imports = "skip"

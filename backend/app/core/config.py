@@ -28,6 +28,11 @@ EMOTION_ANALYZER_CHOICES: tuple[str, ...] = ("auto", "hf", "keyword", "sentiment
 # of these being unusable is a degradation, never a 500.
 LLM_PROVIDER_CHOICES: tuple[str, ...] = ("anthropic", "ollama", "fake")
 
+# Embedders the knowledge base can ingest with (Day 13). Mirrors
+# app.services.rag.embedders.EMBEDDER_KINDS (kept a literal here, like the
+# emotion choices above, so config imports no services module).
+RAG_EMBEDDER_CHOICES: tuple[str, ...] = ("auto", "sentence_transformers", "tfidf", "hashing")
+
 
 class Settings(BaseSettings):
     """Runtime settings. Every value comes from the environment (see .env.example)."""
@@ -115,7 +120,7 @@ class Settings(BaseSettings):
     llm_window_turns: int = 12
     llm_window_tokens: int = 3000
     # Which versioned prompt file under app/content/prompts/ to load.
-    llm_prompt_version: str = "system_v1"
+    llm_prompt_version: str = "system_v2"
     # Local Ollama model id (env OLLAMA_MODEL). Empty means "ask the server
     # what it has" and is only valid for the fallback provider.
     ollama_model: str = ""
@@ -168,6 +173,45 @@ class Settings(BaseSettings):
     # app/ml_artifacts/. A missing artifact degrades to rules-only, never to a
     # startup failure.
     safety_ml_artifact_dir: str = ""
+
+    # --- Knowledge base and retrieval (Day 13) ---
+    # Retrieval augments the chat prompt with curated self-help passages.
+    # With the flag off (or nothing ingested yet) the pipeline answers
+    # without reference material — the same behaviour as before Day 13.
+    rag_enabled: bool = True
+    # Which embedder ingests (and, via the store's embedder.json marker,
+    # which one queries it back):
+    #   auto                  sentence-transformers when its package imports,
+    #                         otherwise the offline corpus-fitted TF-IDF one
+    #   sentence_transformers the multilingual checkpoint in RAG_EMBEDDING_MODEL_ID
+    #   tfidf                 offline: TF-IDF fitted on the corpus at ingest
+    #   hashing               offline, fit-free; tests and escape hatch only
+    # See docs/adr/0013-knowledge-retrieval-rag.md.
+    rag_embedder: str = "auto"
+    # Model id only — never a hard-coded path (AGENTS.md: never hard-code
+    # model names). Must be multilingual: the corpus and the chat surface
+    # carry en, hi and bn.
+    rag_embedding_model_id: str = "paraphrase-multilingual-MiniLM-L12-v2"
+    # Vector size for the hashing embedder (the only kind with a configured
+    # dim; TF-IDF's dim is the fitted vocabulary, a checkpoint reports its own).
+    rag_embedding_dim: int = 384
+    # Where the FAISS index and its sidecars live. Relative paths resolve
+    # against the working directory (backend/ for make dev / make ingest).
+    # Gitignored content: rebuildable from the corpus with `make ingest`.
+    rag_persist_dir: str = "./data/rag"
+    # Minimum cosine similarity for a chunk to be served. 0 means "use the
+    # recommended floor for the active embedding space" (see
+    # app.services.rag.embedders.RECOMMENDED_MIN_SIMILARITY) — the right
+    # number differs by embedder, so a single hard default would be wrong
+    # for whichever kind you did not calibrate.
+    rag_min_similarity: float = 0.0
+    # Chunking: target chunk size and overlap, in whitespace words (a token
+    # proxy documented in app/services/rag/chunking.py — multilingual
+    # tokenizers disagree by 2-3x, so words are the honest unit).
+    rag_chunk_words: int = 220
+    rag_chunk_overlap_words: int = 50
+    # How many chunks one chat turn may retrieve (the orchestrator's top-k).
+    rag_retrieval_limit: int = 3
 
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> "Settings":
@@ -298,6 +342,31 @@ class Settings(BaseSettings):
             raise ValueError("chat_ephemeral_ttl_seconds must be at least 1")
         if self.chat_ephemeral_max_sessions < 1 or self.chat_ephemeral_max_turns < 2:
             raise ValueError("ephemeral session limits are too small to hold a conversation")
+        return self
+
+    @model_validator(mode="after")
+    def _check_rag_settings(self) -> "Settings":
+        """Catch an unusable retrieval configuration at startup."""
+        if self.rag_embedder.strip().casefold() not in RAG_EMBEDDER_CHOICES:
+            raise ValueError(
+                "RAG_EMBEDDER must be one of "
+                f"{', '.join(RAG_EMBEDDER_CHOICES)} (got {self.rag_embedder!r})"
+            )
+        uses_model = self.rag_embedder.strip().casefold() in {"auto", "sentence_transformers"}
+        if uses_model and not self.rag_embedding_model_id.strip():
+            raise ValueError("RAG_EMBEDDING_MODEL_ID must be set when RAG_EMBEDDER uses the model")
+        if self.rag_embedding_dim < 64:
+            raise ValueError("rag_embedding_dim must be at least 64")
+        if not self.rag_persist_dir.strip():
+            raise ValueError("rag_persist_dir must not be empty")
+        if not 0.0 <= self.rag_min_similarity <= 1.0:
+            raise ValueError("rag_min_similarity must be within [0, 1] (0 = per-embedder default)")
+        if not 80 <= self.rag_chunk_words <= 600:
+            raise ValueError("rag_chunk_words must be within [80, 600]")
+        if not 0 <= self.rag_chunk_overlap_words < self.rag_chunk_words:
+            raise ValueError("rag_chunk_overlap_words must be within [0, rag_chunk_words)")
+        if not 1 <= self.rag_retrieval_limit <= 10:
+            raise ValueError("rag_retrieval_limit must be within [1, 10]")
         return self
 
     @property

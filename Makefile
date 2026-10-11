@@ -1,8 +1,9 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed frontend-dev frontend-test frontend-lint frontend-format eval up down smoke
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest frontend-dev frontend-test frontend-lint frontend-format eval up down smoke
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
-# `eval` runs the Day 9 safety evaluation (backend/Makefile).
+# `eval` runs the Day 9 safety evaluation and `ingest` the Day 13 knowledge
+# ingestion (backend/Makefile).
 
 dev:
 	$(MAKE) -C backend dev
@@ -64,3 +65,7 @@ smoke:
 
 eval:
 	$(MAKE) -C backend eval
+
+# Day 13 knowledge ingestion (see backend/Makefile for the notes).
+ingest:
+	$(MAKE) -C backend ingest
