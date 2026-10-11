@@ -39,7 +39,11 @@ export interface InsightsViewProps {
 export function InsightsView({ client }: InsightsViewProps = {}) {
   const [weeklyLocale, setWeeklyLocale] = useState<"en" | "hi" | "bn">("en");
 
-  const { data: weeklyData, isLoading: weeklyLoading, error: weeklyError } = useQuery({
+  const {
+    data: weeklyData,
+    isLoading: weeklyLoading,
+    error: weeklyError,
+  } = useQuery({
     queryKey: ["insights", "weekly", weeklyLocale],
     queryFn: () => fetchWeeklySummary({ locale: weeklyLocale }, client),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -63,7 +67,6 @@ export function InsightsView({ client }: InsightsViewProps = {}) {
 
   return (
     <div style={{ padding: "24px", maxWidth: "900px", margin: "0 auto" }}>
-
       {/* Locale selector for weekly summary */}
       <div style={{ marginBottom: "24px", display: "flex", gap: "8px", alignItems: "center" }}>
         <label
@@ -107,7 +110,14 @@ export function InsightsView({ client }: InsightsViewProps = {}) {
       {hasAnyData ? (
         <Fragment>
           <section aria-labelledby="patterns-heading" style={{ marginBottom: "32px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
               <h2 id="patterns-heading" style={{ margin: 0, fontSize: "1.3rem" }}>
                 {INSIGHTS_COPY.patternsHeading}
               </h2>
@@ -135,17 +145,20 @@ export function InsightsView({ client }: InsightsViewProps = {}) {
                 }}
               >
                 <p style={{ margin: 0 }}>{INSIGHTS_COPY.patternsError}</p>
-                <p style={{ margin: "8px 0 0", fontSize: "0.9rem", color: "var(--manovia-text-muted)" }}>
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: "0.9rem",
+                    color: "var(--manovia-text-muted)",
+                  }}
+                >
                   {String(patternsError)}
                 </p>
               </div>
             ) : patternsData ? (
               <Suspense
                 fallback={
-                  <p
-                    role="status"
-                    style={{ color: "var(--manovia-text-muted)", padding: "24px" }}
-                  >
+                  <p role="status" style={{ color: "var(--manovia-text-muted)", padding: "24px" }}>
                     {INSIGHTS_COPY.chartsLoading}
                   </p>
                 }

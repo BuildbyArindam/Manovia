@@ -66,11 +66,9 @@ export function RollingAverageChart({
     const latestValence = valencePoints[valencePoints.length - 1]?.valence_avg;
     const latestEnergy = energyPoints[energyPoints.length - 1]?.energy_avg;
     const avgValence =
-      valencePoints.reduce((s, p) => s + (p.valence_avg ?? 0), 0) /
-      valencePoints.length;
+      valencePoints.reduce((s, p) => s + (p.valence_avg ?? 0), 0) / valencePoints.length;
     const avgEnergy =
-      energyPoints.reduce((s, p) => s + (p.energy_avg ?? 0), 0) /
-      energyPoints.length;
+      energyPoints.reduce((s, p) => s + (p.energy_avg ?? 0), 0) / energyPoints.length;
 
     let trendText = "";
     switch (trend) {
@@ -90,12 +88,8 @@ export function RollingAverageChart({
     return (
       `${window_days}-day rolling average over ${points.length} days with data. ` +
       `Average valence ${avgValence.toFixed(1)}, average energy ${avgEnergy.toFixed(1)}. ` +
-      (latestValence != null
-        ? `Most recent: valence ${latestValence.toFixed(1)}`
-        : "") +
-      (latestEnergy != null
-        ? `, energy ${latestEnergy.toFixed(1)}`
-        : "") +
+      (latestValence != null ? `Most recent: valence ${latestValence.toFixed(1)}` : "") +
+      (latestEnergy != null ? `, energy ${latestEnergy.toFixed(1)}` : "") +
       `. ${trendText}`
     );
   }, [points, trend, trend_note, window_days, hasData]);
@@ -152,7 +146,9 @@ export function RollingAverageChart({
       {/* Chart */}
       <div
         role="img"
-        aria-label={ariaLabel ?? `${title} chart showing valence and energy over ${window_days} days`}
+        aria-label={
+          ariaLabel ?? `${title} chart showing valence and energy over ${window_days} days`
+        }
         style={{ height: 300 }}
       >
         {hasData ? (
@@ -177,10 +173,7 @@ export function RollingAverageChart({
                 tickFormatter={(v) => (v === 1 ? "1" : v === 5 ? "5" : v.toString())}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ paddingTop: "20px" }}
-                formatter={(value) => value}
-              />
+              <Legend wrapperStyle={{ paddingTop: "20px" }} formatter={(value) => value} />
               <Line
                 type="monotone"
                 dataKey="valence"
@@ -257,10 +250,7 @@ export function RollingAverageChart({
             </thead>
             <tbody>
               {points.map((p) => (
-                <tr
-                  key={p.day}
-                  style={{ borderBottom: "1px solid var(--manovia-border)" }}
-                >
+                <tr key={p.day} style={{ borderBottom: "1px solid var(--manovia-border)" }}>
                   <td style={{ padding: "8px" }}>{p.day}</td>
                   <td style={{ padding: "8px", textAlign: "right" }}>
                     {p.valence_avg !== null ? p.valence_avg.toFixed(1) : "—"}

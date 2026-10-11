@@ -104,17 +104,20 @@ describe("insights endpoints", () => {
   });
 
   it("surfaces the backend's error message rather than a bare status", async () => {
-    const client = clientWith(async () =>
-      new Response(
-        JSON.stringify({
-          error: { code: "invalid_timezone", message: "That timezone is not one this service knows.", request_id: "r-1" },
-        }),
-        { status: 422, headers: { "Content-Type": "application/json" } },
-      ),
+    const client = clientWith(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "invalid_timezone",
+              message: "That timezone is not one this service knows.",
+              request_id: "r-1",
+            },
+          }),
+          { status: 422, headers: { "Content-Type": "application/json" } },
+        ),
     );
 
-    await expect(fetchInsightsPatterns(client)).rejects.toThrowError(
-      /not one this service knows/,
-    );
+    await expect(fetchInsightsPatterns(client)).rejects.toThrowError(/not one this service knows/);
   });
 });

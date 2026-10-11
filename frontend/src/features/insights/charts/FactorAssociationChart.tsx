@@ -60,8 +60,7 @@ export function FactorAssociationChart({
         pValue: a.p_value,
         note: a.note,
         color: getCategoricalColour(i),
-        hasEnoughData:
-          a.with_factor_count >= minPerGroup && a.without_factor_count >= minPerGroup,
+        hasEnoughData: a.with_factor_count >= minPerGroup && a.without_factor_count >= minPerGroup,
       })),
     [data, minPerGroup],
   );
@@ -76,9 +75,7 @@ export function FactorAssociationChart({
     const withData = chartData.filter((d) => d.hasEnoughData);
     const parts = withData.map((d) => {
       const diff =
-        d.withFactor !== null && d.withoutFactor !== null
-          ? d.withFactor - d.withoutFactor
-          : 0;
+        d.withFactor !== null && d.withoutFactor !== null ? d.withFactor - d.withoutFactor : 0;
       const direction = diff > 0 ? "higher" : diff < 0 ? "lower" : "similar";
       return `${d.factor}: ${Math.abs(diff).toFixed(1)} points ${direction} on days with the tag (n=${d.withCount} vs ${d.withoutCount})`;
     });
@@ -120,9 +117,7 @@ export function FactorAssociationChart({
           </p>
         )}
         {point.pValue !== null && (
-          <p style={{ margin: "4px 0 0" }}>
-            p = {point.pValue.toFixed(3)}
-          </p>
+          <p style={{ margin: "4px 0 0" }}>p = {point.pValue.toFixed(3)}</p>
         )}
       </div>
     );
@@ -135,7 +130,8 @@ export function FactorAssociationChart({
       </h3>
 
       <p style={{ marginBottom: "12px", color: "var(--manovia-text-muted)", fontSize: "0.9rem" }}>
-        Average mood on days with vs without each context tag. This is an association, not causation.
+        Average mood on days with vs without each context tag. This is an association, not
+        causation.
       </p>
 
       {/* Text summary — uniquely named, because every chart on this page has one. */}
@@ -192,27 +188,31 @@ export function FactorAssociationChart({
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: "20px" }} />
-              {chartData.filter((d) => d.hasEnoughData).map((d) => (
-                <Bar
-                  key={d.factor}
-                  dataKey="withFactor"
-                  name="With tag"
-                  fill={d.color}
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={24}
-                />
-              ))}
-              {chartData.filter((d) => d.hasEnoughData).map((d) => (
-                <Bar
-                  key={`${d.factor}-without`}
-                  dataKey="withoutFactor"
-                  name="Without tag"
-                  fill={d.color}
-                  fillOpacity={0.4}
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={24}
-                />
-              ))}
+              {chartData
+                .filter((d) => d.hasEnoughData)
+                .map((d) => (
+                  <Bar
+                    key={d.factor}
+                    dataKey="withFactor"
+                    name="With tag"
+                    fill={d.color}
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={24}
+                  />
+                ))}
+              {chartData
+                .filter((d) => d.hasEnoughData)
+                .map((d) => (
+                  <Bar
+                    key={`${d.factor}-without`}
+                    dataKey="withoutFactor"
+                    name="Without tag"
+                    fill={d.color}
+                    fillOpacity={0.4}
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={24}
+                  />
+                ))}
               <ReferenceLine x={3} stroke="var(--manovia-text-muted)" strokeDasharray="2 2" />
             </BarChart>
           </ResponsiveContainer>
@@ -260,10 +260,7 @@ export function FactorAssociationChart({
             </thead>
             <tbody>
               {data.map((a) => (
-                <tr
-                  key={a.factor}
-                  style={{ borderBottom: "1px solid var(--manovia-border)" }}
-                >
+                <tr key={a.factor} style={{ borderBottom: "1px solid var(--manovia-border)" }}>
                   <td style={{ padding: "8px", fontWeight: 500 }}>{a.factor}</td>
                   <td style={{ padding: "8px", textAlign: "right" }}>
                     {a.with_factor_avg !== null ? a.with_factor_avg.toFixed(1) : "—"}

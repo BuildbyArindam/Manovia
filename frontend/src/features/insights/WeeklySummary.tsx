@@ -100,29 +100,39 @@ export function WeeklySummaryCard({ data, loading, error }: WeeklySummaryProps) 
         }}
       >
         <div>
-          <dt style={{ fontSize: "0.8rem", color: "var(--manovia-text-muted)", marginBottom: "4px" }}>
+          <dt
+            style={{ fontSize: "0.8rem", color: "var(--manovia-text-muted)", marginBottom: "4px" }}
+          >
             Average valence
           </dt>
           <dd style={{ margin: 0, fontSize: "1.5rem", fontWeight: 600 }}>
             {data.valence_avg !== null ? data.valence_avg.toFixed(1) : "—"}
-            <span style={{ fontSize: "0.9rem", fontWeight: 400, color: "var(--manovia-text-muted)" }}>
+            <span
+              style={{ fontSize: "0.9rem", fontWeight: 400, color: "var(--manovia-text-muted)" }}
+            >
               /5
             </span>
           </dd>
         </div>
         <div>
-          <dt style={{ fontSize: "0.8rem", color: "var(--manovia-text-muted)", marginBottom: "4px" }}>
+          <dt
+            style={{ fontSize: "0.8rem", color: "var(--manovia-text-muted)", marginBottom: "4px" }}
+          >
             Average energy
           </dt>
           <dd style={{ margin: 0, fontSize: "1.5rem", fontWeight: 600 }}>
             {data.energy_avg !== null ? data.energy_avg.toFixed(1) : "—"}
-            <span style={{ fontSize: "0.9rem", fontWeight: 400, color: "var(--manovia-text-muted)" }}>
+            <span
+              style={{ fontSize: "0.9rem", fontWeight: 400, color: "var(--manovia-text-muted)" }}
+            >
               /5
             </span>
           </dd>
         </div>
         <div>
-          <dt style={{ fontSize: "0.8rem", color: "var(--manovia-text-muted)", marginBottom: "4px" }}>
+          <dt
+            style={{ fontSize: "0.8rem", color: "var(--manovia-text-muted)", marginBottom: "4px" }}
+          >
             Trend
           </dt>
           <dd style={{ margin: 0, fontWeight: 600 }}>{trendLabel(data.trend)}</dd>

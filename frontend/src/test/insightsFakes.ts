@@ -33,9 +33,7 @@ export function rollingWindow(overrides: Partial<RollingWindow> = {}): RollingWi
   };
 }
 
-export function factorAssociation(
-  overrides: Partial<FactorAssociation> = {},
-): FactorAssociation {
+export function factorAssociation(overrides: Partial<FactorAssociation> = {}): FactorAssociation {
   return {
     factor: "sleep",
     with_factor_avg: 2.2,
@@ -81,9 +79,7 @@ export function sevenDayWindow(overrides: Partial<RollingWindow> = {}): RollingW
   };
 }
 
-export function insightsPatterns(
-  overrides: Partial<InsightsPatterns> = {},
-): InsightsPatterns {
+export function insightsPatterns(overrides: Partial<InsightsPatterns> = {}): InsightsPatterns {
   return {
     rolling_7: sevenDayWindow(),
     rolling_30: rollingWindow({ window_days: 30, points: sevenDayWindow().points }),
@@ -202,22 +198,30 @@ export function sparseInsightsPatterns(): InsightsPatterns {
       trend: "not_enough_data",
       trend_note: "Need at least 7 days with check-ins to show a trend.",
     }),
-    factor_associations: ["sleep", "study", "work", "family", "friends", "health", "money", "weather"].map(
-      (factor) =>
-        factorAssociation({
-          factor,
-          with_factor_avg: null,
-          without_factor_avg: 3.0,
-          with_factor_count: 0,
-          without_factor_count: 3,
-          effect_size: null,
-          ci_lower: null,
-          ci_upper: null,
-          p_value: null,
-          note:
-            `Not enough data to compare days with vs without ${factor} ` +
-            "(need at least 5 days per group; have 0 with, 3 without).",
-        }),
+    factor_associations: [
+      "sleep",
+      "study",
+      "work",
+      "family",
+      "friends",
+      "health",
+      "money",
+      "weather",
+    ].map((factor) =>
+      factorAssociation({
+        factor,
+        with_factor_avg: null,
+        without_factor_avg: 3.0,
+        with_factor_count: 0,
+        without_factor_count: 3,
+        effect_size: null,
+        ci_lower: null,
+        ci_upper: null,
+        p_value: null,
+        note:
+          `Not enough data to compare days with vs without ${factor} ` +
+          "(need at least 5 days per group; have 0 with, 3 without).",
+      }),
     ),
     hourly_patterns: Array.from({ length: 24 }, (_, h) =>
       timePattern({
@@ -247,13 +251,13 @@ export function exportBundle(overrides: Partial<ExportBundle> = {}): ExportBundl
   return {
     entries_csv:
       "local_date,created_at_utc,valence,energy,emotions,factors,note\n" +
-      "2026-03-15,2026-03-15T09:00:00Z,3,3,\"\",\"sleep\",",
+      '2026-03-15,2026-03-15T09:00:00Z,3,3,"","sleep",',
     factor_associations_csv:
       "factor,with_factor_avg,without_factor_avg,with_factor_count,without_factor_count," +
       "effect_size,ci_lower,ci_upper,p_value,note\n" +
-      "sleep,2.2,3.4,9,21,-0.9,-1.3,-0.5,0.002,\"On days you tagged sleep…\"",
+      'sleep,2.2,3.4,9,21,-0.9,-1.3,-0.5,0.002,"On days you tagged sleep…"',
     time_patterns_csv:
-      "type,bucket,valence_avg,energy_avg,count,note\nhour,10,3.1,3.0,6,\"6 check-in(s) in this hour.\"",
+      'type,bucket,valence_avg,energy_avg,count,note\nhour,10,3.1,3.0,6,"6 check-in(s) in this hour."',
     ...overrides,
   };
 }
@@ -284,7 +288,10 @@ export function makeInsightsFake(
     client: {} as ApiClient,
     locales: [],
     patterns: options.patterns ?? insightsPatterns(),
-    weekly: typeof options.weekly === "function" ? options.weekly("en") : (options.weekly ?? weeklySummary()),
+    weekly:
+      typeof options.weekly === "function"
+        ? options.weekly("en")
+        : (options.weekly ?? weeklySummary()),
     export: options.export ?? exportBundle(),
     paths: [],
   };

@@ -57,19 +57,17 @@ export function AboutInsights() {
         <h4 style={{ margin: "16px 0 8px" }}>How the calculations work</h4>
         <ul style={{ margin: 0, paddingLeft: "20px" }}>
           <li>
-            <strong>Rolling averages:</strong> Daily averages of valence and energy, with a
-            linear trend fitted over 7 or 30 days. Trend direction only claimed with ≥ 7
-            days of data.
+            <strong>Rolling averages:</strong> Daily averages of valence and energy, with a linear
+            trend fitted over 7 or 30 days. Trend direction only claimed with ≥ 7 days of data.
           </li>
           <li>
-            <strong>Factor associations:</strong> For each tag, compares average valence on
-            days with vs without the tag. Reports Cohen's d (effect size), a bootstrap
-            95% confidence interval, and a permutation test p-value. Requires ≥ 5 days
-            per group.
+            <strong>Factor associations:</strong> For each tag, compares average valence on days
+            with vs without the tag. Reports Cohen's d (effect size), a bootstrap 95% confidence
+            interval, and a permutation test p-value. Requires ≥ 5 days per group.
           </li>
           <li>
-            <strong>Time patterns:</strong> Average valence/energy by hour and weekday.
-            Same minimum-data rule (≥ 5 check-ins per bucket).
+            <strong>Time patterns:</strong> Average valence/energy by hour and weekday. Same
+            minimum-data rule (≥ 5 check-ins per bucket).
           </li>
           <li>
             <strong>Weekly summary:</strong> Template-based text (English, Hindi, Bengali)
@@ -85,8 +83,8 @@ export function AboutInsights() {
         </ul>
 
         <p style={{ margin: "16px 0 0", fontSize: "0.9rem", color: "var(--manovia-text-muted)" }}>
-          If something looks wrong or you have questions, the data table alternative under
-          each chart shows the exact numbers used.
+          If something looks wrong or you have questions, the data table alternative under each
+          chart shows the exact numbers used.
         </p>
       </div>
     </details>

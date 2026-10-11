@@ -4,11 +4,7 @@
 
 import { api as defaultClient, type ApiClient } from "@/lib/api";
 
-import type {
-  ExportBundle,
-  InsightsPatterns,
-  WeeklySummary,
-} from "./types";
+import type { ExportBundle, InsightsPatterns, WeeklySummary } from "./types";
 
 export const INSIGHTS_ENDPOINTS = {
   weekly: "/insights/weekly",
@@ -35,9 +31,7 @@ export async function fetchWeeklySummary(
     tz: deviceTimezone(),
     locale: options.locale ?? "en",
   });
-  return client.get<WeeklySummary>(
-    `${INSIGHTS_ENDPOINTS.weekly}?${params.toString()}`,
-  );
+  return client.get<WeeklySummary>(`${INSIGHTS_ENDPOINTS.weekly}?${params.toString()}`);
 }
 
 /** Rolling averages, factor associations, and time patterns. */
@@ -45,17 +39,11 @@ export async function fetchInsightsPatterns(
   client: ApiClient = defaultClient,
 ): Promise<InsightsPatterns> {
   const params = new URLSearchParams({ tz: deviceTimezone() });
-  return client.get<InsightsPatterns>(
-    `${INSIGHTS_ENDPOINTS.patterns}?${params.toString()}`,
-  );
+  return client.get<InsightsPatterns>(`${INSIGHTS_ENDPOINTS.patterns}?${params.toString()}`);
 }
 
 /** Export all insights data as CSV. */
-export async function exportInsights(
-  client: ApiClient = defaultClient,
-): Promise<ExportBundle> {
+export async function exportInsights(client: ApiClient = defaultClient): Promise<ExportBundle> {
   const params = new URLSearchParams({ tz: deviceTimezone() });
-  return client.get<ExportBundle>(
-    `${INSIGHTS_ENDPOINTS.export}?${params.toString()}`,
-  );
+  return client.get<ExportBundle>(`${INSIGHTS_ENDPOINTS.export}?${params.toString()}`);
 }

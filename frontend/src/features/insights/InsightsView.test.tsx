@@ -47,56 +47,64 @@ function renderView(fake: ReturnType<typeof makeInsightsFake>) {
 }
 
 describe("InsightsView", () => {
-  it("shows the weekly summary, the patterns, and the limitation explainer", async () => {
-    const fake = makeInsightsFake();
-    renderView(fake);
+  it(
+    "shows the weekly summary, the patterns, and the limitation explainer",
+    async () => {
+      const fake = makeInsightsFake();
+      renderView(fake);
 
-    // The weekly summary's own words, from the backend template.
-    const weeklyText = await screen.findByText(/Your week in review/i);
-    const weeklyCard = weeklyText.closest("article");
-    expect(weeklyCard).not.toBeNull();
-    expect(within(weeklyCard as HTMLElement).getByText(/Average valence/i)).toBeInTheDocument();
-    expect(within(weeklyCard as HTMLElement).getByText("3.2")).toBeInTheDocument();
-    expect(within(weeklyCard as HTMLElement).getByText("Trending up")).toBeInTheDocument();
+      // The weekly summary's own words, from the backend template.
+      const weeklyText = await screen.findByText(/Your week in review/i);
+      const weeklyCard = weeklyText.closest("article");
+      expect(weeklyCard).not.toBeNull();
+      expect(within(weeklyCard as HTMLElement).getByText(/Average valence/i)).toBeInTheDocument();
+      expect(within(weeklyCard as HTMLElement).getByText("3.2")).toBeInTheDocument();
+      expect(within(weeklyCard as HTMLElement).getByText("Trending up")).toBeInTheDocument();
 
-    // The charts, with their text alternatives — one named summary per chart, so
-    // five distinct regions rather than five identical ones.
-    const summaries = await screen.findAllByRole("region", { name: /Text summary: / });
-    expect(summaries.map((node) => node.getAttribute("aria-label"))).toEqual([
-      "Text summary: 7-day rolling average",
-      "Text summary: 30-day rolling average",
-      "Text summary: Factor associations",
-      "Text summary: Hourly patterns",
-      "Text summary: Weekday patterns",
-    ]);
-    // ...and six data tables (the 7-day chart is rendered twice: page + this list).
-    expect(screen.getAllByText("Data table alternative").length).toBeGreaterThanOrEqual(5);
+      // The charts, with their text alternatives — one named summary per chart, so
+      // five distinct regions rather than five identical ones.
+      const summaries = await screen.findAllByRole("region", { name: /Text summary: / });
+      expect(summaries.map((node) => node.getAttribute("aria-label"))).toEqual([
+        "Text summary: 7-day rolling average",
+        "Text summary: 30-day rolling average",
+        "Text summary: Factor associations",
+        "Text summary: Hourly patterns",
+        "Text summary: Weekday patterns",
+      ]);
+      // ...and six data tables (the 7-day chart is rendered twice: page + this list).
+      expect(screen.getAllByText("Data table alternative").length).toBeGreaterThanOrEqual(5);
 
-    // And the explainer, which is the honest half of the feature.
-    expect(screen.getByText("About these insights")).toBeInTheDocument();
-  }, CHART_TIMEOUT_MS);
+      // And the explainer, which is the honest half of the feature.
+      expect(screen.getByText("About these insights")).toBeInTheDocument();
+    },
+    CHART_TIMEOUT_MS,
+  );
 
-  it("says 'not enough data' for a person with three check-ins, and draws no trend", async () => {
-    const fake = makeInsightsFake({
-      patterns: sparseInsightsPatterns(),
-      weekly: emptyWeeklySummary(),
-    });
-    renderView(fake);
+  it(
+    "says 'not enough data' for a person with three check-ins, and draws no trend",
+    async () => {
+      const fake = makeInsightsFake({
+        patterns: sparseInsightsPatterns(),
+        weekly: emptyWeeklySummary(),
+      });
+      renderView(fake);
 
-    // The weekly card is honest about having nothing to summarise...
-    expect(await screen.findByText(/No check-ins this week/i)).toBeInTheDocument();
+      // The weekly card is honest about having nothing to summarise...
+      expect(await screen.findByText(/No check-ins this week/i)).toBeInTheDocument();
 
-    // ...the trend is not claimed...
-    const summaries = await screen.findAllByRole("region", { name: /Text summary: / });
-    const trendSummary = summaries[0];
-    expect(trendSummary).toHaveTextContent(/Need at least 7 days with check-ins/i);
+      // ...the trend is not claimed...
+      const summaries = await screen.findAllByRole("region", { name: /Text summary: / });
+      const trendSummary = summaries[0];
+      expect(trendSummary).toHaveTextContent(/Need at least 7 days with check-ins/i);
 
-    // ...and the factor comparisons say the same.
-    const factorSummary = summaries.find((node) =>
-      node.textContent?.includes("Not enough data for any factor comparison"),
-    );
-    expect(factorSummary).toBeDefined();
-  }, CHART_TIMEOUT_MS);
+      // ...and the factor comparisons say the same.
+      const factorSummary = summaries.find((node) =>
+        node.textContent?.includes("Not enough data for any factor comparison"),
+      );
+      expect(factorSummary).toBeDefined();
+    },
+    CHART_TIMEOUT_MS,
+  );
 
   it("shows the empty state rather than an empty dashboard", async () => {
     const fake = makeInsightsFake({
@@ -109,9 +117,7 @@ describe("InsightsView", () => {
     renderView(fake);
 
     expect(await screen.findByText("No insights yet")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Check in for a few days to see patterns/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Check in for a few days to see patterns/i)).toBeInTheDocument();
   });
 
   it("lists every limitation in the 'About these insights' explainer", async () => {
@@ -187,11 +193,7 @@ describe("InsightsView", () => {
     await user.click(await screen.findByRole("button", { name: /Export as CSV/i }));
 
     await waitFor(() => expect(created).toHaveLength(3));
-    expect(names).toEqual([
-      "mood-entries.csv",
-      "factor-associations.csv",
-      "time-patterns.csv",
-    ]);
+    expect(names).toEqual(["mood-entries.csv", "factor-associations.csv", "time-patterns.csv"]);
     expect(await screen.findByText(/CSV files downloaded/i)).toBeInTheDocument();
     expect(fake.paths.some((path) => path.startsWith("/insights/export"))).toBe(true);
     click.mockRestore();
@@ -208,31 +210,39 @@ describe("InsightsView", () => {
     expect(status).toHaveTextContent(/Could not prepare the export/i);
   });
 
-  it("keeps a chart's table available to a keyboard user", async () => {
-    const fake = makeInsightsFake();
-    const user = userEvent.setup();
-    renderView(fake);
+  it(
+    "keeps a chart's table available to a keyboard user",
+    async () => {
+      const fake = makeInsightsFake();
+      const user = userEvent.setup();
+      renderView(fake);
 
-    const summaries = await screen.findAllByRole("region", { name: /Text summary: / });
-    const section = summaries[0]?.closest("section");
-    expect(section).not.toBeNull();
+      const summaries = await screen.findAllByRole("region", { name: /Text summary: / });
+      const section = summaries[0]?.closest("section");
+      expect(section).not.toBeNull();
 
-    // <details>/<summary> is natively keyboard-operable — no ARIA needed.
-    const disclosure = within(section as HTMLElement).getByText("Data table alternative");
-    expect(disclosure.tagName).toBe("SUMMARY");
+      // <details>/<summary> is natively keyboard-operable — no ARIA needed.
+      const disclosure = within(section as HTMLElement).getByText("Data table alternative");
+      expect(disclosure.tagName).toBe("SUMMARY");
 
-    await user.click(disclosure);
-    const table = within(section as HTMLElement).getByRole("table");
-    expect(within(table).getAllByRole("row").length).toBeGreaterThan(1);
-  }, CHART_TIMEOUT_MS);
+      await user.click(disclosure);
+      const table = within(section as HTMLElement).getByRole("table");
+      expect(within(table).getAllByRole("row").length).toBeGreaterThan(1);
+    },
+    CHART_TIMEOUT_MS,
+  );
 
-  it("has no axe violations with data on screen", async () => {
-    const fake = makeInsightsFake();
-    const { container } = renderView(fake);
+  it(
+    "has no axe violations with data on screen",
+    async () => {
+      const fake = makeInsightsFake();
+      const { container } = renderView(fake);
 
-    await screen.findAllByRole("region", { name: /Text summary: / });
-    expect(await axe(container)).toHaveNoViolations();
-  }, CHART_TIMEOUT_MS);
+      await screen.findAllByRole("region", { name: /Text summary: / });
+      expect(await axe(container)).toHaveNoViolations();
+    },
+    CHART_TIMEOUT_MS,
+  );
 
   it("has no axe violations in the empty state", async () => {
     const fake = makeInsightsFake({

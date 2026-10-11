@@ -69,7 +69,10 @@ const JUDGEMENTAL_WORDS = ["lazy", "failure", "weak", "broken", "fault", "excuse
 function contains(haystack: string, needle: string): boolean {
   // Word-ish boundary: "at least" must not match inside "greatest", but
   // punctuation and spaces both count as boundaries.
-  const pattern = new RegExp(`(^|[^a-z])${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`, "i");
+  const pattern = new RegExp(
+    `(^|[^a-z])${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`,
+    "i",
+  );
   return pattern.test(haystack);
 }
 

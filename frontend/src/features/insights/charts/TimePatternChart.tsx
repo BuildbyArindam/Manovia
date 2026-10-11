@@ -2,15 +2,7 @@
  * Time pattern chart (hourly or weekday) with text summary and data table alternative.
  */
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useId, useMemo } from "react";
 
 import type { TimePattern } from "../types";
@@ -155,10 +147,7 @@ export function TimePatternChart({
       >
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-            >
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="var(--manovia-border)"
@@ -235,10 +224,7 @@ export function TimePatternChart({
             </thead>
             <tbody>
               {data.map((d) => (
-                <tr
-                  key={d.bucket}
-                  style={{ borderBottom: "1px solid var(--manovia-border)" }}
-                >
+                <tr key={d.bucket} style={{ borderBottom: "1px solid var(--manovia-border)" }}>
                   <td style={{ padding: "8px", fontWeight: 500 }}>{d.bucket}</td>
                   <td style={{ padding: "8px", textAlign: "right" }}>
                     {d.valence_avg !== null ? d.valence_avg.toFixed(1) : "—"}
@@ -247,7 +233,13 @@ export function TimePatternChart({
                     {d.energy_avg !== null ? d.energy_avg.toFixed(1) : "—"}
                   </td>
                   <td style={{ padding: "8px", textAlign: "right" }}>{d.count}</td>
-                  <td style={{ padding: "8px", fontSize: "0.8rem", color: "var(--manovia-text-muted)" }}>
+                  <td
+                    style={{
+                      padding: "8px",
+                      fontSize: "0.8rem",
+                      color: "var(--manovia-text-muted)",
+                    }}
+                  >
                     {d.note}
                   </td>
                 </tr>
