@@ -92,12 +92,17 @@ describe("App", () => {
     }
   });
 
-  it("renders each page under its own heading", () => {
+  it("renders each page under its own heading", async () => {
     completeOnboarding();
 
     for (const route of ROUTES) {
       const { unmount } = renderApp(route.path);
-      expect(screen.getByRole("heading", { level: 1, name: route.heading })).toBeInTheDocument();
+      // `find`, not `get`: the insights page is lazy-loaded so its chart library
+      // stays out of the main bundle, which means its heading arrives a tick
+      // after the route renders.
+      expect(
+        await screen.findByRole("heading", { level: 1, name: route.heading }),
+      ).toBeInTheDocument();
       unmount();
     }
   });
@@ -135,7 +140,7 @@ describe("App", () => {
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByRole("heading", { level: 1, name: "Insights" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Insights" })).toBeInTheDocument();
   });
 
   it("navigates between pages through the navigation", async () => {

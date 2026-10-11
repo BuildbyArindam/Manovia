@@ -5,12 +5,30 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any, NamedTuple
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt_optional, encrypt_optional
 from app.models.mood import MoodEntry
+
+
+class MoodInsightRow(NamedTuple):
+    """The five columns an insight is allowed to look at, and no others.
+
+    Named rather than passed around as a bare tuple so a future column cannot be
+    appended to the projection and quietly arrive in somebody's summary. The
+    encrypted note is not in this type, which is the point: the insights query
+    projects these columns and nothing else, so no insight code path can read a
+    private sentence even by accident.
+    """
+
+    created_at: datetime
+    valence: int
+    energy: int
+    emotions: list[str]
+    factors: dict[str, Any]
 
 
 class MoodRepository:
@@ -92,6 +110,49 @@ class MoodRepository:
             .order_by(MoodEntry.created_at.desc())
         )
         return (await self._session.execute(stmt)).scalars().all()
+
+    async def insights_rows(
+        self, user_id: uuid.UUID, *, since: datetime | None = None
+    ) -> Sequence[MoodInsightRow]:
+        """Everything an insight may read, oldest first, and nothing else.
+
+        Two deliberate choices. The projection is explicit (see
+        :class:`MoodInsightRow`), so the encrypted note is never decrypted, never
+        loaded and never one refactor away from a summary. And there is no
+        ``limit``: an average over a window that has been silently truncated is a
+        wrong number presented as a right one, so the caller bounds the query by
+        *time* instead — ``since`` — and the insight layer bounds the window.
+        """
+        stmt = select(
+            MoodEntry.created_at,
+            MoodEntry.valence,
+            MoodEntry.energy,
+            MoodEntry.emotions,
+            MoodEntry.factors,
+        ).where(MoodEntry.user_id == user_id)
+        if since is not None:
+            stmt = stmt.where(MoodEntry.created_at >= since)
+        stmt = stmt.order_by(MoodEntry.created_at)
+        rows = (await self._session.execute(stmt)).all()
+        return [
+            MoodInsightRow(
+                created_at=row.created_at,
+                valence=row.valence,
+                energy=row.energy,
+                emotions=list(row.emotions or []),
+                factors=dict(row.factors or {}),
+            )
+            for row in rows
+        ]
+
+    async def count_for_user(self, user_id: uuid.UUID) -> int:
+        """How many check-ins this person has in total.
+
+        Used so an insight can say "12 of your 40 check-ins" instead of implying
+        that the window it looked at is everything the person has ever written.
+        """
+        stmt = select(func.count()).select_from(MoodEntry).where(MoodEntry.user_id == user_id)
+        return int((await self._session.execute(stmt)).scalar_one())
 
     async def delete(self, entry: MoodEntry) -> None:
         """Remove one check-in. The caller decides whether it may be removed."""
