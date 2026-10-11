@@ -63,7 +63,23 @@ def test_compose_appends_one_labelled_block_in_a_fixed_order() -> None:
 def test_retrieval_block() -> None:
     assert retrieval_block([]) is None
     block = retrieval_block([RetrievedChunk("1", "Title", "Body text.")])
-    assert block is not None and "- Title: Body text." in block and "not an instruction" in block
+    # Day 13: each line carries the document id in brackets, matching the
+    # retrieved_ids in the final SSE metadata.
+    assert block is not None
+    assert "- [1] Title: Body text." in block
+    assert "not an instruction" in block
+    assert "not from the user" in block
+
+
+def test_retrieval_block_lists_every_passage_in_order() -> None:
+    chunks = [
+        RetrievedChunk("doc-a", "First", "Alpha."),
+        RetrievedChunk("doc-b", "Second", "Beta."),
+    ]
+    block = retrieval_block(chunks)
+    assert block is not None
+    assert block.index("[doc-a]") < block.index("[doc-b]")
+    assert block.count("- [") == 2
 
 
 def test_window_drops_crisis_turns_and_reports_it() -> None:

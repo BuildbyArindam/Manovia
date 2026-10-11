@@ -256,3 +256,65 @@ def test_chat_settings_are_read_from_the_environment(monkeypatch: pytest.MonkeyP
 def test_absurd_chat_settings_are_refused_at_startup(bad: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **bad)
+
+
+# --------------------------------------------------------------------------- #
+# Day 13: retrieval settings                                                    #
+# --------------------------------------------------------------------------- #
+
+
+def test_rag_settings_have_safe_defaults() -> None:
+    from app.core.config import RAG_EMBEDDER_CHOICES
+    from app.services.rag.embedders import EMBEDDER_KINDS
+
+    settings = Settings(_env_file=None)
+    assert settings.rag_enabled is True
+    assert settings.rag_embedder == "auto"  # real model when available, tfidf offline
+    assert settings.rag_embedding_model_id  # documented in .env.example, never hard-coded elsewhere
+    assert settings.rag_embedding_dim >= 64
+    assert settings.rag_persist_dir
+    assert settings.rag_min_similarity == 0.0, "0 = defer to the per-embedder floor"
+    assert 200 <= settings.rag_chunk_words <= 300, "the brief's chunk band"
+    assert 0 < settings.rag_chunk_overlap_words < settings.rag_chunk_words
+    assert 1 <= settings.rag_retrieval_limit <= 10
+    assert set(RAG_EMBEDDER_CHOICES) == set(EMBEDDER_KINDS)
+
+
+def test_rag_settings_are_read_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RAG_ENABLED", "false")
+    monkeypatch.setenv("RAG_EMBEDDER", "tfidf")
+    monkeypatch.setenv("RAG_MIN_SIMILARITY", "0.2")
+    monkeypatch.setenv("RAG_RETRIEVAL_LIMIT", "5")
+    settings = Settings(_env_file=None)
+    assert settings.rag_enabled is False
+    assert settings.rag_embedder == "tfidf"
+    assert settings.rag_min_similarity == 0.2
+    assert settings.rag_retrieval_limit == 5
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"rag_embedder": "brainwaves"},
+        {"rag_embedding_model_id": "   "},
+        {"rag_embedding_dim": 8},
+        {"rag_persist_dir": "  "},
+        {"rag_min_similarity": 1.5},
+        {"rag_min_similarity": -0.1},
+        {"rag_chunk_words": 10},
+        {"rag_chunk_words": 10_000},
+        {"rag_chunk_overlap_words": 500, "rag_chunk_words": 220},
+        {"rag_retrieval_limit": 0},
+        {"rag_retrieval_limit": 11},
+    ],
+)
+def test_absurd_rag_settings_are_refused_at_startup(bad: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **bad)
+
+
+def test_blank_embedding_model_only_rejected_for_model_kinds() -> None:
+    # tfidf/hashing never touch the model, so a blank id is fine there.
+    Settings(_env_file=None, rag_embedder="tfidf", rag_embedding_model_id="")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, rag_embedder="sentence_transformers", rag_embedding_model_id="")

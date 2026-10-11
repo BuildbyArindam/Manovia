@@ -232,8 +232,19 @@ async def test_long_conversations_are_windowed_to_the_budget() -> None:
     primary = FakeLLMProvider()
     turns = messages(*[f"turn number {index} with some words in it" for index in range(40)])
     await chain(primary).complete(turns)
-    # 8-turn window, and the newest turn is always the one that survived.
-    assert len(last_call(primary).messages) == 8
+    # The window is bounded by the 8-turn cap AND by the tokens left after the
+    # rendered system prompt (whose length is versioned product surface, so
+    # the exact count is not pinned) -- but the newest turn always survives,
+    # the oldest are dropped, and the kept slice stays inside the budget.
+    guard = TokenGuard(max_input_chars=400, window_turns=8, window_tokens=800)
+    call = last_call(primary)
+    kept = call.messages
+    assert 0 < len(kept) <= 8, "bounded by the turn cap"
+    assert len(kept) < 40, "a long conversation is actually cut"
+    assert kept[-1].content.endswith("turn number 39 with some words in it")
+    assert "turn number 0 with" not in kept[0].content, "oldest turns dropped"
+    budget = 800 - guard.estimate_tokens(call.system or "")
+    assert sum(guard.estimate_tokens(m.content) for m in kept) <= budget
     # messages() alternates user/assistant, so the newest *user* turn is 38.
     assert "turn number 38" in last_call(primary).user_text
 
