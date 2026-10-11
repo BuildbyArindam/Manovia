@@ -1,0 +1,197 @@
+{
+  "version": "1.0.0",
+  "supported_locales": ["en", "hi", "bn"],
+  "templates": [
+    {
+      "id": "free",
+      "label": {
+        "en": "Free writing",
+        "hi": "मुक्त लेखन",
+        "bn": "মুক্ত লেখা"
+      },
+      "description": {
+        "en": "An open page with no structure — write whatever is on your mind.",
+        "hi": "बिना किसी ढाँचे के खुला पन्ना — जो भी मन में हो लिखें।",
+        "bn": "কোনো কাঠামো ছাড়াই খোলা পাতা — মনে যা আসছে তাই লিখুন।"
+      },
+      "scaffold_title": {
+        "en": "",
+        "hi": "",
+        "bn": ""
+      },
+      "scaffold_body": {
+        "en": "",
+        "hi": "",
+        "bn": ""
+      }
+    },
+    {
+      "id": "gratitude",
+      "label": {
+        "en": "Gratitude",
+        "hi": "कृतज्ञता (Gratitude)",
+        "bn": "কৃতজ্ঞতা (Gratitude)"
+      },
+      "description": {
+        "en": "Notice three small, concrete things that steadied or supported you today.",
+        "hi": "आज की तीन छोटी, ठोस बातों पर ध्यान दें जिन्होंने आपको सहारा या सुकून दिया।",
+        "bn": "আজকের তিনটি ছোট, বাস্তব বিষয়ের কথা লিখুন যা আপনাকে স্বস্তি বা ভরসা দিয়েছে।"
+      },
+      "scaffold_title": {
+        "en": "Three small anchors today",
+        "hi": "आज के तीन छोटे सहारे",
+        "bn": "আজকের তিনটি ছোট ভরসা"
+      },
+      "scaffold_body": {
+        "en": "1. One small moment or detail I appreciated today:\n\n2. Something or someone that made the day a little easier:\n\n3. One thing my body or mind helped me get through today:\n",
+        "hi": "1. आज का एक छोटा पल या बात जो मुझे अच्छी लगी:\n\n2. कोई चीज़ या व्यक्ति जिसने आज का दिन थोड़ा आसान बनाया:\n\n3. एक बात जिसमें मेरे मन या शरीर ने आज मेरा साथ दिया:\n",
+        "bn": "1. আজকের একটি ছোট মুহূর্ত বা বিষয় যা আমার ভালো লেগেছে:\n\n2. এমন কিছু বা কেউ যা আজকের দিনটিকে একটু সহজ করেছে:\n\n3. একটি বিষয় যা আজ আমার মন বা শরীর আমাকে পার করতে সাহায্য করেছে:\n"
+      }
+    },
+    {
+      "id": "worry_dump",
+      "label": {
+        "en": "Worry dump",
+        "hi": "चिंता उतारें (Worry dump)",
+        "bn": "দুশ্চিন্তা নামিয়ে রাখুন (Worry dump)"
+      },
+      "description": {
+        "en": "Get looping thoughts out of your head onto the page, then separate what you can act on from what can wait.",
+        "hi": "दिमाग में घूमते विचारों को कागज़ पर उतारें, और अलग करें कि अभी आपके हाथ में क्या है और क्या कल तक रुक सकता है।",
+        "bn": "মাথায় ঘুরতে থাকা চিন্তাগুলো পাতায় নামিয়ে রাখুন, তারপর আলাদা করুন কোনটা আপনার হাতে আছে আর কোনটা পরে ভাবলেও চলবে।"
+      },
+      "scaffold_title": {
+        "en": "Setting down today's worries",
+        "hi": "आज की चिंताओं को पन्ने पर उतारना",
+        "bn": "আজকের দুশ্চিন্তাগুলো নামিয়ে রাখা"
+      },
+      "scaffold_body": {
+        "en": "What is looping in my head right now:\n- \n\nWhat is actually within my control in the next 24 hours:\n- \n\nWhat I give myself permission to set down until tomorrow:\n- \n",
+        "hi": "अभी मेरे दिमाग में क्या बार-बार घूम रहा है:\n- \n\nअगले 24 घंटों में वास्तव में मेरे नियंत्रण में क्या है:\n- \n\nमैं कल तक के लिए किन बातों को नीचे रखने की अनुमति देता/देती हूँ:\n- \n",
+        "bn": "এই মুহূর্তে আমার মাথায় কী বারবার ঘুরছে:\n- \n\nআগামী ২৪ ঘণ্টায় সত্যিই আমার নিয়ন্ত্রণে কী আছে:\n- \n\nআগামীকাল পর্যন্ত কোন বিষয়গুলো নামিয়ে রাখার অনুমতি আমি নিজেকে দিচ্ছি:\n- \n"
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "id": "prompt-small-anchor",
+      "category": "gratitude",
+      "template": "gratitude",
+      "text": {
+        "en": "What was one quiet moment today that felt even slightly steadier than the rest?",
+        "hi": "आज का वह कौन-सा शांत पल था जो बाकी दिन की तुलना में थोड़ा अधिक स्थिर लगा?",
+        "bn": "আজকের কোন শান্ত মুহূর্তটি বাকি দিনের চেয়ে একটু বেশি স্থির মনে হয়েছিল?"
+      },
+      "hint": {
+        "en": "It can be as small as warm tea, fresh air, or finishing one task.",
+        "hi": "यह गर्म चाय, ताज़ी हवा, या एक छोटा काम पूरा करने जितना साधारण हो सकता है।",
+        "bn": "এটি এক কাপ গরম চা, খোলা হাওয়া বা ছোট একটি কাজ শেষ করার মতো সাধারণ হতে পারে।"
+      }
+    },
+    {
+      "id": "prompt-worry-unload",
+      "category": "worry_dump",
+      "template": "worry_dump",
+      "text": {
+        "en": "If you could set down one heavy thought on this page so you don't have to carry it tonight, what would it be?",
+        "hi": "अगर आप आज रात अपने मन से एक भारी विचार इस पन्ने पर उतार कर रख सकें, तो वह क्या होगा?",
+        "bn": "আজ রাতে নিজের মন থেকে একটি ভারী চিন্তা যদি এই পাতায় নামিয়ে রাখতে পারতেন, তবে সেটি কী হতো?"
+      },
+      "hint": {
+        "en": "Don't edit or judge it — just name the worry plainly.",
+        "hi": "उसे सुधारें या परखें नहीं — बस चिंता को सीधे शब्दों में लिख दें।",
+        "bn": "কোনো বিচার বা কাটছাঁট না করে দুশ্চিন্তাটি সহজ ভাষায় লিখে ফেলুন।"
+      }
+    },
+    {
+      "id": "prompt-unspoken-need",
+      "category": "reflection",
+      "template": "free",
+      "text": {
+        "en": "What do you need a little more of right now — rest, clarity, company, or space?",
+        "hi": "इस समय आपको किस चीज़ की थोड़ी और ज़रूरत महसूस हो रही है — आराम, स्पष्टता, साथ, या अकेलापन?",
+        "bn": "এই মুহূর্তে আপনার কোন জিনিসটি একটু বেশি প্রয়োজন — বিশ্রাম, স্পষ্টতা, সঙ্গ, নাকি নিজের মতো কিছুটা সময়?"
+      },
+      "hint": {
+        "en": "Write a few lines about what one small step toward that need looks like.",
+        "hi": "उस ज़रूरत की ओर एक छोटा कदम कैसा दिखेगा, इस पर कुछ पंक्तियाँ लिखें।",
+        "bn": "সেই প্রয়োজনের দিকে ছোট একটি পদক্ষেপ কেমন হতে পারে তা নিয়ে কয়েক লাইন লিখুন।"
+      }
+    },
+    {
+      "id": "prompt-kind-observer",
+      "category": "reflection",
+      "template": "free",
+      "text": {
+        "en": "If a calm, non-judgmental friend watched your day today, what effort of yours would they notice?",
+        "hi": "अगर कोई शांत और बिना परखने वाला मित्र आज आपका दिन देखता, तो वह आपकी किस कोशिश पर ध्यान देता?",
+        "bn": "যদি একজন শান্ত ও সহানুভূতিশীল বন্ধু আজ আপনার দিনটি দেখতেন, তবে আপনার কোন প্রচেষ্টাটি তাঁর চোখে পড়ত?"
+      },
+      "hint": {
+        "en": "Focus on what you showed up for, even if it felt unfinished.",
+        "hi": "उस बात पर ध्यान दें जिसके लिए आपने प्रयास किया, भले ही वह अधूरी लगी हो।",
+        "bn": "অসম্পূর্ণ মনে হলেও আপনি যে চেষ্টাটুকু করেছেন সেটির ওপর মনোযোগ দিন।"
+      }
+    },
+    {
+      "id": "prompt-gratitude-person",
+      "category": "gratitude",
+      "template": "gratitude",
+      "text": {
+        "en": "Who or what made today two percent lighter, even indirectly?",
+        "hi": "किस व्यक्ति या चीज़ ने आज के दिन को परोक्ष रूप से भी थोड़ा हल्का बनाया?",
+        "bn": "কে বা কোন বিষয়টি আজ পরোক্ষভাবেও আপনার দিনটিকে একটু হালকা করেছে?"
+      },
+      "hint": {
+        "en": "Could be a message, a song, a meal, or someone holding the door.",
+        "hi": "यह कोई संदेश, गीत, भोजन, या किसी का छोटा-सा सहयोग हो सकता है।",
+        "bn": "হতে পারে একটি বার্তা, একটি গান, খাবার, বা কারোর ছোট একটু সহযোগিতা।"
+      }
+    },
+    {
+      "id": "prompt-worry-control",
+      "category": "worry_dump",
+      "template": "worry_dump",
+      "text": {
+        "en": "Which part of what is stressing you is yours to solve today, and which part belongs to tomorrow?",
+        "hi": "जो बात आपको तनाव दे रही है, उसका कौन-सा हिस्सा आज हल करने का है और कौन-सा कल के लिए छोड़ा जा सकता है?",
+        "bn": "যে বিষয়টি আপনাকে চাপ দিচ্ছে, তার কতটুকু আজ সমাধান করার মতো আর কতটুকু আগামীকালের জন্য তোলা থাকতে পারে?"
+      },
+      "hint": {
+        "en": "Draw a clear line between the next 24 hours and everything beyond.",
+        "hi": "अगले 24 घंटों और उसके बाद की बातों के बीच एक स्पष्ट रेखा खींचें।",
+        "bn": "আগামী ২৪ ঘণ্টা এবং তার পরের সবকিছুর মধ্যে একটি স্পষ্ট রেখা টানুন।"
+      }
+    },
+    {
+      "id": "prompt-body-check",
+      "category": "grounding",
+      "template": "free",
+      "text": {
+        "en": "Where in your body are you holding today's tension, and what happens when you unclench for three breaths?",
+        "hi": "आज का तनाव आपके शरीर में कहाँ महसूस हो रहा है, और तीन गहरी साँसें लेकर ढीला छोड़ने पर कैसा लगता है?",
+        "bn": "আজকের চাপটুকু আপনার শরীরের কোথায় জমে আছে, আর তিনবার গভীর শ্বাস নিয়ে শরীরটা আলগা করলে কেমন লাগে?"
+      },
+      "hint": {
+        "en": "Check your jaw, shoulders, hands, and breathing pace.",
+        "hi": "अपने जबड़े, कंधों, हाथों और साँस की गति पर ध्यान दें।",
+        "bn": "আপনার চোয়াল, কাঁধ, হাত এবং শ্বাসের গতির দিকে খেয়াল করুন।"
+      }
+    },
+    {
+      "id": "prompt-energy-audit",
+      "category": "reflection",
+      "template": "free",
+      "text": {
+        "en": "What drained your battery today, and what gave a little of it back?",
+        "hi": "आज किस बात ने आपकी ऊर्जा घटाई, और किस बात ने थोड़ी ऊर्जा वापस दी?",
+        "bn": "আজ কোন বিষয়টি আপনার শক্তি কমিয়েছে, আর কোনটি কিছুটা শক্তি ফিরিয়ে দিয়েছে?"
+      },
+      "hint": {
+        "en": "Listing both side by side helps spot patterns without blame.",
+        "hi": "दोनों को साथ लिखने से बिना खुद को दोष दिए पैटर्न समझने में मदद मिलती है।",
+        "bn": "দুটো পাশাপাশি লিখলে নিজেকে দোষ না দিয়েই অভ্যাসের ধরন বোঝা সহজ হয়।"
+      }
+    }
+  ]
+}

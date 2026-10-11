@@ -26,6 +26,15 @@ from app.services.journal.crypto import (
     unwrap_data_key,
     wrap_data_key,
 )
+from app.services.journal.prompts import (
+    VALID_TEMPLATES,
+    JournalPromptsCatalogue,
+    LocalisedJournalPrompt,
+    LocalisedJournalTemplate,
+    get_localised_templates,
+    get_rotating_prompts,
+    load_journal_prompts_catalogue,
+)
 
 __all__ = [
     "DEFAULT_KEY_ID",
@@ -35,10 +44,14 @@ __all__ = [
     "FORMAT_VERSION",
     "NONCE_BYTES",
     "TAG_BYTES",
+    "VALID_TEMPLATES",
     "CipherNotConfiguredError",
     "DecryptError",
     "EnvelopeCipher",
+    "JournalPromptsCatalogue",
     "KeyRotationError",
+    "LocalisedJournalPrompt",
+    "LocalisedJournalTemplate",
     "MasterKeyRing",
     "RotationReport",
     "decrypt_field",
@@ -46,9 +59,12 @@ __all__ = [
     "generate_data_key",
     "generate_master_key",
     "get_envelope_cipher",
+    "get_localised_templates",
+    "get_rotating_prompts",
     "inspect_envelope_key_id",
     "is_envelope_ciphertext",
     "is_legacy_fernet_ciphertext",
+    "load_journal_prompts_catalogue",
     "rotate_database_encryption",
     "unwrap_data_key",
     "wrap_data_key",
