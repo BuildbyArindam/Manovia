@@ -236,11 +236,61 @@ CAUSAL_CLAIM_TOKENS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 #: Vocabulary that must appear nowhere in a summary, in any language: not even
-#: negated. A summary describes; the explainer is where causality is discussed.
+#: negated. Two families, and both are about what an insight is *not*:
+#:
+#: * causal words — a summary describes a difference between two sets of days,
+#:   so it has no business discussing causes at all (the explainer does that,
+#:   and is required to deny them);
+#: * clinical and scoring words — a mean of somebody's own 1-5 ratings is not a
+#:   score, not a symptom and not a condition. Day 15 already decided that no
+#:   number in this product is presented as a score; this is that decision
+#:   enforced on the sentences rather than left to a reviewer's memory.
 BANNED_EVERYWHERE: Final[dict[str, tuple[str, ...]]] = {
-    "en": ("cause", "causal", "effect", "reason", "diagnos", "symptom", "disorder", "normal"),
-    "hi": ("कारण", "प्रभाव", "निदान", "लक्षण", "विकार", "सामान्य"),
-    "bn": ("কারণ", "প্রভাব", "নির্ণয়", "লক্ষণ", "রোগ", "স্বাভাবিক"),
+    "en": (
+        "cause",
+        "causal",
+        "effect",
+        "reason",
+        "diagnos",
+        "symptom",
+        "disorder",
+        "normal",
+        "score",
+        "rating",
+        "depress",
+        "anxiety",
+        "bipolar",
+        "adhd",
+        "ptsd",
+        "treatment",
+        "therapy",
+        "medication",
+        "patient",
+    ),
+    "hi": (
+        "कारण",
+        "प्रभाव",
+        "निदान",
+        "लक्षण",
+        "विकार",
+        "सामान्य",
+        "स्कोर",
+        "अवसाद",
+        "उपचार",
+        "दवा",
+    ),
+    "bn": (
+        "কারণ",
+        "প্রভাব",
+        "নির্ণয়",
+        "লক্ষণ",
+        "রোগ",
+        "স্বাভাবিক",
+        "স্কোর",
+        "বিষণ্ণতা",
+        "চিকিৎসা",
+        "ওষুধ",
+    ),
 }
 
 
