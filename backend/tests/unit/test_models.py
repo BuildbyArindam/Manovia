@@ -39,6 +39,7 @@ def test_every_model_is_registered_with_a_table() -> None:
         "safety_events",
         "refresh_tokens",
         "exercise_completions",
+        "cbt_records",
     }
 
 

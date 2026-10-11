@@ -254,6 +254,7 @@ def test_describe_is_metadata_only() -> None:
     assert described["redact_names"] is False
     assert described["name_finder"] == "null"
     assert described["placeholders"] == list(PLACEHOLDERS)
+    assert isinstance(described["placeholders"], list)
     assert EMAIL in described["placeholders"]
 
 

@@ -758,6 +758,7 @@ class RotationReport:
     active_key_id: str
     users_rotated: int
     journal_entries_rotated: int
+    cbt_records_rotated: int
     mood_entries_rotated: int
     chat_sessions_rotated: int
     messages_rotated: int
@@ -786,7 +787,7 @@ async def rotate_database_encryption(
     """
     from sqlalchemy import select
 
-    from app.models import ChatSession, JournalEntry, Message, MoodEntry, User
+    from app.models import CBTRecord, ChatSession, JournalEntry, Message, MoodEntry, User
 
     active = cipher or get_envelope_cipher()
     target_kid = active.active_key_id
@@ -865,6 +866,35 @@ async def rotate_database_encryption(
         entry.key_id = target_kid
         journals_rotated += 1
 
+    cbt_records = (await session.execute(select(CBTRecord))).scalars().all()
+    for record in cbt_records:
+        for field in (
+            "situation",
+            "automatic_thought",
+            "evidence_for",
+            "evidence_against",
+            "balanced_thought",
+        ):
+            old_blob = getattr(record, f"{field}_encrypted")
+            plain = active.decrypt_field(
+                old_blob,
+                user_id=record.user_id,
+                field_name=f"cbt.{field}",
+                wrapped_dek=old_wrapped_by_user.get(record.user_id),
+            )
+            setattr(
+                record,
+                f"{field}_encrypted",
+                active.encrypt_field(
+                    plain,
+                    user_id=record.user_id,
+                    field_name=f"cbt.{field}",
+                    wrapped_dek=new_wrapped_by_user[record.user_id],
+                    data_key=new_dek_by_user[record.user_id],
+                ),
+            )
+        record.key_id = target_kid
+
     moods = (
         (await session.execute(select(MoodEntry).where(MoodEntry.note_encrypted.is_not(None))))
         .scalars()
@@ -907,6 +937,7 @@ async def rotate_database_encryption(
         active_key_id=target_kid,
         users_rotated=users_rotated,
         journal_entries_rotated=journals_rotated,
+        cbt_records_rotated=len(cbt_records),
         mood_entries_rotated=moods_rotated,
         chat_sessions_rotated=chats_rotated,
         messages_rotated=messages_rotated,

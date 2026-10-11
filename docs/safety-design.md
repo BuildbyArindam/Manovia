@@ -774,3 +774,33 @@ what was deleted. The saved transcript itself remains encrypted and is not remov
 by this action; the Settings panel makes that distinction explicit. Extractive
 memory is intentionally less polished than an LLM summary, in exchange for no
 summary hallucinations, no additional provider call and a simple deletion story.
+
+## Day 19 CBT thought record
+
+The authenticated, consent-gated `/api/v1/cbt/screen` is called for each written
+wizard step before advancing. `/api/v1/cbt/traps` independently screens the
+automatic thought **before** any LLM invocation, even when the caller skips the
+wizard. `POST /api/v1/cbt/records` screens **every** written field again before
+opening the encryption/write path. The Day-9 ensemble runs in configured ML or
+rules-only mode; errors fail closed with `503 safety_unavailable`. HIGH/IMMINENT
+returns `interrupted: true` plus the deterministic escalation plan's message,
+emergency and region resources. No partial record is persisted. The client
+replaces the wizard with `CrisisCard`; the person can pause in the same tab or
+edit the step, which will be screened again.
+
+Only a screened LOW-or-less/medium automatic thought is redacted and sent to the
+LLM chain. The Day-14 output guard checks the *whole* reply before it is parsed;
+model text outside exact closed taxonomy IDs is never rendered. Static local
+explanations use conditional "might be" language and a static question instead
+of authoring the person's alternative thought. A rejected, unavailable or
+nonconforming model yields a deterministic, bounded keyword fallback. Neither
+the model nor the database sees user identifiers; five written fields use
+Day-17 per-user envelope encryption with field-specific AAD, while closed-set
+labels and numeric intensity ratings remain in the clear.
+
+**Observed limitation:** the optional existing ML model rated ordinary exam
+phrases HIGH in local verification (including the Day-19 sample thought). This
+feature honours that decision; no threshold was relaxed to make the wizard
+pass. Browser verification therefore used rules-only mode, and the false
+positive remains a known issue for separate safety evaluation. See
+[ADR 0019](adr/0019-cbt-thought-record.md).

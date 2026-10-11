@@ -4,6 +4,7 @@ which is what Alembic autogenerate and the tests rely on.
 
 from app.models.assessment import AssessmentResult
 from app.models.base import Base
+from app.models.cbt import CBTRecord
 from app.models.chat_session import ChatSession
 from app.models.consent import Consent
 from app.models.enums import (
@@ -28,6 +29,7 @@ __all__ = [
     "AssessmentInstrument",
     "AssessmentResult",
     "Base",
+    "CBTRecord",
     "ChatSession",
     "Consent",
     "ConsentKind",

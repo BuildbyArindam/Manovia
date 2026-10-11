@@ -21,6 +21,7 @@ from app.models.base import TIMESTAMP_TYPE, Base, CreatedAtMixin
 
 if TYPE_CHECKING:
     from app.models.assessment import AssessmentResult
+    from app.models.cbt import CBTRecord
     from app.models.chat_session import ChatSession
     from app.models.consent import Consent
     from app.models.exercise_completion import ExerciseCompletion
@@ -54,6 +55,9 @@ class User(Base, CreatedAtMixin):
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
     mood_entries: Mapped[list[MoodEntry]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+    cbt_records: Mapped[list[CBTRecord]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
     journal_entries: Mapped[list[JournalEntry]] = relationship(
