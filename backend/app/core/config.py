@@ -176,6 +176,21 @@ class Settings(BaseSettings):
     # startup failure.
     safety_ml_artifact_dir: str = ""
 
+    # --- Privacy controls and security hardening (Day 22) ---
+    # Per-table ceiling for a data export. An export must finish and must not
+    # become a memory bomb; when a table hits the ceiling, the manifest says so.
+    privacy_export_max_rows: int = 5000
+    # Hard ceiling on a request body, enforced before the app parses anything.
+    # The largest legitimate body is a journal entry (20,000 characters), so
+    # 256 KiB leaves room for JSON escaping and multi-byte scripts.
+    max_request_bytes: int = 262_144
+    # Total budget for one request. Server-Sent Events are exempt (their own
+    # deadline lives inside the LLM layer) — see RequestTimeoutMiddleware.
+    request_timeout_seconds: float = 30.0
+    # CSRF defence in depth: a state-changing request that carries an Origin
+    # must be same-origin or on ALLOWED_ORIGINS.
+    origin_check_enabled: bool = True
+
     # --- Knowledge base and retrieval (Day 13) ---
     # Retrieval augments the chat prompt with curated self-help passages.
     # With the flag off (or nothing ingested yet) the pipeline answers
@@ -344,6 +359,17 @@ class Settings(BaseSettings):
             raise ValueError("chat_ephemeral_ttl_seconds must be at least 1")
         if self.chat_ephemeral_max_sessions < 1 or self.chat_ephemeral_max_turns < 2:
             raise ValueError("ephemeral session limits are too small to hold a conversation")
+        return self
+
+    @model_validator(mode="after")
+    def _check_privacy_and_security_settings(self) -> "Settings":
+        """A ceiling of zero bytes or a zero-second budget would break everything."""
+        if self.privacy_export_max_rows < 1:
+            raise ValueError("privacy_export_max_rows must be at least 1")
+        if self.max_request_bytes < 1024:
+            raise ValueError("max_request_bytes must be at least 1024")
+        if self.request_timeout_seconds <= 0:
+            raise ValueError("request_timeout_seconds must be positive")
         return self
 
     @model_validator(mode="after")
