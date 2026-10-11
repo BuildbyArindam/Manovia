@@ -713,6 +713,64 @@ Three honest caveats about the 1.00 itself:
   past-tense recovery story is LOW truth while the engine — no tense reasoning —
   says HIGH). The eval reports the system against truth, so those over-escalations
   appear in the confusion matrix as the deliberate conservative bias they are.
-- **The audit row is anonymous on this endpoint.** `safety_events` rows written
-  by the public endpoint have NULL user/session ids; the authenticated chat gate
-  will attach both when it lands (Day 10+).
+- **Audit linkage follows the chosen storage mode.** The public assessment endpoint
+  and ephemeral chats use NULL user/session ids; saved chats link events to their
+  owner and session. Every row remains metadata-only.
+
+## 13. Output safety (Day 14)
+
+Input safety is not enough: the model can ignore a prompt or produce a fluent but
+unsafe sentence. Every generated, non-template response passes through
+`app/services/safety/output_guard.py` before persistence or release. The deterministic
+vocabulary is in `app/content/safety/output_patterns.yaml` and currently covers:
+
+- diagnoses and statements that assign a condition to the user;
+- medication names, dose units and advice to start, stop or change medicine;
+- method/means detail connected to self-harm;
+- claims to be human or a licensed professional;
+- guaranteed cures, recovery or other promised outcomes;
+- secrecy, isolation and app dependence;
+- output above the configured prompt limit (120 words by default);
+- a reply in a different supported language than the requested locale; and
+- absence of a supportive check-in at MEDIUM or above.
+
+The guard matches a case-folded, apostrophe-free, punctuation-spaced projection,
+uses literal phrase and compiled-regex entries, and returns only a closed category
+code. It does not log a snippet, a hash or the model text. Each rejected draft is
+recorded in `safety_events` with `source=llm_output` and one of those category codes;
+the optional `category` column is constrained and still carries no prose.
+
+A failure causes exactly one regeneration with a stricter system instruction. The
+new complete reply is checked again. A second failure, provider failure or empty
+reply becomes a pre-written local safe template in English, Hindi or Bengali; human review of the copy remains outstanding. A guard
+exception also fails closed to that template. No LLM judge is in the critical path.
+
+**SSE buffers the full model reply.** Because output policy needs the whole answer,
+the production guard sets `requires_full_text=true`; tokens are not released before
+the check and any retry. This costs first-token latency. `final.reply` remains the
+client's authoritative answer. The passthrough guard is available only as an
+explicit test double.
+
+The initial regression corpus contains 46 bad outputs and 20 good outputs. It is a
+starter, not a coverage proof: the English phrases and regexes do not exhaust every
+paraphrase, and Hindi/Bengali copy and patterns still need clinical and native-
+speaker review. A false negative remains possible. A false positive causes one
+extra model call and then, if repeated, a safe template.
+
+## 14. Saved-chat memory and privacy
+
+Memory is a separate, lower-trust context. It exists only for saved chats while
+`store_chat` consent is active; ephemeral sessions never create it. A deterministic
+extractive builder receives redacted user turns only, not assistant text, adds no
+inferred diagnosis or preference, and retains the newest snippets within a
+conservative approximately 300-token bound. HIGH/IMMINENT crisis turns do not update
+it. Memory is encrypted at rest in `chat_sessions.memory_encrypted` and redacted
+again before it is added to the prompt as untrusted JSON background.
+
+`GET /api/v1/chat/memory` displays each saved-chat summary to its owner.
+`DELETE /api/v1/chat/memory` erases summaries and sets a persistent deletion
+tombstone for existing chats, so a concurrent or future turn cannot reconstruct
+what was deleted. The saved transcript itself remains encrypted and is not removed
+by this action; the Settings panel makes that distinction explicit. Extractive
+memory is intentionally less polished than an LLM summary, in exchange for no
+summary hallucinations, no additional provider call and a simple deletion story.
