@@ -39,6 +39,12 @@ dependencies = [
     # regression, trained offline from evals/datasets and committed as an
     # artifact under app/ml_artifacts/ — no network at load or predict time.
     "scikit-learn>=1.4.0",
+    # Knowledge retrieval (Day 13). The vector store is FAISS (flat exact
+    # search over CPU vectors), imported eagerly by app.services.rag.store,
+    # so it is a hard dependency like any other storage engine. Small CPU
+    # wheel, no torch; the *model* that embeds (sentence-transformers) stays
+    # optional in the `rag` extra — the offline tfidf path needs only this.
+    "faiss-cpu>=1.8.0",
 ]
 
 [project.optional-dependencies]
