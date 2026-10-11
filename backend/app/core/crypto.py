@@ -1,88 +1,60 @@
 """Field-level encryption for the personal columns in :mod:`app.models`.
 
-The interface is intentionally tiny: a cipher turns a short text value into an
-opaque blob and back. Today one deployment-wide key (``FIELD_ENCRYPTION_KEY``,
-see :class:`~app.core.config.Settings`) protects every field of every user.
-Per-user data keys — wrapped so that destroying one key destroys a person's
-data — are a later milestone in the key-management plan; nothing outside this
-module may depend on the current single-key layout, and ciphertext has no
-backwards-compatibility guarantee.
+Day 17 upgrades the Day-3 single-key Fernet stub to full AES-256-GCM envelope
+encryption (:mod:`app.services.journal.crypto`):
 
-Usage::
-
-    from app.core.crypto import decrypt, encrypt
-
-    row.note_encrypted = encrypt("a rough week")
-    text = decrypt(row.note_encrypted)
-
-Fernet gives authenticated encryption (a tampered blob fails to decrypt rather
-than returning garbage) and a fresh IV per call, so encrypting the same string
-twice yields different bytes. Keys are passed in by the caller; nothing here
-reads them from the environment, and no key is ever logged.
+* Each user gets a random 256-bit data key (AES-256-GCM) stored wrapped by the
+  master key (``FIELD_ENCRYPTION_KEY``, with ``key_id`` rotation support).
+* :func:`encrypt_field` and :func:`decrypt_field` authenticate ``(user_id,
+  field_name)`` as Associated Data (AAD) so ciphertexts cannot be swapped across
+  users or across columns.
+* :class:`FernetCipher` remains compatible with the Day-3 :class:`FieldCipher`
+  protocol and can still read legacy Day-3 Fernet tokens during the Alembic
+  ``0004`` data migration and key rotation script.
 """
 
 from __future__ import annotations
 
-import base64
 from typing import Protocol
 
-from cryptography.fernet import Fernet, InvalidToken
-
 from app.core.config import Settings
-
-
-class CipherNotConfiguredError(RuntimeError):
-    """Raised when a cipher is used before :func:`configure_cipher` ran."""
-
-
-class DecryptError(ValueError):
-    """Raised when a blob was not produced by the configured key."""
+from app.services.journal.crypto import (
+    CipherNotConfiguredError,
+    DecryptError,
+    EnvelopeCipher,
+    MasterKeyRing,
+    decrypt_field,
+    encrypt_field,
+    generate_data_key,
+    generate_master_key,
+    inspect_envelope_key_id,
+    is_envelope_ciphertext,
+    is_legacy_fernet_ciphertext,
+    rotate_database_encryption,
+    unwrap_data_key,
+    wrap_data_key,
+)
 
 
 class FieldCipher(Protocol):
-    """The one interface the data layer needs in order to encrypt a field.
-
-    The bodies are empty because the protocol documents a shape: any cipher
-    (today :class:`FernetCipher`, later one that resolves a per-user key) has to
-    provide these two methods and nothing else.
-    """
+    """The interface the data layer needs in order to encrypt a field."""
 
     def encrypt(self, plaintext: str) -> bytes: ...
     def decrypt(self, ciphertext: bytes) -> str: ...
 
 
-class FernetCipher:
-    """:class:`FieldCipher` backed by a single Fernet key."""
-
-    def __init__(self, key: bytes | str) -> None:
-        raw = key.encode() if isinstance(key, str) else key
-        try:
-            decoded = base64.urlsafe_b64decode(raw)
-        except ValueError as exc:
-            raise ValueError("FIELD_ENCRYPTION_KEY is not valid base64url") from exc
-        if len(decoded) != 32:
-            raise ValueError("FIELD_ENCRYPTION_KEY must be 32 bytes, base64url encoded")
-        self._fernet = Fernet(raw)
-
-    @classmethod
-    def generate_key(cls) -> str:
-        """Create a fresh key for local development or tests (never commit one)."""
-        return Fernet.generate_key().decode()
+class FernetCipher(EnvelopeCipher):
+    """Envelope-capable :class:`FieldCipher` with legacy Day-3 Fernet read support."""
 
     @classmethod
     def from_settings(cls, settings: Settings) -> FernetCipher | None:
         """Build the cipher from configuration, or ``None`` when no key is set."""
         key = settings.field_encryption_key
-        return cls(key) if key else None
-
-    def encrypt(self, plaintext: str) -> bytes:
-        return self._fernet.encrypt(plaintext.encode())
-
-    def decrypt(self, ciphertext: bytes) -> str:
-        try:
-            return self._fernet.decrypt(ciphertext).decode()
-        except InvalidToken as exc:
-            raise DecryptError("Ciphertext was not produced by the configured key") from exc
+        if not key:
+            return None
+        default_kid = getattr(settings, "field_encryption_key_id", "v1") or "v1"
+        prev_keys = getattr(settings, "field_encryption_previous_keys", None)
+        return cls(key, default_key_id=default_kid, previous_keys=prev_keys)
 
 
 _cipher: FieldCipher | None = None
@@ -92,6 +64,11 @@ def configure_cipher(cipher: FieldCipher | None) -> None:
     """Install the process-wide cipher (``None`` clears it, used by tests)."""
     global _cipher
     _cipher = cipher
+
+
+def is_cipher_configured() -> bool:
+    """Return True when a process-wide cipher is currently installed."""
+    return _cipher is not None
 
 
 def get_cipher() -> FieldCipher:
@@ -121,3 +98,30 @@ def encrypt_optional(plaintext: str | None) -> bytes | None:
 def decrypt_optional(ciphertext: bytes | None) -> str | None:
     """:func:`decrypt` for nullable columns."""
     return None if ciphertext is None else decrypt(ciphertext)
+
+
+__all__ = [
+    "CipherNotConfiguredError",
+    "DecryptError",
+    "EnvelopeCipher",
+    "FernetCipher",
+    "FieldCipher",
+    "MasterKeyRing",
+    "configure_cipher",
+    "decrypt",
+    "decrypt_field",
+    "decrypt_optional",
+    "encrypt",
+    "encrypt_field",
+    "encrypt_optional",
+    "generate_data_key",
+    "generate_master_key",
+    "get_cipher",
+    "inspect_envelope_key_id",
+    "is_cipher_configured",
+    "is_envelope_ciphertext",
+    "is_legacy_fernet_ciphertext",
+    "rotate_database_encryption",
+    "unwrap_data_key",
+    "wrap_data_key",
+]

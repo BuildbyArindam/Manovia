@@ -48,12 +48,15 @@ def test_user_columns_match_the_spec() -> None:
         "is_anonymous",
         "language",
         "region",
+        "data_key_encrypted",
+        "data_key_id",
         "created_at",
         "deleted_at",
     }
     table = User.__table__
     assert table.c.email.unique is True
-    for name in ("email", "password_hash", "deleted_at"):
+    assert isinstance(table.c.data_key_encrypted.type, sa.LargeBinary)
+    for name in ("email", "password_hash", "data_key_encrypted", "data_key_id", "deleted_at"):
         assert table.c[name].nullable, f"{name} must stay nullable"
     for name in ("id", "is_anonymous", "language", "created_at"):
         assert not table.c[name].nullable, f"{name} must be required"
@@ -110,8 +113,13 @@ def test_mood_and_journal_columns_match_the_spec() -> None:
         "user_id",
         "title_encrypted",
         "body_encrypted",
+        "key_id",
         "sentiment",
+        "emotion_scores",
+        "template",
+        "prompt_id",
         "created_at",
+        "updated_at",
     }
 
 

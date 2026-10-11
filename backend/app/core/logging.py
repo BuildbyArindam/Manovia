@@ -21,6 +21,7 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
         # Raw user text (AGENTS.md safety rule 5).
         "message_text",
         "content",
+        "title",
         "body",
         "note",
         # NLP request fields (Day 6): the dev endpoint accepts `text`, and a
@@ -30,7 +31,7 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
         "text",
         "prompt",
         "query",
-        # Credentials and session material (Day 4).
+        # Credentials, session material, and encryption keys (Days 4 & 17).
         "password",
         "password_hash",
         "token",
@@ -40,6 +41,12 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
         "authorization",
         "secret",
         "secret_key",
+        "field_encryption_key",
+        "master_key",
+        "data_key",
+        "dek",
+        "wrapped_dek",
+        "data_key_encrypted",
     }
 )
 

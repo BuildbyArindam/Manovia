@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     anthropic_model: str | None = None
     ollama_base_url: str | None = None
     field_encryption_key: str | None = None
+    field_encryption_key_id: str = "v1"
+    field_encryption_previous_keys: str | None = None
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
     log_level: str = "INFO"
 

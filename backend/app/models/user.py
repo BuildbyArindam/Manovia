@@ -4,7 +4,8 @@ Deletion semantics: ``deleted_at`` is the user-facing soft delete (the account
 disappears from the app while rows remain until a purge runs); the hard
 "delete everything about me" path is a plain SQL ``DELETE``, and every child
 table hangs off ``user_id`` with ``ON DELETE CASCADE`` so removing one row here
-removes the whole history.
+removes the whole history (and destroys ``data_key_encrypted``, the per-user
+AES-256-GCM data key wrapped by ``FIELD_ENCRYPTION_KEY``).
 """
 
 from __future__ import annotations
@@ -39,6 +40,10 @@ class User(Base, CreatedAtMixin):
     # BCP 47 language tag ("en", "en-GB", "hi") and ISO 3166-1 alpha-2 region.
     language: Mapped[str] = mapped_column(sa.String(35), nullable=False, default="en")
     region: Mapped[str | None] = mapped_column(sa.String(2))
+    # Day 17 envelope encryption: per-user 256-bit DEK wrapped by the active
+    # master key in FIELD_ENCRYPTION_KEY, plus the master key_id that wrapped it.
+    data_key_encrypted: Mapped[bytes | None] = mapped_column(sa.LargeBinary())
+    data_key_id: Mapped[str | None] = mapped_column(sa.String(64))
     deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP_TYPE)
 
     consents: Mapped[list[Consent]] = relationship(
