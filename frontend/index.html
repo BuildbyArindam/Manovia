@@ -11,6 +11,19 @@
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!--
+      Day 23 (multilingual): Noto Sans Devanagari and Noto Sans Bengali so Hindi
+      and Bengali render with a properly hinted script font instead of whatever
+      the OS substitutes. `display=swap` keeps first paint fast: text shows in a
+      fallback face until the web font arrives. The CSP in
+      docker/security-headers.conf allows exactly these two origins.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!--
       The palette is resolved by a module, not an inline script: an inline script
       is what a strict `script-src 'self'` policy (see docker/nginx.conf and the
       API's SecurityHeadersMiddleware) refuses to run. The CSS keeps a
