@@ -19,15 +19,15 @@ export function BottomNav(): ReactElement {
       data-print="hide"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
-      <ul className="mx-auto flex max-w-2xl items-stretch justify-between px-2 pt-1">
+      <ul className="mx-auto flex max-w-2xl flex-wrap items-stretch justify-between px-1 pt-1">
         {NAV_ITEMS.map((item) => (
-          <li key={item.to} className="flex-1">
+          <li key={item.to} className="min-w-[3.75rem] flex-1">
             <NavLink
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
                 [
-                  "flex min-h-[3rem] flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-xs font-medium",
+                  "flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-center text-[11px] font-medium leading-tight",
                   isActive ? "text-accent" : "text-ink-muted",
                 ].join(" ")
               }

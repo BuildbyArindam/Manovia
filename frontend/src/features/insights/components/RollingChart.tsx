@@ -44,6 +44,7 @@ export function RollingChart({ rows, shortLabel, longLabel }: RollingChartProps)
   return (
     <div data-testid="rolling-chart">
       <LineChart
+        accessibilityLayer={false}
         width={CHART_GEOMETRY.width}
         height={CHART_GEOMETRY.height}
         data={[...rows]}

@@ -14,14 +14,14 @@ import { t } from "@/lib/i18n/i18n";
 export function Header(): ReactElement {
   return (
     <header data-print="hide" className="sticky top-0 z-30 border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
         <Link
           to="/"
-          className="rounded-lg font-serif text-lg font-semibold tracking-tight text-ink"
+          className="inline-flex min-h-11 items-center rounded-lg px-1 font-serif text-lg font-semibold tracking-tight text-ink"
         >
           {t("app.name")}
         </Link>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <LanguageSwitcher />
           <CrisisHelpButton />
         </div>

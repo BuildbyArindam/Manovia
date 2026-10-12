@@ -19,6 +19,7 @@
 import { useEffect, useRef, type ReactElement } from "react";
 
 import { CrisisCard } from "@/components/CrisisCard";
+import { t } from "@/lib/i18n/i18n";
 import { MOOD_COPY, streakDetail, streakHeadline } from "../copy";
 import { suggestedAction } from "../suggestedAction";
 import type { MoodCheckInResponse } from "../types";
@@ -50,6 +51,14 @@ export function MoodConfirmation({ result, onAnother }: MoodConfirmationProps): 
           {MOOD_COPY.savedHeading}
         </h2>
         <p className="mt-2">{crisis === null ? MOOD_COPY.savedBody : MOOD_COPY.savedCrisisLine}</p>
+        {result.queued_offline ? (
+          <p
+            data-testid="mood-queued-offline"
+            className="mt-3 rounded-xl border border-border-strong bg-accent-soft p-3 text-sm font-medium text-ink"
+          >
+            {t("mood.offlineQueuedNotice")}
+          </p>
+        ) : null}
       </div>
 
       <div className="rounded-xl bg-surface-muted p-4" data-testid="mood-confirmation-streak">

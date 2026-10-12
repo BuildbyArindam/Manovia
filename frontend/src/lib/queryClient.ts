@@ -12,10 +12,14 @@ export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
+        networkMode: "always",
         staleTime: 5 * 60 * 1000,
         gcTime: 30 * 60 * 1000,
         refetchOnWindowFocus: false,
         retry: (failureCount, error) => {
+          if (typeof navigator !== "undefined" && navigator.onLine === false) {
+            return false;
+          }
           if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
             return false;
           }
@@ -23,6 +27,7 @@ export function createQueryClient(): QueryClient {
         },
       },
       mutations: {
+        networkMode: "always",
         retry: false,
       },
     },

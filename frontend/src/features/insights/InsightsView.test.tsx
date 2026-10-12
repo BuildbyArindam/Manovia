@@ -381,7 +381,7 @@ describe("wording and accessibility", () => {
     }
   });
 
-  it("renders the page without accessibility violations", async () => {
+  it("renders the page without accessibility violations and keeps aria-hidden charts non-focusable", async () => {
     const { container } = render();
     await screen.findByTestId("insights-about");
 
@@ -389,6 +389,7 @@ describe("wording and accessibility", () => {
       fireEvent.click(toggle);
     }
 
+    expect(container.querySelectorAll('[aria-hidden="true"] [tabindex="0"]')).toHaveLength(0);
     expect(await axe(container)).toHaveNoViolations();
   });
 });

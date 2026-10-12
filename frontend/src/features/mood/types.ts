@@ -27,6 +27,8 @@ export interface MoodEntry {
   /** The owner's own note, decrypted for them. */
   note: string | null;
   timezone: string;
+  /** True when the entry is queued on this device waiting to sync. */
+  queued_offline?: boolean;
 }
 
 /** Help offered alongside a check-in whose note read at HIGH or worse. */
@@ -66,6 +68,7 @@ export interface MoodCheckInResponse {
   entry: MoodEntry;
   streak: MoodStreak;
   crisis: MoodCrisis | null;
+  queued_offline?: boolean;
 }
 
 export interface MoodListResponse {

@@ -1,0 +1,60 @@
+{
+  "id": "/",
+  "name": "Manovia — a quiet place to check in with yourself",
+  "short_name": "Manovia",
+  "description": "A private, safety-first self-help companion for mood check-ins, breathing exercises, journaling and grounded conversations. Not therapy, not a diagnosis, and not a crisis service.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#faf6ef",
+  "theme_color": "#2e6a4e",
+  "categories": ["health", "lifestyle", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pwa-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Check in",
+      "short_name": "Check in",
+      "description": "Record how today is going in about ten seconds.",
+      "url": "/mood?source=pwa-shortcut",
+      "icons": [{ "src": "/icons/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Breathe",
+      "short_name": "Breathe",
+      "description": "A guided breathing exercise that works offline.",
+      "url": "/exercises?source=pwa-shortcut",
+      "icons": [{ "src": "/icons/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Talk",
+      "short_name": "Talk",
+      "description": "Open a conversation with the companion.",
+      "url": "/chat?source=pwa-shortcut",
+      "icons": [{ "src": "/icons/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

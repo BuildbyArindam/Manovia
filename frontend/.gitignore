@@ -10,7 +10,8 @@ coverage/
 .env.*
 !.env.example
 
-# Playwright artifacts (browser binaries are never downloaded in CI here)
+# Playwright & Lighthouse artifacts
 test-results/
 playwright-report/
 .playwright/
+.lighthouseci/

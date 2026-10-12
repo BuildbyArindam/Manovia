@@ -101,6 +101,58 @@ jobs:
       - name: Production build
         run: npm run build
 
+  axe-and-lighthouse:
+    name: Accessibility (axe WCAG 2.2 AA) & Lighthouse CI
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend & frontend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+          npm --prefix frontend ci
+          npx --prefix frontend playwright install --with-deps chromium
+
+      - name: Build production frontend & start API server
+        run: |
+          npm --prefix frontend run build
+          cd backend
+          alembic upgrade head
+          LLM_PROVIDER=fake SAFETY_ML_ENABLED=false \
+            SECRET_KEY=ci-only-secret-key-at-least-32-chars \
+            FIELD_ENCRYPTION_KEY=Y2ktb25seS1mZXJuZXQta2V5LTMxNDE1OTI2NTM1ODk= \
+            uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/api/v1/health >/dev/null && break
+            sleep 1
+          done
+
+      - name: Run Playwright axe WCAG 2.2 AA, offline, keyboard & zoom suite
+        working-directory: frontend
+        run: npx playwright test e2e/day25.spec.ts --project=mobile-360x640
+
+      - name: Run Lighthouse mobile & PWA budget check
+        working-directory: frontend
+        run: node scripts/run-lighthouse-audit.mjs
+
   secrets-scan:
     name: Secrets scan — gitleaks
     runs-on: ubuntu-24.04

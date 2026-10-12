@@ -4,7 +4,8 @@
     "skipLink": "Skip to main content",
     "loading": "Loading…",
     "footerDisclaimer": "Manovia is a self-help companion — not therapy, not a diagnosis, and not a crisis service.",
-    "footerPrivacy": "Your entries are encrypted at rest. Nothing here is sold, shared, or used to train anyone else’s model."
+    "footerPrivacy": "Your entries are encrypted at rest. Nothing here is sold, shared, or used to train anyone else’s model.",
+    "footerAccessibilityLink": "Accessibility statement (WCAG 2.2 AA)"
   },
   "nav": {
     "primary": "Primary",
@@ -271,7 +272,10 @@
       "todayFreeze": "A missed day will not reset this."
     },
     "pluralDays": "{{count}} days",
-    "pluralOneDay": "1 day"
+    "pluralOneDay": "1 day",
+    "offlineQueuedNotice": "Saved on this device while offline. It will sync automatically as soon as your connection returns.",
+    "offlineQueuedBadge": "Waiting to sync",
+    "offlineSyncedStatus": "Synced {{count}} offline check-in(s)."
   },
   "journal": {
     "eyebrow": "Encrypted reflections",
@@ -338,7 +342,9 @@
       "worryScaffoldTitle": "Setting down today's worries",
       "worryScaffoldBody": "What is looping in my head right now:\n- \n\nWhat is actually within my control in the next 24 hours:\n- \n\nWhat I give myself permission to set down until tomorrow:\n- \n"
     },
-    "decryptingEntries": "Decrypting your entries…"
+    "decryptingEntries": "Decrypting your entries…",
+    "localDraftBadge": "Local draft on this device (not uploaded)",
+    "discardDraft": "Discard local draft"
   },
   "cbt": {
     "ariaLabel": "Thought records",
@@ -659,7 +665,18 @@
     "restartOnboarding": "Start onboarding again",
     "signOut": "Sign out",
     "signedOutMessage": "You are signed out. Starting again gives you a fresh guest account.",
-    "onboardingRestarted": "Onboarding restarted. You will see the welcome screen again."
+    "onboardingRestarted": "Onboarding restarted. You will see the welcome screen again.",
+    "contrastLegend": "Contrast",
+    "contrastNormal": "Standard",
+    "contrastNormalHint": "Warm paper or charcoal (>= 4.5:1)",
+    "contrastHigh": "High contrast",
+    "contrastHighHint": "Enhanced contrast (>= 7:1) and thicker focus rings",
+    "contrastSystem": "System",
+    "contrastSystemHint": "Follow your device contrast setting",
+    "contrastShowing": "Currently using {{contrast}} contrast.",
+    "contrastStateNormal": "standard",
+    "contrastStateHigh": "high",
+    "accessibilityStatementLink": "Read the accessibility statement"
   },
   "privacy": {
     "heading": "Privacy",
@@ -810,5 +827,45 @@
     "heading": "That page does not exist",
     "body": "The link may be old, or the page may have moved. Nothing is broken.",
     "backToChat": "Back to chat"
+  },
+  "pwa": {
+    "offlineHeading": "You are offline right now.",
+    "offlineBody": "Need help now? helplines, breathing exercises, mood check-ins and local journal drafts still work on this device.",
+    "syncingMoodQueue": "Reconnected — syncing your offline mood check-ins…",
+    "pendingMoodQueue": "{{count}} mood check-in(s) saved on this device and waiting to sync.",
+    "syncedMoodQueue": "Synced {{count}} offline mood check-in(s).",
+    "queuedCountBadge": "{{count}} queued",
+    "syncNowButton": "Sync now",
+    "syncingButton": "Syncing…",
+    "installRegionLabel": "Install Manovia as an app",
+    "installBody": "If you want quick offline access to breathing exercises and helplines from your home screen, you can install Manovia as an app.",
+    "installAccept": "Install app",
+    "installDismiss": "Not now"
+  },
+  "accessibility": {
+    "title": "Accessibility statement",
+    "lede": "How Manovia is built to work with keyboards, screen readers, high contrast, reduced motion, 200%–400% zoom and offline connections.",
+    "conformanceHeading": "Conformance status (WCAG 2.2 Level AA)",
+    "conformanceBody": "Manovia targets Web Content Accessibility Guidelines (WCAG) 2.2 Level AA across every route. Automated axe-core checks and keyboard/zoom verification run in continuous integration.",
+    "measureContrast": "Colour contrast: standard light and dark themes maintain at least 4.5:1 for text and 3:1 for controls; High-Contrast Mode raises text contrast to at least 7:1 (WCAG AAA) with 3px focus outlines.",
+    "measureKeyboard": "Keyboard navigation: every onboarding step, chat composer, mood scale, breathing exercise, journal editor, CBT thought record, screening form and setting is operable with Tab, Shift+Tab, Arrow keys, Space, Enter and Escape.",
+    "measureTargetSize": "Touch and pointer target sizes: interactive buttons, links, navigation items and form controls provide at least a 44×44 CSS pixel target area.",
+    "measureZoom": "Text resize and reflow: pages scale to 200% text size and reflow at 400% browser zoom (320 CSS pixels) without horizontal scrolling or clipped controls.",
+    "measureMotion": "Reduced motion: when your operating system requests prefers-reduced-motion, CSS animations and transitions collapse immediately and breathing exercises switch to a calm text-only guide.",
+    "measureNoTimeouts": "No time limits without control: sessions do not expire mid-form without recovery, and guided exercise timers can be paused, resumed or stopped at any second.",
+    "controlsHeading": "Display and contrast settings",
+    "controlsIntro": "You can switch contrast or colour palette right here; your choice is saved on this device immediately.",
+    "activeSummary": "Active palette: {{palette}} · Contrast: {{contrast}} · Motion: {{motion}}.",
+    "keyboardHeading": "Using Manovia with a keyboard or screen reader",
+    "keyboardSkip": "Press Tab on any page to reveal the Skip to main content link and jump past the header and navigation.",
+    "keyboardForms": "Radio scales (mood valence, pre/post exercise ratings, PHQ-9 and GAD-7 questions) use native fieldsets and legends so screen readers announce the question alongside each option.",
+    "keyboardDialogs": "Dialogs such as Need help now? trap focus while open, close on Escape, and return focus to the button that opened them.",
+    "keyboardLiveRegions": "Streaming chat replies, breathing step transitions, autosave indicators and offline sync notices use polite ARIA live regions so updates are announced without interrupting speech.",
+    "offlineHeading": "Offline and low-bandwidth access",
+    "offlineBody": "Once loaded, Manovia caches the app shell, crisis helplines and guided breathing exercises on your device. Mood check-ins submitted offline are queued locally and sync automatically when your connection returns, and unsaved journal drafts stay in local storage until saved.",
+    "limitationsHeading": "Known limitations and feedback",
+    "limitationsBody": "Hindi and Bengali interface translations are machine-seeded and awaiting native-speaker clinical review (tracked in translations/STATUS.md). External helpline websites linked from CrisisCard are maintained by their respective organisations.",
+    "lastReviewed": "Statement last reviewed on 12 October 2026.",
+    "backToSettings": "Open all settings"
   }
 }
