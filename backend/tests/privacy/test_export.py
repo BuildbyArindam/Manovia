@@ -31,7 +31,7 @@ from app.db.repos import (
     UserRepository,
 )
 from app.db.repos.exercises import ExerciseRepository
-from app.models.cbt import CBTRecord
+from app.models.cbt import CBTRecord, cbt_aad
 from app.models.enums import (
     AssessmentBand,
     AssessmentInstrument,
@@ -126,31 +126,31 @@ async def _fill_every_feature(
             situation_encrypted=encrypt_field(
                 "A presentation in front of the class",
                 user_id=user.id,
-                field_name="situation",
+                field_name=cbt_aad("situation"),
                 wrapped_dek=wrapped,
             ),
             automatic_thought_encrypted=encrypt_field(
                 CBT_THOUGHT,
                 user_id=user.id,
-                field_name="automatic_thought",
+                field_name=cbt_aad("automatic_thought"),
                 wrapped_dek=wrapped,
             ),
             evidence_for_encrypted=encrypt_field(
                 "I stumbled once last time.",
                 user_id=user.id,
-                field_name="evidence_for",
+                field_name=cbt_aad("evidence_for"),
                 wrapped_dek=wrapped,
             ),
             evidence_against_encrypted=encrypt_field(
                 "I answered questions well.",
                 user_id=user.id,
-                field_name="evidence_against",
+                field_name=cbt_aad("evidence_against"),
                 wrapped_dek=wrapped,
             ),
             balanced_thought_encrypted=encrypt_field(
                 "One stumble is not the whole talk.",
                 user_id=user.id,
-                field_name="balanced_thought",
+                field_name=cbt_aad("balanced_thought"),
                 wrapped_dek=wrapped,
             ),
             emotion="anxiety",
@@ -410,3 +410,55 @@ async def test_a_decrypted_field_is_really_encrypted_at_rest_first(
         )
         == JOURNAL_BODY
     )
+
+
+async def test_a_thought_record_saved_through_the_api_exports_decrypted(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """The regression test for a real bug: export and write path disagreed on AAD.
+
+    Every thought record exported as ``null`` with ``decryption_failed``, because
+    the write path binds AES-GCM Associated Data ``cbt.<field>`` while the export
+    read it back under the bare field name. The tests that existed did not catch
+    it: their fixture built ``CBTRecord`` rows itself, using the export's
+    spelling, so the fixture and the export agreed with each other and disagreed
+    with the code that actually writes a user's row.
+
+    So this test does not build a row. It posts the record the way a person
+    does — ``POST /cbt/records``, through the API, with the real screening and
+    the real encryption — and then exports it and reads the words back. A test
+    that shares the implementation's blind spot cannot find it; one that goes
+    through the endpoint the UI uses can.
+    """
+    person = await guest(client, kinds=("terms", "privacy"))
+    response = await client.post(
+        "/api/v1/cbt/records",
+        json={
+            "situation": "SENTINEL-API-CBT-SITUATION",
+            "automatic_thought": "SENTINEL-API-CBT-THOUGHT",
+            "evidence_for": "The fixture agreed with the bug.",
+            "evidence_against": "This test goes through the endpoint.",
+            "balanced_thought": "One mismatched string, one empty export field.",
+            "emotion": "anxiety",
+            "intensity_before": 70,
+            "intensity_after": 40,
+            "what_helped": ["looking at evidence"],
+        },
+        headers=person.headers,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["record"] is not None
+
+    export = await client.get(f"{PRIVACY}/export", headers=person.headers)
+    assert export.status_code == 200, export.text
+    files = _zip_entries(export.content)
+
+    records = files["cbt.json"]
+    assert len(records) == 1
+    assert records[0]["situation"] == "SENTINEL-API-CBT-SITUATION"
+    assert records[0]["automatic_thought"] == "SENTINEL-API-CBT-THOUGHT"
+    assert "decryption_failed" not in records[0], (
+        "a thought record written seconds ago must decrypt in its owner's export"
+    )
+    manifest = files["manifest.json"]
+    assert manifest["unreadable_rows"]["cbt_records"] == 0

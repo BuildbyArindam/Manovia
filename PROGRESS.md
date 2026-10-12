@@ -62,6 +62,47 @@ unchanged and intentional. Postgres is not available in this sandbox, so the
 
 ## Current status
 
+**Day 22 — privacy controls and security hardening built, verified and ready to
+wrap up (2026-10-12).** `GET /privacy/export` (13-entry ZIP or the same JSON,
+decrypted, with declared truncation and per-row `decryption_failed`),
+`DELETE /privacy/account` (re-auth + confirmation, one cascade transaction, a
+content-free HMAC receipt), `GET/PATCH /privacy/settings` (store chat, sentiment,
+retention days), a retention CLI that deletes by each user's own window, a
+Settings → Privacy screen, a strict production CSP the built bundle actually
+runs under, body/timeout/origin guards, dependency pinning, a blocking
+dependency audit and a gitleaks stand-in. Final: **3609 backend passed / 3
+skipped at 95.47% coverage**, **474 frontend passed / 3 skipped**, full
+Playwright suite **52 passed** in real Chromium 153 at both viewports.
+Decision: [ADR 0022](docs/adr/0022-privacy-controls-and-data-export.md).
+Full results, the defect found during verification and the honest gaps:
+[Day 22 verification](docs/verification/day22-privacy-controls-and-security-hardening.md).
+**Merge state:** PR #27 (five of the six Day-22 commits) was merged into `main`
+by the repository owner during this session; PR #28 carries the remaining
+commit — the CBT export fix, its regression test, the docs and this entry. So
+`main` at `0a473fd` has the feature **without** the export fix: the CBT
+`null`-export bug below is fixed on this branch and not yet on `main`.
+This Arena session is fixed to **`arena/a81666f5-manovia`**; the requested
+`day-22-privacy-controls-security-hardening` branch cannot be created in this
+session. Never push to main; one PR from the pinned branch; do not merge.
+
+**Found and fixed during verification (Day 22):** every CBT thought record
+exported as `null` with `decryption_failed`, because the write path binds
+AES-GCM AAD `cbt.<field>` while the export read it back under the bare field
+name — and the existing export test built its rows with the *export's* spelling,
+so the fixture agreed with the bug. The AAD now has one definition
+(`cbt_aad()` in `app/models/cbt.py`) and a regression test posts a record
+through the real endpoint before exporting it. Reverting the fix makes the new
+test fail; the live check now reports `unreadable_rows.cbt_records: 0` and
+**6/6** sentinels decrypted.
+
+**Known issue (Day 22):** the new dependency gate failed on the environment's
+own `setuptools 66.1.1` (PYSEC-2026-3447) the first time it ran — correctly.
+Fixed by pinning `setuptools==83.0.0` in the dev extra and the build backend,
+not by adding an ignore. Two moderate `react-router` advisories remain (no
+high/critical; only fix is a breaking 7.x upgrade) and are reported, not hidden.
+
+## Current status (Day 19)
+
 **Day 19 — CBT thought record built and verified in rules-only mode (2026-10-11).** Seven-step
 keyboard-operable wizard, owner-only encrypted CRUD, per-step and write-time
 safety screening, closed-set thinking-trap helper with output guard/redaction
@@ -911,6 +952,62 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   substring-matched "Good" face locator; and an e2e step assuming one shared
   chip cap where the shipped product has separate emotion/factor caps. The run
   also generated the six Day-12 chat screenshots listed in `docs/assets`.
+
+### Day 22 (session branch `arena/a81666f5-manovia`) — privacy controls, export/delete, security hardening
+
+- **Export.** `GET /api/v1/privacy/export?format=zip|json` returns every table
+  the app writes, **decrypted for the owner**: `README.txt`, `manifest.json`,
+  and `profile / consents / privacy-settings / chat / journal / mood /
+  assessments / exercises / cbt / plan / safety-events`. `format_version =
+  "manovia-export-1"`, `contents_are_decrypted = true`, per-table `counts`,
+  declared `truncated_tables` (`privacy_export_max_rows`, default 5000) and
+  `unreadable_rows` — a row whose ciphertext will not open is reported as
+  `null` + `decryption_failed`, never silently dropped. `?format=json` returns
+  the same files as one document.
+- **Deletion.** `DELETE /api/v1/privacy/account` with `{confirm: "DELETE",
+  password?}`: a guest confirms with the string, a password account must also
+  re-authenticate (403 `reauth_required` / `invalid_credentials`), five failures
+  trip the same lockout as login (429 `account_locked`). The delete is **one
+  cascade transaction** over `users.id`; the response carries
+  `{irreversible, rows_deleted, total_rows, receipt_id, account_ref}` and the
+  receipt table (`deletion_receipts`) stores `account_ref` — a 32-char keyed
+  HMAC over the user id — plus row counts and a timestamp, and **no content
+  column**. Afterwards every credential fails with 401 `account_deleted`.
+- **Settings.** `GET/PATCH /api/v1/privacy/settings` for `store_chat`,
+  `store_sentiment` (sentiment scores) and `retention_days` (7–3650, presets
+  30/90/180/365). A missing row yields documented defaults, not a 404; `PATCH`
+  honours `model_fields_set`, so one field does not reset the others, and an
+  empty patch is `422 empty_update` rather than a silent success.
+- **Retention.** `services/privacy/retention.py` (`plan_retention` /
+  `apply_retention`), `scripts/apply_retention.py` and `make retention`
+  (`PYTHON=./.venv/bin/python`, `DRY_RUN=1`, `JSON=1`). Only users who set
+  `retention_days` are considered; the cutoff (`now − retention_days`,
+  exclusive) is applied to each table's own `created_at`, messages die by their
+  own timestamp rather than their session's, and the job is idempotent.
+- **Frontend.** Settings → Privacy: plain-language copy on what is stored where,
+  the three switches, a consent-history list, an **anonymous-mode explainer**,
+  an export button that downloads the archive and reports *how* it went, and a
+  delete flow gated behind typing `DELETE` (plus a password when the account has
+  one) with per-code failure messages and a receipt shown afterwards.
+- **Security hardening.** Strict production CSP (`script-src 'self'`, no inline
+  script anywhere — the first-paint theme moved out of `index.html` into a
+  module), CSRF posture unchanged and documented (bearer header, never a
+  cookie) plus an `OriginGuard` for unsafe methods, body ceiling (413
+  `payload_too_large`), request timeout (503 `request_timeout`, `/stream`
+  exempt because SSE is long by design), per-IP rate limits, input limits, and
+  XSS/injection suites (81 injection cases, 12 middleware guards, 7 log
+  sentinels) with hostile payloads round-tripped through a real browser.
+- **Supply chain.** Base + dev requirements pinned to exact versions that ran
+  the full suite; GitHub Actions pinned to commit SHAs; `pip-audit` blocking on
+  any advisory; `npm audit --omit=dev --audit-level=high` blocking on
+  high/critical; and `scripts/scan_secrets.py`, an offline stand-in for
+  gitleaks that runs gitleaks' own 217-rule set (byte-identical to upstream
+  v8.28.0, `sha256 c3bee40d…`) with per-rule allowlists and the Shannon-entropy
+  threshold ported from `detect/utils.go`, printing its own gaps on every run.
+- **Verification.** See
+  [docs/verification/day22-privacy-controls-and-security-hardening.md](docs/verification/day22-privacy-controls-and-security-hardening.md)
+  for the PASS/FAIL table, the CBT AAD defect, the setuptools advisory and the
+  three biggest remaining risks.
 
 ## Verification (Day 18 — real command output)
 
@@ -2358,6 +2455,8 @@ other three jobs.
 
 - [0018 — Guided exercises](docs/adr/0018-guided-exercises.md): strict YAML, public content/private idempotent numeric history, auditable emotion rules, associative comparisons, local timing and explicit loaded-tab offline scope.
 
+- [0022 — Privacy controls: export everything, delete everything, keep nothing secret from its owner](docs/adr/0022-privacy-controls-and-data-export.md): the export is decrypted for the owner and declares its own limits (`truncated_tables`, per-row `decryption_failed`, `format_version`) because a silent omission in a data export is the one failure it must not have; deletion is one cascade transaction with re-authentication and a receipt that proves *that* it happened and never *what* was in it (`account_ref` = keyed HMAC, no content column); privacy settings default rather than 404 and a `PATCH` never resets fields it was not given; retention is a real job with a dry run, per-user windows and idempotence, deliberately **not** self-scheduling (the gap is stated, not papered over with a thread); and the alternatives rejected on the way (passphrase-encrypted exports, streaming exports, a soft-delete recovery window, an in-container cron) are recorded with the reason each lost.
+
 ## Known issues
 
 ### Day 18 implementation notes
@@ -2375,6 +2474,44 @@ other three jobs.
   no Day 18 model changes were made.
 - PR creation waits for explicit wrap-up instruction. Exactly one PR when asked,
   titled `Day 18: Guided exercises`; **never merge it**.
+
+### Day 22 implementation notes
+
+- **The export is a plaintext file.** It exists so a person can leave with their
+  data; once downloaded, the at-rest encryption story no longer applies to it.
+  Owner-authenticated, `Cache-Control: no-store`, one archive per request.
+- **Export ceilings are declared but real:** `privacy_export_max_rows` (5000)
+  caps each table and the manifest lists any table that was cut. A streaming
+  ZIP writer is the right long-term answer (parking lot).
+- **Deletion is irreversible and that is deliberate.** The confirmation string
+  plus re-authentication (and the UI's typed `DELETE`) are the protection
+  against an impulsive mistake; there is no recovery window.
+- **Retention is implemented but not scheduled.** Nothing in the container
+  invokes it; an operator or a scheduler must run `make retention`. Until then
+  "we only keep what you asked us to keep" is a working feature with no clock.
+- **Pre-existing `users.deleted_at` rows are not purged.** Accounts deleted
+  through Day 22's endpoint are hard-deleted in full; the older soft-delete path
+  still leaves rows and holds the unique email. A purge job is in the parking
+  lot.
+- **Two moderate npm advisories remain** (`react-router` via
+  `react-router-dom`): no high/critical, and the only published fix is a
+  breaking 7.x upgrade. The gate blocks at high and the moderates are printed in
+  the job summary — visible, not silenced.
+- **`scripts/scan_secrets.py` is a stand-in, not gitleaks.** It shares the rule
+  set (byte-identical config, `sha256 c3bee40d…`) and implements per-rule
+  allowlists plus the entropy threshold, but it has no baseline, no remote
+  allowlists, no `targetRule` allowlists, and skips binary files. Every run
+  prints those gaps. CI runs the real binary.
+- **The strict CSP is verified against the built bundle, not nginx.**
+  `frontend/scripts/verify-prod-csp.mjs` reads `docker/security-headers.conf`,
+  serves `dist/` with those headers and walks five routes in Chromium with a
+  `securitypolicyviolation` listener (negative control: `script-src 'none'` is
+  detected and exits 1). The nginx wiring itself — including the
+  `location /assets/` re-include, because nginx drops inherited `add_header` —
+  is reviewed but unexecuted: **no Docker in this sandbox**.
+- **`LLM_FAKE_LATENCY_MS` exists for e2e observation only.** It is 0 by default
+  (unit tests stay instant) and only the `fake` provider honours it; it is not a
+  production knob and does nothing with a real provider.
 
 ### Week-3 review — top five risks/debts (Day 21)
 
@@ -3031,18 +3168,22 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   HIGH-risk drafts should be handled.
 - Paginate thought-record history beyond the current newest-100 limit.
 
-## Next steps (Day 22 — first three)
+## Next steps (Day 23 — first three)
 
-1. Rebuild the committed safety ML artifact with the pinned scikit-learn
-   toolchain so the `InconsistentVersionWarning` (1.5.2 vs 1.9.1) disappears,
-   then rerun `evals/run_safety_eval.py` on both splits and confirm the crisis
-   recall target still holds before any threshold discussion.
+1. Move the refresh token out of `localStorage` into an `HttpOnly`,
+   `SameSite=Strict` cookie with CSRF protection (`OriginGuard` already covers
+   unsafe methods) and update the threat model: this is the single
+   highest-value security change left, it was found by Day 22's own review, and
+   it inverts the CSRF story the STRIDE table currently records.
 2. Exercise the compose stack and PostgreSQL on a machine with Docker: fresh
-   `alembic upgrade head` through `0007`, the seed script, and one full
-   Playwright pass against the stack, closing Week-3 risk 3.
-3. Run the clinician/native-speaker review loop for `helplines.json` and the
-   Hindi/Bengali safe replies (Week-3 risks 1–2), adding every disagreement as
-   a Fake-provider regression case; do not weaken the HIGH gate meanwhile.
+   `alembic upgrade head` through `0008`, the seed script, one full Playwright
+   pass, then the **deletion** and **retention** runs against PostgreSQL — the
+   cascade is native there and PRAGMA-driven on SQLite, so that is the path most
+   likely to differ (`PROGRESS.md` "Known issues").
+3. Add a purge job that turns the pre-Day-22 soft-delete column `deleted_at`
+   into a real hard delete (the Day-22 endpoint already does this for new
+   deletions), and schedule the retention CLI — the implementation is verified
+   and idempotent; only the clock is missing.
 
 ## Parking lot (Day 21)
 
@@ -3059,3 +3200,28 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - Move the Playwright suite into CI with `npx playwright install --with-deps
   chromium` (carried from Day 12) so the browser pass stops depending on a
   sandbox workaround.
+
+## Parking lot (Day 22)
+
+- **Streaming export.** Write the archive table-by-table instead of building it
+  in memory, so `privacy_export_max_rows` can go away and a very large account
+  gets everything. Needs a streaming ZIP writer and a resumable manifest.
+- **Passphrase-protected export.** Rejected today (a forgotten passphrase locks
+  someone out of their own data exactly when they want to leave), but an
+  *optional* second layer is defensible.
+- **A recovery window for deletion.** Deliberately rejected; if it is ever
+  revisited it must be opt-in, visible in the UI and short, or it reintroduces
+  the lie it was rejected for.
+- **Shared rate limiting / lockout state** (Redis or a DB table) so limits
+  survive multiple workers. Today they are per process, which is honest for one
+  worker and wrong behind a load balancer.
+- **Cookie-based sessions** (see Day-23 step 1) and an idle auto-lock for the
+  tab, since decrypted content on an unlocked device is a real risk.
+- **`data export` UI polish:** show the manifest summary in-app before
+  download, and offer a per-feature export (journal only) rather than
+  all-or-nothing.
+- **Playwright in CI** (carried from Days 12/18/21): the sandbox workaround
+  (`@sparticuz/chromium` + inflated AL2023 libs) works but should not be how
+  the browser pass runs.
+- **Screenshots for the Privacy screen** in `docs/assets/README.md` (the
+  Day-12 chat shots exist; Day-22 privacy shots do not).

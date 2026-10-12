@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -93,6 +93,13 @@ rag = [
     "sentence-transformers>=2.7.0",
 ]
 dev = [
+    # Pinned deliberately: `python -m venv` seeds whatever setuptools the OS
+    # happened to ship, and pip-audit audits *that* too. On this machine the
+    # seeded 66.1.1 carried PYSEC-2026-3447 (a MANIFEST.in exclusion bypass that
+    # only matters when building an sdist) and the dependency-audit gate failed
+    # on it — correctly, since the gate has no severity filter. A dev extra that
+    # upgrades it is the fix that keeps the gate strict.
+    "setuptools==83.0.0",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",

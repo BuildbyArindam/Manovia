@@ -28,6 +28,18 @@ What it does not do — the honest gap, also printed at the end of every run:
 So: a clean run here is a strong signal, not proof. A hit here must be triaged
 either way, and the CI job is what gates the merge.
 
+The rule file itself is `scripts/gitleaks-config.toml`, kept **byte-identical**
+to upstream's `config/gitleaks.toml` at tag v8.28.0:
+
+    sha256 c3bee40d87bb4689e3f5ffa5cc0315f7e6e4d43f4e9388397fca59f29407b432
+
+so a reviewer can diff it against the release instead of trusting a copy. It
+looks alarming on a skim, because it contains strings shaped like Google API
+keys — those are the `gcp-api-key` rule's own allowlist examples (see the
+`[[rules.allowlists]]` table under that rule), which is why neither this script
+nor gitleaks reports them. If the file ever needs editing, edit rules in a
+separate config and pass `--config`; do not fork this one.
+
 Usage:
     python scripts/scan_secrets.py                       # working tree
     python scripts/scan_secrets.py --history v8.28.0..HEAD
