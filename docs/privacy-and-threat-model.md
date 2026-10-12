@@ -315,6 +315,41 @@ deleted through `DELETE /api/v1/privacy/account` are hard-deleted in full.
 
 ---
 
+## 6a. Day 25: what the device keeps (offline support)
+
+Day 25 made the app work offline, which means some things now live on the
+reader's device as well as (or before) the server. Each is listed with its
+lifetime, because "it's only on your phone" is still a copy.
+
+| What | Where | Content | Cleared when |
+| --- | --- | --- | --- |
+| App shell (HTML, JS, CSS, icons, manifest) | Cache Storage (`workbox-precache-…`) | Code only, no personal data | Replaced on every update; on site-data clear |
+| Crisis helplines | Cache Storage `manovia-helplines-v1` | The public `GET /crisis/resources` answer (from `helplines.json`, with its `last_verified`) | 30-day expiry; refreshed whenever online (network-first) |
+| Exercise catalogue | Cache Storage `manovia-exercises-v1` | The public exercise definitions | 60-day expiry; refreshed in the background |
+| Queued mood check-ins | `localStorage` `manovia.mood.outbox.v1` | Scales, tags **and the note, in plain text**, plus a random `client_id` and the time it was made | Sent and removed on reconnect; on sign-out / onboarding restart; unsendable items stay listed until discarded |
+| Journal draft (one) | `localStorage` `manovia.journal.draft.v1` | Title and body **in plain text** while unsaved | Removed when the server confirms a save; on discard; on sign-out; after 30 days |
+
+**Never cached by the service worker:** any authenticated request (one that
+carries `Authorization`), and every personal endpoint — journal, mood, chat,
+plan, insights, privacy export, exercise history. The rule is code
+(`frontend/src/pwa/swRoutes.ts`) and is asserted by `swRoutes.test.ts`. The
+worker never holds the session token and does no background sync, so it cannot
+send anything as anybody.
+
+**Residual risks, stated plainly:**
+
+1. **Plain text on the device.** A queued check-in note or an unsaved journal
+   draft is readable by anyone who can open the browser's storage on that
+   device until it is sent, saved or discarded. That is the same trust boundary
+   as the session token already in `localStorage`, and it is the price of not
+   losing words written offline. Encrypting them locally was rejected: the key
+   would have to live on the same device (see ADR 0025).
+2. **Shared devices.** Signing out (or restarting onboarding) clears the queue
+   and the draft. A queued check-in made under one account is never sent under
+   another (`account_changed`).
+3. **Stale helplines.** An offline copy can be up to 30 days old. The dialog
+   says it is the saved copy, and every entry shows its `last_verified` date.
+
 ## 7. Manual checks this sandbox could not perform
 
 Stated because an unverified control presented as verified is worse than a known

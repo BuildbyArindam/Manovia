@@ -35,6 +35,26 @@ origin.
 | `npm run test:run`     | Vitest, once                                             |
 | `npm run format`       | Prettier, write                                          |
 | `npm run format:check` | Prettier, check                                          |
+| `npm run test:e2e:prod` | Day 25: Playwright against the **production build** (axe, keyboard, zoom, offline, installability); needs the API |
+| `npm run budget`       | Day 25: bundle budgets from `dist/.vite/manifest.json` (run after `build`) |
+| `npm run lighthouse`   | Day 25: Lighthouse 13, mobile, signed-in pages; asserts `lighthouserc.json` (needs `vite preview` + API) |
+| `npm run icons`        | Day 25: regenerate the PWA icons from the leaf mark |
+
+### Day 25 — offline, accessibility and performance checks
+
+```bash
+# 1. the API with the Fake model (see backend/README.md), on :8000
+# 2. the production build, served with the same-origin /api proxy
+npm run build && npx vite preview --host 0.0.0.0 --port 4173
+# 3. the checks
+npm run budget
+npm run test:e2e:prod          # writes test-results/day25/*.json(l)
+npm run lighthouse             # writes lighthouse-reports/
+```
+
+The service worker exists only in the production build (`vite build`); the dev
+server never registers one, so a cached shell can never hide a code change
+while developing. `.github/workflows/a11y-lighthouse.yml` runs all three in CI.
 
 ## Layout
 
