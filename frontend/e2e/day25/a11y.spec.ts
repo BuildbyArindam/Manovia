@@ -258,3 +258,45 @@ test("states: help dialog, exercise runner, mood confirmation, offline", async (
   await auditTargets(page, info, "mood queued offline + banner");
   await context.setOffline(false);
 });
+
+test("nothing covers the help dialog: it sits above the header and bottom navigation", async ({
+  page,
+}) => {
+  // Day 25 regression: the dialog used to render inside the sticky header's
+  // stacking context, so the mobile bottom navigation painted over its lower
+  // helplines.
+  await completeGuestOnboarding(page);
+  await page.getByRole("button", { name: "Need help now?" }).first().click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator('a[href^="tel:"]').first()).toBeVisible();
+  expect(
+    await page.evaluate(() => document.querySelector("[role=dialog]")?.closest("header") ?? null),
+  ).toBeNull();
+
+  // The bottom edge of the screen belongs to the dialog's overlay, not the nav.
+  const bottomOwner = await page.evaluate(() => {
+    const element = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 8);
+    return element?.closest("[data-testid=crisis-modal]") !== null
+      ? "dialog"
+      : element?.closest("nav") !== null
+        ? "nav"
+        : String(element?.tagName);
+  });
+  expect(bottomOwner).toBe("dialog");
+
+  // Every control in the dialog is the topmost thing at its own centre when focused.
+  for (let i = 0; i < 20; i += 1) {
+    await page.keyboard.press("Tab");
+    await page.waitForTimeout(50);
+    const covered = await page.evaluate(() => {
+      const element = document.activeElement as HTMLElement | null;
+      if (element === null || element === document.body) return null;
+      const box = element.getBoundingClientRect();
+      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return top === null || element.contains(top)
+        ? null
+        : `${element.textContent?.trim().slice(0, 30)} under ${top.tagName.toLowerCase()}`;
+    });
+    expect(covered).toBeNull();
+  }
+});
