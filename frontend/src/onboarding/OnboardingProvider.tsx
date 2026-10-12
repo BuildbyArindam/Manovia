@@ -142,6 +142,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
       };
       saveOnboardingRecord(next);
       setRecord(next);
+      // Day 25: the button that had focus unmounts with the onboarding flow,
+      // which would drop focus on <body> and leave the page scrolled wherever
+      // the last step was. Start the app at the top, with focus on its main
+      // content, once the shell has rendered.
+      window.requestAnimationFrame(() => {
+        // Instant: a new page starts at the top, it does not glide there.
+        window.scrollTo({ top: 0, behavior: "instant" });
+        document.getElementById("main")?.focus({ preventScroll: true });
+      });
       return { ok: true, record: next };
     } catch (error) {
       if (isApiError(error)) {
@@ -151,10 +160,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
       // response. Both are honest failures, so say what is actually wrong.
       return {
         ok: false,
-        error:
-          error instanceof TypeError
-            ? t("onboarding.errNetwork")
-            : t("onboarding.errSession"),
+        error: error instanceof TypeError ? t("onboarding.errNetwork") : t("onboarding.errSession"),
       };
     }
   }, []);

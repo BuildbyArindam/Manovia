@@ -59,7 +59,7 @@ function useRouteAnnouncements(): void {
     // Child effects run first: a page that focused something on purpose wins.
     if (!main.contains(document.activeElement)) {
       main.focus({ preventScroll: true });
-      window.scrollTo({ top: 0 });
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
   }, [pathname]);
 }
