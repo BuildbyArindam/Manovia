@@ -6,6 +6,11 @@ Usage::
     LLM_PROVIDER=fake python evals/run_response_eval.py --provider fake --with-judge
     python evals/run_response_eval.py --provider fake --print-transcripts 10
 
+The optional judge is a flagged risky feature (Day 27): --with-judge / --judge
+require FEATURE_LLM_JUDGE=true in the environment, so a copied command line
+cannot turn it on by accident. See docs/adr/0024-evaluation-harness.md for why
+the judge is advisory-only.
+
 Runs all 60 scenarios in ``evals/datasets/chat_rubric.jsonl`` through the live
 ``ChatOrchestrator`` pipeline (``admit`` -> ``_triage`` -> ``_crisis_reply`` or
 ``_prepare`` / redaction / emotion / retrieval / prompt -> ``_generate`` ->
@@ -42,6 +47,7 @@ import re
 import sys
 import uuid
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -819,6 +825,36 @@ Overall CI gate verdict: **{'PASS' if gate_passed else 'FAIL'}** (configured in 
     return report, gate_passed, json_summary
 
 
+FEATURE_LLM_JUDGE_ENV = "FEATURE_LLM_JUDGE"
+_TRUTHY: frozenset[str] = frozenset({"1", "true", "yes", "on"})
+
+
+def judge_gate_error(
+    judge_mode: str, env: Mapping[str, str] | None = None
+) -> str | None:
+    """Return an error string when the judge runs without its feature flag.
+
+    Day 27 feature flag for a risky feature: the 4-axis LLM judge is
+    advisory-only and uncalibrated against human ratings (ADR 0024), so
+    turning it on must be a deliberate environment decision, never a copied
+    ``--with-judge`` in a shell history. ``None`` means "allowed to run".
+    """
+    if judge_mode == "none":
+        return None
+    environment = os.environ if env is None else env
+    raw = str(environment.get(FEATURE_LLM_JUDGE_ENV, "")).strip().lower()
+    if raw in _TRUTHY:
+        return None
+    return (
+        "The LLM judge is disabled by its feature flag. It is advisory-only "
+        "and uncalibrated against human ratings (docs/adr/0024-evaluation-"
+        "harness.md), so it needs a deliberate opt-in: set "
+        "FEATURE_LLM_JUDGE=true in the environment and re-run. The "
+        "deterministic checks above this gate are unaffected and remain the "
+        "CI gates."
+    )
+
+
 async def _async_main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -887,6 +923,11 @@ async def _async_main(argv: list[str] | None = None) -> int:
     judge_mode = args.judge
     if judge_mode == "none" and args.with_judge:
         judge_mode = "fake" if args.provider in {"fake", "auto"} else "llm"
+
+    gate_error = judge_gate_error(judge_mode)
+    if gate_error is not None:
+        print(gate_error, file=sys.stderr)
+        return 2
 
     scenarios = load_scenarios(args.dataset)
     results, provider_label = await run_scenarios(

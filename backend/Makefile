@@ -55,10 +55,17 @@ revision:
 # multilingual cases), and response pipeline (60 scripted scenarios), writes
 # evals/reports/<date>/summary.md + report.html + pr_comment.md, and enforces
 # the CI gates in evals/thresholds.yaml.
+#
+# Day 27: the optional LLM judge is behind its feature flag. The deterministic
+# gates always run; pass EVALS_LLM_JUDGE=1 (or export FEATURE_LLM_JUDGE=true)
+# to additionally score warmth/validation/non_directive/safety with the
+# advisory-only judge.
 SPLIT ?= dev
 EVAL_PROVIDER ?= fake
+EVALS_LLM_JUDGE ?= 0
+EVAL_JUDGE_ARG = $(if $(filter 1,$(EVALS_LLM_JUDGE)),--with-judge,)
 eval:
-	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_all_evals.py --provider $(EVAL_PROVIDER) --with-judge
+	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_all_evals.py --provider $(EVAL_PROVIDER) $(EVAL_JUDGE_ARG)
 
 eval-safety:
 	$(PYTHON) ../evals/run_safety_eval.py --split $(SPLIT)
@@ -67,7 +74,7 @@ eval-emotion:
 	$(PYTHON) ../evals/run_emotion_eval.py
 
 eval-response:
-	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_response_eval.py --provider $(EVAL_PROVIDER) --with-judge
+	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_response_eval.py --provider $(EVAL_PROVIDER) $(EVAL_JUDGE_ARG)
 
 # Day 13 knowledge ingestion: chunk + embed + store the curated corpus,
 # idempotently (a second run is a no-op). RAG_EMBEDDER picks the embedder
