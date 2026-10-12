@@ -48,7 +48,7 @@ from app.core.crypto import DecryptError, decrypt, decrypt_field, decrypt_option
 from app.db.repos import ChatRepository
 from app.models.assessment import AssessmentResult
 from app.models.base import utcnow
-from app.models.cbt import CBTRecord
+from app.models.cbt import CBT_TEXT_FIELDS, CBTRecord, cbt_aad
 from app.models.chat_session import ChatSession
 from app.models.consent import Consent
 from app.models.exercise_completion import ExerciseCompletion
@@ -487,21 +487,17 @@ async def build_user_export(
             "what_helped": list(record.what_helped or []),
             "created_at": _iso(record.created_at),
         }
-        for key, field_name in (
-            ("situation", "situation"),
-            ("automatic_thought", "automatic_thought"),
-            ("evidence_for", "evidence_for"),
-            ("evidence_against", "evidence_against"),
-            ("balanced_thought", "balanced_thought"),
-        ):
+        # The AAD comes from the model, never from a literal here: the export
+        # must read a row exactly as the write path encrypted it.
+        for field_name in CBT_TEXT_FIELDS:
             blob = getattr(record, f"{field_name}_encrypted")
             _decrypt_or_flag(
                 blob,
                 user_id=uid,
-                field_name=field_name,
+                field_name=cbt_aad(field_name),
                 wrapped_dek=user.data_key_encrypted,
                 row=cbt_row,
-                key=key,
+                key=field_name,
             )
         if cbt_row.get("decryption_failed"):
             unreadable_records += 1

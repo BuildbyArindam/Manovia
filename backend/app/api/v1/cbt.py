@@ -15,7 +15,7 @@ from app.api.v1.mood import SAFETY_UNAVAILABLE_MESSAGE
 from app.core.crypto import CipherNotConfiguredError, DecryptError, decrypt_field, encrypt_field
 from app.core.errors import ApiError
 from app.db.repos.users import UserRepository
-from app.models.cbt import CBTRecord
+from app.models.cbt import CBTRecord, cbt_aad
 from app.models.enums import ConsentKind
 from app.models.user import User
 from app.services.cbt import QUESTION, TRAPS, suggest
@@ -193,7 +193,7 @@ def view(row: CBTRecord, wrapped: bytes | None) -> RecordView:
             field: decrypt_field(
                 getattr(row, f"{field}_encrypted"),
                 user_id=row.user_id,
-                field_name=f"cbt.{field}",
+                field_name=cbt_aad(field),
                 wrapped_dek=wrapped,
             )
             for field in FIELDS
@@ -243,7 +243,7 @@ async def create_record(
             f"{field}_encrypted": encrypt_field(
                 getattr(payload, field),
                 user_id=user.id,
-                field_name=f"cbt.{field}",
+                field_name=cbt_aad(field),
                 wrapped_dek=wrapped,
             )
             for field in FIELDS
