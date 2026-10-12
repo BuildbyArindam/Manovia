@@ -195,6 +195,26 @@
     min-height: 2.75rem;
   }
 
+  /*
+   * Reflow at 320px (Day 25): a fieldset defaults to `min-inline-size:
+   * min-content` and a select to the width of its longest option, so one long
+   * option ("Keep everything until I delete it") pushed Settings sideways at
+   * 400% zoom. Both may shrink to their container.
+   */
+  fieldset {
+    min-width: 0;
+  }
+
+  select {
+    max-width: 100%;
+  }
+
+  /* A checkbox or radio is hit through its label, so the label is the target. */
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]) {
+    min-height: 2.75rem;
+  }
+
   body {
     margin: 0;
     min-height: 100vh;
@@ -350,8 +370,13 @@
    */
   @media (max-height: 32rem) {
     .app-header,
-    .app-bottom-nav {
+    .app-bottom-nav,
+    .app-side-nav {
       position: static !important;
+    }
+
+    .app-side-nav {
+      max-height: none !important;
     }
 
     .app-content {

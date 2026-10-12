@@ -380,7 +380,8 @@
     "suggestionsUnavailable": "अभी सुझाव नहीं मिल रहे। फिर भी आप कोई भी लोड हुआ अभ्यास चुन सकते हैं।",
     "retryCatalog": "अभ्यास फिर से लोड करने की कोशिश करें",
     "tryExercise": "{{title}} आज़माएँ",
-    "noAudio": "आवाज़ की ज़रूरत नहीं"
+    "noAudio": "आवाज़ की ज़रूरत नहीं",
+    "selectedAction": "आपका छोटा कदम: {{choice}}"
   },
   "assessments": {
     "title": "स्क्रीनिंग",

@@ -680,13 +680,16 @@ export function JournalView({
       ) : null}
 
       <div
-        className={distractionFree ? "mx-auto max-w-3xl" : "grid gap-6 lg:grid-cols-[1fr_20rem]"}
+        // Day 25: a wrapping row sized in rem, not a pixel breakpoint, so the
+        // sidebar drops below the editor when the reader's text is large
+        // (a 1fr + 20rem grid overflowed sideways at 200% text).
+        className={distractionFree ? "mx-auto max-w-3xl" : "flex flex-wrap items-start gap-6"}
       >
         {/* Main Distraction-Free Editor Column */}
         <section
           aria-label={t("journal.editorLabel")}
           data-testid="journal-editor"
-          className="card space-y-4 p-6"
+          className="card min-w-0 flex-[1_1_28rem] space-y-4 p-6"
         >
           {/* Template selector pills */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -911,7 +914,7 @@ export function JournalView({
           <aside
             aria-label={t("journal.entriesLabel")}
             data-testid="journal-sidebar"
-            className="space-y-4"
+            className="min-w-0 flex-[1_1_16rem] space-y-4 lg:max-w-[20rem]"
           >
             <div className="card space-y-3 p-4">
               <div className="flex items-center justify-between">

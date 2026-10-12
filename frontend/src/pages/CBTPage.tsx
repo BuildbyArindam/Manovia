@@ -174,7 +174,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
         <div className="space-y-3">
           <button
             type="button"
-            className="rounded-xl bg-accent px-5 py-3 text-white"
+            className="min-h-11 rounded-xl bg-accent-bg px-5 py-3 text-accent-fg"
             onClick={() => {
               setActive(true);
               setCrisis(null);
@@ -371,7 +371,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
             <button
               type="submit"
               disabled={busy}
-              className="rounded-xl bg-accent px-5 py-3 text-white disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-accent-bg px-5 py-3 text-accent-fg disabled:opacity-50"
             >
               {step === 6 ? t("cbt.saveButton") : t("cbt.nextButton")}
             </button>

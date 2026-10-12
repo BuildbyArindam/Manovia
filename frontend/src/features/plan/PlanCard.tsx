@@ -172,7 +172,7 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
                       {link !== null && (
                         <Link
                           to={link.to}
-                          className="rounded-xl border border-border-strong px-3 py-2 text-sm font-semibold text-ink"
+                          className="inline-flex min-h-11 items-center rounded-xl border border-border-strong px-3 py-2 text-sm font-semibold text-ink"
                         >
                           {link.label}
                         </Link>

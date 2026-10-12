@@ -129,14 +129,14 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
             to="/chat"
-            className="rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg"
+            className="inline-flex min-h-11 items-center rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg"
             data-testid="home-chat-link"
           >
             {t("home.talkItThrough")}
           </Link>
           <Link
             to="/mood"
-            className="rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
+            className="inline-flex min-h-11 items-center rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
           >
             {t("home.fullMoodCheckIn")}
           </Link>

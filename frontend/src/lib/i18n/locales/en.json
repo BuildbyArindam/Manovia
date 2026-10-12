@@ -516,7 +516,8 @@
     "suggestionsUnavailable": "Suggestions are not available right now. You can still choose any loaded exercise.",
     "retryCatalog": "Retry exercises",
     "tryExercise": "Try {{title}}",
-    "noAudio": "No audio needed"
+    "noAudio": "No audio needed",
+    "selectedAction": "Your small action: {{choice}}"
   },
   "assessments": {
     "title": "Screenings",

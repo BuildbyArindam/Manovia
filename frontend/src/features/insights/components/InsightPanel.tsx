@@ -96,7 +96,7 @@ export function InsightPanel({
 
       {chart === undefined ? null : (
         <div
-          className="mt-4 overflow-x-auto"
+          className="relative mt-4 overflow-x-auto"
           tabIndex={0}
           role="group"
           aria-label={INSIGHTS_COPY.chartRegion(heading)}
