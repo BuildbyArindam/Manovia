@@ -84,7 +84,7 @@
     "whereNext": "Where to next?",
     "talkItThrough": "Talk it through",
     "fullMoodCheckIn": "Full mood check-in",
-    "quickQueued": "Saved on this device. It will be sent when you're back online."
+    "quickQueued": "Saved on this device. It will be sent once you're back online with Manovia open."
   },
   "chat": {
     "heading": "Chat",
@@ -276,15 +276,15 @@
     },
     "pluralDays": "{{count}} days",
     "pluralOneDay": "1 day",
-    "offlineHint": "You're offline. This check-in will be kept on this device and sent when you're back online.",
+    "offlineHint": "You're offline. This check-in will be kept on this device and sent once you're back online with Manovia open.",
     "queuedHeading": "Saved on this device",
-    "queuedBody": "You're offline, so this check-in is waiting on this device. It will be sent by itself when you're back online — you don't need to do anything.",
+    "queuedBody": "You're offline, so this check-in is waiting on this device. It will be sent by itself the next time Manovia is open and you're online — there's nothing else to do.",
     "queuedPrivacy": "Until it's sent, it stays on this device only (your note too), and it won't show in your history yet.",
     "queuedHelp": "If you'd like to talk to someone now, the helplines are saved on this device and work offline.",
     "pendingHeading": "Waiting to be sent",
     "pendingOne": "1 check-in is waiting on this device.",
     "pendingMany": "{{count}} check-ins are waiting on this device.",
-    "pendingOffline": "They'll be sent when you're back online.",
+    "pendingOffline": "They'll be sent once you're back online with Manovia open.",
     "pendingSendNow": "Send now",
     "pendingSending": "Sending…",
     "failedLine": "Check-in from {{when}} couldn't be sent.",
@@ -863,7 +863,7 @@
   },
   "pwa": {
     "offlineTitle": "You're offline.",
-    "offlineBody": "Breathing exercises and the helplines behind “Need help now?” still work. Check-ins are kept on this device and sent when you're back online.",
+    "offlineBody": "Breathing exercises and the helplines behind “Need help now?” still work. Check-ins are kept on this device and sent once you're back online with Manovia open.",
     "backOnline": "You're back online.",
     "updateReady": "A new version of Manovia is ready.",
     "updateReload": "Reload now",

@@ -2,7 +2,9 @@
  * What somebody sees after checking in with no connection (Day 25).
  *
  * The same promise as the online confirmation — it is saved — told truthfully:
- * saved *on this device*, sent by itself later, not in the history yet. And,
+ * saved *on this device*, sent by itself the next time Manovia is open and
+ * online (there is no background sync — see `pwa/offlineCopy.test.ts`), not in
+ * the history yet. And,
  * because the note cannot be screened until it reaches the server, the way to
  * the helplines is right here, every time, whatever the note says: the app
  * cannot know offline whether somebody needs it, so it never assumes they

@@ -326,7 +326,7 @@ lifetime, because "it's only on your phone" is still a copy.
 | App shell (HTML, JS, CSS, icons, manifest) | Cache Storage (`workbox-precache-…`) | Code only, no personal data | Replaced on every update; on site-data clear |
 | Crisis helplines | Cache Storage `manovia-helplines-v1` | The public `GET /crisis/resources` answer (from `helplines.json`, with its `last_verified`) | 30-day expiry; refreshed whenever online (network-first) |
 | Exercise catalogue | Cache Storage `manovia-exercises-v1` | The public exercise definitions | 60-day expiry; refreshed in the background |
-| Queued mood check-ins | `localStorage` `manovia.mood.outbox.v1` | Scales, tags **and the note, in plain text**, plus a random `client_id` and the time it was made | Sent and removed on reconnect; on sign-out / onboarding restart; unsendable items stay listed until discarded |
+| Queued mood check-ins | `localStorage` `manovia.mood.outbox.v1` | Scales, tags **and the note, in plain text**, plus a random `client_id` and the time it was made | Sent (and removed) once the device is online with Manovia open — no background sync; removed on sign-out / onboarding restart; unsendable items stay listed until discarded |
 | Journal draft (one) | `localStorage` `manovia.journal.draft.v1` | Title and body **in plain text** while unsaved | Removed when the server confirms a save; on discard; on sign-out; after 30 days |
 
 **Never cached by the service worker:** any authenticated request (one that
