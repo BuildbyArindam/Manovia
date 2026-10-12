@@ -2,6 +2,11 @@ import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } 
 import { CrisisCard } from "@/components/CrisisCard";
 import { t } from "@/lib/i18n/i18n";
 import {
+  clearJournalDraft,
+  loadJournalDraft,
+  saveJournalDraft,
+} from "@/features/journal/draftStorage";
+import {
   createJournalEntry,
   deleteJournalEntry,
   fetchJournalPrompts,
@@ -95,15 +100,25 @@ export function JournalView({
   const [prompts, setPrompts] = useState<JournalPrompt[]>([]);
   const [templates, setTemplates] = useState<readonly JournalTemplate[]>(() => fallbackTemplates());
 
+  const initialLocalDraft = useMemo(() => loadJournalDraft(), []);
+  const restoredDraftRef = useRef(initialLocalDraft);
+
   // Active editor state
-  const [activeId, setActiveId] = useState<string | null>(() =>
-    readSessionValue(ACTIVE_ENTRY_STORAGE_KEY),
+  const [activeId, setActiveId] = useState<string | null>(
+    () => initialLocalDraft?.activeId ?? readSessionValue(ACTIVE_ENTRY_STORAGE_KEY),
   );
-  const [title, setTitle] = useState<string>("");
-  const [body, setBody] = useState<string>("");
-  const [template, setTemplate] = useState<JournalTemplateId>("free");
-  const [promptId, setPromptId] = useState<string | null>(null);
-  const [storeEmotions, setStoreEmotions] = useState<boolean>(true);
+  const [title, setTitle] = useState<string>(() => initialLocalDraft?.title ?? "");
+  const [body, setBody] = useState<string>(() => initialLocalDraft?.body ?? "");
+  const [template, setTemplate] = useState<JournalTemplateId>(
+    () => initialLocalDraft?.template ?? "free",
+  );
+  const [promptId, setPromptId] = useState<string | null>(
+    () => initialLocalDraft?.promptId ?? null,
+  );
+  const [storeEmotions, setStoreEmotions] = useState<boolean>(
+    () => initialLocalDraft?.storeEmotions ?? true,
+  );
+  const [hasLocalDraft, setHasLocalDraft] = useState<boolean>(() => initialLocalDraft !== null);
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -152,6 +167,8 @@ export function JournalView({
       setActiveCrisis(entry.crisis ?? entry.metadata?.crisis ?? null);
       setConfirmingDelete(false);
       setSaveState("saved");
+      clearJournalDraft();
+      setHasLocalDraft(false);
       lastPersistedSnapshotRef.current = makeSnapshot(
         entry.id,
         entry.title,
@@ -189,6 +206,13 @@ export function JournalView({
           }
         }
 
+        // If a local unsaved draft was restored from localStorage at mount,
+        // keep it in the editor rather than overwriting it with server state.
+        if (restoredDraftRef.current !== null) {
+          restoredDraftRef.current = null;
+          return;
+        }
+
         // Restore active entry across page reloads if one exists
         const storedId = readSessionValue(ACTIVE_ENTRY_STORAGE_KEY);
         const storedMode = readSessionValue(EDITOR_MODE_STORAGE_KEY);
@@ -203,9 +227,12 @@ export function JournalView({
         }
       } catch (err) {
         if (!cancelled) {
-          setErrorMessage(
-            isApiError(err) ? err.message : t("journal.loadError"),
-          );
+          if (typeof navigator !== "undefined" && navigator.onLine === false) {
+            // Offline: editor still works with local-only drafts.
+            setErrorMessage(null);
+          } else {
+            setErrorMessage(isApiError(err) ? err.message : t("journal.loadError"));
+          }
         }
       } finally {
         if (!cancelled) {
@@ -222,6 +249,19 @@ export function JournalView({
   const performSave = useCallback(async (): Promise<JournalEntry | null> => {
     const trimmedBody = body.trim();
     if (trimmedBody === "" || saveInFlightRef.current) {
+      return null;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      saveJournalDraft({
+        activeId: activeIdRef.current,
+        title,
+        body,
+        template,
+        promptId,
+        storeEmotions,
+      });
+      setHasLocalDraft(true);
+      setSaveState("dirty");
       return null;
     }
     saveInFlightRef.current = true;
@@ -249,6 +289,8 @@ export function JournalView({
       setLastSavedAt(saved.updated_at);
       setActiveCrisis(saved.crisis ?? saved.metadata?.crisis ?? null);
       setSaveState("saved");
+      clearJournalDraft();
+      setHasLocalDraft(false);
 
       lastPersistedSnapshotRef.current = makeSnapshot(
         saved.id,
@@ -269,6 +311,15 @@ export function JournalView({
       });
       return saved;
     } catch (err) {
+      saveJournalDraft({
+        activeId: activeIdRef.current,
+        title,
+        body,
+        template,
+        promptId,
+        storeEmotions,
+      });
+      setHasLocalDraft(true);
       setSaveState("error");
       setErrorMessage(isApiError(err) ? err.message : t("journal.saveError"));
       return null;
@@ -277,17 +328,43 @@ export function JournalView({
     }
   }, [body, client, makeSnapshot, promptId, storeEmotions, template, title]);
 
-  // Debounced autosave effect
+  // Debounced autosave effect + local-only draft persistence
   useEffect(() => {
     const trimmedBody = body.trim();
     if (trimmedBody === "") {
+      if (title.trim() === "") {
+        clearJournalDraft();
+        setHasLocalDraft(false);
+      } else {
+        saveJournalDraft({
+          activeId,
+          title,
+          body,
+          template,
+          promptId,
+          storeEmotions,
+        });
+        setHasLocalDraft(true);
+      }
       return undefined;
     }
     const currentSnapshot = makeSnapshot(activeId, title, body, template, promptId, storeEmotions);
     if (currentSnapshot === lastPersistedSnapshotRef.current) {
       return undefined;
     }
+    saveJournalDraft({
+      activeId,
+      title,
+      body,
+      template,
+      promptId,
+      storeEmotions,
+    });
+    setHasLocalDraft(true);
     setSaveState("dirty");
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return undefined;
+    }
     const timer = window.setTimeout(() => {
       void performSave();
     }, autosaveDelayMs);
@@ -309,6 +386,8 @@ export function JournalView({
   const handleStartNewEntry = useCallback(
     (initialTemplate: JournalTemplateId = "free") => {
       const tpl = templates.find((t) => t.id === initialTemplate);
+      clearJournalDraft();
+      setHasLocalDraft(false);
       setActiveId(null);
       activeIdRef.current = null;
       writeSessionValue(ACTIVE_ENTRY_STORAGE_KEY, null);
@@ -587,7 +666,23 @@ export function JournalView({
             </div>
 
             {/* Word count + Autosave status */}
-            <div className="flex items-center gap-3 text-xs text-stone-500">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500">
+              {hasLocalDraft ? (
+                <span
+                  data-testid="journal-local-draft-badge"
+                  className="inline-flex items-center gap-2 rounded-full border border-border-strong bg-accent-soft px-2.5 py-0.5 font-medium text-ink"
+                >
+                  <span>{t("journal.localDraftBadge")}</span>
+                  <button
+                    type="button"
+                    data-testid="journal-discard-draft"
+                    onClick={() => handleStartNewEntry(template)}
+                    className="underline hover:opacity-80"
+                  >
+                    {t("journal.discardDraft")}
+                  </button>
+                </span>
+              ) : null}
               <span data-testid="journal-word-count" className="font-medium text-stone-700">
                 {liveWordCount === 1
                   ? t("journal.wordCountOne", { count: liveWordCount })

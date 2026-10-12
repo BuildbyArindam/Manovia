@@ -16,7 +16,7 @@ import { emotionLabel, energyPoint, factorLabel, localisedEnergyLabel, localised
 import { MOOD_COPY } from "../copy";
 import { intlLocale, t } from "@/lib/i18n/i18n";
 import type { MoodEntry } from "../types";
-import { useDeleteMoodEntry, useMoodHistory } from "../useMood";
+import { useDeleteMoodEntry, useMoodHistory, useOfflineMoodQueue } from "../useMood";
 import type { ApiClient } from "@/lib/api";
 import { MoodFace } from "./MoodFace";
 
@@ -41,10 +41,13 @@ export function formatLocalDay(isoDate: string): string {
 export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
   const history = useMoodHistory(client);
   const deletion = useDeleteMoodEntry(client);
+  const offlineQueue = useOfflineMoodQueue(client);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  const entries = history.data?.entries ?? [];
+  const serverEntries = history.data?.entries ?? [];
+  const entries: MoodEntry[] = [...offlineQueue.queuedEntries, ...serverEntries];
+  const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   return (
     <section
@@ -56,13 +59,25 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
         {MOOD_COPY.historyHeading}
       </h2>
 
-      {history.isPending ? <p className="mt-2 text-ink-muted">{MOOD_COPY.historyLoading}</p> : null}
-      {history.isError ? (
+      {offlineQueue.lastSyncedCount > 0 ? (
+        <p
+          role="status"
+          data-testid="mood-offline-synced"
+          className="mt-2 rounded-xl bg-accent-soft p-3 text-sm font-medium text-ink"
+        >
+          {t("mood.offlineSyncedStatus", { count: offlineQueue.lastSyncedCount })}
+        </p>
+      ) : null}
+
+      {history.isPending && entries.length === 0 ? (
+        <p className="mt-2 text-ink-muted">{MOOD_COPY.historyLoading}</p>
+      ) : null}
+      {history.isError && !isOffline && entries.length === 0 ? (
         <p className="mt-2 text-danger" role="alert">
           {MOOD_COPY.historyError}
         </p>
       ) : null}
-      {!history.isPending && !history.isError && entries.length === 0 ? (
+      {!history.isPending && (!history.isError || isOffline) && entries.length === 0 ? (
         <p className="mt-2 text-ink-muted">{MOOD_COPY.historyEmpty}</p>
       ) : null}
 
@@ -91,6 +106,14 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
                   <time dateTime={entry.local_date}>{day}</time> · {localisedValenceLabel(valence)} ·{" "}
                   {t("mood.energyWord")} {localisedEnergyLabel(energy)}
                 </p>
+                {entry.queued_offline ? (
+                  <span
+                    data-testid="mood-queued-badge"
+                    className="rounded-full border border-border-strong bg-accent-soft px-3 py-0.5 text-xs font-semibold text-ink"
+                  >
+                    {t("mood.offlineQueuedBadge")}
+                  </span>
+                ) : null}
               </div>
 
               {entry.emotions.length > 0 || entry.factors.length > 0 ? (

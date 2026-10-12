@@ -1,4 +1,5 @@
 import { api as defaultClient, type ApiClient } from "@/lib/api";
+import { readCachedExercises, writeCachedExercises } from "@/lib/pwa/offlineCache";
 
 import type {
   CompletionPayload,
@@ -24,7 +25,19 @@ export const EXERCISE_ENDPOINTS = {
 export async function fetchExercises(
   client: ApiClient = defaultClient,
 ): Promise<ExerciseListResponse> {
-  return client.get<ExerciseListResponse>(EXERCISE_ENDPOINTS.list, { authenticated: false });
+  try {
+    const response = await client.get<ExerciseListResponse>(EXERCISE_ENDPOINTS.list, {
+      authenticated: false,
+    });
+    writeCachedExercises(response);
+    return response;
+  } catch (error) {
+    const cached = readCachedExercises();
+    if (cached !== null) {
+      return cached;
+    }
+    throw error;
+  }
 }
 
 export async function fetchExercise(

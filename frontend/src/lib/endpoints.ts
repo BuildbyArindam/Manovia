@@ -9,6 +9,10 @@
 
 import type { ApiClient } from "@/lib/api";
 import { api as defaultClient } from "@/lib/api";
+import {
+  readCachedCrisisResources,
+  writeCachedCrisisResources,
+} from "@/lib/pwa/offlineCache";
 
 /** Mirrors `app.models.enums.ConsentKind` on the backend. */
 export type ConsentKind = "terms" | "privacy" | "ai_disclosure" | "store_chat";
@@ -285,9 +289,19 @@ export async function fetchCrisisResources(
   region?: string | null,
 ): Promise<CrisisResourcesResponse> {
   const query = region ? `?region=${encodeURIComponent(region)}` : "";
-  return client.get<CrisisResourcesResponse>(`/crisis/resources${query}`, {
-    authenticated: false,
-  });
+  try {
+    const response = await client.get<CrisisResourcesResponse>(`/crisis/resources${query}`, {
+      authenticated: false,
+    });
+    writeCachedCrisisResources(response, region);
+    return response;
+  } catch (error) {
+    const cached = readCachedCrisisResources(region);
+    if (cached !== null) {
+      return cached;
+    }
+    throw error;
+  }
 }
 
 /**
