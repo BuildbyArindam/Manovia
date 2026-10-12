@@ -19,7 +19,11 @@
     "test:run": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
+    "budget": "node scripts/check-bundle-budget.mjs",
+    "lighthouse": "node scripts/lighthouse-ci.mjs",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
@@ -32,7 +36,6 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.64.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -43,14 +46,17 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.21",
+    "chrome-launcher": "^1.2.2",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^17.13.0",
     "jest-axe": "^11.0.0",
     "jsdom": "^26.1.0",
+    "lighthouse": "^13.5.0",
     "postcss": "^8.5.6",
     "prettier": "^3.9.9",
+    "puppeteer-core": "^25.13.0",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.71.1",

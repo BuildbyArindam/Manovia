@@ -14,3 +14,7 @@ coverage/
 test-results/
 playwright-report/
 .playwright/
+
+# Day 25 — Lighthouse output (uploaded as CI artifacts, never committed)
+lighthouse-reports/
+.lighthouseci/
