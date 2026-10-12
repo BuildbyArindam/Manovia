@@ -12,7 +12,12 @@ describe("guided exercise copy", () => {
     expect(copy).toContain("not treatment");
     expect(copy).toContain("association, not proof");
     expect(copy).toContain("Not saved");
-    expect(copy).toContain("Reloading offline is not supported");
+    // Day 25: the service worker made offline reloads work, so the honest line
+    // changed from "Reloading offline is not supported" to the new boundary —
+    // offline, but only after the app has loaded once on this device.
+    expect(copy).toContain("Exercises work offline");
+    expect(copy).toContain("once Manovia has loaded on this device");
+    expect(copy).not.toContain("Reloading offline is not supported");
   });
 
   it("uses the existing emotion taxonomy and gives every animation a text cue", () => {

@@ -170,7 +170,13 @@ describe("design tokens", () => {
   });
 
   it("sets a 16px base font size and never smaller", () => {
-    expect(blockWithSelector("html")?.declarations.get("font-size")).toBe("16px");
+    // Day 25: `max(100%, 16px)` — the reader's own browser font size (so text
+    // resize in browser settings works, WCAG 1.4.4), floored at 16px.
+    const size = blockWithSelector("html")?.declarations.get("font-size");
+    expect(size).toBe("max(100%, 16px)");
+    expect(size).toContain("16px");
+    // A fixed pixel size would ignore a larger default chosen by the reader.
+    expect(size).not.toMatch(/^\d+px$/);
   });
 
   it("collapses animation when the user asks for reduced motion", () => {

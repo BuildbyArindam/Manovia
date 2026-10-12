@@ -24,10 +24,9 @@
 
 import i18next from "i18next";
 
-import bn from "./locales/bn.json";
 import en from "./locales/en.json";
-import hi from "./locales/hi.json";
 import { pseudoPostProcessor } from "./pseudo";
+import { ensureScriptFonts } from "./scriptFonts";
 
 /** The languages the interface ships, in switcher order. */
 export const APP_LANGUAGES = [
@@ -119,14 +118,27 @@ export function initialLanguage(): AppLanguage {
 
 adoptPseudoFlagFromUrl();
 
-// init() resolves synchronously here: the resources are bundled and no backend
-// plugin is registered, so there is nothing to load and `t` works from the
-// very first line after this call.
+/**
+ * Day 25 — the non-English trees are their own chunks.
+ *
+ * Bundling all three trees cost every reader ~47 KB of gzipped JSON (~220 KB to
+ * parse) for two languages they may never use — the largest single item in the
+ * first download on a low-end phone. English stays bundled (it is the fallback
+ * every key resolves through, and `t` must work synchronously from the first
+ * line); Hindi and Bengali load on demand: before the first render when they
+ * are the starting language (see `main.tsx`), or when the switcher asks.
+ */
+const LOADERS: Record<Exclude<AppLanguage, "en">, () => Promise<{ default: unknown }>> = {
+  hi: () => import("./locales/hi.json"),
+  bn: () => import("./locales/bn.json"),
+};
+
+// init() resolves synchronously here: the bundled resources need no loading and
+// no backend plugin is registered, so `t` works from the very first line after
+// this call (falling back to English for a tree that has not arrived yet).
 void i18next.use(pseudoPostProcessor).init({
   resources: {
     en: { translation: en },
-    hi: { translation: hi },
-    bn: { translation: bn },
     // Pseudo renders the English tree through the post-processor.
     [PSEUDO_LANGUAGE]: { translation: en },
   },
@@ -143,6 +155,26 @@ void i18next.use(pseudoPostProcessor).init({
 
 /** The active i18next instance, for modules that translate outside components. */
 export const i18n = i18next;
+
+/** True when this language's strings are in memory (English always is). */
+export function isLanguageLoaded(language: AppLanguage): boolean {
+  return language === "en" || i18next.hasResourceBundle(language, "translation");
+}
+
+/** Put an already-loaded tree in place (the loader below, and the test setup). */
+export function registerLanguageResources(language: AppLanguage, tree: unknown): void {
+  i18next.addResourceBundle(language, "translation", tree, true, true);
+}
+
+/** Fetch a language's strings if they are not in memory yet. */
+export async function ensureLanguageLoaded(language: AppLanguage): Promise<void> {
+  ensureScriptFonts(language);
+  if (isLanguageLoaded(language)) {
+    return;
+  }
+  const module = await LOADERS[language as Exclude<AppLanguage, "en">]();
+  registerLanguageResources(language, module.default);
+}
 
 /** Translate through the module-level instance. */
 export function t(key: string, options?: Record<string, unknown>): string {
@@ -182,12 +214,26 @@ applyDocumentLanguage();
 /**
  * Switch the interface language and persist it. Pseudo is entered through
  * :func:`setPseudoMode` because it must never overwrite the saved choice.
+ *
+ * Synchronous when the language is already in memory; otherwise its chunk is
+ * fetched first (Day 25), so the screen never flashes untranslated keys.
  */
 export function setAppLanguage(language: AppLanguage): void {
   safeStorageSet(LANGUAGE_STORAGE_KEY, language);
-  const target = isPseudoMode() ? PSEUDO_LANGUAGE : language;
-  void i18next.changeLanguage(target);
-  applyDocumentLanguage();
+  const apply = (): void => {
+    const target = isPseudoMode() ? PSEUDO_LANGUAGE : language;
+    void i18next.changeLanguage(target);
+    applyDocumentLanguage();
+  };
+  if (isLanguageLoaded(language)) {
+    ensureScriptFonts(language);
+    apply();
+    return;
+  }
+  ensureLanguageLoaded(language).then(apply, () => {
+    // Offline before this language was ever cached: stay in the current one
+    // rather than show a screen of fallback English under a Hindi label.
+  });
 }
 
 /** Turn pseudo-localisation on or off without losing the saved language. */

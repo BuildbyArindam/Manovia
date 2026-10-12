@@ -82,7 +82,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
               <label className="flex flex-col gap-1">
                 <span>{t("exercises.feelingQuestion")}</span>
                 <select
-                  className="rounded-lg border border-border-strong bg-surface px-3 py-2"
+                  className="min-h-11 rounded-lg border border-border-strong bg-surface px-3 py-2"
                   value={emotion}
                   onChange={(event) => setEmotion(event.target.value as ExerciseEmotion | "")}
                 >
@@ -97,7 +97,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
               <label className="flex flex-col gap-1">
                 <span>{t("exercises.intensityQuestion")}</span>
                 <select
-                  className="rounded-lg border border-border-strong bg-surface px-3 py-2"
+                  className="min-h-11 rounded-lg border border-border-strong bg-surface px-3 py-2"
                   value={intensity}
                   onChange={(event) => setIntensity(event.target.value as Intensity)}
                   disabled={emotion === ""}
@@ -129,11 +129,15 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                   void catalog.refetch();
                 }}
               >
-                Retry exercises
+                {t("exercises.retryCatalog")}
               </button>
             </div>
           ) : null}
-          <div className="grid gap-4 lg:grid-cols-2" aria-label={t("exercises.choicesLabel")}>
+          <div
+            role="group"
+            className="grid gap-4 lg:grid-cols-2"
+            aria-label={t("exercises.choicesLabel")}
+          >
             {exercises.map((exercise) => (
               <article
                 key={exercise.id}
@@ -145,7 +149,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                 ) : null}
                 <h2 className="text-xl">{exercise.title.en}</h2>
                 <p className="text-sm text-ink-muted">
-                  {formatDuration(exercise.duration_seconds)} · No audio needed
+                  {formatDuration(exercise.duration_seconds)} · {t("exercises.noAudio")}
                 </p>
                 <p className="flex-1 text-ink-muted">{exercise.description}</p>
                 {why.has(exercise.id) ? (
@@ -170,7 +174,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                     setActive(exercise);
                   }}
                 >
-                  Try {exercise.title.en}
+                  {t("exercises.tryExercise", { title: exercise.title.en })}
                 </button>
               </article>
             ))}

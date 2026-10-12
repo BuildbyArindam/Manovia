@@ -101,12 +101,98 @@
   }
 }
 
+/*
+ * High-contrast palettes (Day 25). Applied by `data-contrast="more"` on <html>,
+ * which the Settings switch writes and which `first-paint.ts` also sets when the
+ * reader asked their operating system for more contrast (`prefers-contrast:
+ * more`) and made no explicit choice here. Every text pair is asserted at
+ * >= 7:1 and every border and the focus ring at >= 4.5:1 by
+ * `src/styles/tokens.test.ts`. The selectors carry `:root` so they outrank the
+ * `prefers-color-scheme` block above whatever order a future edit puts them in.
+ */
+:root[data-contrast="more"] {
+  --manovia-bg: #fffdf8;
+  --manovia-surface: #ffffff;
+  --manovia-surface-muted: #efe8dc;
+  --manovia-border: #776650;
+  --manovia-border-strong: #3b3229;
+
+  --manovia-text: #14110e;
+  --manovia-text-muted: #352e27;
+
+  --manovia-accent-text: #1b4632;
+  --manovia-accent-bg: #1b4632;
+  --manovia-accent-fg: #ffffff;
+  --manovia-accent-soft: #dcebe2;
+
+  --manovia-danger-text: #7a1d10;
+  --manovia-danger-bg: #7a1d10;
+  --manovia-danger-fg: #ffffff;
+  --manovia-danger-soft: #f8dfd8;
+
+  --manovia-focus: #000000;
+}
+
+:root[data-theme="dark"][data-contrast="more"] {
+  --manovia-bg: #000000;
+  --manovia-surface: #0f0d0a;
+  --manovia-surface-muted: #1e1a16;
+  --manovia-border: #9c8d76;
+  --manovia-border-strong: #e3d8c6;
+
+  --manovia-text: #ffffff;
+  --manovia-text-muted: #e9e1d4;
+
+  --manovia-accent-text: #b8eed2;
+  --manovia-accent-bg: #b8eed2;
+  --manovia-accent-fg: #000000;
+  --manovia-accent-soft: #0f2a1d;
+
+  --manovia-danger-text: #ffc4b8;
+  --manovia-danger-bg: #ffc4b8;
+  --manovia-danger-fg: #000000;
+  --manovia-danger-soft: #3a140d;
+
+  --manovia-focus: #ffd27a;
+}
+
 @layer base {
-  /* Base font size is 16px, never smaller (AGENTS.md accessibility rule). */
+  /*
+   * Base font size: the reader's own browser setting, and never below 16px
+   * (AGENTS.md accessibility rule). Day 25 changed this from a fixed `16px`,
+   * which silently overrode a larger default font size chosen in the browser —
+   * the "text resize" half of WCAG 1.4.4. Every size in the app is in rem, so
+   * the whole interface follows the reader's choice.
+   *
+   * `scroll-padding` keeps a focused or scrolled-to element clear of the sticky
+   * header and the fixed bottom navigation (WCAG 2.4.11, focus not obscured).
+   */
   html {
-    font-size: 16px;
+    font-size: max(100%, 16px);
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
+    scroll-padding-bottom: 6rem;
+  }
+
+  /*
+   * Targets (Day 25): every button, select and single-line field is at least
+   * 44px tall (WCAG 2.5.5's size; 2.5.8 AA asks for 24px). Utilities can make a
+   * control bigger, and the few that need a different shape say so locally.
+   */
+  button,
+  select,
+  summary,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="time"],
+  input[type="number"],
+  input[type="date"],
+  input[type="url"],
+  input[type="tel"] {
+    min-height: 2.75rem;
   }
 
   body {
@@ -155,14 +241,14 @@
 
   html[lang="hi"] {
     --manovia-font-sans:
-      "Noto Sans Devanagari", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-      Roboto, "Helvetica Neue", Arial, sans-serif;
+      "Noto Sans Devanagari", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
   }
 
   html[lang="bn"] {
     --manovia-font-sans:
-      "Noto Sans Bengali", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-      Roboto, "Helvetica Neue", Arial, sans-serif;
+      "Noto Sans Bengali", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
   }
 
   /* A visible, high-contrast focus ring for every interactive element. */
@@ -175,6 +261,16 @@
   /* Remove the default ring only where focus-visible draws its own. */
   :focus:not(:focus-visible) {
     outline: none;
+  }
+
+  /* High contrast: a heavier ring, and links that never rely on colour alone. */
+  [data-contrast="more"] :focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
+  [data-contrast="more"] a {
+    text-decoration-line: underline;
   }
 }
 
@@ -196,6 +292,71 @@
 
   .skip-link:focus {
     transform: translateY(0);
+  }
+
+  /*
+   * Day 25: `.btn-primary`, `.btn-secondary` and `.card` were used by the
+   * exercise runner and the journal since Days 17-18 but never defined, so those
+   * controls rendered as unstyled browser buttons (small, and outside the
+   * palette in dark mode). They are tokens like everything else now.
+   */
+  .btn-primary,
+  .btn-secondary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.875rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .btn-primary {
+    background-color: var(--manovia-accent-bg);
+    color: var(--manovia-accent-fg);
+    border: 2px solid var(--manovia-accent-bg);
+  }
+
+  .btn-secondary {
+    background-color: var(--manovia-surface);
+    color: var(--manovia-text);
+    border: 1px solid var(--manovia-border-strong);
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .card {
+    border-radius: 1.25rem;
+    border: 1px solid var(--manovia-border);
+    background-color: var(--manovia-surface);
+    color: var(--manovia-text);
+  }
+
+  /*
+   * Short viewports (Day 25): at 200% zoom a 1280x800 window is 640x400 CSS
+   * pixels, and at 400% it is 320x200. A sticky header plus a fixed bottom bar
+   * would then cover most of the screen and hide whatever has focus (WCAG
+   * 1.4.10 reflow, 2.4.11 focus not obscured). Below this height both scroll
+   * with the page instead. `!important` because these override the
+   * `sticky`/`fixed`/`pb-*` utilities on the same elements, which Tailwind
+   * emits in a later layer.
+   */
+  @media (max-height: 32rem) {
+    .app-header,
+    .app-bottom-nav {
+      position: static !important;
+    }
+
+    .app-content {
+      padding-bottom: 1.5rem !important;
+    }
   }
 }
 
@@ -322,6 +483,35 @@
       border-bottom: 1px solid currentColor;
       padding: 0.35rem 0.5rem;
       text-align: left;
+    }
+  }
+}
+
+@layer utilities {
+  /*
+   * Windows High Contrast / forced colours (Day 25). The system replaces every
+   * colour, so anything that signals state with a background alone — a chosen
+   * mood face, a pressed template pill, the current page — gets an outline in
+   * the system highlight colour instead.
+   */
+  @media (forced-colors: active) {
+    :focus-visible {
+      outline: 3px solid CanvasText;
+      outline-offset: 3px;
+    }
+
+    [aria-pressed="true"],
+    [aria-current="page"],
+    [data-selected="true"] {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+
+    .skip-link,
+    .btn-primary,
+    .btn-secondary,
+    .card {
+      border: 1px solid CanvasText;
     }
   }
 }

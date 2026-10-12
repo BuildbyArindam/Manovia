@@ -76,7 +76,9 @@ describe("a refresh that fails on the network keeps the session", () => {
       }
       return Promise.resolve(
         new Response(
-          JSON.stringify({ error: { code: "token_expired", message: "Expired.", request_id: "r" } }),
+          JSON.stringify({
+            error: { code: "token_expired", message: "Expired.", request_id: "r" },
+          }),
           { status: 401, headers: { "Content-Type": "application/json" } },
         ),
       );
@@ -104,7 +106,11 @@ describe("a refresh that fails on the network keeps the session", () => {
         expect(body.refresh_token).toBe("refresh-1");
         return Promise.resolve(
           new Response(
-            JSON.stringify({ access_token: "access-2", refresh_token: "refresh-2", expires_in: 900 }),
+            JSON.stringify({
+              access_token: "access-2",
+              refresh_token: "refresh-2",
+              expires_in: 900,
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           ),
         );

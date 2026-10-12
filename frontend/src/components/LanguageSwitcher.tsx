@@ -21,7 +21,10 @@ import { useI18nState } from "@/lib/i18n/I18nProvider";
 
 export function LanguageSwitcher(): ReactElement {
   const { language, pseudo } = useI18nState();
+  // Day 25: two ids. The label text and the select used to share one, which is
+  // invalid HTML and made `aria-labelledby` point at an ambiguous target.
   const labelId = useId();
+  const selectId = useId();
   const showPseudo = pseudo || import.meta.env.DEV;
   const value = pseudo ? PSEUDO_LANGUAGE : language;
 
@@ -36,18 +39,18 @@ export function LanguageSwitcher(): ReactElement {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm text-ink-muted" htmlFor={labelId}>
+    <label className="flex items-center gap-2 text-sm text-ink-muted" htmlFor={selectId}>
       {/* Visible on wide screens; on a 360px phone the select keeps the space. */}
       <span id={labelId} className="hidden sm:inline">
         {t("language.label")}
       </span>
       <select
-        id={labelId}
+        id={selectId}
         data-testid="language-switcher"
         aria-labelledby={labelId}
         value={value}
         onChange={handleChange}
-        className="min-h-9 rounded-lg border border-border-strong bg-surface px-2 text-ink"
+        className="min-h-11 rounded-lg border border-border-strong bg-surface px-2 text-ink"
       >
         {APP_LANGUAGES.map((option) => (
           <option key={option.code} value={option.code} lang={option.code}>

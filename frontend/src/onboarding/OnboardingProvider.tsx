@@ -30,6 +30,8 @@ import {
   type ConsentKind,
   type Credentials,
 } from "@/lib/endpoints";
+import { clearJournalDraft } from "@/features/journal/drafts";
+import { clearOutbox } from "@/features/mood/outbox";
 import { FALLBACK_CONSENT_VERSION } from "./copy";
 import {
   clearOnboardingRecord,
@@ -160,6 +162,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
   const reset = useCallback(() => {
     clearOnboardingRecord();
     api.clearSession();
+    // Day 25: what this device kept for the account goes with the account — a
+    // queued check-in or a journal draft must never be sent, or shown, as the
+    // next person who signs in on a shared phone.
+    clearOutbox();
+    clearJournalDraft();
     setRecord(null);
   }, []);
 

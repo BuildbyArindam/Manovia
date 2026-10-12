@@ -66,6 +66,8 @@ export interface MoodCheckInResponse {
   entry: MoodEntry;
   streak: MoodStreak;
   crisis: MoodCrisis | null;
+  /** Day 25: true when this `client_id` was already stored (a retry). */
+  replayed?: boolean;
 }
 
 export interface MoodListResponse {
@@ -91,4 +93,8 @@ export interface MoodCheckInPayload {
   emotions: string[];
   factors: string[];
   note?: string | null;
+  /** Day 25: idempotency key, so a retried (offline-queued) send stores once. */
+  client_id?: string;
+  /** Day 25: when the person checked in (ISO-8601 with offset). */
+  recorded_at?: string;
 }

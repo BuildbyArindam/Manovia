@@ -33,7 +33,7 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
   const queryClient = useQueryClient();
   const [valence, setValence] = useState<number | null>(null);
   const [energy, setEnergy] = useState(3);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<"saved" | "queued" | null>(null);
 
   const checkIn = useMoodCheckIn(client);
 
@@ -42,8 +42,9 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
     if (valence === null || checkIn.isPending) {
       return;
     }
-    await checkIn.mutateAsync({ valence, energy, emotions: [], factors: [] });
-    setSaved(true);
+    const result = await checkIn.mutateAsync({ valence, energy, emotions: [], factors: [] });
+    // Day 25: offline, the check-in is queued on this device and sent later.
+    setSaved(result.kind);
     setValence(null);
     setEnergy(3);
     // A new check-in changes what tomorrow's plan can say; the day's plan is
@@ -65,15 +66,15 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         <h2 id="quick-checkin-heading" className="text-lg">
           {t("home.quickCheckInHeading")}
         </h2>
-        {saved ? (
+        {saved !== null ? (
           <div className="mt-4">
             <p className="text-sm text-ink" role="status">
-              {t("home.quickSaved")}
+              {saved === "queued" ? t("home.quickQueued") : t("home.quickSaved")}
             </p>
             <button
               type="button"
-              className="mt-3 rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
-              onClick={() => setSaved(false)}
+              className="mt-3 min-h-11 rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
+              onClick={() => setSaved(null)}
             >
               {t("home.checkInAgain")}
             </button>
@@ -84,7 +85,7 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
               value={valence}
               onChange={(value) => {
                 setValence(value);
-                setSaved(false);
+                setSaved(null);
               }}
               legend={t("home.valenceLegend")}
               hint={t("home.valenceHint")}

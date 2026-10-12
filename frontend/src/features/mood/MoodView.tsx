@@ -22,10 +22,11 @@ import { MOOD_COPY } from "./copy";
 import { MoodCheckInForm } from "./components/MoodCheckInForm";
 import { MoodConfirmation } from "./components/MoodConfirmation";
 import { MoodHistory } from "./components/MoodHistory";
+import { MoodQueuedConfirmation } from "./components/MoodQueuedConfirmation";
+import { PendingCheckIns } from "./components/PendingCheckIns";
 import { ReminderPreference } from "./components/ReminderPreference";
 import { StreakIndicator } from "./components/StreakIndicator";
-import type { MoodCheckInResponse } from "./types";
-import { useMoodStreak } from "./useMood";
+import { useMoodStreak, type MoodSubmitResult } from "./useMood";
 
 export interface MoodViewProps {
   /** Injectable client: the tests drive the page against a fake transport. */
@@ -33,7 +34,7 @@ export interface MoodViewProps {
 }
 
 export function MoodView({ client }: MoodViewProps): ReactElement {
-  const [saved, setSaved] = useState<MoodCheckInResponse | null>(null);
+  const [saved, setSaved] = useState<MoodSubmitResult | null>(null);
   const streak = useMoodStreak(client);
 
   return (
@@ -42,6 +43,8 @@ export function MoodView({ client }: MoodViewProps): ReactElement {
 
       <StreakIndicator streak={streak.data} loading={streak.isPending} />
 
+      <PendingCheckIns client={client} />
+
       {saved === null ? (
         <MoodCheckInForm
           client={client}
@@ -49,9 +52,15 @@ export function MoodView({ client }: MoodViewProps): ReactElement {
             setSaved(result);
           }}
         />
+      ) : saved.kind === "queued" ? (
+        <MoodQueuedConfirmation
+          onAnother={() => {
+            setSaved(null);
+          }}
+        />
       ) : (
         <MoodConfirmation
-          result={saved}
+          result={saved.response}
           onAnother={() => {
             setSaved(null);
           }}

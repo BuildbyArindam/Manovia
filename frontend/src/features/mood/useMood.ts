@@ -13,12 +13,21 @@
  *   same pattern, written on Day 12).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api, type ApiClient } from "@/lib/api";
+import { api, isNetworkFailure, type ApiClient } from "@/lib/api";
+import { loadOnboardingRecord } from "@/onboarding/storage";
+import { isOnline } from "@/pwa/useOnlineStatus";
 
 import { createMoodCheckIn, deleteMoodEntry, fetchMoodEntries, fetchMoodStreak } from "./endpoints";
+import {
+  MOOD_OUTBOX_KEY,
+  enqueueCheckIn,
+  loadOutbox,
+  subscribeOutbox,
+  type QueuedCheckIn,
+} from "./outbox";
 import { loadMoodReminder, saveMoodReminder, type MoodReminder } from "./storage";
 import type {
   MoodCheckInPayload,
@@ -36,18 +45,91 @@ export const moodKeys = {
 
 const HISTORY_LIMIT = 30;
 
-/** Save one check-in, then refresh everything it could have changed. */
+/**
+ * What happened to a check-in (Day 25): stored on the server, or queued on this
+ * device because the network was not there. Both are a success for the person
+ * — their check-in is safe — and the UI says which, in words.
+ */
+export type MoodSubmitResult =
+  { kind: "saved"; response: MoodCheckInResponse } | { kind: "queued"; item: QueuedCheckIn };
+
+function newClientId(): string {
+  return crypto.randomUUID();
+}
+
+/**
+ * Save one check-in, then refresh everything it could have changed.
+ *
+ * Offline (or when the request cannot reach the server) the check-in goes into
+ * the outbox instead of failing; `OutboxSync` sends it when the connection
+ * returns. Every send carries a `client_id`, so a response lost on a flaky
+ * network can be retried without storing the check-in twice. `networkMode:
+ * "always"` matters: TanStack Query would otherwise *pause* the mutation while
+ * offline and the person would watch a spinner instead of a confirmation.
+ */
 export function useMoodCheckIn(client: ApiClient = api) {
   const queryClient = useQueryClient();
-  return useMutation<MoodCheckInResponse, Error, MoodCheckInPayload>({
-    mutationFn: (payload) => createMoodCheckIn(payload, client),
-    onSuccess: async () => {
+  return useMutation<MoodSubmitResult, Error, MoodCheckInPayload>({
+    networkMode: "always",
+    mutationFn: async (payload) => {
+      const clientId = newClientId();
+      const recordedAt = new Date().toISOString();
+      const userId = loadOnboardingRecord()?.user.id ?? null;
+      const queue = (): MoodSubmitResult => ({
+        kind: "queued",
+        item: enqueueCheckIn(payload, { clientId, recordedAt, userId }),
+      });
+      if (!isOnline()) {
+        return queue();
+      }
+      try {
+        // Online, the server's clock dates the check-in; only the key is sent.
+        const response = await createMoodCheckIn({ ...payload, client_id: clientId }, client);
+        return { kind: "saved", response };
+      } catch (error) {
+        if (isNetworkFailure(error)) {
+          // The request may even have arrived; the same client id makes the
+          // later retry a replay rather than a duplicate.
+          return queue();
+        }
+        throw error;
+      }
+    },
+    onSuccess: async (result) => {
+      if (result.kind !== "saved") {
+        return;
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: moodKeys.history }),
         queryClient.invalidateQueries({ queryKey: moodKeys.streak }),
       ]);
     },
   });
+}
+
+let outboxSnapshotRaw: string | null | undefined;
+let outboxSnapshot: QueuedCheckIn[] = [];
+
+function readOutboxSnapshot(): QueuedCheckIn[] {
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(MOOD_OUTBOX_KEY);
+  } catch {
+    raw = null;
+  }
+  // useSyncExternalStore needs a stable reference while nothing changed.
+  if (raw !== outboxSnapshotRaw) {
+    outboxSnapshotRaw = raw;
+    outboxSnapshot = loadOutbox();
+  }
+  return outboxSnapshot;
+}
+
+const EMPTY_OUTBOX: QueuedCheckIn[] = [];
+
+/** The check-ins waiting on this device, live across components and tabs. */
+export function useMoodOutbox(): QueuedCheckIn[] {
+  return useSyncExternalStore(subscribeOutbox, readOutboxSnapshot, () => EMPTY_OUTBOX);
 }
 
 /** The newest check-ins. */

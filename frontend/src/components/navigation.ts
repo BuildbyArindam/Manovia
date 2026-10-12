@@ -60,3 +60,20 @@ export const NAV_ITEMS: readonly NavItem[] = [
     hint: () => t("nav.settingsHint"),
   },
 ];
+
+/**
+ * The document title for a route (Day 25, WCAG 2.4.2): the navigation label
+ * for the app's own surfaces, plus the two pages that are not in the
+ * navigation. Read at call time so a language switch retitles the tab.
+ */
+export function routeTitle(pathname: string): string {
+  if (pathname === "/accessibility") {
+    return t("a11y.title");
+  }
+  const match = NAV_ITEMS.find((item) =>
+    item.end === true
+      ? pathname === item.to
+      : pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
+  return match?.label() ?? t("notFound.heading");
+}

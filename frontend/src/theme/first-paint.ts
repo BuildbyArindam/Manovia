@@ -16,11 +16,12 @@
  * trade-off, and the reason the CSS fallback exists.
  */
 
-export { THEME_STORAGE_KEY } from "./theme-storage";
+export { CONTRAST_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme-storage";
 
-import { THEME_STORAGE_KEY } from "./theme-storage";
+import { CONTRAST_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme-storage";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
+const MORE_CONTRAST_QUERY = "(prefers-contrast: more)";
 
 /**
  * Resolve and apply the palette on `<html>`, then return what was applied.
@@ -47,4 +48,30 @@ export function applyFirstPaintTheme(): "light" | "dark" {
   return theme;
 }
 
+/**
+ * Day 25: the contrast level, resolved the same way — an explicit choice in
+ * Settings wins, otherwise the operating system's `prefers-contrast: more`.
+ * Writes `data-contrast="more"` (the high-contrast token set in `index.css`) or
+ * removes the attribute. Never throws.
+ */
+export function applyFirstPaintContrast(): "more" | "standard" {
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(CONTRAST_STORAGE_KEY);
+  } catch {
+    stored = null;
+  }
+  const systemMore =
+    typeof window.matchMedia === "function" && window.matchMedia(MORE_CONTRAST_QUERY).matches;
+  const contrast: "more" | "standard" =
+    stored === "more" || stored === "standard" ? stored : systemMore ? "more" : "standard";
+  if (contrast === "more") {
+    document.documentElement.setAttribute("data-contrast", "more");
+  } else {
+    document.documentElement.removeAttribute("data-contrast");
+  }
+  return contrast;
+}
+
 applyFirstPaintTheme();
+applyFirstPaintContrast();

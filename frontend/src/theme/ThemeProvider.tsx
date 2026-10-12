@@ -9,15 +9,19 @@ import {
   type ReactNode,
 } from "react";
 
-import { THEME_STORAGE_KEY } from "./theme-storage";
+import { CONTRAST_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme-storage";
 
 /** Where the user's explicit palette choice is remembered. */
-export { THEME_STORAGE_KEY } from "./theme-storage";
+export { CONTRAST_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme-storage";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
+const MORE_CONTRAST_QUERY = "(prefers-contrast: more)";
 
 export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
+/** Day 25: the contrast choice, with the same "follow my device" option. */
+export type ContrastPreference = "standard" | "more" | "system";
+export type ResolvedContrast = "standard" | "more";
 
 interface ThemeContextValue {
   /** What the user asked for: a palette, or "follow my system". */
@@ -25,6 +29,10 @@ interface ThemeContextValue {
   /** What is actually painted right now. */
   resolved: ResolvedTheme;
   setPreference: (preference: ThemePreference) => void;
+  /** Day 25: high contrast — asked for, and actually applied. */
+  contrast: ContrastPreference;
+  resolvedContrast: ResolvedContrast;
+  setContrast: (contrast: ContrastPreference) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -40,6 +48,37 @@ function readStoredPreference(): ThemePreference {
 
 function systemPrefersDark(): boolean {
   return typeof window.matchMedia === "function" && window.matchMedia(DARK_QUERY).matches;
+}
+
+function readStoredContrast(): ContrastPreference {
+  try {
+    const stored = window.localStorage.getItem(CONTRAST_STORAGE_KEY);
+    return stored === "more" || stored === "standard" ? stored : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function systemPrefersMoreContrast(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(MORE_CONTRAST_QUERY).matches;
+}
+
+/** Subscribe to one media query, keeping the latest answer in state. */
+function useMediaQueryState(query: string, initial: () => boolean): boolean {
+  const [matches, setMatches] = useState<boolean>(initial);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+    const list = window.matchMedia(query);
+    const update = (): void => setMatches(list.matches);
+    update();
+    list.addEventListener("change", update);
+    return () => {
+      list.removeEventListener("change", update);
+    };
+  }, [query]);
+  return matches;
 }
 
 /**
@@ -74,6 +113,32 @@ export function ThemeProvider({ children }: { children: ReactNode }): ReactEleme
     document.documentElement.setAttribute("data-theme", resolved);
   }, [resolved]);
 
+  const [contrast, setContrastState] = useState<ContrastPreference>(readStoredContrast);
+  const systemMore = useMediaQueryState(MORE_CONTRAST_QUERY, systemPrefersMoreContrast);
+  const resolvedContrast: ResolvedContrast =
+    contrast === "system" ? (systemMore ? "more" : "standard") : contrast;
+
+  useEffect(() => {
+    if (resolvedContrast === "more") {
+      document.documentElement.setAttribute("data-contrast", "more");
+    } else {
+      document.documentElement.removeAttribute("data-contrast");
+    }
+  }, [resolvedContrast]);
+
+  const setContrast = useCallback((next: ContrastPreference) => {
+    setContrastState(next);
+    try {
+      if (next === "system") {
+        window.localStorage.removeItem(CONTRAST_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(CONTRAST_STORAGE_KEY, next);
+      }
+    } catch {
+      // A blocked storage must not break the switch for this session.
+    }
+  }, []);
+
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);
     try {
@@ -88,8 +153,8 @@ export function ThemeProvider({ children }: { children: ReactNode }): ReactEleme
   }, []);
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ preference, resolved, setPreference }),
-    [preference, resolved, setPreference],
+    () => ({ preference, resolved, setPreference, contrast, resolvedContrast, setContrast }),
+    [preference, resolved, setPreference, contrast, resolvedContrast, setContrast],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

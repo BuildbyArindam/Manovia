@@ -17,7 +17,7 @@ export function BottomNav(): ReactElement {
     <nav
       aria-label={t("nav.primary")}
       data-print="hide"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="app-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
       <ul className="mx-auto flex max-w-2xl items-stretch justify-between px-2 pt-1">
         {NAV_ITEMS.map((item) => (
