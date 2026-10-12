@@ -274,3 +274,84 @@ test("on a short screen a page opens at its top and Tab starts at the skip link"
     await context.close();
   }
 });
+
+/**
+ * Regression (Day 25 verification). A select is as wide as its longest
+ * option. With the pseudo-localisation option present (every dev build, or
+ * `?pseudo=1` for QA), the language select grew to ~370px, pushing the header
+ * 73px past a 360px screen in plain English and squeezing "Need help now?" to
+ * 69px (the Day 18 exercises spec caught it on the dev server). The select is
+ * now bounded at 7rem.
+ *
+ * English, Hindi and Bengali — which no browser had checked at 320px before —
+ * must fit whole: page, header row, and a whole on-screen help button. Pseudo
+ * mode is checked for the root cause only (the select stays within 7rem): its
+ * padded strings expand even the brand name (83px → 144px), so its header and
+ * many labels still overflow at 360px — a known pseudo-mode gap recorded in
+ * PROGRESS.md.
+ */
+test("the header fits 360px and 320px screens in every language; the language select stays bounded", async ({
+  browser,
+}) => {
+  for (const width of [360, 320]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 640 },
+      baseURL: test.info().project.use.baseURL,
+    });
+    const page = await context.newPage();
+    await completeGuestOnboarding(page);
+    const measure = () =>
+      page.evaluate(() => {
+        const row = document.querySelector<HTMLElement>("header > div");
+        // "Need help now?" in any language: the header's only dialog button.
+        const help = document
+          .querySelector<HTMLElement>("header button[aria-haspopup='dialog']")
+          ?.getBoundingClientRect();
+        const select = document
+          .querySelector<HTMLElement>("[data-testid='language-switcher']")
+          ?.getBoundingClientRect();
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        return {
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          headerOverflow: row === null ? null : row.scrollWidth - row.clientWidth,
+          help:
+            help === undefined
+              ? null
+              : {
+                  width: Math.round(help.width),
+                  height: Math.round(help.height),
+                  inside: help.left >= 0 && help.right <= window.innerWidth,
+                },
+          selectWithinBound: select === undefined ? null : select.width <= 7 * rem + 0.5,
+        };
+      });
+
+    for (const language of ["en", "hi", "bn"] as const) {
+      await page.getByTestId("language-switcher").selectOption(language);
+      await expect(page.locator("html")).toHaveAttribute("lang", language);
+      await expect(page.getByTestId("home-page")).toBeVisible();
+      const layout = await measure();
+      const where = `${width}px ${language}`;
+      expect(layout.scrollWidth, `${where}: page scrolls sideways`).toBeLessThanOrEqual(
+        layout.innerWidth,
+      );
+      expect(layout.headerOverflow, `${where}: header row overflows by`).toBe(0);
+      expect(layout.help?.inside, `${where}: help button on screen`).toBe(true);
+      expect(layout.help?.width ?? 0, `${where}: help button width`).toBeGreaterThanOrEqual(44);
+      expect(layout.help?.height ?? 0, `${where}: help button height`).toBeGreaterThanOrEqual(44);
+      expect(layout.selectWithinBound, `${where}: language select within 7rem`).toBe(true);
+    }
+
+    await page.goto("/?pseudo=1");
+    await expect(page.getByTestId("language-switcher")).toHaveValue("pseudo");
+    const pseudo = await measure();
+    expect(pseudo.selectWithinBound, `${width}px pseudo: language select within 7rem`).toBe(true);
+    expect(
+      pseudo.help?.height ?? 0,
+      `${width}px pseudo: help button height`,
+    ).toBeGreaterThanOrEqual(44);
+    await page.goto("/?pseudo=0");
+    await context.close();
+  }
+});

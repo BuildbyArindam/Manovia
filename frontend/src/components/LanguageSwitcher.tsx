@@ -41,6 +41,10 @@ export function LanguageSwitcher(): ReactElement {
   return (
     <label className="flex items-center gap-2 text-sm text-ink-muted" htmlFor={selectId}>
       {/* Visible on wide screens; on a 360px phone the select keeps the space. */}
+      {/* A select is as wide as its longest option. Bounded (Day 25 verification):
+          the dev/QA "Pseudo-localised (test mode)" option pushed the header 73px
+          past a 360px screen and squeezed "Need help now?". 7rem fits "English",
+          and the native control truncates anything longer. */}
       <span id={labelId} className="hidden sm:inline">
         {t("language.label")}
       </span>
@@ -50,7 +54,7 @@ export function LanguageSwitcher(): ReactElement {
         aria-labelledby={labelId}
         value={value}
         onChange={handleChange}
-        className="min-h-11 rounded-lg border border-border-strong bg-surface px-2 text-ink"
+        className="min-h-11 max-w-[7rem] rounded-lg border border-border-strong bg-surface px-2 text-ink"
       >
         {APP_LANGUAGES.map((option) => (
           <option key={option.code} value={option.code} lang={option.code}>
