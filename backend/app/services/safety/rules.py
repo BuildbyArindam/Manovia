@@ -310,7 +310,12 @@ class RuleEngine:
             (message.squashed, "squashed"),
             (message.collapsed, "collapsed"),
         ):
-            if not projection:
+            # Unreachable by construction (Day 26, branch coverage measured):
+            # both projections are derived from a non-empty ``primary`` — the
+            # empty-input case returns earlier with CODE_EMPTY_INPUT — and
+            # stripping whitespace or collapsing repeats never empties a string
+            # that was not already empty.
+            if not projection:  # pragma: no cover
                 continue
             index = index_clauses(projection)
             for rule in rules:

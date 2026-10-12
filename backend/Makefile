@@ -1,4 +1,4 @@
-.PHONY: dev test lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response
+.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 
@@ -9,9 +9,19 @@ PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; 
 dev:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --no-access-log
 
-# Test suite with a coverage summary
+# Test suite with a coverage summary, then the Day 26 coverage gates
+# (scripts/coverage_gate.py): backend overall >= 85%, every app/services/safety
+# module >= 95%, crypto and scoring 100% — statements *and* branches. The gate
+# runs as part of `make test` rather than as a separate target so a red number
+# cannot be merged by forgetting to call it.
+COVERAGE_JSON ?= coverage.json
 test:
-	pytest --cov=app --cov-report=term-missing
+	pytest --cov=app --cov-branch --cov-report=term-missing --cov-report=json:$(COVERAGE_JSON)
+	$(PYTHON) scripts/coverage_gate.py $(COVERAGE_JSON)
+
+# The gate on its own, against the report the last `make test` wrote.
+coverage-gate:
+	$(PYTHON) scripts/coverage_gate.py $(COVERAGE_JSON)
 
 # Lint (ruff check + ruff format check) and type-check (mypy)
 lint:

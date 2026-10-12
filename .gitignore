@@ -15,7 +15,15 @@ dist/
 .hypothesis/
 .coverage
 coverage.xml
+coverage.json
 htmlcov/
+# Day 26: mutmut's working state (the mutation report itself is committed under
+# docs/verification/, the multi-hundred-MB gen/cache directories are not).
+.mutmut-cache/
+mutants/
+# Day 26 Locust runs: raw CSVs, HTML and charts are regenerated, the summary the
+# verification doc quotes is committed instead.
+backend/loadtest/reports/
 
 # Node / frontend
 node_modules/

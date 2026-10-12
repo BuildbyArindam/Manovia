@@ -393,7 +393,11 @@ def unwrap_data_key(
             "Wrapped data key failed authentication or belongs to another user"
         ) from exc
 
-    if len(dek) != DEK_BYTES:
+    # Unreachable, kept as defence in depth (Day 26, branch coverage measured):
+    # wrap_data_key refuses a DEK that is not DEK_BYTES long and binds the blob
+    # to (user_id, key_id) as AAD, so a blob that authenticates here was
+    # written by this module and is exactly DEK_BYTES long.
+    if len(dek) != DEK_BYTES:  # pragma: no cover
         raise DecryptError("Unwrapped data key has an invalid length")
     return dek, key_id
 
@@ -577,7 +581,11 @@ class EnvelopeCipher:
             dek, w_dek, kid = self.get_or_create_user_key(uid, existing_wrapped_dek=wrapped_dek)
 
         kid_bytes = kid.encode("utf-8")
-        if len(w_dek) > 65535:
+        # Unreachable: a wrapped DEK is a fixed-size record (6 + key_id + 12 +
+        # 32 + 16 bytes, and the parser rejects key_id > 64), so 65535 is a
+        # ceiling on a field nothing can fill. Kept so the struct.pack(">H")
+        # below can never raise instead.
+        if len(w_dek) > 65535:  # pragma: no cover
             raise ValueError("wrapped_dek exceeds maximum envelope header size")
         nonce = os.urandom(NONCE_BYTES)
         aad = _field_aad(uid, fname)
@@ -624,7 +632,9 @@ class EnvelopeCipher:
         if kid_len < 1 or kid_len > 64:
             raise DecryptError("Ciphertext envelope has an invalid key_id length")
         pos = 6 + kid_len
-        if len(raw) < pos + 2:
+        # Unreachable: kid_len <= 64 makes pos <= 70, and the 104-byte minimum
+        # length check above already guarantees len(raw) > 72.
+        if len(raw) < pos + 2:  # pragma: no cover
             raise DecryptError("Ciphertext envelope is truncated before wrapped_dek")
         try:
             envelope_kid = raw[6:pos].decode("utf-8", errors="strict")
@@ -642,7 +652,11 @@ class EnvelopeCipher:
         nonce = raw[pos : pos + NONCE_BYTES]
         pos += NONCE_BYTES
         field_ct_and_tag = raw[pos:]
-        if len(field_ct_and_tag) < TAG_BYTES:
+        # Unreachable: the wrapped_dek length check above required
+        # len(raw) >= pos + wdek_len + NONCE + TAG, so what is left here is at
+        # least TAG_BYTES. Kept because AESGCM().decrypt() would otherwise
+        # report the short input as an authentication failure.
+        if len(field_ct_and_tag) < TAG_BYTES:  # pragma: no cover
             raise DecryptError("Ciphertext envelope is missing its authentication tag")
 
         dek, unwrapped_kid = unwrap_data_key(envelope_wdek, user_id=uid, keyring=self._keyring)
@@ -902,7 +916,10 @@ async def rotate_database_encryption(
     )
     moods_rotated = 0
     for mood in moods:
-        if mood.note_encrypted is None:
+        # Unreachable: the query above filters `note_encrypted IS NOT NULL`.
+        # Kept because the column is nullable in the schema and a future
+        # refactor of the query must not turn a NULL into a decrypt attempt.
+        if mood.note_encrypted is None:  # pragma: no cover
             continue
         note_plain = active.decrypt(mood.note_encrypted)
         mood.note_encrypted = active.encrypt(note_plain)
@@ -919,7 +936,8 @@ async def rotate_database_encryption(
     )
     chats_rotated = 0
     for chat in chat_sessions:
-        if chat.memory_encrypted is None:
+        # Unreachable for the same reason as moods above (`IS NOT NULL` filter).
+        if chat.memory_encrypted is None:  # pragma: no cover
             continue
         mem_plain = active.decrypt(chat.memory_encrypted)
         chat.memory_encrypted = active.encrypt(mem_plain)
