@@ -23,6 +23,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.insights import router as insights_router
 from app.api.v1.journal import router as journal_router
 from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.metrics import router as metrics_router
 from app.api.v1.mood import router as mood_router
 from app.api.v1.plan import router as plan_router
 from app.api.v1.privacy import router as privacy_router
@@ -38,6 +39,7 @@ from app.core.errors import (
 )
 from app.core.lockout import LoginLockout
 from app.core.logging import RequestIDMiddleware, configure_logging
+from app.core.metrics_middleware import MetricsMiddleware
 from app.core.middleware import (
     OriginGuardMiddleware,
     RateLimitMiddleware,
@@ -125,6 +127,9 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     # every response, including error responses. Rate limiting sits just inside
     # the security headers so even a 429 is fully dressed; it is skipped when
     # disabled (load tests only).
+    # Day 27: the metrics middleware sits just inside the request-ID wrapper,
+    # so every request — errors and 429s included — is counted and timed
+    # against its route template (never the raw path).
     # Day 22 hardening. Added before the layers below, so they sit *inside*
     # CORS/security headers/rate limiting: a 413 or a 403 from these guards
     # still carries the standard envelope, request id and security headers.
@@ -159,8 +164,14 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestIDMiddleware)
 
+    # Day 27: the Prometheus scrape endpoint lives at the server root, not
+    # under /api/v1. Registered only when metrics are enabled, like the
+    # dev-only router below — an absent route leaks nothing.
+    if app_settings.metrics_enabled:
+        app.include_router(metrics_router)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(consent_router, prefix="/api/v1")

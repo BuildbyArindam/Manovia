@@ -7,11 +7,9 @@ place a string can escape to:
 
 * the structured logs (captured here at DEBUG, so nothing is filtered away),
 * the exception report of a 500 that happens *while* the text is in flight,
-* the HTTP responses themselves.
-
-There is no metrics exporter in Manovia (no Prometheus endpoint, no counters
-service), so "metrics" in the Day 22 checklist means the log pipeline and the
-response bodies — asserted here directly rather than claimed.
+* the HTTP responses themselves,
+* the Prometheus exposition (Day 27 added ``/metrics``) — labels must be route
+  templates and closed-set categories, so the sweep below includes it.
 
 If a sentinel ever appears, this file fails loudly and the offending call site
 is named in the failure message.
@@ -347,3 +345,34 @@ async def test_every_surface_is_still_logged_so_the_audit_is_not_vacuous(
     # At DEBUG the pipeline narrates itself; none of those lines carry the text.
     assert len(logs.records) > 2
     _report(logs.leaked(), where="the narrating pipeline")
+
+
+async def test_the_prometheus_exposition_carries_no_sentinel(
+    client: httpx.AsyncClient, wired_chat: None
+) -> None:
+    """Day 27 added /metrics. Labels are route templates and closed enums —
+    a sentinel pushed through the chat surface must not appear in it, not even
+    as a path the person typed (a 404 with the sentinel in the path included).
+    """
+    from app.core.metrics import reset_metrics
+
+    reset_metrics()
+    headers = await _signed_in(client, ("terms", "privacy", "ai_disclosure"))
+    opened = await client.post("/api/v1/chat/sessions", headers=headers, json={})
+    assert opened.status_code == 201
+    session_id = opened.json()["id"]
+
+    sent = await client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        headers=headers,
+        json={"message": CHAT_SENTINEL},
+    )
+    assert sent.status_code in {200, 201}, sent.text
+    # A path that carries the sentinel must collapse into the fixed label.
+    await client.get(f"/definitely-not-a-route/{CHAT_SENTINEL}")
+
+    exposition = (await client.get("/metrics")).text
+    assert exposition, "expected the exposition to have content"
+    for needle in (*SENTINELS, session_id):
+        assert needle not in exposition
+    reset_metrics()

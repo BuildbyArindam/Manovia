@@ -60,6 +60,10 @@ dependencies = [
     # wheel, no torch; the *model* that embeds (sentence-transformers) stays
     # optional in the `rag` extra — the offline tfidf path needs only this.
     "faiss-cpu==1.15.1",
+    # Day 27 observability: Prometheus counters/histograms for request rate,
+    # latency, error rate, safety events by level, LLM fallback rate and
+    # output-guard block rate. Small, offline, no agent process.
+    "prometheus-client==0.26.0",
 ]
 
 [project.optional-dependencies]

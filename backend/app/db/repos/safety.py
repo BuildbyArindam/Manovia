@@ -15,6 +15,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.metrics import get_metrics
 from app.models.enums import RiskLevel, SafetyEventCategory, SafetyEventSource
 from app.models.safety_event import SafetyEvent
 
@@ -44,6 +45,11 @@ class SafetyEventRepository:
         )
         self._session.add(event)
         await self._session.flush()
+        # Day 27: the operational counter for the same row. Labels are the two
+        # closed enums (level name, source value) — the metadata-only rule the
+        # table itself follows means there is nothing here that could carry
+        # user text.
+        get_metrics().record_safety_event(event.risk_level, source.value)
         return event
 
     async def list_for_user(

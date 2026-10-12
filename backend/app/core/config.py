@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
     log_level: str = "INFO"
 
+    # --- Observability (Day 27) ---
+    # /metrics is the Prometheus scrape endpoint. Labels are route templates
+    # and closed-set categories only — never user text or identifiers. Turn it
+    # off only when a sidecar publishes metrics instead.
+    metrics_enabled: bool = True
+
     # --- Authentication and consent (Day 4) ---
     # Password policy: length only, no composition theatre (NIST SP 800-63B).
     password_min_length: int = 10
