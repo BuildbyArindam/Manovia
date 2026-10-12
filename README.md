@@ -17,7 +17,16 @@ A privacy-first, safety-first mental wellbeing self-help companion—not therapy
 - **CBT thought record** — a seven-step, owner-only encrypted wizard with per-step safety screening and a closed-set thinking-trap helper ([ADR 0019](docs/adr/0019-cbt-thought-record.md)).
 - **PHQ-9 & GAD-7 screenings** — the official instrument wording and published scoring, with support options shown before any score when PHQ-9 item 9 is positive ([ADR 0020](docs/adr/0020-phq-9-and-gad-7-screenings.md)).
 - **Daily plan** — a transparent, rule-based planner that suggests at most three things a day, each with a "why this?" explanation, honours quiet hours, and reduces to support-only after a positive item 9 ([ADR 0021](docs/adr/0021-daily-plan-and-week-3-review.md)).
+- **Offline-first PWA, WCAG 2.2 AA accessibility & low-bandwidth delivery** — installable Web App Manifest with original procedural icons, a Workbox `injectManifest` Service Worker that caches the app shell, verified crisis helplines and guided breathing exercises for offline use, an offline mood check-in queue that syncs automatically on reconnect, local-only journal draft persistence, High-Contrast Mode (`>= 7:1` WCAG AAA contrast), 200%–400% zoom reflow, an in-app [Accessibility statement](frontend/src/pages/AccessibilityPage.tsx), route-level code splitting, and automated axe + Lighthouse CI gates ([ADR 0025](docs/adr/0025-pwa-accessibility-low-bandwidth.md)).
 - **Foundations** — guest auth with consent gating, structured logging with log redaction, security headers, field-level encryption, and a React frontend with design tokens, two navigations, an onboarding gate, and a crisis helpline dialog.
+
+## Screenshots
+
+| Surface | Preview |
+| --- | --- |
+| **Accessibility statement in High-Contrast Mode (Desktop `1280×800`)** | ![Accessibility statement in High-Contrast Mode](docs/assets/day25-accessibility-high-contrast-desktop-1280x800.png) |
+| **Offline banner & queued mood check-in (Mobile `360×640`)** | ![Offline banner and queued mood check-in](docs/assets/day25-offline-mood-queue-mobile-360x640.png) |
+| **Supportive chat with deterministic crisis card (Desktop `1280×800`)** | ![Crisis card on desktop](docs/assets/day12-chat-crisis-desktop-1280x800.png) |
 
 Manovia is a self-help companion, not therapy or diagnosis. See [docs/architecture.md](docs/architecture.md) for how a message travels, and [docs/model-card.md](docs/model-card.md) for the safety model's intended use and limits.
 
