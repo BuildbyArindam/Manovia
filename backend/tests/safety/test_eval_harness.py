@@ -27,12 +27,12 @@ EVALS_DIR = REPO_ROOT / "evals"
 if str(EVALS_DIR) not in sys.path:
     sys.path.insert(0, str(EVALS_DIR))
 
-import build_chat_rubric_dataset  # noqa: E402
-import build_emotion_dataset  # noqa: E402
-import run_all_evals  # noqa: E402
-import run_emotion_eval  # noqa: E402
-import run_response_eval  # noqa: E402
-import run_safety_eval  # noqa: E402
+import build_chat_rubric_dataset  # type: ignore[import-not-found]  # noqa: E402
+import build_emotion_dataset  # type: ignore[import-not-found]  # noqa: E402
+import run_all_evals  # type: ignore[import-not-found]  # noqa: E402
+import run_emotion_eval  # type: ignore[import-not-found]  # noqa: E402
+import run_response_eval  # type: ignore[import-not-found]  # noqa: E402
+import run_safety_eval  # type: ignore[import-not-found]  # noqa: E402
 
 from app.services.chat.types import ChatMetadata, ChatReply, ResponseType  # noqa: E402
 from app.services.nlp.base import EMOTIONS  # noqa: E402
@@ -56,10 +56,8 @@ def test_thresholds_yaml_loads_and_declares_all_gates() -> None:
 def test_safety_eval_bootstrap_ci_and_regression_diff() -> None:
     cases = run_safety_eval.load_split("dev")
     results = run_safety_eval.assess_all(cases, ml_enabled=True)
-    thresholds, boot = run_safety_eval.load_thresholds()
-    fast_boot = run_safety_eval.BootstrapConfig(
-        resamples=200, confidence_level=0.95, seed=20261012
-    )
+    thresholds, _boot = run_safety_eval.load_thresholds()
+    fast_boot = run_safety_eval.BootstrapConfig(resamples=200, confidence_level=0.95, seed=20261012)
 
     pairs = [(str(r["true"]), str(r["final"])) for r in results]
     p, r, n_crisis, _ = run_safety_eval.crisis_metrics(pairs)
@@ -280,3 +278,20 @@ async def test_response_deterministic_checks_catch_violations() -> None:
         last_prompt_text="I feel stressed today.",
     )
     assert checks6["no_ai_boilerplate"] is False
+
+
+def test_run_all_evals_report_bundle_is_consistent() -> None:
+    import json
+
+    day_dir = run_all_evals.REPORTS_DIR / "2026-10-12"
+    summary_json = json.loads((day_dir / "summary.json").read_text(encoding="utf-8"))
+    assert summary_json["overall_gate_passed"] is True
+    md = run_all_evals.render_summary_markdown(
+        run_date="2026-10-12",
+        safety_json=summary_json["safety"],
+        emotion_json=summary_json["emotion"],
+        response_json=summary_json["response"],
+        overall_gate_passed=True,
+    )
+    assert "Manovia Evaluation Harness Summary" in md
+    assert "PASS" in md

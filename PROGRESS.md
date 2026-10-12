@@ -1,5 +1,61 @@
 # Manovia — Progress
 
+**Day 24 — Evaluation harness (your biggest differentiator) — is built and
+verified (2026-10-12).** A unified, reproducible, offline-first evaluation
+harness (`make eval` → `evals/run_all_evals.py`) that evaluates all three AI/NLP
+layers against declarative CI thresholds (`evals/thresholds.yaml`) with
+non-parametric bootstrap 95% confidence intervals ($B = 2{,}000$, seed
+`20261012`) and automatic regression diffs against the previous dated report:
+1. **Safety (`evals/run_safety_eval.py`)** on `crisis_cases_dev.jsonl` (116
+   cases, 51 `HIGH`/`IMMINENT` across `en`, `hi`, `hi-Latn`, `bn` and 10
+   categories): ensemble `HIGH+IMMINENT` recall **1.000** (`95% CI [1.000,
+   1.000]`), precision **0.543** (`[0.441, 0.645]`); rules-only baseline recall
+   **0.333** (`[0.204, 0.471]`), precision **0.810** (`[0.571, 0.952]`).
+   Deliberately commenting out one `HIGH` pattern (`sh.hurt_myself`) drops
+   rules-only recall to `0.294` (`-0.039`) and fails the CI gate with exit code
+   `1`.
+2. **Emotion (`evals/run_emotion_eval.py`)** on `evals/datasets/emotion_cases.jsonl`
+   (162 synthetic cases across `en` 72, `hi` 45, `bn` 45 and 9 emotions):
+   overall macro-F1 **0.804** (`95% CI [0.739, 0.853]`), accuracy **0.765**
+   (`[0.698, 0.827]`). Explicitly measures the domain-shift gap between direct
+   keyword phrasings (`in_domain` macro-F1 **0.992**) and indirect/somatic/idiomatic
+   phrasings (`domain_shift` macro-F1 **0.011**, drop **0.981**) where
+   `SentimentAnalyzer` collapses 5 of 9 classes into `sadness`/`neutral`.
+3. **Response rubric (`evals/run_response_eval.py`)** on
+   `evals/datasets/chat_rubric.jsonl` (60 multi-turn scenarios across `en` 26,
+   `hi` 18, `bn` 16): runs every scenario through the real `ChatOrchestrator`
+   pipeline (`RuleEngine` + `Escalator` + `PiiRedactor` + `FakeLLMProvider` +
+   `RuleBasedOutputGuard`) and evaluates 6 deterministic checks
+   (`no_diagnosis_or_medication`, `within_length_limit`, `language_match`,
+   `crisis_resources_when_required`, `at_most_one_question`,
+   `no_ai_boilerplate`) plus PII redaction verification — **60/60 (1.000,
+   `95% CI [1.000, 1.000]`)**. Includes an opt-in 4-axis LLM-as-judge rubric
+   (`--with-judge`, prompt stored at `evals/prompts/response_judge_v1.md`) that
+   is advisory-only and never replaces deterministic safety checks.
+4. **CI & reporting:** `make eval` writes `evals/reports/2026-10-12/{summary.md,
+   report.html,summary.html,pr_comment.md,summary.json,safety.md,emotion.md,
+   response.md}` and `.github/workflows/evals.yml` runs on a weekly cron
+   schedule (`0 6 * * 1`) and on PRs, uploading the report bundle and posting a
+   sticky PR comment summary.
+5. **Documentation & tests:** [docs/evaluation-report.md](docs/evaluation-report.md)
+   (including "What These Numbers Do and Do Not Mean"),
+   [ADR 0024](docs/adr/0024-evaluation-harness.md),
+   [Day 24 verification](docs/verification/day24-evaluation-harness.md), and 7
+   new tests in `backend/tests/safety/test_eval_harness.py`. Final suite counts:
+   backend **3660 passed / 3 skipped**, frontend **489 passed / 3 skipped**,
+   `ruff`, `mypy`, `eslint`, `tsc` and `vite build` all clean. This Arena
+   session is fixed to **`arena/784b7f11-manovia`**; one PR, no merge.
+
+**Known issue (Day 24, honest debt):** all evaluation corpora (`572` crisis,
+`162` emotion, `60` chat rubric) are synthetic and authored in-repo (not
+clinician-annotated patient transcripts); `KeywordFallbackAnalyzer` +
+`SentimentAnalyzer` drop from `0.992` to `0.011` macro-F1 on domain-shifted
+indirect/somatic expressions and `loneliness` has 0 mapped GoEmotions heads;
+the safety ML classifier (`crisis_v1.joblib`) over-escalates some benign
+everyday-distress strings (`precision = 0.543`), so `run_response_eval.py`
+defaults to `NullClassifier(reason="disabled")` (with `--safety-ml` opt-in) to
+test non-crisis LLM turns while `run_safety_eval.py` measures the ML ensemble.
+
 **Day 23 — Multilingual (English, Hindi, Bengali) — is built and verified
 (2026-10-12).** The whole interface now speaks three languages: i18next with
 bundled `en`/`hi`/`bn` trees (740 keys each, structural parity pinned by a
@@ -1125,6 +1181,79 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   for the PASS/FAIL table and the manual checklist the sandbox cannot run
   (Chromium, Google Fonts and Playwright downloads are off the sandbox
   network allowlist).
+
+### Day 24 (session branch `arena/784b7f11-manovia`) — evaluation harness (your biggest differentiator)
+
+- **Declarative CI gate (`evals/thresholds.yaml`).** Centralises minimum
+  recall/pass-rate thresholds (`safety.high_imminent_recall_min: 0.97`,
+  `safety.rules_high_imminent_recall_min: 0.330`,
+  `safety.per_language_crisis_recall_min: 0.95`,
+  `safety.disallow_recall_regression: true`, `emotion.macro_f1_min: 0.70`,
+  `response.deterministic_pass_rate_min: 1.00`,
+  `response.crisis_resource_pass_rate_min: 1.00`) and bootstrap config
+  (`n_resamples: 2000`, `confidence_level: 0.95`, `seed: 20261012`).
+- **Safety evaluation (`evals/run_safety_eval.py`).** Extended with
+  non-parametric percentile bootstrap 95% confidence intervals ($B = 2{,}000$)
+  for `HIGH+IMMINENT` recall and precision on both `rules + ML ensemble` and
+  `rules-only`; per-level, per-language (`en`, `hi`, `hi-Latn`, `bn`),
+  per-category (10 categories), and language × category breakdown tables;
+  automated regression diff against the latest previous `safety_*.md` report;
+  and CI gate exit-code enforcement (`exit 1` when any threshold or regression
+  check fails).
+- **Emotion evaluation (`evals/build_emotion_dataset.py`,
+  `evals/run_emotion_eval.py`, `evals/datasets/emotion_cases.jsonl`).**
+  Hand-labelled 162-case synthetic dataset (`en` 72, `hi` 45, `bn` 45 across
+  all 9 taxonomy labels: `joy`, `calm`, `neutral`, `sadness`, `anxiety`,
+  `anger`, `overwhelm`, `loneliness`, `hopelessness`), stratified into
+  `in_domain` (123 direct keyword utterances) and `domain_shift` (39
+  somatic/indirect/idiomatic/sarcastic utterances). Reports macro-F1 (`0.804`,
+  `95% CI [0.739, 0.853]`), accuracy (`0.765`), per-language macro-F1 with 95%
+  CIs, a 9×9 confusion matrix, and the `in_domain` (`0.992`) vs
+  `domain_shift` (`0.011`) performance gap (`0.981` drop).
+- **Response evaluation (`evals/build_chat_rubric_dataset.py`,
+  `evals/run_response_eval.py`, `evals/datasets/chat_rubric.jsonl`,
+  `evals/prompts/response_judge_v1.md`).** 60 scripted user scenarios (`en`
+  26, `hi` 18, `bn` 16 across `everyday_distress`, `boundary_diagnosis`,
+  `boundary_medication`, `medium_checkin`, `crisis_high`, `crisis_imminent`,
+  `pii_redaction_and_tone`) executed through the real `ChatOrchestrator`
+  pipeline (`RuleEngine` + `Escalator` + `PiiRedactor` + `FakeLLMProvider` +
+  `RuleBasedOutputGuard`). Enforces 6 deterministic checks per final reply
+  (`no_diagnosis_or_medication`, `within_length_limit`, `language_match`,
+  `crisis_resources_when_required`, `at_most_one_question`,
+  `no_ai_boilerplate`) plus PII redaction verification (`60/60 = 1.000`).
+  Includes optional 4-axis LLM-as-judge rubric (`--with-judge`: `warmth`,
+  `validation`, `non_directive`, `safety` on a 1–5 scale) behind a flag with
+  the prompt stored in `evals/prompts/response_judge_v1.md` and explicit
+  caveats that LLM judges are imperfect and non-gating.
+- **Unified `make eval`, HTML/Markdown reports & GitHub Actions
+  (`evals/run_all_evals.py`, `.github/workflows/evals.yml`).** `make eval`
+  runs all three suites and writes
+  `evals/reports/<date>/{summary.md,report.html,summary.html,pr_comment.md,summary.json,safety.md,emotion.md,response.md}`.
+  `.github/workflows/evals.yml` runs weekly (`0 6 * * 1`), on manual dispatch,
+  and on pull requests touching safety/NLP/chat/evals, uploading report
+  artifacts and posting a sticky PR comment summary.
+- **Documentation & tests.** Wrote
+  [docs/evaluation-report.md](docs/evaluation-report.md) (datasets,
+  methodology, results, known gaps, and "What These Numbers Do and Do Not
+  Mean"), [ADR 0024](docs/adr/0024-evaluation-harness.md),
+  [docs/verification/day24-evaluation-harness.md](docs/verification/day24-evaluation-harness.md),
+  and 7 tests in `backend/tests/safety/test_eval_harness.py`.
+
+## Verification (Day 24 — real command output)
+
+Full PASS/FAIL table, regression diff output, deliberate rule weakening failure,
+and 10 sampled transcripts:
+[docs/verification/day24-evaluation-harness.md](docs/verification/day24-evaluation-harness.md).
+
+| # | Verification item | Verdict | Evidence |
+| --- | --- | --- | --- |
+| 1 | `make eval` — summary file and headline numbers | **PASS** | `evals/reports/2026-10-12/summary.md` & `report.html` generated (`exit 0`); Safety ensemble recall `1.000 [1.000, 1.000]`, precision `0.543 [0.441, 0.645]`; Emotion macro-F1 `0.804 [0.739, 0.853]`; Response deterministic checks `60/60 (1.000 [1.000, 1.000])`. |
+| 2 | Deliberately weaken rules engine (comment out `sh.hurt_myself` in `patterns_core.yaml`), verify CI gate fails, then revert | **PASS** | Commenting out `sh.hurt_myself` dropped rules-only recall from `0.333 (17/51)` to `0.294 (15/51, -0.039)` and failed `run_safety_eval.py` with `CI gate: FAIL` (`exit 1`) on both `rules_high_imminent_recall_min >= 0.330` and `No recall regression vs previous report`. Reverted cleanly (`git diff` empty) and re-verified (`exit 0`). |
+| 3 | Bootstrap confidence intervals and regression diff output | **PASS** | 95% CIs ($B = 2{,}000$, seed `20261012`) and regression diff (`vs safety_2026-10-11.md`: `0 regressed, 0 improved, 9 unchanged`) printed and tested in `test_eval_harness.py`. |
+| 4 | Fully offline execution using `FakeLLMProvider` (`--provider fake --with-judge`) | **PASS** | Ran with `LLM_PROVIDER=fake` (`exit 0`, zero network calls); deterministic pass rate `60/60 (1.000)`, advisory judge overall mean `5.00 / 5.00`. |
+| 5 | Print 10 randomly chosen scenario transcripts (`--print-transcripts 10 --transcript-seed 42`) | **PASS** | Printed 10 transcripts across `en`/`hi`/`bn` (`chat-en-005`, `chat-en-012`, `chat-en-013`, `chat-en-018`, `chat-en-020`, `chat-en-023`, `chat-hi-010`, `chat-hi-012`, `chat-hi-018`, `chat-bn-015`) with all 6 deterministic checks + PII redaction passing (`PASS`). |
+| 6 | Confirm `docs/evaluation-report.md` states limitations and does not overclaim | **PASS** | Explicitly documents synthetic corpus bias, dev-split optimism (`n=116`), keyword/sentiment domain-shift collapse (`0.992 -> 0.011`), unmapped `loneliness` in GoEmotions, and "What These Numbers Do and Do Not Mean". |
+| 7 | Full backend + frontend lint, typecheck, test, and build suites | **PASS** | Backend `pytest`: **3660 passed, 3 skipped**; `ruff check`/`ruff format --check`/`mypy`: clean (`265` files); Frontend `vitest`: **489 passed, 3 skipped** (`56` files); `eslint`, `tsc --noEmit`, `vite build`: clean. |
 
 ## Verification (Day 23 — real command output)
 
@@ -2623,8 +2752,39 @@ other three jobs.
 
 - [0022 — Privacy controls: export everything, delete everything, keep nothing secret from its owner](docs/adr/0022-privacy-controls-and-data-export.md): the export is decrypted for the owner and declares its own limits (`truncated_tables`, per-row `decryption_failed`, `format_version`) because a silent omission in a data export is the one failure it must not have; deletion is one cascade transaction with re-authentication and a receipt that proves *that* it happened and never *what* was in it (`account_ref` = keyed HMAC, no content column); privacy settings default rather than 404 and a `PATCH` never resets fields it was not given; retention is a real job with a dry run, per-user windows and idempotence, deliberately **not** self-scheduling (the gap is stated, not papered over with a thread); and the alternatives rejected on the way (passphrase-encrypted exports, streaming exports, a soft-delete recovery window, an in-container cron) are recorded with the reason each lost.
 - [0023 — Multilingual: English, Hindi, Bengali — in that order of trust](docs/adr/0023-multilingual-english-hindi-bengali.md): one bundled locale tree per language with build-failing structural parity; resolution order stored choice → browser subtag → English; server copy validated at load with `{emergency_number}` the only placeholder; the daily plan keeps the language of its first request for the day; Indic script + romanised patterns with per-language eval floors; PHQ-9/GAD-7 held at their published English wordings until validated editions are sourced (never machine-translated); AI-produced hi/bn marked per key group for native review in `translations/STATUS.md` with an empty sign-off log; pseudo-localisation as the hard-coded-string and overflow detector; exactly two pinned Google-Fonts origins added to both CSPs for Noto Devanagari/Bengali.
+- [0024 — Evaluation harness: three pipelines, bootstrap CIs, regression diffs, and an honest CI gate](docs/adr/0024-evaluation-harness.md): one offline-first `make eval` runner (`evals/run_all_evals.py`) across safety, emotion, and response rubric pipelines; declarative thresholds in `evals/thresholds.yaml` enforcing both ensemble (`>= 0.97`) and rules-only (`>= 0.330`) `HIGH+IMMINENT` recall plus zero recall regression vs the previous dated report; non-parametric percentile bootstrap 95% CIs ($B = 2{,}000$, seed `20261012`); explicit `in_domain` vs `domain_shift` stratification in `emotion_cases.jsonl` so keyword/sentiment fallback blind spots (`0.992 -> 0.011`) cannot hide behind an aggregate macro-F1; 60 multi-turn `ChatOrchestrator` scenarios (`chat_rubric.jsonl`) gated by 6 deterministic checks while keeping the optional 4-axis LLM-as-judge (`evals/prompts/response_judge_v1.md`) strictly advisory; and a weekly + PR GitHub Action (`.github/workflows/evals.yml`) that posts a sticky PR summary comment.
 
 ## Known issues
+
+### Day 24 implementation notes
+
+- **Synthetic evaluation corpora:** all three evaluation datasets (`572` crisis
+  cases, `162` emotion cases, `60` chat rubric scenarios) are synthetic and
+  authored in-repo (`"source": "synthetic"`), not clinician-annotated real-user
+  transcripts. They test regression invariants, not real-world clinical
+  sensitivity or specificity.
+- **Keyword/sentiment domain-shift collapse:** the offline emotion fallback chain
+  (`KeywordFallbackAnalyzer` → `SentimentAnalyzer`) reaches `0.992` macro-F1 on
+  direct emotional keywords (`in_domain`) but drops to `0.011` macro-F1 on
+  indirect, somatic, idiomatic, or sarcastic phrasing (`domain_shift`) because
+  `SentimentAnalyzer` only maps polarity to `{"joy", "calm", "neutral",
+  "sadness"}` and leaves `anxiety`, `anger`, `overwhelm`, `loneliness`, and
+  `hopelessness` at `0.000` recall when keyword lexicon misses occur.
+- **`loneliness` unmapped in GoEmotions `LABEL_MAP`:** even with the optional
+  `nlp` HuggingFace checkpoint installed, `loneliness` has zero mapped
+  GoEmotions heads in `backend/app/services/nlp/emotion.py` and relies solely on
+  `KeywordFallbackAnalyzer`.
+- **Safety ML classifier false positives on benign distress:** `crisis_v1.joblib`
+  achieves `1.000` crisis recall on dev (`51/51`) at the cost of `0.543`
+  precision (`43` benign/low/medium utterances escalated to `HIGH`/`IMMINENT`).
+  Because `HIGH` bypasses the LLM (`llm_called = False`), `run_response_eval.py`
+  defaults to `NullClassifier(reason="disabled")` (with `--safety-ml` opt-in) so
+  non-crisis LLM turns (`everyday_distress`, `boundary_diagnosis`,
+  `boundary_medication`, `medium_checkin`) exercise the LLM and output guard
+  while `run_safety_eval.py` evaluates the full `rules + ML` ensemble.
+- **Inherited scikit-learn version warning:** loading `crisis_v1.joblib` (trained
+  under `scikit-learn 1.5.2`) on `scikit-learn 1.9.1` emits
+  `InconsistentVersionWarning` during `pytest` and `run_safety_eval.py`.
 
 ### Day 23 implementation notes
 
@@ -3448,3 +3608,40 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   the browser pass runs.
 - **Screenshots for the Privacy screen** in `docs/assets/README.md` (the
   Day-12 chat shots exist; Day-22 privacy shots do not).
+
+## Next steps (Day 25 — first three)
+
+1. **Clinician and native-speaker dataset review:** audit `evals/datasets/crisis_cases_*.jsonl`,
+   `evals/datasets/emotion_cases.jsonl`, and `evals/datasets/chat_rubric.jsonl`
+   with fluent Hindi (`hi` / `hi-Latn`) and Bengali (`bn`) speakers and a
+   mental-health advisor; expand each cell to $n \ge 50$ per language so the
+   95% bootstrap confidence intervals narrow from ~`±0.15` to `< ±0.05`.
+2. **Retrain and recalibrate `crisis_v1.joblib` on `scikit-learn 1.9.1`:**
+   incorporate hard negatives for everyday academic/work distress (so benign
+   exam/deadline stress no longer trips `HIGH` in `crisis_v1.joblib`), improve
+   ensemble precision above `0.543` while preserving `1.000` `HIGH+IMMINENT`
+   recall, and eliminate the `scikit-learn 1.5.2 -> 1.9.1`
+   `InconsistentVersionWarning`.
+3. **Close the emotion domain-shift gap:** evaluate the optional HuggingFace
+   checkpoint (`EMOTION_MODEL_ID` via the `nlp` extra) on the 39 `domain_shift`
+   cases in `evals/datasets/emotion_cases.jsonl`, and map or augment a dedicated
+   `loneliness` detector so indirect and somatic expressions do not collapse into
+   `sadness`/`neutral`.
+
+## Parking lot (Day 24)
+
+- **Multi-judge agreement & human-vs-judge correlation:** calibrate the optional
+  4-axis LLM-as-judge (`evals/prompts/response_judge_v1.md`) against human
+  clinician ratings (Cohen's $\kappa$ / Krippendorff's $\alpha$) before using
+  judge scores for anything beyond exploratory diagnostics.
+- **Code-mixed Hinglish and Romanised Bengali (`bn-Latn`) emotion cases:**
+  extend `evals/datasets/emotion_cases.jsonl` beyond Devanagari (`hi`) and
+  Bengali script (`bn`) to cover Romanised Indic emotion expressions.
+- **Long-horizon multi-turn drift evaluation:** add 10–15 turn conversation
+  scenarios to `evals/datasets/chat_rubric.jsonl` to test context-window
+  truncation, saved-chat memory summaries, and gradual risk escalation across
+  many turns.
+- **Historical trend charts in `report.html`:** render sparklines across
+  consecutive `evals/reports/<date>/summary.json` runs once multiple weekly
+  scheduled artifacts accumulate.
+
