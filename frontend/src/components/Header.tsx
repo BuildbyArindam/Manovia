@@ -23,7 +23,7 @@ export function Header(): ReactElement {
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
           <LanguageSwitcher />
-          <CrisisHelpButton />
+          <CrisisHelpButton openFromUrl />
         </div>
       </div>
     </header>

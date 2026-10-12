@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 
 import { CrisisResourcesModal } from "@/components/CrisisResourcesModal";
 import { t } from "@/lib/i18n/i18n";
@@ -11,8 +11,35 @@ import { t } from "@/lib/i18n/i18n";
  * trouble should not lose their place, and a route change would also lose the
  * keyboard focus that makes the dialog usable.
  */
-export function CrisisHelpButton(): ReactElement {
+export function CrisisHelpButton({
+  openFromUrl = false,
+}: {
+  /**
+   * Day 25: the header's button also answers `?help=1`, the target of the
+   * "Need help now?" shortcut on an installed app's icon — one long-press from
+   * the home screen to the helplines. Only one instance may set this.
+   */
+  openFromUrl?: boolean;
+} = {}): ReactElement {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!openFromUrl) {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("help") === "1") {
+      setOpen(true);
+      // Leave the address clean, so a reload does not reopen the dialog.
+      params.delete("help");
+      const query = params.toString();
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${query === "" ? "" : `?${query}`}${window.location.hash}`,
+      );
+    }
+  }, [openFromUrl]);
 
   return (
     <>

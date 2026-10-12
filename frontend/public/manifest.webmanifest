@@ -37,21 +37,39 @@
       "short_name": "Check in",
       "description": "Record how you are feeling right now.",
       "url": "/mood",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Breathe",
       "short_name": "Breathe",
       "description": "Open a guided breathing exercise. It works offline.",
       "url": "/exercises",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Need help now?",
       "short_name": "Need help",
-      "description": "Crisis helplines for your region. They are saved on this device.",
-      "url": "/settings",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "description": "Opens the crisis helplines for your region. They are saved on this device and work offline.",
+      "url": "/?help=1",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
