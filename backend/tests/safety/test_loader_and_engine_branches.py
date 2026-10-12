@@ -60,7 +60,7 @@ from app.services.safety.rules import RuleEngine, build_engine
 
 def shipped_documents() -> dict[str, dict[str, Any]]:
     """A deep copy of the four shipped pattern documents, safe to mutate."""
-    return {name: copy.deepcopy(_load_yaml(name)) for name in PATTERN_FILES}
+    return {name: dict(copy.deepcopy(_load_yaml(name))) for name in PATTERN_FILES}
 
 
 def with_first_rule(documents: dict[str, dict[str, Any]], **changes: Any) -> dict[str, Any]:
@@ -361,7 +361,7 @@ def test_ensemble_degrades_to_rules_when_the_classifier_raises(engine: RuleEngin
     assessment = engine.assess(text)
     decision = decide(
         assessment,
-        ExplodingClassifier(),  # type: ignore[arg-type]
+        ExplodingClassifier(),
         text=text,
         min_confidence=0.5,
         crisis_mass_floor=0.5,
@@ -381,7 +381,7 @@ async def test_the_shared_pipeline_entry_point_also_degrades(engine: RuleEngine)
         text,
         None,
         engine,
-        ExplodingClassifier(),  # type: ignore[arg-type]
+        ExplodingClassifier(),
         min_confidence=0.5,
         crisis_mass_floor=0.5,
         suspicion_floor=0.3,
@@ -633,11 +633,13 @@ def test_ml_classifier_degrades_when_the_artifact_is_invalid(
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
         missing = module.build_ml_classifier(artifact_dir=str(empty_dir))
+        assert isinstance(missing, NullClassifier)
         assert missing.reason == "artifact_missing"
 
         module.build_ml_classifier.cache_clear()
         monkeypatch.setattr(module, "joblib", None)
         without_sklearn = module.build_ml_classifier(artifact_dir=str(tmp_path))
+        assert isinstance(without_sklearn, NullClassifier)
         assert without_sklearn.reason == "scikit_learn_missing"
     finally:
         module.build_ml_classifier.cache_clear()
@@ -734,7 +736,8 @@ def test_empty_output_phrase_is_refused() -> None:
 
 def test_escalation_content_can_be_injected() -> None:
     """``build_escalator`` with explicit content returns that content, not the cache."""
-    from app.services.safety.escalation import Escalator, build_escalator, load_helplines
+    from app.content.crisis import load_helplines
+    from app.services.safety.escalation import Escalator, build_escalator
 
     shared = build_escalator()
     assert build_escalator() is shared

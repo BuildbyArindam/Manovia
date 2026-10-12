@@ -281,9 +281,10 @@ def test_envelope_and_legacy_detection_is_input_type_safe() -> None:
     ``None`` or a ``str`` reaching them must be a "not this format", not a
     ``TypeError`` that turns into a 500.
     """
-    assert is_envelope_ciphertext("MENV\x01v1") is False
+    # Deliberately a str, not bytes: the sniffer must not raise on junk.
+    assert is_envelope_ciphertext("MENV\x01v1") is False  # type: ignore[arg-type]
     assert is_envelope_ciphertext(None) is False  # type: ignore[arg-type]
-    assert is_legacy_fernet_ciphertext("gAAAAA" + "x" * 80) is False
+    assert is_legacy_fernet_ciphertext("gAAAAA" + "x" * 80) is False  # type: ignore[arg-type]
     assert is_legacy_fernet_ciphertext(None) is False  # type: ignore[arg-type]
     # Short base64 that merely looks like Fernet is not accepted as legacy.
     assert is_legacy_fernet_ciphertext(b"gAAAAAshort") is False
@@ -487,12 +488,13 @@ def test_get_envelope_cipher_accepts_a_foreign_cipher_with_a_keyring() -> None:
             raise NotImplementedError
 
     ring = MasterKeyRing.from_key_material(generate_master_key())
-    configure_cipher(AdaptableCipher(ring))  # type: ignore[arg-type]
+    configure_cipher(AdaptableCipher(ring))
     adapted = get_envelope_cipher()
     assert isinstance(adapted, EnvelopeCipher)
     assert adapted.active_key_id == ring.active_key_id
 
-    configure_cipher(AdaptableCipher(MasterKeyRing.from_key_material(generate_master_key())))  # type: ignore[arg-type]
+    other = MasterKeyRing.from_key_material(generate_master_key())
+    configure_cipher(AdaptableCipher(other))
     user_id = uuid.uuid4()
     assert (
         decrypt_field(
