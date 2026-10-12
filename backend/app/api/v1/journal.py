@@ -64,6 +64,7 @@ from app.services.journal.prompts import (
     get_rotating_prompts,
 )
 from app.services.nlp.base import EmotionAnalyzer
+from app.services.privacy.store import sentiment_storage_allowed
 from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision
 from app.services.safety.escalation import Escalator
 from app.services.safety.ml_classifier import SafetyClassifier
@@ -425,11 +426,15 @@ async def create_journal_entry(
         escalator=escalator,
         session=session,
     )
+    # Day 22 privacy floor: a person who turned derived scores off in
+    # Settings → Privacy gets no new sentiment, whatever the request says.
+    # Existing rows are untouched (retention and deletion own removal).
+    store_emotions = payload.store_emotions and await sentiment_storage_allowed(session, user.id)
     sentiment, emotion_scores, primary_emotion = _score_plaintext_emotions(
         combined_text,
         analyzer=analyzer,
         lang=user.language,
-        store_emotions=payload.store_emotions,
+        store_emotions=store_emotions,
     )
 
     repo = JournalRepository(session)
@@ -459,7 +464,7 @@ async def create_journal_entry(
         entry_id=str(entry.id),
         user_id=str(user.id),
         template=entry.template,
-        store_emotions=payload.store_emotions,
+        store_emotions=store_emotions,
         word_count=word_count,
         risk_level=risk_level,
     )
@@ -562,11 +567,12 @@ async def update_journal_entry(
         escalator=escalator,
         session=session,
     )
+    store_emotions = payload.store_emotions and await sentiment_storage_allowed(session, user.id)
     sentiment, emotion_scores, primary_emotion = _score_plaintext_emotions(
         combined_text,
         analyzer=analyzer,
         lang=user.language,
-        store_emotions=payload.store_emotions,
+        store_emotions=store_emotions,
     )
 
     try:
@@ -594,7 +600,7 @@ async def update_journal_entry(
         entry_id=str(updated.id),
         user_id=str(user.id),
         template=updated.template,
-        store_emotions=payload.store_emotions,
+        store_emotions=store_emotions,
         word_count=word_count,
         risk_level=risk_level,
     )

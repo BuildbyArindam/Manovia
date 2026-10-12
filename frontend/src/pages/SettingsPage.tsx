@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { deleteChatMemory, fetchChatMemory } from "@/features/chat/endpoints";
 import { useMoodHintPreference } from "@/features/chat/useMoodHint";
 import { PlanSettingsSection } from "@/features/plan/PlanSettingsSection";
+import { PrivacySection } from "@/features/privacy/PrivacySection";
 import { signOut } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
@@ -224,6 +225,8 @@ export function SettingsPage(): ReactElement {
           </>
         )}
       </section>
+
+      <PrivacySection client={api} />
 
       <section
         aria-labelledby="ai-disclosure-heading"

@@ -10,6 +10,34 @@ import { defineConfig } from "vitest/config";
  * talks to its own origin (the sandbox preview is served through a proxy host,
  * so nothing may call `localhost` from the client).
  */
+/**
+ * Content-Security-Policy for the *dev* server.
+ *
+ * `script-src` needs `'unsafe-inline'` here and only here: `@vitejs/plugin-react`
+ * injects an inline Refresh preamble into the page, and `'unsafe-eval'` is what
+ * the HMR client needs for source-map evaluation. Production is served by
+ * `docker/nginx.conf`, which ships the strict policy (`script-src 'self'`) and
+ * is asserted by `src/security/csp.test.ts` — so this dev relaxation can never
+ * be what protects a real deployment.
+ *
+ * `connect-src` allows the HMR websocket (`ws:`) and nothing else off-origin;
+ * everything else is same-origin, which is what makes the proxy-only topology
+ * (the browser never calls `localhost` directly) enforceable rather than merely
+ * conventional.
+ */
+export const DEV_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self' ws: wss:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -23,6 +51,11 @@ export default defineConfig({
     host: true,
     port: 5173,
     allowedHosts: true,
+    headers: {
+      "Content-Security-Policy": DEV_CSP,
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+    },
     proxy: {
       "/api": {
         target: process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000",
@@ -34,6 +67,11 @@ export default defineConfig({
     host: true,
     port: 4173,
     allowedHosts: true,
+    headers: {
+      "Content-Security-Policy": DEV_CSP,
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+    },
   },
   test: {
     environment: "jsdom",

@@ -25,6 +25,7 @@ from app.api.v1.journal import router as journal_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.mood import router as mood_router
 from app.api.v1.plan import router as plan_router
+from app.api.v1.privacy import router as privacy_router
 from app.api.v1.settings import router as settings_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
@@ -37,7 +38,13 @@ from app.core.errors import (
 )
 from app.core.lockout import LoginLockout
 from app.core.logging import RequestIDMiddleware, configure_logging
-from app.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import (
+    OriginGuardMiddleware,
+    RateLimitMiddleware,
+    RequestBodyLimitMiddleware,
+    RequestTimeoutMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.core.ratelimit import InMemoryRateLimiter
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
@@ -118,6 +125,26 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     # every response, including error responses. Rate limiting sits just inside
     # the security headers so even a 429 is fully dressed; it is skipped when
     # disabled (load tests only).
+    # Day 22 hardening. Added before the layers below, so they sit *inside*
+    # CORS/security headers/rate limiting: a 413 or a 403 from these guards
+    # still carries the standard envelope, request id and security headers.
+    # Order inside the app (outermost first): origin guard, timeout, body
+    # limit. The body ceiling is the innermost check because it is the most
+    # expensive one to reach.
+    app.add_middleware(
+        OriginGuardMiddleware,
+        allowed_origins=tuple(app_settings.allowed_origin_list),
+        enabled=app_settings.origin_check_enabled,
+    )
+    app.add_middleware(
+        RequestTimeoutMiddleware,
+        timeout_seconds=app_settings.request_timeout_seconds,
+        exempt_suffixes=("/stream",),
+    )
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_bytes=app_settings.max_request_bytes,
+    )
     app.add_middleware(
         RateLimitMiddleware,
         auth_limiter=app.state.rate_limit_auth,
@@ -148,6 +175,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(crisis_router, prefix="/api/v1")
     app.include_router(plan_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
+    app.include_router(privacy_router, prefix="/api/v1")
     if not app_settings.is_production:
         # Dev-only surface: in production the route does not exist at all, so
         # it is absent from the schema and a request gets the generic 404.

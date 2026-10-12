@@ -163,6 +163,11 @@ class FakeLLMProvider(LLMProvider):
         return self._model
 
     @property
+    def latency_ms(self) -> float:
+        """The configured pause before the first token (0 when instant)."""
+        return self._latency_ms
+
+    @property
     def is_configured(self) -> bool:
         return self._configured
 

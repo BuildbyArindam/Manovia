@@ -10,25 +10,14 @@
       content="Manovia is a private, safety-first self-help companion. It is not therapy, not a diagnosis, and not a crisis service."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script>
-      // Resolve the palette before first paint so a dark-mode user never sees a
-      // white flash: an explicit choice wins, otherwise follow the OS. The same
-      // logic lives in src/theme/ThemeProvider.tsx; this copy only exists to
-      // paint the right colours on the very first frame.
-      (function () {
-        try {
-          var stored = window.localStorage.getItem("manovia.theme");
-          var prefersDark =
-            typeof window.matchMedia === "function" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var theme =
-            stored === "light" || stored === "dark" ? stored : prefersDark ? "dark" : "light";
-          document.documentElement.setAttribute("data-theme", theme);
-        } catch (error) {
-          document.documentElement.setAttribute("data-theme", "light");
-        }
-      })();
-    </script>
+    <!--
+      The palette is resolved by a module, not an inline script: an inline script
+      is what a strict `script-src 'self'` policy (see docker/nginx.conf and the
+      API's SecurityHeadersMiddleware) refuses to run. The CSS keeps a
+      `prefers-color-scheme` fallback so a reader with no explicit choice never
+      sees the wrong palette while this module loads.
+    -->
+    <script type="module" src="/src/theme/first-paint.ts"></script>
   </head>
   <body>
     <div id="root"></div>

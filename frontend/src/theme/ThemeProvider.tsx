@@ -9,8 +9,10 @@ import {
   type ReactNode,
 } from "react";
 
+import { THEME_STORAGE_KEY } from "./theme-storage";
+
 /** Where the user's explicit palette choice is remembered. */
-export const THEME_STORAGE_KEY = "manovia.theme";
+export { THEME_STORAGE_KEY } from "./theme-storage";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 

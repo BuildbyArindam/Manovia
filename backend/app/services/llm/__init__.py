@@ -124,7 +124,9 @@ def build_llm_chain(
             )
         )
     else:  # "fake" — the offline test double.
-        links.append(FakeLLMProvider())
+        # Latency is a knob (0 by default) so an end-to-end run can make the
+        # streaming states observable instead of racing them.
+        links.append(FakeLLMProvider(latency_ms=settings.llm_fake_latency_ms))
 
     # Terminal link: cannot fail, cannot be unconfigured.
     links.append(CannedProvider())
