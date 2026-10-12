@@ -146,6 +146,12 @@ addopts = "-ra -m 'not model'"
 # compiled SQLAlchemy cache-key module even crashes mid-run —
 # coveragepy#2324). One line each, honest numbers.
 concurrency = ["greenlet", "thread"]
+# Day 26: branches, not just lines. A line count is satisfied by a happy-path
+# test that executes every statement and never enters a single ``if`` body, and
+# `scripts/coverage_gate.py` gates the safety, crypto and scoring modules on
+# both. Measuring branches only where the day's targets ask for them would mean
+# two different runs with two different configs, so it is on for the whole suite.
+branch = true
 
 [tool.ruff]
 target-version = "py311"

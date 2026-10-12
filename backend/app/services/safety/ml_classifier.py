@@ -169,7 +169,11 @@ class TfidfLogisticClassifier:
         # the first whose probability is within a hair of the maximum.
         best = max(mapping.values())
         level = RiskLevel.NONE
-        for candidate in reversed(tuple(RiskLevel)):
+        # ``best`` is the maximum of this very mapping, so at least one
+        # candidate always satisfies the comparison: the loop cannot fall
+        # through. Declared rather than covered because no test can enter a
+        # state where it does (Day 26).
+        for candidate in reversed(tuple(RiskLevel)):  # pragma: no branch
             if mapping[candidate.label] >= best - 1e-12:
                 level = candidate
                 break
