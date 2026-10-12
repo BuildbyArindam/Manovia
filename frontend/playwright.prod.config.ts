@@ -27,6 +27,8 @@ if (!Array.isArray(chromiumArgs) || !chromiumArgs.every((arg) => typeof arg === 
 
 export default defineConfig({
   testDir: "./e2e/day25",
+  // Empties test-results/day25/ once per run, so its reports never mix runs.
+  globalSetup: "./e2e/day25/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,

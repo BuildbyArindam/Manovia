@@ -27,6 +27,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import { APP_ROUTES, apiReachable, completeGuestOnboarding, openRoute } from "./helpers";
+import { REPORT_DIR } from "./reports";
 
 const MODES = [
   { name: "zoom 200%", viewport: { width: 640, height: 400 }, scale: 2, fontPx: null },
@@ -196,9 +197,9 @@ for (const mode of MODES) {
     const mine = findings.filter((finding) => finding.mode === mode.name);
     // One file per mode: a failing test restarts the worker, so module state
     // cannot carry a whole run to an afterAll hook.
-    mkdirSync("test-results/day25", { recursive: true });
+    mkdirSync(REPORT_DIR, { recursive: true });
     writeFileSync(
-      `test-results/day25/zoom-${mode.name.replace(/[^a-z0-9]+/gi, "-")}.json`,
+      `${REPORT_DIR}/zoom-${mode.name.replace(/[^a-z0-9]+/gi, "-")}.json`,
       JSON.stringify(
         { mode: mode.name, findings: mine, measured: measured.filter((m) => m.mode === mode.name) },
         null,

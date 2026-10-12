@@ -26,6 +26,7 @@ import {
   openRoute,
   waitForOfflineReady,
 } from "./helpers";
+import { REPORT_DIR } from "./reports";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 const BLOCKING = new Set(["serious", "critical"]);
@@ -54,10 +55,11 @@ interface ScanRecord {
 /**
  * Records are appended as JSON lines as they happen: Playwright restarts the
  * worker after a failing test, so module state cannot hold a whole run.
- * `npm run test:e2e:prod` starts from an empty `test-results/day25/`.
+ * `global-setup.ts` clears the previous run's records once per invocation, so
+ * the file only ever holds this run (see `reports.ts`).
  */
 function record(info: TestInfo, kind: "scan" | "target", data: object): void {
-  const file = `test-results/day25/axe-${info.project.name}.jsonl`;
+  const file = `${REPORT_DIR}/axe-${info.project.name}.jsonl`;
   mkdirSync(dirname(file), { recursive: true });
   appendFileSync(file, `${JSON.stringify({ kind, project: info.project.name, ...data })}\n`);
 }

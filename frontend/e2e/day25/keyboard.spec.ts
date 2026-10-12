@@ -22,6 +22,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 import { apiReachable } from "./helpers";
+import { REPORT_DIR } from "./reports";
 
 interface Focused {
   key: string;
@@ -182,9 +183,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterAll(() => {
-  mkdirSync("test-results/day25", { recursive: true });
+  mkdirSync(REPORT_DIR, { recursive: true });
   writeFileSync(
-    `test-results/day25/keyboard-${test.info().project.name}.json`,
+    `${REPORT_DIR}/keyboard-${test.info().project.name}.json`,
     JSON.stringify(reports, null, 2),
   );
 });
