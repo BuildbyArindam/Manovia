@@ -132,6 +132,10 @@ void i18next.use(pseudoPostProcessor).init({
   },
   lng: pseudoEnabled() ? PSEUDO_LANGUAGE : initialLanguage(),
   fallbackLng: "en",
+  // Registration via `use()` alone does not activate a post-processor; this
+  // option does. The processor itself is a no-op for real locales, so running
+  // it on every translation costs nothing and makes pseudo mode actually work.
+  postProcess: [pseudoPostProcessor.name],
   // React already escapes; double-escaping would show &amp; to readers.
   interpolation: { escapeValue: false },
   returnNull: false,
