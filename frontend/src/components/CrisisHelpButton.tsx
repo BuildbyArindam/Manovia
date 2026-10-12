@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from "react";
 
 import { CrisisResourcesModal } from "@/components/CrisisResourcesModal";
+import { t } from "@/lib/i18n/i18n";
 
 /**
  * The persistent "Need help now?" control.
@@ -24,7 +25,7 @@ export function CrisisHelpButton(): ReactElement {
         aria-expanded={open}
         className="rounded-xl border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-semibold text-danger sm:px-4 sm:text-base"
       >
-        Need help now?
+        {t("crisis.helpButton")}
       </button>
       {open ? <CrisisResourcesModal onClose={() => setOpen(false)} /> : null}
     </>

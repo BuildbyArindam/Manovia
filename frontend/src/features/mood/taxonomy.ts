@@ -13,6 +13,8 @@
  *    differently-shaped face; every chip is a word before it is a colour.
  */
 
+import { t } from "@/lib/i18n/i18n";
+
 /** The nine emotion labels — the same taxonomy the analyser uses. */
 export interface EmotionOption {
   id: string;
@@ -116,11 +118,69 @@ export function energyPoint(value: number): EnergyPoint {
 }
 
 export function emotionLabel(id: string): string {
-  return MOOD_EMOTIONS.find((option) => option.id === id)?.label ?? id;
+  return localisedEmotionLabel(id) ?? id;
 }
 
 export function factorLabel(id: string): string {
-  return MOOD_FACTORS.find((option) => option.id === id)?.label ?? id;
+  return localisedFactorLabel(id) ?? id;
+}
+
+/* ------------------------------------------------------------------------- *
+ * Day 23 localisation.
+ *
+ * The arrays above stay the canonical English mirror of the backend taxonomy
+ * (a script compares them against the Python source), so the translated words
+ * live here, keyed by the same ids. Every helper falls back to the English
+ * label when the id is unknown, so a new backend word degrades to readable
+ * English instead of a raw id.
+ * ------------------------------------------------------------------------- */
+
+const VALENCE_LABEL_KEYS: Readonly<Record<number, string>> = {
+  1: "mood.valenceScale.veryLow",
+  2: "mood.valenceScale.low",
+  3: "mood.valenceScale.middle",
+  4: "mood.valenceScale.good",
+  5: "mood.valenceScale.veryGood",
+};
+
+const ENERGY_LABEL_KEYS: Readonly<Record<number, string>> = {
+  1: "mood.energyScale.empty",
+  2: "mood.energyScale.runningLow",
+  3: "mood.energyScale.some",
+  4: "mood.energyScale.good",
+  5: "mood.energyScale.plenty",
+};
+
+/** The label for one face-scale point, in the interface language. */
+export function localisedValenceLabel(point: Pick<MoodScalePoint, "value" | "label">): string {
+  const key = VALENCE_LABEL_KEYS[point.value];
+  return key === undefined ? point.label : t(key);
+}
+
+/** The label for one energy point, in the interface language. */
+export function localisedEnergyLabel(point: Pick<EnergyPoint, "value" | "label">): string {
+  const key = ENERGY_LABEL_KEYS[point.value];
+  return key === undefined ? point.label : t(key);
+}
+
+/** The translated emotion chip label, or `null` for an unknown id. */
+export function localisedEmotionLabel(id: string): string | null {
+  const known = MOOD_EMOTIONS.some((option) => option.id === id);
+  return known ? t(`mood.emotions.${id}`) : null;
+}
+
+/** The translated factor chip label, or `null` for an unknown id. */
+export function localisedFactorLabel(id: string): string | null {
+  const known = MOOD_FACTORS.some((option) => option.id === id);
+  return known ? t(`mood.factors.${id}`) : null;
+}
+
+/**
+ * The translated label for one chip of either vocabulary, falling back to the
+ * canonical English label for an id the taxonomy does not know.
+ */
+export function localisedChipLabel(option: EmotionOption): string {
+  return localisedEmotionLabel(option.id) ?? localisedFactorLabel(option.id) ?? option.label;
 }
 
 /** The emotion ids the server accepts. Exported for the drift check. */

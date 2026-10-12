@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { t } from "@/lib/i18n/i18n";
+import { formatDateTime } from "@/lib/dates";
 import type { ReactElement } from "react";
 
 import type { ApiClient } from "@/lib/api";
@@ -28,7 +30,7 @@ export function ExerciseHistory({ client, offset, onPage }: ExerciseHistoryProps
         {COPY.historyHeading}
       </h2>
       <p className="text-sm text-ink-muted">{COPY.historyNote}</p>
-      {history.isPending ? <p>Loading history…</p> : null}
+      {history.isPending ? <p>{t("exercises.historyLoading")}</p> : null}
       {history.isError ? (
         <div>
           <p role="alert">{COPY.historyError}</p>
@@ -53,7 +55,7 @@ export function ExerciseHistory({ client, offset, onPage }: ExerciseHistoryProps
           >
             <h3 className="font-semibold">{entry.title}</h3>
             <p className="text-sm text-ink-muted">
-              <time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString()}</time>{" "}
+              <time dateTime={entry.created_at}>{formatDateTime(entry.created_at)}</time>{" "}
               · {formatDuration(entry.duration_seconds)}
             </p>
             <p className="text-sm">
@@ -65,7 +67,7 @@ export function ExerciseHistory({ client, offset, onPage }: ExerciseHistoryProps
         ))}
       </ol>
       {offset > 0 || history.data?.has_more ? (
-        <div className="flex flex-wrap gap-3" aria-label="History pages">
+        <div className="flex flex-wrap gap-3" aria-label={t("exercises.historyPagesLabel")}>
           <button
             type="button"
             className="btn-secondary"

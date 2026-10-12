@@ -2,7 +2,14 @@
   "version": 1,
   "locale": "en",
   "display_name": "English",
-  "placeholder_whitelist": ["emergency_number"],
+  "placeholder_whitelist": [
+    "emergency_number",
+    "exercise_title",
+    "days",
+    "week_days",
+    "day_part",
+    "preference_note"
+  ],
   "templates": {
     "crisis.high": {
       "title": "What you're feeling is real, and you don't have to face it alone",
@@ -82,5 +89,40 @@
       "closing": "There's no rush — I'm listening.",
       "disclaimer": "Manovia is a self-help companion. It is not therapy, it cannot diagnose, and it is not a crisis service."
     }
+  },
+  "numerals": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+  ],
+  "strings": {
+    "day_part.morning": "morning",
+    "day_part.afternoon": "afternoon",
+    "day_part.evening": "evening",
+    "plan.first_check_in.title": "Take a first check-in",
+    "plan.first_check_in.why": "There is no mood check-in yet. Ten seconds helps Manovia learn your rhythm, and it is fine to skip if today is not the day.",
+    "plan.open_thought_record.title": "Finish a thought record",
+    "plan.open_thought_record.why": "A recent thought record has no 'what helped' yet. You can add that whenever you like, or leave the record as it is.",
+    "plan.low_mood.title": "Try a gentle exercise",
+    "plan.low_mood.why": "Your check-ins over the last few days are lower than the days before. {exercise_title} is short, and there is no right way to do it.",
+    "plan.anxiety.title": "Ground for a couple of minutes",
+    "plan.anxiety.why": "A recent check-in was tagged with anxiety or fear. {exercise_title} offers an outside focus, if you want one. It is optional.",
+    "plan.missed_check_in.title": "Check in when you are ready",
+    "plan.missed_check_in.why": "Your last check-in was {days} days ago. A quick one keeps the picture honest, and skipping costs nothing.",
+    "plan.exercise_habit.title": "A short exercise for the {day_part}",
+    "plan.exercise_habit.why": "You have done exercises on {days} of the last {week_days} days. {exercise_title} is a small next step. {preference_note}",
+    "plan.preference_note.matched": "It matches the exercise types you chose in Settings.",
+    "plan.preference_note.time_of_day": "It fits this part of the day.",
+    "plan.rest.title": "Today can be a rest day",
+    "plan.rest.why": "You have been active on {days} of the last {week_days} days. Doing nothing today counts too.",
+    "plan.support.title": "Support options are here",
+    "plan.support.why": "Your most recent screening included an answer we show support options for. That is the only thing today's plan does; everything else is set aside."
   }
 }

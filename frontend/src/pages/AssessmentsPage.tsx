@@ -17,6 +17,7 @@
 import { useState, type ReactElement } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { t } from "@/lib/i18n/i18n";
 import { api, ApiError, type ApiClient } from "@/lib/api";
 
 import { QuestionnaireForm } from "@/features/assessments/components/QuestionnaireForm";
@@ -102,7 +103,7 @@ export function AssessmentsPage({ client = api }: { client?: ApiClient }): React
         historical: false,
       });
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : SUBMIT_FAILED);
+      setError(caught instanceof ApiError ? caught.message : SUBMIT_FAILED());
     }
   }
 
@@ -115,7 +116,7 @@ export function AssessmentsPage({ client = api }: { client?: ApiClient }): React
       const result = await fetchAssessmentResult(instrument, resultId, client);
       setDisplayed({ result, crisis: null, cadence: null, historical: true });
     } catch {
-      setError(SUBMIT_FAILED);
+      setError(SUBMIT_FAILED());
     }
   }
 
@@ -124,18 +125,17 @@ export function AssessmentsPage({ client = api }: { client?: ApiClient }): React
   return (
     <div className="space-y-6">
       <div data-print="hide">
-        <PageHeader title={SCREENINGS_TITLE} lede={SCREENINGS_LEDE} />
-        <p className="mt-4 max-w-prose text-ink-muted">{SCREENINGS_NOTICE}</p>
+        <PageHeader title={SCREENINGS_TITLE()} lede={SCREENINGS_LEDE()} />
+        <p className="mt-4 max-w-prose text-ink-muted">{SCREENINGS_NOTICE()}</p>
+        <p className="mt-2 max-w-prose text-sm text-ink-muted">{t("assessments.englishOnly")}</p>
 
         {instrument === null ? (
-          <section className="mt-6 space-y-4" aria-label="Choose a questionnaire">
+          <section className="mt-6 space-y-4" aria-label={t("assessments.chooseLabel")}>
             {instruments.isPending ? (
-              <p className="text-ink-muted">Loading questionnaires…</p>
+              <p className="text-ink-muted">{t("assessments.loadingList")}</p>
             ) : null}
             {instruments.isError ? (
-              <p className="text-ink-muted">
-                We couldn&rsquo;t load the questionnaires. Please refresh and try again.
-              </p>
+              <p className="text-ink-muted">{t("assessments.loadError")}</p>
             ) : null}
             {(instruments.data ?? []).map((entry) => (
               <article
@@ -144,8 +144,11 @@ export function AssessmentsPage({ client = api }: { client?: ApiClient }): React
               >
                 <h2 className="text-xl">{entry.name}</h2>
                 <p className="mt-2 max-w-prose text-ink-muted">
-                  {entry.item_count} questions about {entry.measures}, covering{" "}
-                  {entry.timeframe_label}.
+                  {t("assessments.entrySummary", {
+                    count: entry.item_count,
+                    measures: entry.measures,
+                    timeframe: entry.timeframe_label,
+                  })}
                 </p>
                 <button
                   type="button"
@@ -154,7 +157,7 @@ export function AssessmentsPage({ client = api }: { client?: ApiClient }): React
                   }}
                   className="mt-4 inline-flex min-h-12 items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-fg"
                 >
-                  Start the {entry.short_name}
+                  {t("assessments.startButton", { name: entry.short_name })}
                 </button>
               </article>
             ))}
@@ -202,8 +205,8 @@ export function AssessmentsPage({ client = api }: { client?: ApiClient }): React
                   />
                 </div>
                 <details className="mt-6 rounded-2xl border border-border bg-surface p-6">
-                  <summary className="cursor-pointer font-semibold">{PROVENANCE_HEADING}</summary>
-                  <p className="mt-3 max-w-prose text-ink-muted">{PROVENANCE_VERBATIM}</p>
+                  <summary className="cursor-pointer font-semibold">{PROVENANCE_HEADING()}</summary>
+                  <p className="mt-3 max-w-prose text-ink-muted">{PROVENANCE_VERBATIM()}</p>
                   <p className="mt-2 max-w-prose text-sm">
                     {provenanceString(definitionDoc.provenance, "developers")}
                   </p>

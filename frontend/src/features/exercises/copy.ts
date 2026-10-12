@@ -1,65 +1,182 @@
-/** Reviewable interface copy. Exercise instructions live in the backend YAML. */
+import { t } from "@/lib/i18n/i18n";
+
+/**
+ * Reviewable interface copy. Exercise instructions live in the backend YAML.
+ *
+ * Day 23: the words route through i18next (locales in `src/lib/i18n`). The
+ * getters keep this module's shape, so every component and every test keeps
+ * reading the same properties — and reads them in whatever language is live.
+ */
 export const EXERCISE_COPY = {
-  heading: "Exercises",
-  lede: "One short practice, at your pace. You can pause or stop at any time.",
-  framing: "Self-help, not treatment. Instructions are currently in English. No sound is needed.",
-  offline:
-    "Once loaded, the exercise runs in this tab without a connection. Reloading offline is not supported.",
-  suggestions: "Suggestions, if you want them",
-  suggestionsNote:
-    "Choose how you feel to see rule-based suggestions. This is not a diagnosis, and your choice is not saved.",
-  why: "Why this?",
-  loading: "Loading exercises…",
-  unavailable: "Exercises could not be loaded. Please reconnect and try again.",
-  historyHeading: "Exercise history",
-  historyNote:
-    "These are self-reported completions. Before-and-after ratings show an association, not proof of what caused a change.",
-  historyEmpty: "No saved completions yet. There is no schedule to keep up with.",
-  historyError: "History could not be loaded. You can still run a loaded exercise without it.",
-  before: "How do you feel before? (optional)",
-  after: "How do you feel afterwards? (optional)",
-  ratingHint: "1 is very low; 5 is very good. You may leave this unanswered.",
-  clearRating: "Leave this rating unanswered",
-  beforeBegin: "Before you begin",
-  evidence: "Notes and evidence",
-  start: "Start exercise",
-  pause: "Pause",
-  resume: "Resume",
-  stop: "Stop exercise",
-  stopNote: "Stopping early does not save a completion. Your comfort matters more than the timer.",
-  paused: "Paused. Resume when you want to, or stop here.",
-  backgroundPause:
-    "Paused while this page was away or its timer was delayed. Resume when you are ready.",
-  textOnly: "Use a static countdown (no animation)",
-  reducedMotion: "Your device requests reduced motion, so the animated guide is off.",
-  haptics: "Use a brief vibration at each step (optional)",
-  hapticsUnavailable:
-    "Haptic cues are not available in this browser. All instructions are visible text.",
-  hapticsNote: "Vibration is off by default and may not work on every device.",
-  finished: "Exercise finished",
-  finishedNote: "Notice how you feel; no particular result is expected. Ratings are optional.",
-  save: "Save completion",
-  saving: "Saving…",
-  saved: "Completion saved.",
-  retrySave: "Retry saving",
-  unsaved:
-    "Not saved. Your completion and ratings are only in this tab. Reconnect and retry; closing or leaving this tab loses unsaved results.",
-  saveNote:
-    "Saving sends only the exercise ID and optional ratings. Your thoughts and planner choice are not sent.",
-  discard: "Finish without saving",
-  discardFailed: "Discard unsaved completion",
-  back: "Back to exercises",
-  chooseAction: "Choose one small action (optional)",
-} as const;
+  get heading() {
+    return t("exercises.heading");
+  },
+  get lede() {
+    return t("exercises.lede");
+  },
+  get framing() {
+    return t("exercises.framing");
+  },
+  get offline() {
+    return t("exercises.offline");
+  },
+  get suggestions() {
+    return t("exercises.suggestions");
+  },
+  get suggestionsNote() {
+    return t("exercises.suggestionsNote");
+  },
+  get why() {
+    return t("exercises.why");
+  },
+  get loading() {
+    return t("exercises.loading");
+  },
+  get unavailable() {
+    return t("exercises.unavailable");
+  },
+  get historyHeading() {
+    return t("exercises.historyHeading");
+  },
+  get historyNote() {
+    return t("exercises.historyNote");
+  },
+  get historyEmpty() {
+    return t("exercises.historyEmpty");
+  },
+  get historyError() {
+    return t("exercises.historyError");
+  },
+  get before() {
+    return t("exercises.before");
+  },
+  get after() {
+    return t("exercises.after");
+  },
+  get ratingHint() {
+    return t("exercises.ratingHint");
+  },
+  get clearRating() {
+    return t("exercises.clearRating");
+  },
+  get beforeBegin() {
+    return t("exercises.beforeBegin");
+  },
+  get evidence() {
+    return t("exercises.evidence");
+  },
+  get start() {
+    return t("exercises.start");
+  },
+  get pause() {
+    return t("exercises.pause");
+  },
+  get resume() {
+    return t("exercises.resume");
+  },
+  get stop() {
+    return t("exercises.stop");
+  },
+  get stopNote() {
+    return t("exercises.stopNote");
+  },
+  get paused() {
+    return t("exercises.paused");
+  },
+  get backgroundPause() {
+    return t("exercises.backgroundPause");
+  },
+  get textOnly() {
+    return t("exercises.textOnly");
+  },
+  get reducedMotion() {
+    return t("exercises.reducedMotion");
+  },
+  get haptics() {
+    return t("exercises.haptics");
+  },
+  get hapticsUnavailable() {
+    return t("exercises.hapticsUnavailable");
+  },
+  get hapticsNote() {
+    return t("exercises.hapticsNote");
+  },
+  get finished() {
+    return t("exercises.finished");
+  },
+  get finishedNote() {
+    return t("exercises.finishedNote");
+  },
+  get save() {
+    return t("exercises.save");
+  },
+  get saving() {
+    return t("exercises.saving");
+  },
+  get saved() {
+    return t("exercises.saved");
+  },
+  get retrySave() {
+    return t("exercises.retrySave");
+  },
+  get unsaved() {
+    return t("exercises.unsaved");
+  },
+  get saveNote() {
+    return t("exercises.saveNote");
+  },
+  get discard() {
+    return t("exercises.discard");
+  },
+  get discardFailed() {
+    return t("exercises.discardFailed");
+  },
+  get back() {
+    return t("exercises.back");
+  },
+  get chooseAction() {
+    return t("exercises.chooseAction");
+  },
+};
 
-export const CUE_LABELS = {
-  instruction: "Follow the text at your own pace",
-  inhale: "Breathe in gently",
-  "hold-in": "Pause only if comfortable",
-  exhale: "Breathe out gently",
-  "hold-out": "Pause only if comfortable",
-} as const;
+/** Breathing-guide cues, one i18n key per cue id. */
+export const CUE_LABELS: Readonly<Record<"instruction" | "inhale" | "hold-in" | "exhale" | "hold-out", string>> = {
+  get instruction() {
+    return t("exercises.cues.instruction");
+  },
+  get inhale() {
+    return t("exercises.cues.inhale");
+  },
+  get "hold-in"() {
+    return t("exercises.cues.holdIn");
+  },
+  get exhale() {
+    return t("exercises.cues.exhale");
+  },
+  get "hold-out"() {
+    return t("exercises.cues.holdOut");
+  },
+};
 
+/** Suggestion-picker emotions with translated labels, in picker order. */
+export function emotionOptions(): ReadonlyArray<readonly [string, string]> {
+  return [
+    ["anxiety", t("exercises.emotions.anxiety")],
+    ["fear", t("exercises.emotions.fear")],
+    ["sadness", t("exercises.emotions.sadness")],
+    ["loneliness", t("exercises.emotions.loneliness")],
+    ["anger", t("exercises.emotions.anger")],
+    ["shame", t("exercises.emotions.shame")],
+    ["calm", t("exercises.emotions.calm")],
+    ["joy", t("exercises.emotions.joy")],
+    ["neutral", t("exercises.emotions.neutral")],
+  ];
+}
+
+/**
+ * The same vocabulary as a stable constant for code that only needs the ids —
+ * and for the test that pins them. The rendered UI uses {@link emotionOptions}.
+ */
 export const EMOTION_OPTIONS = [
   ["anxiety", "Anxiety"],
   ["fear", "Fear"],
@@ -75,7 +192,10 @@ export const EMOTION_OPTIONS = [
 export function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
-  return [minutes > 0 ? `${minutes} min` : "", remainder > 0 ? `${remainder} sec` : ""]
+  return [
+    minutes > 0 ? t("exercises.durationMin", { minutes }) : "",
+    remainder > 0 ? t("exercises.durationSec", { seconds: remainder }) : "",
+  ]
     .filter(Boolean)
     .join(" ");
 }

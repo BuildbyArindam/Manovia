@@ -8,6 +8,8 @@
  * because a percentage next to "sadness" would read as a measurement.
  */
 
+import { t } from "@/lib/i18n/i18n";
+
 export const MOOD_HINT_STORAGE_KEY = "manovia.chat.showMoodHint.v1";
 
 export function loadMoodHintPreference(storage: Storage = window.localStorage): boolean {
@@ -29,17 +31,20 @@ export function saveMoodHintPreference(
   }
 }
 
-/** Plain words for the emotion labels the backend can return. */
-const EMOTION_WORDS: Readonly<Record<string, string>> = {
-  joy: "lighter",
-  sadness: "low",
-  anger: "angry",
-  fear: "anxious",
-  surprise: "unsettled",
-  neutral: "steady",
-  disgust: "unsettled",
-  contempt: "unsettled",
-};
+/**
+ * The emotions the backend can name, keyed to `chat.moodWords.*` in the
+ * locale files: each language keeps its own plain word for the same label.
+ */
+const EMOTION_WORD_KEYS: readonly string[] = [
+  "joy",
+  "sadness",
+  "anger",
+  "fear",
+  "surprise",
+  "neutral",
+  "disgust",
+  "contempt",
+];
 
 /**
  * The subtle line, or `null` when there is nothing honest to say.
@@ -52,6 +57,9 @@ export function moodHintFor(emotion: string | null | undefined): string | null {
   if (emotion === null || emotion === undefined || emotion === "") {
     return null;
   }
-  const word = EMOTION_WORDS[emotion.toLowerCase()];
-  return word === undefined ? null : `Reads as ${word}`;
+  const normalised = emotion.toLowerCase();
+  if (!EMOTION_WORD_KEYS.includes(normalised)) {
+    return null;
+  }
+  return t("chat.moodHint", { word: t(`chat.moodWords.${normalised}`) });
 }

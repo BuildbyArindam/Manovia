@@ -7,7 +7,7 @@
  * suggestion may not quote the numbers back, and it must never be longer than a
  * couple of sentences (a "small action" that reads like a task list is not small).
  */
-import { FALLBACK_ACTION, SUGGESTED_ACTIONS, suggestedAction } from "./suggestedAction";
+import { SUGGESTED_ACTIONS, fallbackAction, suggestedAction } from "./suggestedAction";
 import type { MoodEntry } from "./types";
 
 function entry(overrides: Partial<MoodEntry> = {}): MoodEntry {
@@ -31,7 +31,7 @@ const CLINICAL = ["diagnos", "medication", "mg", "disorder", "cure"];
 
 describe("suggestedAction", () => {
   it("always returns exactly one of the reviewed sentences", () => {
-    const reviewed = new Set<string>([...Object.values(SUGGESTED_ACTIONS), FALLBACK_ACTION]);
+    const reviewed = new Set<string>([...Object.values(SUGGESTED_ACTIONS), fallbackAction()]);
 
     for (let valence = 1; valence <= 5; valence += 1) {
       for (let energy = 1; energy <= 5; energy += 1) {
@@ -44,14 +44,14 @@ describe("suggestedAction", () => {
   });
 
   it("keeps every sentence short enough to read in a breath", () => {
-    for (const sentence of [...Object.values(SUGGESTED_ACTIONS), FALLBACK_ACTION]) {
+    for (const sentence of [...Object.values(SUGGESTED_ACTIONS), fallbackAction()]) {
       expect(sentence.length).toBeLessThanOrEqual(120);
       expect(sentence.split(". ").length).toBeLessThanOrEqual(2);
     }
   });
 
   it("passes the copy rules", () => {
-    const all = [...Object.values(SUGGESTED_ACTIONS), FALLBACK_ACTION].join(" ").toLowerCase();
+    const all = [...Object.values(SUGGESTED_ACTIONS), fallbackAction()].join(" ").toLowerCase();
 
     for (const term of [...CHEERLEADING, ...GUILT, ...CLINICAL]) {
       expect(all).not.toContain(term);

@@ -11,6 +11,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/AppShell";
+import { t } from "@/lib/i18n/i18n";
+import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { OnboardingProvider, useOnboarding } from "@/onboarding/OnboardingProvider";
 import { OnboardingFlow } from "@/onboarding/OnboardingFlow";
 import { createQueryClient } from "@/lib/queryClient";
@@ -39,7 +41,7 @@ const InsightsPage = lazy(() =>
 function PageFallback(): ReactElement {
   return (
     <p className="rounded-2xl border border-border bg-surface p-6 text-ink-muted shadow-soft">
-      Loading…
+      {t("app.loading")}
     </p>
   );
 }
@@ -80,14 +82,18 @@ export function App(): ReactElement {
   const [queryClient] = useState(createQueryClient);
 
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <OnboardingProvider>
-            <AppRoutes />
-          </OnboardingProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </ThemeProvider>
+    // I18nProvider sits outside everything: a language switch re-renders the
+    // theme shell and the router alike, and no surface is exempt from it.
+    <I18nProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <OnboardingProvider>
+              <AppRoutes />
+            </OnboardingProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </I18nProvider>
   );
 }

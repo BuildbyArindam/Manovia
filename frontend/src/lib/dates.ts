@@ -8,11 +8,15 @@
  * itself. These helpers build the Date from its parts and pin `timeZone: "UTC"`
  * so the calendar day survives the trip.
  *
- * Formatting goes through `toLocaleDateString(undefined, …)`, i.e. the browser's
- * own language. Axis ticks and table cells therefore follow the reader's locale
- * (Devanagari digits for a Hindi browser) without this codebase owning a numeral
- * table; the *sentences* are localised by the server, which does own one.
+ * Formatting goes through `toLocaleDateString(intlLocale(), …)`: the language
+ * the reader picked in the interface, not whatever the browser happens to say
+ * (Day 23). Axis ticks and table cells therefore follow the app's language —
+ * Devanagari digits for a Hindi reader, Bengali digits for a Bengali one — via
+ * `Intl`, without this codebase owning a numeral table; the *sentences* are
+ * localised by the server, which does own one.
  */
+
+import { intlLocale } from "@/lib/i18n/i18n";
 
 /** `2026-03-15` → `15 Mar 2026`, in the reader's own locale. */
 export function formatLocalDay(isoDate: string): string {
@@ -20,7 +24,7 @@ export function formatLocalDay(isoDate: string): string {
   if (!year || !month || !day) {
     return isoDate;
   }
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(undefined, {
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(intlLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -34,7 +38,7 @@ export function formatShortDay(isoDate: string): string {
   if (!year || !month || !day) {
     return isoDate;
   }
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(undefined, {
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(intlLocale(), {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
@@ -54,7 +58,7 @@ export function formatDateTime(isoTimestamp: string): string {
   if (Number.isNaN(parsed.getTime())) {
     return isoTimestamp;
   }
-  return parsed.toLocaleString(undefined, {
+  return parsed.toLocaleString(intlLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",

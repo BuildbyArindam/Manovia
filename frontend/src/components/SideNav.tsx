@@ -4,12 +4,13 @@ import type { ReactElement } from "react";
 
 import { NAV_ITEMS } from "@/components/navigation";
 import { NavIcon } from "@/components/icons";
+import { t } from "@/lib/i18n/i18n";
 
 /** Desktop navigation: a vertical rail that stays with the page. */
 export function SideNav(): ReactElement {
   return (
     <nav
-      aria-label="Primary"
+      aria-label={t("nav.primary")}
       data-print="hide"
       className="sticky top-20 hidden h-fit w-56 shrink-0 self-start md:block"
     >
@@ -30,8 +31,8 @@ export function SideNav(): ReactElement {
             >
               <NavIcon name={item.icon} className="h-5 w-5" />
               <span>
-                {item.label}
-                <span className="block text-sm font-normal text-ink-muted">{item.hint}</span>
+                {item.label()}
+                <span className="block text-sm font-normal text-ink-muted">{item.hint()}</span>
               </span>
             </NavLink>
           </li>

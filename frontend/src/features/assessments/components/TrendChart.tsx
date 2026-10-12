@@ -58,7 +58,7 @@ export function TrendChart({ points, bands, totalMax, shortName }: TrendChartPro
       aria-labelledby={headingId}
     >
       <h3 id={headingId} className="text-lg">
-        {TREND_HEADING}
+        {TREND_HEADING()}
       </h3>
       <p className="mt-2 max-w-prose text-ink-muted" data-testid="trend-summary">
         {trendSummary(points)}
@@ -139,11 +139,11 @@ export function TrendChart({ points, bands, totalMax, shortName }: TrendChartPro
         </div>
       ) : null}
 
-      <p className="mt-2 text-sm text-ink-muted">{TREND_CHART_NOTE}</p>
+      <p className="mt-2 text-sm text-ink-muted">{TREND_CHART_NOTE()}</p>
 
       <table className="mt-4 w-full border-collapse text-sm" aria-describedby={captionId}>
         <caption id={captionId} className="pb-2 text-left text-ink-muted">
-          {TREND_TABLE_CAPTION} ({shortName})
+          {TREND_TABLE_CAPTION()} ({shortName})
         </caption>
         <thead>
           <tr className="border-b border-border-strong">

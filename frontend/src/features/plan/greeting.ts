@@ -5,7 +5,13 @@
  * phone, and inventing familiarity reads as false. The hour bands match the
  * planner's own `day_part` so the greeting and the suggestions never disagree
  * about what part of the day it is.
+ *
+ * Day 23: the words come from the translation layer, so a Hindi morning says
+ * its greeting in Hindi; the time bands stay here because they are logic, not
+ * copy.
  */
+
+import { t } from "@/lib/i18n/i18n";
 
 export interface Greeting {
   headline: string;
@@ -28,11 +34,11 @@ export function dayPartForHour(hour: number): DayPart {
 export function greetingForHour(hour: number): Greeting {
   switch (dayPartForHour(hour)) {
     case "morning":
-      return { headline: "Good morning", qualifier: "Here is today, at your pace." };
+      return { headline: t("home.greeting.morning"), qualifier: t("home.greeting.qualifier") };
     case "afternoon":
-      return { headline: "Good afternoon", qualifier: "Here is today, at your pace." };
+      return { headline: t("home.greeting.afternoon"), qualifier: t("home.greeting.qualifier") };
     case "evening":
-      return { headline: "Good evening", qualifier: "Here is today, at your pace." };
+      return { headline: t("home.greeting.evening"), qualifier: t("home.greeting.qualifier") };
   }
 }
 

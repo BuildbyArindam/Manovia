@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 
 import { NAV_ITEMS } from "@/components/navigation";
 import { NavIcon } from "@/components/icons";
+import { t } from "@/lib/i18n/i18n";
 
 /**
  * Mobile navigation: a fixed bar at the bottom, inside thumb reach.
@@ -14,7 +15,7 @@ import { NavIcon } from "@/components/icons";
 export function BottomNav(): ReactElement {
   return (
     <nav
-      aria-label="Primary"
+      aria-label={t("nav.primary")}
       data-print="hide"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
@@ -32,7 +33,7 @@ export function BottomNav(): ReactElement {
               }
             >
               <NavIcon name={item.icon} className="h-6 w-6" />
-              {item.label}
+              {item.label()}
             </NavLink>
           </li>
         ))}

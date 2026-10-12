@@ -16,6 +16,7 @@
 import type { ReactElement } from "react";
 
 import type { AboutInsights } from "../types";
+import { t } from "@/lib/i18n/i18n";
 
 export interface InsightsExplainerProps {
   about: AboutInsights;
@@ -38,7 +39,7 @@ export function InsightsExplainer({ about }: InsightsExplainerProps): ReactEleme
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <div>
-          <h3 className="text-base">How these numbers are made</h3>
+          <h3 className="text-base">{t("insights.explainerHowTitle")}</h3>
           <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-ink-muted">
             {about.methods.map((item) => (
               <li key={item}>{item}</li>
@@ -46,7 +47,7 @@ export function InsightsExplainer({ about }: InsightsExplainerProps): ReactEleme
           </ul>
         </div>
         <div>
-          <h3 className="text-base">What this cannot tell you</h3>
+          <h3 className="text-base">{t("insights.explainerLimitsTitle")}</h3>
           <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-ink-muted">
             {about.limitations.map((item) => (
               <li key={item}>{item}</li>
@@ -61,7 +62,7 @@ export function InsightsExplainer({ about }: InsightsExplainerProps): ReactEleme
 
       {about.locale_fallback_used ? (
         <p className="mt-3 text-sm text-ink-muted" data-testid="insights-locale-fallback">
-          Shown in {about.locale}.
+          {t("insights.explainerShownIn", { locale: about.locale })}
         </p>
       ) : null}
     </section>

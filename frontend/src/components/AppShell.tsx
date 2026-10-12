@@ -13,6 +13,7 @@ import type { ReactElement, ReactNode } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { SideNav } from "@/components/SideNav";
+import { t } from "@/lib/i18n/i18n";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -24,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
   return (
     <div className="min-h-screen bg-bg text-ink">
       <a className="skip-link" href="#main" data-print="hide">
-        Skip to main content
+        {t("app.skipLink")}
       </a>
 
       <Header />
@@ -40,14 +41,8 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
 
       <footer className="border-t border-border bg-surface" data-print="hide">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted">
-          <p>
-            Manovia is a self-help companion — not therapy, not a diagnosis, and not a crisis
-            service.
-          </p>
-          <p className="mt-1">
-            Your entries are encrypted at rest. Nothing here is sold, shared, or used to train
-            anyone else&rsquo;s model.
-          </p>
+          <p>{t("app.footerDisclaimer")}</p>
+          <p className="mt-1">{t("app.footerPrivacy")}</p>
         </div>
       </footer>
     </div>

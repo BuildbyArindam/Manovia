@@ -8,6 +8,11 @@ planner knows is in the context dataclass; everything it can say is in the
 rule table. A reviewer can read both in five minutes, which is the point: a
 suggestion a person cannot audit is a suggestion they cannot trust.
 
+Since Day 23 the wording lives in ``content/i18n/*.json`` (``plan.*`` and
+``day_part.*`` strings) rather than in this file: the rules decide *when* to
+say something, the content files decide *what* — in English, Hindi or Bengali,
+chosen by ``PlannerContext.locale`` (default English).
+
 The hard rules the task sets, and where they are enforced:
 
 * **Never more than three.** :data:`MAX_SUGGESTIONS` caps the list; the
@@ -40,8 +45,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from statistics import fmean
 
+from app.content.i18n import LocalisedContent, load_localisation, resolve_locale
 from app.models.enums import PlanItemKind
-from app.services.exercises.engine import ExerciseCatalog, get_catalog
+from app.services.exercises.engine import ExerciseCatalog, ExerciseDefinition, get_catalog
 
 #: The plan never holds more than this many suggestions.
 MAX_SUGGESTIONS: int = 3
@@ -122,6 +128,11 @@ class PlannerContext:
     open_thought_records: int = 0
     phq9_item9_flagged: bool = False
     preferences: PlanPreferences = field(default_factory=PlanPreferences)
+    #: The language the suggestion copy is written in (Day 23). Resolved like
+    #: every other locale in the backend: unknown or blank falls back to
+    #: English. The default keeps the planner itself pure and English, so the
+    #: rule table can be read without any locale machinery.
+    locale: str = "en"
 
 
 @dataclass(frozen=True)
@@ -201,7 +212,7 @@ def day_part(now: datetime) -> str:
 
 def _pick_exercise(
     preferred_tags: Sequence[str], candidates: Sequence[str], catalog: ExerciseCatalog
-) -> tuple[str, str] | None:
+) -> tuple[str, ExerciseDefinition] | None:
     """The first candidate in the catalogue; preferred tags reorder softly.
 
     Preferences are a soft filter, never a hard one: if no candidate matches
@@ -217,7 +228,31 @@ def _pick_exercise(
         if matched:
             known = matched
     definition = known[0]
-    return definition.id, definition.title.en
+    return definition.id, definition
+
+
+def _exercise_title(definition: ExerciseDefinition, locale_code: str) -> str:
+    """The exercise's own title in the plan's language, English as fallback.
+
+    ``LocalizedTitle`` makes the fallback explicit per field: a locale that has
+    no translated title gets the English one rather than a blank.
+    """
+    if locale_code in ("hi", "bn"):
+        translated = getattr(definition.title, locale_code)
+        if translated:
+            return translated
+    return definition.title.en
+
+
+def _copy(ctx: PlannerContext) -> tuple[LocalisedContent, str]:
+    """The plan's localised content plus the resolved locale code.
+
+    ``resolve_locale`` and ``load_localisation`` agree by construction: both
+    map an unknown locale onto English, so the title language and the sentence
+    language can never disagree.
+    """
+    resolved, _fallback = resolve_locale(ctx.locale)
+    return load_localisation(resolved), resolved
 
 
 def _days_since(ctx: PlannerContext, when: date) -> int:
@@ -233,13 +268,11 @@ def _rule_first_check_in(ctx: PlannerContext) -> PlanSuggestion | None:
     """A brand-new person: invite one first check-in, never demand it."""
     if ctx.check_ins or ctx.last_check_in_at is not None:
         return None
+    content, _ = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.CHECK_IN,
-        title="Take a first check-in",
-        why=(
-            "There is no mood check-in yet. Ten seconds helps Manovia learn your "
-            "rhythm, and it is fine to skip if today is not the day."
-        ),
+        title=content.string("plan.first_check_in.title"),
+        why=content.string("plan.first_check_in.why"),
     )
 
 
@@ -247,13 +280,11 @@ def _rule_open_thought_record(ctx: PlannerContext) -> PlanSuggestion | None:
     """A recent thought record still has no "what helped" step."""
     if ctx.open_thought_records <= 0:
         return None
+    content, _ = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.THOUGHT_RECORD,
-        title="Finish a thought record",
-        why=(
-            "A recent thought record has no 'what helped' yet. You can add that "
-            "whenever you like, or leave the record as it is."
-        ),
+        title=content.string("plan.open_thought_record.title"),
+        why=content.string("plan.open_thought_record.why"),
     )
 
 
@@ -295,14 +326,15 @@ def _rule_low_mood(ctx: PlannerContext) -> PlanSuggestion | None:
     )
     if picked is None:
         return None
-    exercise_id, exercise_title = picked
+    exercise_id, definition = picked
+    content, locale_code = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.EXERCISE,
         ref=exercise_id,
-        title="Try a gentle exercise",
-        why=(
-            "Your check-ins over the last few days are lower than the days before. "
-            f"{exercise_title} is short, and there is no right way to do it."
+        title=content.string("plan.low_mood.title"),
+        why=content.render_string(
+            "plan.low_mood.why",
+            {"exercise_title": _exercise_title(definition, locale_code)},
         ),
     )
 
@@ -319,14 +351,15 @@ def _rule_anxiety(ctx: PlannerContext) -> PlanSuggestion | None:
     picked = _pick_exercise(ctx.preferences.preferred_exercise_tags, candidates, get_catalog())
     if picked is None:
         return None
-    exercise_id, exercise_title = picked
+    exercise_id, definition = picked
+    content, locale_code = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.EXERCISE,
         ref=exercise_id,
-        title="Ground for a couple of minutes",
-        why=(
-            "A recent check-in was tagged with anxiety or fear. "
-            f"{exercise_title} offers an outside focus, if you want one. It is optional."
+        title=content.string("plan.anxiety.title"),
+        why=content.render_string(
+            "plan.anxiety.why",
+            {"exercise_title": _exercise_title(definition, locale_code)},
         ),
     )
 
@@ -344,12 +377,12 @@ def _rule_missed_check_in(ctx: PlannerContext) -> PlanSuggestion | None:
     gap = _days_since(ctx, last_local)
     if gap < MISSED_CHECKIN_DAYS:
         return None
+    content, _ = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.CHECK_IN,
-        title="Check in when you are ready",
-        why=(
-            f"Your last check-in was {gap} days ago. A quick one keeps the "
-            "picture honest, and skipping costs nothing."
+        title=content.string("plan.missed_check_in.title"),
+        why=content.render_string(
+            "plan.missed_check_in.why", {"days": content.format_count(gap)}
         ),
     )
 
@@ -378,19 +411,28 @@ def _rule_exercise_habit(ctx: PlannerContext) -> PlanSuggestion | None:
     )
     if picked is None:
         return None
-    exercise_id, exercise_title = picked
-    preference_note = (
-        "It matches the exercise types you chose in Settings."
+    exercise_id, definition = picked
+    content, locale_code = _copy(ctx)
+    note_key = (
+        "plan.preference_note.matched"
         if ctx.preferences.preferred_exercise_tags
-        else "It fits this part of the day."
+        else "plan.preference_note.time_of_day"
     )
     return PlanSuggestion(
         kind=PlanItemKind.EXERCISE,
         ref=exercise_id,
-        title=f"A short exercise for the {day_part(ctx.now)}",
-        why=(
-            f"You have done exercises on {len(active_days)} of the last 7 days. "
-            f"{exercise_title} is a small next step. {preference_note}"
+        title=content.render_string(
+            "plan.exercise_habit.title",
+            {"day_part": content.string(f"day_part.{day_part(ctx.now)}")},
+        ),
+        why=content.render_string(
+            "plan.exercise_habit.why",
+            {
+                "days": content.format_count(len(active_days)),
+                "week_days": content.format_count(7),
+                "exercise_title": _exercise_title(definition, locale_code),
+                "preference_note": content.string(note_key),
+            },
         ),
     )
 
@@ -398,25 +440,27 @@ def _rule_exercise_habit(ctx: PlannerContext) -> PlanSuggestion | None:
 def _rest_suggestion(ctx: PlannerContext) -> PlanSuggestion:
     week_cutoff = ctx.now.date() - timedelta(days=6)
     active_days = {day for day in ctx.exercise_days if day >= week_cutoff}
+    content, _ = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.REST,
-        title="Today can be a rest day",
-        why=(
-            f"You have been active on {len(active_days)} of the last 7 days. "
-            "Doing nothing today counts too."
+        title=content.string("plan.rest.title"),
+        why=content.render_string(
+            "plan.rest.why",
+            {
+                "days": content.format_count(len(active_days)),
+                "week_days": content.format_count(7),
+            },
         ),
     )
 
 
-def _support_suggestion() -> PlanSuggestion:
+def _support_suggestion(ctx: PlannerContext) -> PlanSuggestion:
     """The only thing an assessment answer may ever put in a plan."""
+    content, _ = _copy(ctx)
     return PlanSuggestion(
         kind=PlanItemKind.SUPPORT,
-        title="Support options are here",
-        why=(
-            "Your most recent screening included an answer we show support options "
-            "for. That is the only thing today's plan does; everything else is set aside."
-        ),
+        title=content.string("plan.support.title"),
+        why=content.string("plan.support.why"),
     )
 
 
@@ -501,7 +545,7 @@ def build_daily_plan(ctx: PlannerContext) -> DailyPlan:
     quiet = is_quiet_hours(ctx.now, ctx.preferences)
     if ctx.phq9_item9_flagged:
         return DailyPlan(
-            items=(_support_suggestion(),), quiet_hours_active=quiet, support_only=True
+            items=(_support_suggestion(ctx),), quiet_hours_active=quiet, support_only=True
         )
     if quiet:
         return DailyPlan(items=(), quiet_hours_active=True)

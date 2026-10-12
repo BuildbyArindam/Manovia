@@ -4,7 +4,8 @@ import { useRef, useState, type ReactElement } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import type { ApiClient } from "@/lib/api";
 
-import { EXERCISE_COPY as COPY, EMOTION_OPTIONS, formatDuration } from "./copy";
+import { EXERCISE_COPY as COPY, emotionOptions, formatDuration } from "./copy";
+import { t } from "@/lib/i18n/i18n";
 import { EXERCISE_HISTORY_KEY, fetchExercises, fetchRecommendations } from "./endpoints";
 import { ExerciseHistory } from "./ExerciseHistory";
 import { ExerciseRunner } from "./ExerciseRunner";
@@ -79,14 +80,14 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
             <p className="text-sm text-ink-muted">{COPY.suggestionsNote}</p>
             <div className="flex flex-wrap gap-4">
               <label className="flex flex-col gap-1">
-                <span>How are you feeling?</span>
+                <span>{t("exercises.feelingQuestion")}</span>
                 <select
                   className="rounded-lg border border-border-strong bg-surface px-3 py-2"
                   value={emotion}
                   onChange={(event) => setEmotion(event.target.value as ExerciseEmotion | "")}
                 >
-                  <option value="">Browse without suggestions</option>
-                  {EMOTION_OPTIONS.map(([id, label]) => (
+                  <option value="">{t("exercises.browseWithout")}</option>
+                  {emotionOptions().map(([id, label]) => (
                     <option key={id} value={id}>
                       {label}
                     </option>
@@ -94,7 +95,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span>How strong does it feel?</span>
+                <span>{t("exercises.intensityQuestion")}</span>
                 <select
                   className="rounded-lg border border-border-strong bg-surface px-3 py-2"
                   value={intensity}
@@ -108,7 +109,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
               </label>
             </div>
             {emotion !== "" && recommendations.isFetching ? (
-              <p role="status">Loading suggestions…</p>
+              <p role="status">{t("exercises.loadingSuggestions")}</p>
             ) : null}
             {emotion !== "" && recommendations.isError ? (
               <p>
@@ -132,7 +133,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
               </button>
             </div>
           ) : null}
-          <div className="grid gap-4 lg:grid-cols-2" aria-label="Exercise choices">
+          <div className="grid gap-4 lg:grid-cols-2" aria-label={t("exercises.choicesLabel")}>
             {exercises.map((exercise) => (
               <article
                 key={exercise.id}
@@ -140,7 +141,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                 data-testid={`exercise-card-${exercise.id}`}
               >
                 {why.has(exercise.id) ? (
-                  <p className="text-sm font-semibold text-accent">Suggested for your choice</p>
+                  <p className="text-sm font-semibold text-accent">{t("exercises.suggestedHeading")}</p>
                 ) : null}
                 <h2 className="text-xl">{exercise.title.en}</h2>
                 <p className="text-sm text-ink-muted">

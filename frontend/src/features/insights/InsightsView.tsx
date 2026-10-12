@@ -26,6 +26,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/PageHeader";
 import { isApiError, type ApiClient } from "@/lib/api";
+import { useI18nState } from "@/lib/i18n/I18nProvider";
 import { formatLocalDay } from "@/lib/dates";
 
 import { BucketChart } from "./components/BucketChart";
@@ -61,8 +62,13 @@ export interface InsightsViewProps {
 }
 
 export function InsightsView({ client }: InsightsViewProps): ReactElement {
-  const patterns = usePatternInsights(client);
-  const weekly = useWeeklyInsights(client);
+  // Day 23: the insight sentences are written by the server; asking for them
+  // in the interface language keeps them in step with everything else on
+  // screen, and the language is part of the query key, so switching languages
+  // re-reads them.
+  const { language } = useI18nState();
+  const patterns = usePatternInsights(client, { locale: language });
+  const weekly = useWeeklyInsights(client, { locale: language });
 
   return (
     <div className="space-y-6" data-testid="insights-page">

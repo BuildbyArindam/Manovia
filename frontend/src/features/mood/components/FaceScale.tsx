@@ -14,7 +14,7 @@
 
 import type { ReactElement, Ref } from "react";
 
-import { VALENCE_POINTS } from "../taxonomy";
+import { VALENCE_POINTS, localisedValenceLabel } from "../taxonomy";
 import { MoodFace } from "./MoodFace";
 
 export interface FaceScaleProps {
@@ -84,7 +84,7 @@ export function FaceScale({
                 }`}
               >
                 <MoodFace shape={point.face} />
-                <span className="text-sm leading-tight">{point.label}</span>
+                <span className="text-sm leading-tight">{localisedValenceLabel(point)}</span>
               </label>
             </div>
           );

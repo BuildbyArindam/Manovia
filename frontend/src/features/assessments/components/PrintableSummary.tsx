@@ -21,6 +21,7 @@
  */
 
 import type { ReactElement } from "react";
+import { t } from "@/lib/i18n/i18n";
 
 import { formatPointDate, localDay } from "../trend";
 import type { TrendPoint } from "../trend";
@@ -59,7 +60,7 @@ export function PrintableSummary({
         {longName}. This questionnaire asks about {measures} over the last two weeks.
       </p>
       <dl>
-        <dt>Date of this result</dt>
+        <dt>{t("assessments.print.dateOfResult")}</dt>
         <dd>{formatPointDate(localDay(result.created_at))}</dd>
         <dt>Score</dt>
         <dd>
@@ -72,20 +73,20 @@ export function PrintableSummary({
       <p>{result.band_explanation}</p>
       {crisis !== null ? (
         <p>
-          <strong>Important:</strong> {ITEM9_SUMMARY}
+          <strong>Important:</strong> {ITEM9_SUMMARY()}
         </p>
       ) : null}
-      <h3>What usually helps</h3>
+      <h3>{t("assessments.print.whatHelps")}</h3>
       <ul>
         {result.what_helps.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
-      <h3>When to talk to someone</h3>
+      <h3>{t("assessments.print.whenToTalk")}</h3>
       <p>{result.when_to_seek_help}</p>
       {points.length > 1 ? (
         <>
-          <h3>Recent results</h3>
+          <h3>{t("assessments.print.recentResults")}</h3>
           <table>
             <caption>Every saved {shortName} result, oldest first.</caption>
             <thead>
@@ -109,7 +110,7 @@ export function PrintableSummary({
           </table>
         </>
       ) : null}
-      <h3>About this questionnaire</h3>
+      <h3>{t("assessments.print.about")}</h3>
       <p>{developers}</p>
       {/* The licence sentence is what lets a clinician tell this is the real
           instrument rather than a paraphrase, so it travels with the printout. */}

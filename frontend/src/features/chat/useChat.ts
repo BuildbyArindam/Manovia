@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import { api as defaultClient, type ApiClient } from "@/lib/api";
+import { currentAppLanguage } from "@/lib/i18n/i18n";
 
 import { chatReducer, failureFor, failureFromStreamFailure, initialChatState } from "./chatState";
 import { createChatSession } from "./endpoints";
@@ -53,7 +54,12 @@ export interface ChatController {
 }
 
 function initialLocale(preferred: ChatLocale | undefined): ChatLocale {
-  return preferred !== undefined && CHAT_LOCALES.includes(preferred) ? preferred : "en";
+  if (preferred !== undefined && CHAT_LOCALES.includes(preferred)) {
+    return preferred;
+  }
+  // Day 23: the chat opens speaking the interface language. The per-chat
+  // selector still overrides this for a single conversation.
+  return currentAppLanguage();
 }
 
 export function useChat(options: UseChatOptions = {}): ChatController {
