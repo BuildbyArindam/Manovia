@@ -73,7 +73,7 @@ export function PrintableSummary({
       <p>{result.band_explanation}</p>
       {crisis !== null ? (
         <p>
-          <strong>Important:</strong> {ITEM9_SUMMARY()}
+          <strong>{t("assessments.print.important")}</strong> {ITEM9_SUMMARY()}
         </p>
       ) : null}
       <h3>{t("assessments.print.whatHelps")}</h3>

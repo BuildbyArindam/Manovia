@@ -102,9 +102,9 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                   onChange={(event) => setIntensity(event.target.value as Intensity)}
                   disabled={emotion === ""}
                 >
-                  <option value="low">Low</option>
-                  <option value="moderate">Moderate</option>
-                  <option value="high">High</option>
+                  <option value="low">{t("exercises.intensityLow")}</option>
+                  <option value="moderate">{t("exercises.intensityModerate")}</option>
+                  <option value="high">{t("exercises.intensityHigh")}</option>
                 </select>
               </label>
             </div>
@@ -113,7 +113,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
             ) : null}
             {emotion !== "" && recommendations.isError ? (
               <p>
-                Suggestions are not available right now. You can still choose any loaded exercise.
+                {t("exercises.suggestionsUnavailable")}
               </p>
             ) : null}
           </section>

@@ -10,6 +10,7 @@
 import type { ReactElement, RefObject } from "react";
 
 import { MessageBubble } from "./MessageBubble";
+import { t } from "@/lib/i18n/i18n";
 import { CHAT_COPY } from "./copy";
 import { latestAssistantTurn, type ChatTurn } from "./chatState";
 
@@ -37,12 +38,12 @@ export function MessageList({
         data-testid="chat-scroll-region"
         tabIndex={0}
         role="group"
-        aria-label="Conversation"
+        aria-label={t("chat.conversationLabel")}
         className="max-h-[52vh] min-h-16 overflow-y-auto rounded-2xl px-1 py-2 focus-visible:outline-2"
       >
         {turns.length === 0 ? (
           <p data-testid="chat-empty" className="px-3 py-4 text-ink-muted">
-            Nothing here yet. Say as much or as little as you like — there is no wrong way to start.
+            {t("chat.emptyState")}
           </p>
         ) : (
           <ol className="space-y-3">

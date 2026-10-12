@@ -812,7 +812,7 @@ export function JournalView({
               </div>
 
               {loading ? (
-                <p className="py-4 text-center text-xs text-stone-500">Decrypting your entries…</p>
+                <p className="py-4 text-center text-xs text-stone-500">{t("journal.decryptingEntries")}</p>
               ) : filteredEntries.length === 0 ? (
                 <p
                   data-testid="journal-empty-state"

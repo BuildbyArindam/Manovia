@@ -146,7 +146,9 @@
       "unknownTitle": "Something went wrong",
       "unknownBody": "Manovia could not send that. Please try again.",
       "unknownAction": "Try again"
-    }
+    },
+    "conversationLabel": "Conversation",
+    "emptyState": "Nothing here yet. Say as much or as little as you like — there is no wrong way to start."
   },
   "mood": {
     "heading": "Mood",
@@ -335,7 +337,8 @@
       "worryDescription": "Get looping thoughts out of your head onto the page, then separate what you can act on from what can wait.",
       "worryScaffoldTitle": "Setting down today's worries",
       "worryScaffoldBody": "What is looping in my head right now:\n- \n\nWhat is actually within my control in the next 24 hours:\n- \n\nWhat I give myself permission to set down until tomorrow:\n- \n"
-    }
+    },
+    "decryptingEntries": "Decrypting your entries…"
   },
   "cbt": {
     "ariaLabel": "Thought records",
@@ -470,7 +473,11 @@
       "neutral": "Neutral / unsure"
     },
     "durationMin": "{{minutes}} min",
-    "durationSec": "{{seconds}} sec"
+    "durationSec": "{{seconds}} sec",
+    "intensityLow": "Low",
+    "intensityModerate": "Moderate",
+    "intensityHigh": "High",
+    "suggestionsUnavailable": "Suggestions are not available right now. You can still choose any loaded exercise."
   },
   "assessments": {
     "title": "Screenings",
@@ -520,7 +527,8 @@
       "whatHelps": "What usually helps",
       "whenToTalk": "When to talk to someone",
       "recentResults": "Recent results",
-      "about": "About this questionnaire"
+      "about": "About this questionnaire",
+      "important": "Important:"
     }
   },
   "insights": {
@@ -791,7 +799,12 @@
     "continueButton": "Continue",
     "consentHintGranted": "You can change these later in Settings.",
     "consentHintPending": "Tick the three required agreements to continue. The optional one is up to you.",
-    "footer": "Manovia is not a crisis service. If you are in danger or thinking about harming yourself, please contact your local emergency services or a helpline now."
+    "footer": "Manovia is not a crisis service. If you are in danger or thinking about harming yourself, please contact your local emergency services or a helpline now.",
+    "errInvalidEmail": "That email address does not look right. Please check it and try again.",
+    "errEmailTaken": "An account with this email already exists. Try signing in instead.",
+    "errMissingCredentials": "Enter an email address and a password to create an account.",
+    "errNetwork": "Manovia could not be reached. Check your connection and try again.",
+    "errSession": "Something went wrong while setting up your session. Please try again."
   },
   "notFound": {
     "heading": "That page does not exist",
