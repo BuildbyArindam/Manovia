@@ -55,7 +55,7 @@ export function CrisisResourcesModal({
           type="button"
           onClick={onClose}
           aria-label={t("crisis.modal.close")}
-          className="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border-strong px-3 py-2 text-sm font-semibold"
         >
           {t("crisis.modal.close")}
         </button>
@@ -83,7 +83,7 @@ export function CrisisResourcesModal({
             onClick={() => {
               void refetch();
             }}
-            className="mt-3 rounded-xl border border-border-strong px-4 py-2 font-semibold"
+            className="mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border-strong px-4 py-2 font-semibold"
           >
             {isFetching ? t("crisis.modal.retrying") : t("crisis.modal.retry")}
           </button>

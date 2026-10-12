@@ -1,5 +1,6 @@
 /**
- * The application shell: header, navigation, main landmark, footer.
+ * The application shell: header, offline banner, navigation, main landmark,
+ * non-pushy install prompt, and footer.
  *
  * One navigation, two presentations — a side rail on desktop and a bottom bar on
  * mobile — chosen by a media query rather than by CSS alone, so the rendered
@@ -9,9 +10,12 @@
  */
 
 import type { ReactElement, ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
+import { InstallPromptBanner } from "@/components/InstallPromptBanner";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { SideNav } from "@/components/SideNav";
 import { t } from "@/lib/i18n/i18n";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -29,6 +33,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
       </a>
 
       <Header />
+      <OfflineBanner />
 
       <div className="mx-auto flex w-full max-w-6xl gap-8 px-4 pb-28 pt-6 md:pb-14">
         {isDesktop ? <SideNav /> : null}
@@ -39,10 +44,21 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
 
       {isDesktop ? null : <BottomNav />}
 
+      <InstallPromptBanner />
+
       <footer className="border-t border-border bg-surface" data-print="hide">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted">
           <p>{t("app.footerDisclaimer")}</p>
           <p className="mt-1">{t("app.footerPrivacy")}</p>
+          <p className="mt-2">
+            <Link
+              to="/accessibility"
+              data-testid="footer-accessibility-link"
+              className="inline-flex min-h-11 items-center font-semibold text-accent underline"
+            >
+              {t("app.footerAccessibilityLink")}
+            </Link>
+          </p>
         </div>
       </footer>
     </div>

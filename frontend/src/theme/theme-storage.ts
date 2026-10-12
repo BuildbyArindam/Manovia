@@ -19,3 +19,6 @@
 
 /** `localStorage` key holding `"light" | "dark"` (absent means "follow system"). */
 export const THEME_STORAGE_KEY = "manovia.theme";
+
+/** `localStorage` key holding `"high" | "normal"` (absent means follow `prefers-contrast: more`). */
+export const CONTRAST_STORAGE_KEY = "manovia.contrast";

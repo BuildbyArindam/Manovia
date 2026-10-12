@@ -104,6 +104,8 @@ function tokensOf(selector: string): Record<string, string> {
 
 const LIGHT = tokensOf(":root");
 const DARK = tokensOf('[data-theme="dark"]');
+const HIGH_LIGHT = tokensOf('[data-contrast="high"]');
+const HIGH_DARK = tokensOf('[data-theme="dark"][data-contrast="high"]');
 
 /** Font stacks are theme-independent, so they live in `:root` only. */
 const COLOR_TOKENS = /^--manovia-(?!font-)/;
@@ -128,9 +130,11 @@ const MINIMUM_TEXT_CONTRAST = 4.5;
 const MINIMUM_NON_TEXT_CONTRAST = 3;
 
 describe("design tokens", () => {
-  it("defines both palettes with the same colour tokens", () => {
+  it("defines both palettes and both high-contrast palettes with the same colour tokens", () => {
     expect(colorTokens(LIGHT).length).toBeGreaterThan(10);
     expect(colorTokens(DARK)).toEqual(colorTokens(LIGHT));
+    expect(colorTokens(HIGH_LIGHT)).toEqual(colorTokens(LIGHT));
+    expect(colorTokens(HIGH_DARK)).toEqual(colorTokens(LIGHT));
   });
 
   it("declares the font stacks once, in :root", () => {
@@ -156,8 +160,26 @@ describe("design tokens", () => {
   });
 
   it.each([
+    ["high-contrast light", HIGH_LIGHT],
+    ["high-contrast dark", HIGH_DARK],
+  ])("keeps every %s text pair at or above 7:1 (WCAG AAA)", (_theme, tokens) => {
+    const failures: string[] = [];
+    for (const [foreground, backgrounds] of TEXT_PAIRS) {
+      for (const background of backgrounds) {
+        const ratio = contrastRatio(tokens[foreground] ?? "", tokens[background] ?? "");
+        if (ratio < 7) {
+          failures.push(`${foreground} on ${background}: ${ratio.toFixed(2)}:1`);
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it.each([
     ["light", LIGHT],
     ["dark", DARK],
+    ["high-contrast light", HIGH_LIGHT],
+    ["high-contrast dark", HIGH_DARK],
   ])("keeps the %s focus ring and strong borders at or above 3:1", (_theme, tokens) => {
     for (const background of ["--manovia-bg", "--manovia-surface"]) {
       expect(

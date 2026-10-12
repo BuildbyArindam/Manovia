@@ -16,11 +16,12 @@
  * trade-off, and the reason the CSS fallback exists.
  */
 
-export { THEME_STORAGE_KEY } from "./theme-storage";
+export { CONTRAST_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme-storage";
 
-import { THEME_STORAGE_KEY } from "./theme-storage";
+import { CONTRAST_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme-storage";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
+const MORE_CONTRAST_QUERY = "(prefers-contrast: more)";
 
 /**
  * Resolve and apply the palette on `<html>`, then return what was applied.
@@ -47,4 +48,30 @@ export function applyFirstPaintTheme(): "light" | "dark" {
   return theme;
 }
 
+export function applyFirstPaintContrast(): "normal" | "high" {
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(CONTRAST_STORAGE_KEY);
+  } catch {
+    stored = null;
+  }
+
+  let systemHigh = false;
+  if (typeof window.matchMedia === "function") {
+    const mql = window.matchMedia(MORE_CONTRAST_QUERY);
+    systemHigh = Boolean(mql && mql.media === MORE_CONTRAST_QUERY && mql.matches);
+  }
+
+  const contrast: "normal" | "high" =
+    stored === "high" || stored === "normal" ? stored : systemHigh ? "high" : "normal";
+
+  if (contrast === "high") {
+    document.documentElement.setAttribute("data-contrast", "high");
+  } else {
+    document.documentElement.removeAttribute("data-contrast");
+  }
+  return contrast;
+}
+
 applyFirstPaintTheme();
+applyFirstPaintContrast();

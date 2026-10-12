@@ -23,7 +23,7 @@ export function CrisisHelpButton(): ReactElement {
         }}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="rounded-xl border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-semibold text-danger sm:px-4 sm:text-base"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-semibold text-danger sm:px-4 sm:text-base"
       >
         {t("crisis.helpButton")}
       </button>

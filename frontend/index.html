@@ -11,18 +11,27 @@
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!--
-      Day 23 (multilingual): Noto Sans Devanagari and Noto Sans Bengali so Hindi
-      and Bengali render with a properly hinted script font instead of whatever
-      the OS substitutes. `display=swap` keeps first paint fast: text shows in a
-      fallback face until the web font arrives. The CSP in
-      docker/security-headers.conf allows exactly these two origins.
+      Day 25 (PWA). The manifest, an iOS home-screen icon, and the two
+      `theme-color`s the OS uses to paint the status bar when the app is
+      installed. The colours are the same sage/paper pair as the CSS tokens in
+      src/index.css, and `media` keeps the dark one from being applied on a
+      light-only device.
     -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#faf6ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Manovia" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!--
+      Day 25 (low-bandwidth): Noto Sans Devanagari and Noto Sans Bengali are
+      loaded asynchronously on demand by I18nProvider only when the reader
+      switches to Hindi (`hi`) or Bengali (`bn`), so an English or offline
+      reader never pays a render-blocking third-party stylesheet round-trip on
+      first paint. The CSP in docker/security-headers.conf still allows those
+      two origins when needed.
+    -->
     <!--
       The palette is resolved by a module, not an inline script: an inline script
       is what a strict `script-src 'self'` policy (see docker/nginx.conf and the

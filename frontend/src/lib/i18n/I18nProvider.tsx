@@ -30,10 +30,34 @@ export interface I18nState {
   revision: number;
 }
 
+const INDIC_FONT_LINK_ID = "manovia-indic-fonts";
+const INDIC_FONT_HREF =
+  "https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap";
+
+function ensureIndicFontStylesheet(language: AppLanguage): void {
+  if (
+    (language !== "hi" && language !== "bn") ||
+    typeof document === "undefined" ||
+    import.meta.env.MODE === "test" ||
+    (typeof navigator !== "undefined" && navigator.onLine === false)
+  ) {
+    return;
+  }
+  if (document.getElementById(INDIC_FONT_LINK_ID) !== null) {
+    return;
+  }
+  const link = document.createElement("link");
+  link.id = INDIC_FONT_LINK_ID;
+  link.rel = "stylesheet";
+  link.href = INDIC_FONT_HREF;
+  document.head.appendChild(link);
+}
+
 const I18nContext = createContext<I18nState>({ language: "en", pseudo: false, revision: 0 });
 
 export function I18nProvider({ children }: { children: ReactNode }): ReactElement {
   const [revision, bump] = useReducer((value: number) => value + 1, 0);
+  const language = currentAppLanguage();
 
   useEffect(() => {
     const handleChange = (): void => {
@@ -45,9 +69,13 @@ export function I18nProvider({ children }: { children: ReactNode }): ReactElemen
     };
   }, []);
 
+  useEffect(() => {
+    ensureIndicFontStylesheet(language);
+  }, [language]);
+
   return (
     <I18nContext.Provider
-      value={{ language: currentAppLanguage(), pseudo: isPseudoMode(), revision }}
+      value={{ language, pseudo: isPseudoMode(), revision }}
     >
       {children}
     </I18nContext.Provider>

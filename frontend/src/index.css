@@ -101,6 +101,76 @@
   }
 }
 
+/*
+ * High-contrast mode (Day 25, WCAG 2.2 AA / AAA enhanced contrast).
+ * Activated explicitly via Settings (`data-contrast="high"` on <html>) or
+ * automatically when the OS reports `prefers-contrast: more`. Every text pair
+ * meets >= 7:1 and every border/focus token meets >= 4.5:1.
+ */
+[data-contrast="high"] {
+  --manovia-bg: #ffffff;
+  --manovia-surface: #ffffff;
+  --manovia-surface-muted: #f2efe9;
+  --manovia-border: #3d352b;
+  --manovia-border-strong: #1c1814;
+
+  --manovia-text: #110e0b;
+  --manovia-text-muted: #2b241d;
+
+  --manovia-accent-text: #14452f;
+  --manovia-accent-bg: #14452f;
+  --manovia-accent-fg: #ffffff;
+  --manovia-accent-soft: #d9ece1;
+
+  --manovia-danger-text: #7a1c10;
+  --manovia-danger-bg: #7a1c10;
+  --manovia-danger-fg: #ffffff;
+  --manovia-danger-soft: #fce4df;
+
+  --manovia-focus: #5c3800;
+}
+
+[data-theme="dark"][data-contrast="high"] {
+  --manovia-bg: #0b0907;
+  --manovia-surface: #120f0b;
+  --manovia-surface-muted: #1b1712;
+  --manovia-border: #b8ac99;
+  --manovia-border-strong: #ede4d4;
+
+  --manovia-text: #ffffff;
+  --manovia-text-muted: #e8dfd0;
+
+  --manovia-accent-text: #b8f2d0;
+  --manovia-accent-bg: #b8f2d0;
+  --manovia-accent-fg: #081c12;
+  --manovia-accent-soft: #192920;
+
+  --manovia-danger-text: #ffc4b8;
+  --manovia-danger-bg: #ffc4b8;
+  --manovia-danger-fg: #260904;
+  --manovia-danger-soft: #2b1612;
+
+  --manovia-focus: #ffd670;
+}
+
+@media (prefers-contrast: more) {
+  :root:not([data-contrast="normal"]) {
+    --manovia-border: #3d352b;
+    --manovia-border-strong: #1c1814;
+    --manovia-text: #110e0b;
+    --manovia-text-muted: #2b241d;
+    --manovia-focus: #5c3800;
+  }
+
+  [data-theme="dark"]:not([data-contrast="normal"]) {
+    --manovia-border: #b8ac99;
+    --manovia-border-strong: #ede4d4;
+    --manovia-text: #ffffff;
+    --manovia-text-muted: #e8dfd0;
+    --manovia-focus: #ffd670;
+  }
+}
+
 @layer base {
   /* Base font size is 16px, never smaller (AGENTS.md accessibility rule). */
   html {
@@ -172,13 +242,59 @@
     border-radius: 2px;
   }
 
+  [data-contrast="high"] :focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
   /* Remove the default ring only where focus-visible draws its own. */
   :focus:not(:focus-visible) {
     outline: none;
   }
+
+  /* WCAG 1.4.4 / 1.4.10 reflow: long words and URLs wrap instead of forcing horizontal scroll at 200%-400% zoom. */
+  p,
+  li,
+  dd,
+  dt,
+  h1,
+  h2,
+  h3,
+  label,
+  legend {
+    overflow-wrap: anywhere;
+  }
 }
 
 @layer components {
+  /* Standard interactive buttons with >= 44x44px hit targets (WCAG 2.2 AA / 2.5.8). */
+  .btn-primary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    background-color: var(--manovia-accent-bg);
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    color: var(--manovia-accent-fg);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid var(--manovia-border-strong);
+    background-color: var(--manovia-surface);
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: var(--manovia-text);
+  }
+
   .skip-link {
     position: absolute;
     left: 1rem;
