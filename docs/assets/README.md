@@ -73,3 +73,35 @@ npx playwright screenshot --viewport-size=1280,800 \
 Screenshots show only synthetic guest data: a first-visit plan ("Take a first
 check-in") or a plan generated from synthetic moods created through the app.
 No real person's words, ever.
+
+## Day 25 screenshots — generated 2026-10-12 from the production build
+
+Captured by `frontend/e2e/day25/screenshots.spec.ts` in Chromium 153 (the same
+`@sparticuz/chromium` binary as Day 21, see above) against the **production
+build** served by `vite preview` and the live API with the Fake model — the
+service worker, and therefore the offline states, only exist in that build.
+The spec is skipped unless `CAPTURE_SCREENSHOTS=1`, so CI never rewrites these
+files. To regenerate them:
+
+```bash
+# 1. the API with the offline Fake model, on :8000 (as above)
+# 2. the production build with the same-origin /api proxy
+cd frontend && npm run build && npx vite preview --host 0.0.0.0 --port 4173
+# 3. in another terminal
+cd frontend && CAPTURE_SCREENSHOTS=1 npx playwright test -c playwright.prod.config.ts screenshots
+```
+
+| file | what it shows |
+| --- | --- |
+| `day25-home-mobile-360x640.png` | the home screen at 360x640 after onboarding, with offline support ready: greeting, quick check-in, bottom navigation |
+| `day25-offline-help-mobile-360x640.png` | "Need help now?" opened with the network off: the "saved on this device" note above the cached helplines |
+| `day25-offline-checkin-mobile-360x640.png` | the confirmation after a check-in made offline: kept on this device, sent the next time Manovia is open and online, with the way to the helplines |
+| `day25-settings-high-contrast-desktop-1280x800.png` | Settings at 1280x800 with the high-contrast palette on (7:1 text pairs) |
+| `day25-exercises-dark-high-contrast-desktop-1280x800.png` | Exercises in the dark high-contrast palette |
+| `day25-accessibility-statement-desktop-1280x800.png` | the accessibility statement (`/accessibility`) |
+
+Only synthetic content appears: a fresh guest account, the made-up note
+`A made-up note, written offline.`, and the helpline entries the shipped
+content file serves for the `DEFAULT` region. No real person's words, ever.
+`day25-offline-checkin-mobile-360x640.png` was re-captured during Day 25
+verification after its copy was corrected (see PROGRESS.md).
