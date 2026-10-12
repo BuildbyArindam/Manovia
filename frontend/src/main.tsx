@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "@/App";
+import { App, preloadRoute } from "@/App";
 import "@/index.css";
 // Initialises i18next synchronously with the bundled English tree. A Hindi or
 // Bengali reader's tree is its own chunk (Day 25) and is awaited below, before
@@ -9,6 +9,10 @@ import "@/index.css";
 import { currentAppLanguage, ensureLanguageLoaded } from "@/lib/i18n/i18n";
 import { initInstallCapture } from "@/pwa/installPrompt";
 import { registerServiceWorker } from "@/pwa/registerServiceWorker";
+
+// Day 25: fetch the page the address points at in parallel with everything
+// below, instead of after the first render.
+preloadRoute(window.location.pathname);
 
 // Day 25: listen for the browser's install offer before anything renders, so
 // it is not missed — and suppress the browser's own banner (the offer lives

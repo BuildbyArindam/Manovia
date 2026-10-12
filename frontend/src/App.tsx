@@ -51,28 +51,65 @@ function lazyPage<K extends string>(load: () => Promise<Record<K, PageComponent>
   return lazy(() => load().then((module) => ({ default: module[name] })));
 }
 
-const ChatPage = lazyPage(() => import("@/pages/ChatPage"), "ChatPage");
-const MoodPage = lazyPage(() => import("@/pages/MoodPage"), "MoodPage");
-const JournalPage = lazyPage(() => import("@/pages/JournalPage"), "JournalPage");
-const CBTPage = lazyPage(() => import("@/pages/CBTPage"), "CBTPage");
-const AssessmentsPage = lazyPage(() => import("@/pages/AssessmentsPage"), "AssessmentsPage");
-const ExercisesPage = lazyPage(() => import("@/pages/ExercisesPage"), "ExercisesPage");
+/**
+ * One loader per lazy page. The same functions back both `lazy()` and
+ * {@link preloadRoute}, so a preload and the render share one module request.
+ */
+const LOADERS = {
+  "/chat": () => import("@/pages/ChatPage"),
+  "/mood": () => import("@/pages/MoodPage"),
+  "/journal": () => import("@/pages/JournalPage"),
+  "/cbt": () => import("@/pages/CBTPage"),
+  "/assessments": () => import("@/pages/AssessmentsPage"),
+  "/exercises": () => import("@/pages/ExercisesPage"),
+  "/insights": () => import("@/pages/InsightsPage"),
+  "/settings": () => import("@/pages/SettingsPage"),
+  "/accessibility": () => import("@/pages/AccessibilityPage"),
+} as const;
+
+/**
+ * Start downloading the page the address bar points at, before React has
+ * rendered anything (called from main.tsx). Without it the route chunk is only
+ * requested after the entry chunk has run and the router has rendered — one
+ * extra round trip on every deep link, which on slow 4G is ~150 ms of waiting
+ * for nothing. A failure is ignored here; the render reports it properly.
+ */
+export function preloadRoute(pathname: string): void {
+  const loader = LOADERS[pathname as keyof typeof LOADERS];
+  if (loader !== undefined) {
+    loader().catch(() => undefined);
+  }
+}
+
+const ChatPage = lazyPage(LOADERS["/chat"], "ChatPage");
+const MoodPage = lazyPage(LOADERS["/mood"], "MoodPage");
+const JournalPage = lazyPage(LOADERS["/journal"], "JournalPage");
+const CBTPage = lazyPage(LOADERS["/cbt"], "CBTPage");
+const AssessmentsPage = lazyPage(LOADERS["/assessments"], "AssessmentsPage");
+const ExercisesPage = lazyPage(LOADERS["/exercises"], "ExercisesPage");
 /**
  * Insights carries the chart library — as large as the rest of the app put
  * together — and is the one page left out of the offline precache.
  */
-const InsightsPage = lazyPage(() => import("@/pages/InsightsPage"), "InsightsPage");
-const SettingsPage = lazyPage(() => import("@/pages/SettingsPage"), "SettingsPage");
-const AccessibilityPage = lazyPage(() => import("@/pages/AccessibilityPage"), "AccessibilityPage");
+const InsightsPage = lazyPage(LOADERS["/insights"], "InsightsPage");
+const SettingsPage = lazyPage(LOADERS["/settings"], "SettingsPage");
+const AccessibilityPage = lazyPage(LOADERS["/accessibility"], "AccessibilityPage");
 
+/**
+ * Shown while a page chunk downloads. It reserves the height of a screen, so
+ * the footer starts below the fold and the page arriving does not shove it
+ * around (Lighthouse measured 0.23 cumulative layout shift from exactly that).
+ */
 function PageFallback(): ReactElement {
   return (
-    <p
-      role="status"
-      className="rounded-2xl border border-border bg-surface p-6 text-ink-muted shadow-soft"
-    >
-      {t("app.loading")}
-    </p>
+    <div className="min-h-screen" data-testid="page-fallback">
+      <p
+        role="status"
+        className="rounded-2xl border border-border bg-surface p-6 text-ink-muted shadow-soft"
+      >
+        {t("app.loading")}
+      </p>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 /**
- * The home screen: a greeting, today's plan, a ten-second check-in, and the
+ * The home screen: a greeting, a ten-second check-in, today's plan, and the
  * two doors people come here for — the chat and the help line.
  *
  * The greeting is a time of day and nothing else: the app does not know a
@@ -55,8 +55,6 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
   return (
     <div className="space-y-6" data-testid="home-page">
       <PageHeader title={greeting.headline} lede={greeting.qualifier} />
-
-      <PlanCard client={client} />
 
       <section
         aria-labelledby="quick-checkin-heading"
@@ -118,6 +116,15 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
           </form>
         )}
       </section>
+
+      {/*
+        Day 25: the plan comes after the check-in. The check-in needs no data
+        and paints at once; the plan arrives from the API and grows when it
+        does, and anything below it moves. With the plan first, the check-in
+        jumped down under a reader's thumb as the page settled (Lighthouse
+        measured it); now only content below the fold moves.
+      */}
+      <PlanCard client={client} />
 
       <section
         aria-labelledby="home-links-heading"
