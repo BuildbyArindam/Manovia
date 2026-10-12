@@ -15,18 +15,42 @@ import { t } from "@/lib/i18n/i18n";
  * squeezed to 36–43px wide), so the bar scrolls sideways instead of shrinking
  * its targets. Every item is at least 4.5rem wide, the next item peeks in at
  * the edge so the reader can see there is more, and the current page is
- * scrolled into view on every navigation. Each link is focusable, so the
- * scrolling region is reachable from the keyboard.
+ * scrolled into view *inside the bar* on every navigation (see
+ * {@link revealInStrip}). Each link is focusable, so the scrolling region is
+ * reachable from the keyboard.
  */
+
+/**
+ * Scroll `strip` sideways just enough to show `item` — and touch nothing else.
+ *
+ * `item.scrollIntoView({ inline: "nearest" })` would do this in one line, but
+ * it scrolls *every* scrollable ancestor, the page included. While the bar is
+ * fixed to the bottom of the screen that is harmless. On short screens (200%
+ * zoom, a phone held sideways) the bar scrolls with the page instead
+ * (`index.css`, "Short viewports"), and `scrollIntoView` then dragged every
+ * freshly opened page down to the bottom navigation: the reader landed at the
+ * end of the page, and their first Tab went to the bar instead of "Skip to
+ * main content" (found in Day 25 verification at 640x400).
+ */
+export function revealInStrip(strip: HTMLElement, item: HTMLElement): void {
+  const stripBox = strip.getBoundingClientRect();
+  const itemBox = item.getBoundingClientRect();
+  if (itemBox.left < stripBox.left) {
+    strip.scrollLeft -= stripBox.left - itemBox.left;
+  } else if (itemBox.right > stripBox.right) {
+    strip.scrollLeft += itemBox.right - stripBox.right;
+  }
+}
+
 export function BottomNav(): ReactElement {
   const listRef = useRef<HTMLUListElement | null>(null);
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const current = listRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    // Not every environment implements scrollIntoView (jsdom does not).
-    if (current !== null && current !== undefined && typeof current.scrollIntoView === "function") {
-      current.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const list = listRef.current;
+    const current = list?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (list !== null && current !== null && current !== undefined) {
+      revealInStrip(list, current.closest("li") ?? current);
     }
   }, [pathname]);
 

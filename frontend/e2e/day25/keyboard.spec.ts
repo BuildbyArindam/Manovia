@@ -93,7 +93,9 @@ async function resetFocus(page: Page): Promise<void> {
     document.querySelectorAll("[data-kbd-reached]").forEach((element) => {
       element.removeAttribute("data-kbd-reached");
     });
-    window.scrollTo(0, 0);
+    // Instant: under `scroll-behavior: smooth` a plain scrollTo animates and
+    // races the focus scrolling that the next Tab triggers.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   });
 }
 

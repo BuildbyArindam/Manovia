@@ -108,7 +108,9 @@ async function inspect(page: Page, mode: string, route: string): Promise<void> {
   // Focus not obscured: walk the first 30 tab stops.
   await page.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur();
-    window.scrollTo(0, 0);
+    // Instant: under `scroll-behavior: smooth` a plain scrollTo animates and
+    // races the focus scrolling that the next Tab triggers.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   });
   for (let i = 0; i < 30; i += 1) {
     await page.keyboard.press("Tab");
@@ -143,6 +145,17 @@ async function inspect(page: Page, mode: string, route: string): Promise<void> {
       if (element === null || element === document.body) return null;
       const box = element.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) return null;
+      const name = `${element.tagName.toLowerCase()} "${(element.innerText || element.getAttribute("aria-label") || "").trim().slice(0, 30)}"`;
+      // Entirely off screen is the worst case of "obscured": say so, rather
+      // than naming whatever happens to sit at the clamped probe point.
+      if (
+        box.bottom <= 0 ||
+        box.top >= window.innerHeight ||
+        box.right <= 0 ||
+        box.left >= window.innerWidth
+      ) {
+        return `${name} is outside the viewport (top ${Math.round(box.top)}px of ${window.innerHeight}px)`;
+      }
       const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
       const y = Math.min(Math.max(box.top + box.height / 2, 0), window.innerHeight - 1);
       const top = document.elementFromPoint(x, y);
@@ -152,7 +165,7 @@ async function inspect(page: Page, mode: string, route: string): Promise<void> {
         element.closest("label") ??
         (element.id ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`) : null);
       if (label !== null && (label.contains(top) || top.contains(label))) return null;
-      return `${element.tagName.toLowerCase()} "${(element.innerText || element.getAttribute("aria-label") || "").trim().slice(0, 30)}" under ${top.tagName.toLowerCase()}.${top.className.toString().split(" ").slice(0, 2).join(".")}`;
+      return `${name} under ${top.tagName.toLowerCase()}.${top.className.toString().split(" ").slice(0, 2).join(".")}`;
     });
     if (obscured !== null) {
       findings.push({ mode, route, kind: "focus-obscured", detail: obscured });
@@ -211,3 +224,53 @@ for (const mode of MODES) {
     );
   });
 }
+
+/**
+ * Regression (Day 25 verification). On a short screen the bottom navigation
+ * scrolls with the page, and revealing its current item with
+ * `scrollIntoView` dragged every freshly opened page down to the bar: the
+ * reader landed at the end of the page, and their first Tab went to the bar
+ * ("Chat") instead of "Skip to main content". A page must open at its top,
+ * Tab must start at the skip link, and the current item must still be visible
+ * inside the bar (Settings is the last of nine, off the edge at 640px).
+ */
+test("on a short screen a page opens at its top and Tab starts at the skip link", async ({
+  browser,
+}) => {
+  for (const mode of MODES.filter((candidate) => candidate.fontPx === null)) {
+    const context = await contextFor(browser, mode);
+    const page = await context.newPage();
+    await completeGuestOnboarding(page);
+    for (const route of APP_ROUTES.filter((candidate) =>
+      ["home", "exercises", "settings"].includes(candidate.name),
+    )) {
+      await openRoute(page, route.path, route.ready);
+      const state = await page.evaluate(() => {
+        const nav = document.querySelector<HTMLElement>(".app-bottom-nav");
+        const list = nav?.querySelector("ul")?.getBoundingClientRect();
+        const item = nav
+          ?.querySelector('[aria-current="page"]')
+          ?.closest("li")
+          ?.getBoundingClientRect();
+        return {
+          scrollY: Math.round(window.scrollY),
+          navPosition: nav === null || nav === undefined ? null : getComputedStyle(nav).position,
+          currentItemVisible:
+            list === undefined || item === undefined
+              ? null
+              : item.left >= list.left - 1 && item.right <= list.right + 1,
+        };
+      });
+      const where = `${mode.name} ${route.path}`;
+      // The scenario only exists while the bar scrolls with the page.
+      expect(state.navPosition, `${where}: bottom navigation`).toBe("static");
+      expect(state.scrollY, `${where}: opened scrolled down`).toBe(0);
+      expect(state.currentItemVisible, `${where}: current item visible in the bar`).toBe(true);
+      await page.keyboard.press("Tab");
+      await expect(page.locator(":focus"), `${where}: first Tab stop`).toHaveText(
+        "Skip to main content",
+      );
+    }
+    await context.close();
+  }
+});
