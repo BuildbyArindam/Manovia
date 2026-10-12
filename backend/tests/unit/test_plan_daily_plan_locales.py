@@ -26,7 +26,6 @@ from app.content.i18n import (
     load_localisation,
 )
 from app.services.plan.daily_plan import (
-    MoodSignal,
     PlannerContext,
     PlanPreferences,
     _rest_suggestion,

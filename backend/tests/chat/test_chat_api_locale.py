@@ -94,7 +94,8 @@ async def say(
         json={"message": message, **extra},
     )
     assert response.status_code == 200, response.text
-    return response.json()
+    body: dict[str, Any] = response.json()
+    return body
 
 
 @pytest.mark.parametrize(
@@ -161,6 +162,7 @@ async def test_the_language_instruction_follows_the_locale(
 
     assert llm.calls, "the benign turn reaches the model"
     system_prompt = llm.calls[-1].system
+    assert system_prompt is not None, "the turn carried a system prompt"
     assert "Hindi" in system_prompt or "hindi" in system_prompt.casefold(), system_prompt[:400]
 
 

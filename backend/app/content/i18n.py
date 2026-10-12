@@ -141,7 +141,7 @@ class LocalisedContent(BaseModel):
     #: exercise and the counts they explain.
     placeholder_whitelist: list[str] = Field(min_length=1)
     templates: dict[str, CrisisTemplate] = Field(min_length=1)
-    #: The ten digits the locale writes with, ``"0"``–``"9"`` mapped by index.
+    #: The ten digits the locale writes with, ``"0"`` to ``"9"`` mapped by index.
     #: Devanagari and Bengali numerals are not a flourish: an ASCII ``3`` inside
     #: a Hindi sentence is a foreign token, so the planner's counts are written
     #: with these (see :meth:`format_count`).

@@ -238,7 +238,7 @@ def _exercise_title(definition: ExerciseDefinition, locale_code: str) -> str:
     no translated title gets the English one rather than a blank.
     """
     if locale_code in ("hi", "bn"):
-        translated = getattr(definition.title, locale_code)
+        translated: str | None = getattr(definition.title, locale_code)
         if translated:
             return translated
     return definition.title.en
@@ -381,9 +381,7 @@ def _rule_missed_check_in(ctx: PlannerContext) -> PlanSuggestion | None:
     return PlanSuggestion(
         kind=PlanItemKind.CHECK_IN,
         title=content.string("plan.missed_check_in.title"),
-        why=content.render_string(
-            "plan.missed_check_in.why", {"days": content.format_count(gap)}
-        ),
+        why=content.render_string("plan.missed_check_in.why", {"days": content.format_count(gap)}),
     )
 
 
