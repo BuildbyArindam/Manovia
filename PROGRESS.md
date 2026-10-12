@@ -76,6 +76,11 @@ Playwright suite **52 passed** in real Chromium 153 at both viewports.
 Decision: [ADR 0022](docs/adr/0022-privacy-controls-and-data-export.md).
 Full results, the defect found during verification and the honest gaps:
 [Day 22 verification](docs/verification/day22-privacy-controls-and-security-hardening.md).
+**Merge state:** PR #27 (five of the six Day-22 commits) was merged into `main`
+by the repository owner during this session; PR #28 carries the remaining
+commit — the CBT export fix, its regression test, the docs and this entry. So
+`main` at `0a473fd` has the feature **without** the export fix: the CBT
+`null`-export bug below is fixed on this branch and not yet on `main`.
 This Arena session is fixed to **`arena/a81666f5-manovia`**; the requested
 `day-22-privacy-controls-security-hardening` branch cannot be created in this
 session. Never push to main; one PR from the pinned branch; do not merge.
