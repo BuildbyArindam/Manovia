@@ -16,8 +16,9 @@
  * trade-off, and the reason the CSS fallback exists.
  */
 
-/** Where the explicit palette choice lives (shared with ThemeProvider). */
-export const THEME_STORAGE_KEY = "manovia.theme";
+export { THEME_STORAGE_KEY } from "./theme-storage";
+
+import { THEME_STORAGE_KEY } from "./theme-storage";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 

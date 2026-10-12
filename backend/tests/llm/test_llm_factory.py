@@ -215,7 +215,9 @@ def test_the_fake_provider_latency_reaches_the_provider() -> None:
     assert fake.latency_ms == 250.0
 
     # The default is instant: unit tests must not pay for the browser's needs.
-    assert build_llm_chain(Settings(llm_provider="fake")).providers[0].latency_ms == 0.0
+    default_provider = build_llm_chain(Settings(llm_provider="fake")).providers[0]
+    assert isinstance(default_provider, FakeLLMProvider)
+    assert default_provider.latency_ms == 0.0
 
 
 def test_a_negative_fake_latency_is_rejected() -> None:

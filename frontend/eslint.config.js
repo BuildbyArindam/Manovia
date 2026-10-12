@@ -68,5 +68,30 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // `scripts/*.mjs` are operator tools (serve the built bundle with the
+    // production headers and check the CSP in a real browser). They run in
+    // Node, print to the console, and exit non-zero on failure — so `console`
+    // and `process` are the point of the file, not a mistake in it.
+    //
+    // They also declare *browser* globals because the file spans two runtimes:
+    // the Playwright driver is Node, while the callbacks it hands to
+    // `page.evaluate()` and `page.addInitScript()` are serialised and executed
+    // inside the page. Without these, a legitimate `document.addEventListener`
+    // in injected code reads as an undefined-variable error and the honest fix
+    // would look like a suppression comment instead.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
+    },
+    rules: {
+      "no-console": "off",
+    },
+  },
   prettier,
 );
