@@ -6,11 +6,16 @@ Date: 2026-10-12 · Status: accepted
 
 Manovia's users include people on ₹8,000 Android phones, on 3G/slow 4G, on
 trains with no signal, and people who use a keyboard, a screen reader, zoom or
-Windows high contrast. Until Day 24 the app needed a live connection for
-everything — including the "Need help now?" dialog, whose helplines came from
-`GET /api/v1/crisis/resources` on every open — and the first visit downloaded
-85 KB (gzip) of main entry JavaScript, including the full Hindi and Bengali
-catalogues, plus two Google Fonts families, before anything rendered.
+Windows high contrast. Until Day 24 there was no service worker, so the app
+could not even open without a connection: a reload or a cold start offline
+showed the browser's own error page, "Need help now?" included. At most, an
+exercise already open in a loaded tab kept running (ADR 0018) and helplines
+fetched earlier in the same tab stayed in memory. And the first visit
+downloaded **173 KB gzip (623 KB raw) of JavaScript in a single entry chunk** —
+every page except Insights, plus the full Hindi and Bengali catalogues — and a
+render-blocking Google Fonts stylesheet for two Indic families, before
+anything rendered (measured on `dc9c749` with the same method as the Day 25
+numbers below).
 
 Day 25 had to make four things true at once, and they pull against each other:
 
@@ -144,8 +149,11 @@ yet.
   later.
 - **Hindi and Bengali catalogues load on demand** (~22.5 KB gzip each), and the
   Noto Devanagari/Bengali fonts are requested **only** when that language is
-  chosen. English visits make **zero third-party requests**. The main entry
-  chunk went from 85 KB to 39 KB gzip.
+  chosen. English visits make **zero third-party requests**.
+- Result, same measurement on both builds: initial JavaScript **173 KB → 115 KB
+  gzip** (623 → 360 KB raw, which is what a slow phone has to parse), in three
+  cacheable files whose entry chunk is 39 KB; each page except Insights then
+  adds 1–7 KB.
 - Layout-shift fixes took mobile CLS from 0.23 to ≤ 0.015: the lazy-page
   fallback reserves a screen's height, and Home renders the data-free check-in
   above the data-driven plan card (which reserves its own height).

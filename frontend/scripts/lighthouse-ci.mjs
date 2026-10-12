@@ -13,7 +13,7 @@
  *   3. before *each* run clears the service worker, Cache Storage and the HTTP
  *      cache — but not localStorage — so every audit is a cold first load of a
  *      signed-in page, not a warm load served by the worker;
- *   4. runs Lighthouse 12 (mobile form factor, simulated slow-4G + 4x CPU
+ *   4. runs Lighthouse 13 (mobile form factor, simulated slow-4G + 4x CPU
  *      throttling: the defaults) with `disableStorageReset` so the session
  *      survives;
  *   5. writes each result (JSON + HTML) to `lighthouse-reports/` and to
