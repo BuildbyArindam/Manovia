@@ -82,6 +82,11 @@ describe("wiring", () => {
     expect(read("e2e/day25/global-setup.ts")).toMatch(/clearReports\(\)/);
   });
 
+  it("the dev-server config never runs the Day 25 specs (they need the production build)", () => {
+    expect(read("playwright.config.ts")).toContain('testIgnore: ["day25/**"]');
+    expect(read("playwright.prod.config.ts")).toContain('testDir: "./e2e/day25"');
+  });
+
   it("every spec that writes findings writes them into the folder that is cleaned", () => {
     for (const spec of ["a11y", "keyboard", "zoom"]) {
       const source = code(read(`e2e/day25/${spec}.spec.ts`));

@@ -2,8 +2,8 @@
  * Playwright configuration for the Day 25 checks, which need the *production*
  * build: the service worker only exists in `vite build` output, so offline
  * behaviour, installability and real bundle performance cannot be tested
- * against the dev server (`playwright.config.ts`, unchanged, still covers the
- * Day 12–23 specs there).
+ * against the dev server (`playwright.config.ts` covers the Day 12–23 specs
+ * there and ignores `e2e/day25`).
  *
  * The API is not started here, for the same reason as the dev config: the
  * specs must meet a real FastAPI backend with `LLM_PROVIDER=fake`. Bring it up
