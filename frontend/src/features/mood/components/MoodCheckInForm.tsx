@@ -24,6 +24,8 @@ import { useRef, useState, type FormEvent, type ReactElement } from "react";
 
 import { ApiError } from "@/lib/api";
 import type { ApiClient } from "@/lib/api";
+import { t } from "@/lib/i18n/i18n";
+import { useOnlineStatus } from "@/pwa/useOnlineStatus";
 
 import { MOOD_COPY } from "../copy";
 import {
@@ -33,14 +35,14 @@ import {
   MOOD_FACTORS,
   NOTE_MAX_CHARS,
 } from "../taxonomy";
-import type { MoodCheckInResponse } from "../types";
-import { useMoodCheckIn } from "../useMood";
+import { useMoodCheckIn, type MoodSubmitResult } from "../useMood";
 import { EnergyScale } from "./EnergyScale";
 import { FaceScale } from "./FaceScale";
 import { TagChips } from "./TagChips";
 
 export interface MoodCheckInFormProps {
-  onSaved: (result: MoodCheckInResponse) => void;
+  /** Saved on the server, or (Day 25) queued on this device while offline. */
+  onSaved: (result: MoodSubmitResult) => void;
   client?: ApiClient;
 }
 
@@ -54,6 +56,7 @@ export function MoodCheckInForm({ onSaved, client }: MoodCheckInFormProps): Reac
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const firstFaceRef = useRef<HTMLInputElement | null>(null);
   const mutation = useMoodCheckIn(client);
+  const online = useOnlineStatus();
 
   const noteOverLimit = note.length > NOTE_MAX_CHARS;
   const remaining = NOTE_MAX_CHARS - note.length;
@@ -195,6 +198,11 @@ export function MoodCheckInForm({ onSaved, client }: MoodCheckInFormProps): Reac
           {mutation.isPending ? MOOD_COPY.submitting : MOOD_COPY.submit}
         </button>
         <p className="mt-2 text-sm text-ink-muted">{MOOD_COPY.submitHint}</p>
+        {online ? null : (
+          <p className="mt-2 text-sm text-ink" data-testid="mood-offline-hint">
+            {t("mood.offlineHint")}
+          </p>
+        )}
       </div>
 
       {errorMessage !== null ? (

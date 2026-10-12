@@ -20,7 +20,16 @@ import {
   triggerMarkdownDownload,
 } from "@/features/journal/markdown";
 import type { MoodCrisis } from "@/features/mood/types";
-import { type ApiClient, api as defaultClient, isApiError } from "@/lib/api";
+import {
+  clearJournalDraft,
+  draftDiffersFrom,
+  loadJournalDraft,
+  saveJournalDraft,
+  type JournalDraft,
+} from "@/features/journal/drafts";
+import { type ApiClient, api as defaultClient, isApiError, isNetworkFailure } from "@/lib/api";
+import { formatDateTime } from "@/lib/dates";
+import { isOnline, useOnlineStatus } from "@/pwa/useOnlineStatus";
 
 const ACTIVE_ENTRY_STORAGE_KEY = "manovia.journal.activeEntryId";
 const EDITOR_MODE_STORAGE_KEY = "manovia.journal.editorMode";
@@ -33,7 +42,8 @@ export interface JournalViewProps {
   onExportMarkdown?: (filename: string, markdown: string) => void;
 }
 
-type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+/** Day 25: `offline` — the words are kept as a local draft until the connection returns. */
+type SaveState = "idle" | "dirty" | "saving" | "saved" | "error" | "offline";
 
 function fallbackTemplates(): readonly JournalTemplate[] {
   return [
@@ -106,6 +116,10 @@ export function JournalView({
   const [storeEmotions, setStoreEmotions] = useState<boolean>(true);
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const online = useOnlineStatus();
+  // Day 25: a draft from an earlier visit, offered back (never applied silently).
+  const [restorable, setRestorable] = useState<JournalDraft | null>(null);
+  const draftChecked = useRef<boolean>(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [activeCrisis, setActiveCrisis] = useState<MoodCrisis | null>(null);
 
@@ -203,9 +217,7 @@ export function JournalView({
         }
       } catch (err) {
         if (!cancelled) {
-          setErrorMessage(
-            isApiError(err) ? err.message : t("journal.loadError"),
-          );
+          setErrorMessage(isApiError(err) ? err.message : t("journal.loadError"));
         }
       } finally {
         if (!cancelled) {
@@ -222,6 +234,13 @@ export function JournalView({
   const performSave = useCallback(async (): Promise<JournalEntry | null> => {
     const trimmedBody = body.trim();
     if (trimmedBody === "" || saveInFlightRef.current) {
+      return null;
+    }
+    if (!isOnline()) {
+      // Offline: keep the words on this device; the autosave effect sends them
+      // when the connection returns.
+      saveJournalDraft({ entryId: activeIdRef.current, title, body, template, promptId });
+      setSaveState("offline");
       return null;
     }
     saveInFlightRef.current = true;
@@ -249,6 +268,8 @@ export function JournalView({
       setLastSavedAt(saved.updated_at);
       setActiveCrisis(saved.crisis ?? saved.metadata?.crisis ?? null);
       setSaveState("saved");
+      // The server has the words now; the local copy is no longer needed.
+      clearJournalDraft();
 
       lastPersistedSnapshotRef.current = makeSnapshot(
         saved.id,
@@ -269,6 +290,11 @@ export function JournalView({
       });
       return saved;
     } catch (err) {
+      if (isNetworkFailure(err)) {
+        saveJournalDraft({ entryId: activeIdRef.current, title, body, template, promptId });
+        setSaveState("offline");
+        return null;
+      }
       setSaveState("error");
       setErrorMessage(isApiError(err) ? err.message : t("journal.saveError"));
       return null;
@@ -276,6 +302,73 @@ export function JournalView({
       saveInFlightRef.current = false;
     }
   }, [body, client, makeSnapshot, promptId, storeEmotions, template, title]);
+
+  // Day 25: once the first load has settled, offer back a draft left on this
+  // device by an earlier visit (offline, or a tab closed mid-sentence).
+  useEffect(() => {
+    if (loading || draftChecked.current) {
+      return;
+    }
+    draftChecked.current = true;
+    const draft = loadJournalDraft();
+    if (draft === null) {
+      return;
+    }
+    const server =
+      draft.entryId === null ? null : (entries.find((item) => item.id === draft.entryId) ?? null);
+    if (draftDiffersFrom(draft, server)) {
+      setRestorable(draft);
+    } else {
+      clearJournalDraft();
+    }
+  }, [entries, loading]);
+
+  // Day 25: keep unsaved words on this device until the server confirms them.
+  useEffect(() => {
+    if (!draftChecked.current || restorable !== null) {
+      return undefined;
+    }
+    const snapshot = makeSnapshot(activeId, title, body, template, promptId, storeEmotions);
+    if (snapshot === lastPersistedSnapshotRef.current) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      saveJournalDraft({ entryId: activeId, title, body, template, promptId });
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [activeId, body, makeSnapshot, promptId, restorable, storeEmotions, template, title]);
+
+  const handleRestoreDraft = useCallback(() => {
+    if (restorable === null) {
+      return;
+    }
+    const target =
+      restorable.entryId === null
+        ? undefined
+        : entries.find((item) => item.id === restorable.entryId);
+    if (target !== undefined) {
+      selectEntryIntoEditor(target);
+    } else {
+      setActiveId(restorable.entryId);
+      activeIdRef.current = restorable.entryId;
+    }
+    const tpl: JournalTemplateId =
+      restorable.template === "gratitude" || restorable.template === "worry_dump"
+        ? restorable.template
+        : "free";
+    setTitle(restorable.title);
+    setBody(restorable.body);
+    setTemplate(tpl);
+    setPromptId(restorable.promptId);
+    setRestorable(null);
+  }, [entries, restorable, selectEntryIntoEditor]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearJournalDraft();
+    setRestorable(null);
+  }, []);
 
   // Debounced autosave effect
   useEffect(() => {
@@ -285,6 +378,10 @@ export function JournalView({
     }
     const currentSnapshot = makeSnapshot(activeId, title, body, template, promptId, storeEmotions);
     if (currentSnapshot === lastPersistedSnapshotRef.current) {
+      return undefined;
+    }
+    if (!online) {
+      setSaveState("offline");
       return undefined;
     }
     setSaveState("dirty");
@@ -299,6 +396,7 @@ export function JournalView({
     autosaveDelayMs,
     body,
     makeSnapshot,
+    online,
     performSave,
     promptId,
     storeEmotions,
@@ -436,13 +534,11 @@ export function JournalView({
       {/* Header & Distraction-free toggle */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-brand-700">
+          <p className="text-sm font-medium uppercase tracking-wider text-accent">
             {t("journal.eyebrow")}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-stone-900">{t("journal.heading")}</h1>
-          <p className="mt-1 text-sm text-stone-600">
-            {t("journal.lede")}
-          </p>
+          <h1 className="mt-1 text-2xl font-semibold text-ink">{t("journal.heading")}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t("journal.lede")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -450,7 +546,7 @@ export function JournalView({
             data-testid="journal-focus-toggle"
             aria-pressed={distractionFree}
             onClick={() => setDistractionFree((prev) => !prev)}
-            className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+            className="rounded-lg border border-border-strong bg-surface min-h-11 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
           >
             {distractionFree ? t("journal.exitFocus") : t("journal.focusMode")}
           </button>
@@ -458,7 +554,7 @@ export function JournalView({
             type="button"
             data-testid="journal-new-button"
             onClick={() => handleStartNewEntry("free")}
-            className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+            className="rounded-lg border border-border-strong bg-surface min-h-11 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
           >
             {t("journal.newEntry")}
           </button>
@@ -466,7 +562,7 @@ export function JournalView({
             type="button"
             data-testid="journal-export-button"
             onClick={handleExportMarkdown}
-            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 hover:bg-brand-100"
+            className="rounded-lg border border-border bg-accent-soft min-h-11 px-3 py-1.5 text-sm font-medium text-accent"
           >
             {t("journal.exportMarkdown")}
           </button>
@@ -490,7 +586,7 @@ export function JournalView({
         <div
           role="alert"
           data-testid="journal-error-banner"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg border border-danger bg-danger-soft px-4 py-3 text-sm text-danger"
         >
           {errorMessage}
         </div>
@@ -501,46 +597,40 @@ export function JournalView({
         <section
           aria-label={t("journal.privacyExplainerLabel")}
           data-testid="journal-privacy-explainer"
-          className="rounded-xl border border-brand-200 bg-brand-50/50 p-4 text-sm text-stone-800"
+          className="rounded-xl border border-border bg-accent-soft p-4 text-sm text-ink"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-brand-700" />
-              <strong className="font-semibold text-stone-900">
-                {t("journal.privacyBadge")}
-              </strong>
+              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-accent-bg" />
+              <strong className="font-semibold text-ink">{t("journal.privacyBadge")}</strong>
             </div>
             <button
               type="button"
               data-testid="journal-privacy-toggle"
               aria-expanded={showPrivacyDetails}
               onClick={() => setShowPrivacyDetails((prev) => !prev)}
-              className="text-xs font-medium text-brand-800 underline hover:text-brand-900"
+              className="min-h-11 text-sm font-medium text-accent underline"
             >
               {showPrivacyDetails ? t("journal.privacyToggleHide") : t("journal.privacyToggleShow")}
             </button>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-stone-600">
-            {t("journal.privacyIntro1")}{" "}
-            <code>FIELD_ENCRYPTION_KEY</code>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+            {t("journal.privacyIntro1")} <code>FIELD_ENCRYPTION_KEY</code>
             {t("journal.privacyIntro2")}
           </p>
           {showPrivacyDetails ? (
             <div
               data-testid="journal-privacy-details"
-              className="mt-3 space-y-2 border-t border-brand-200/80 pt-3 text-xs leading-relaxed text-stone-700"
+              className="mt-3 space-y-2 border-t border-border pt-3 text-sm leading-relaxed text-ink"
             >
               <p>
-                <strong>{t("journal.searchOnlyPrefix")}</strong>{" "}
-                {t("journal.searchOnlyBody")}
+                <strong>{t("journal.searchOnlyPrefix")}</strong> {t("journal.searchOnlyBody")}
               </p>
               <p>
-                <strong>{t("journal.scoresPrefix")}</strong>{" "}
-                {t("journal.scoresBody")}
+                <strong>{t("journal.scoresPrefix")}</strong> {t("journal.scoresBody")}
               </p>
               <p>
-                <strong>{t("journal.threatPrefix")}</strong>{" "}
-                {t("journal.threatBody1")}{" "}
+                <strong>{t("journal.threatPrefix")}</strong> {t("journal.threatBody1")}{" "}
                 <code>FIELD_ENCRYPTION_KEY</code>
                 {t("journal.threatBody2")}
               </p>
@@ -549,14 +639,57 @@ export function JournalView({
         </section>
       ) : null}
 
+      {restorable !== null ? (
+        <section
+          aria-labelledby="journal-draft-heading"
+          data-testid="journal-draft-restore"
+          className="rounded-2xl border border-border-strong bg-surface-muted p-5"
+        >
+          <h2 id="journal-draft-heading" className="text-base">
+            {t("journal.draftRestoreTitle", { when: formatDateTime(restorable.savedAt) })}
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">{t("journal.draftRestoreBody")}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              data-testid="journal-draft-restore-button"
+              onClick={handleRestoreDraft}
+            >
+              {t("journal.draftRestore")}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              data-testid="journal-draft-discard-button"
+              onClick={handleDiscardDraft}
+            >
+              {t("journal.draftDiscard")}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {!online ? (
+        <p
+          data-testid="journal-offline-note"
+          className="rounded-xl border border-border bg-surface p-4 text-sm text-ink"
+        >
+          {t("journal.draftLocalNote")}
+        </p>
+      ) : null}
+
       <div
-        className={distractionFree ? "mx-auto max-w-3xl" : "grid gap-6 lg:grid-cols-[1fr_20rem]"}
+        // Day 25: a wrapping row sized in rem, not a pixel breakpoint, so the
+        // sidebar drops below the editor when the reader's text is large
+        // (a 1fr + 20rem grid overflowed sideways at 200% text).
+        className={distractionFree ? "mx-auto max-w-3xl" : "flex flex-wrap items-start gap-6"}
       >
         {/* Main Distraction-Free Editor Column */}
         <section
           aria-label={t("journal.editorLabel")}
           data-testid="journal-editor"
-          className="card space-y-4 p-6"
+          className="card min-w-0 flex-[1_1_28rem] space-y-4 p-6"
         >
           {/* Template selector pills */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -576,8 +709,8 @@ export function JournalView({
                     onClick={() => handleSelectTemplate(tpl.id)}
                     className={
                       isSelected
-                        ? "rounded-full bg-brand-700 px-3 py-1 text-xs font-medium text-white"
-                        : "rounded-full border border-stone-300 bg-white px-3 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                        ? "min-h-11 rounded-full bg-accent-bg px-4 py-1 text-sm font-medium text-accent-fg"
+                        : "min-h-11 rounded-full border border-border-strong bg-surface px-4 py-1 text-sm font-medium text-ink hover:bg-surface-muted"
                     }
                   >
                     {tpl.label}
@@ -587,8 +720,8 @@ export function JournalView({
             </div>
 
             {/* Word count + Autosave status */}
-            <div className="flex items-center gap-3 text-xs text-stone-500">
-              <span data-testid="journal-word-count" className="font-medium text-stone-700">
+            <div className="flex items-center gap-3 text-sm text-ink-muted">
+              <span data-testid="journal-word-count" className="font-medium text-ink">
                 {liveWordCount === 1
                   ? t("journal.wordCountOne", { count: liveWordCount })
                   : t("journal.wordCountMany", { count: liveWordCount })}
@@ -600,6 +733,7 @@ export function JournalView({
                   <span title={lastSavedAt ?? undefined}>{t("journal.statusSaved")}</span>
                 )}
                 {saveState === "error" && t("journal.statusSaveFailed")}
+                {saveState === "offline" && t("journal.statusOfflineDraft")}
                 {saveState === "idle" && t("journal.statusReady")}
               </span>
             </div>
@@ -608,9 +742,7 @@ export function JournalView({
           {/* Writing prompt chips */}
           {prompts.length > 0 && !distractionFree ? (
             <div className="space-y-2" data-testid="journal-prompts-bar">
-              <p className="text-xs font-medium text-stone-600">
-                {t("journal.promptsIntro")}
-              </p>
+              <p className="text-sm font-medium text-ink-muted">{t("journal.promptsIntro")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {prompts.map((prompt) => {
                   const selected = promptId === prompt.id;
@@ -623,8 +755,8 @@ export function JournalView({
                       onClick={() => handleSelectPromptChip(prompt)}
                       className={
                         selected
-                          ? "rounded-lg border border-brand-600 bg-brand-50 px-2.5 py-1 text-left text-xs font-medium text-brand-900"
-                          : "rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-left text-xs text-stone-700 hover:border-stone-300 hover:bg-stone-100"
+                          ? "rounded-lg border border-accent-bg bg-accent-soft min-h-11 px-3 py-1 text-left text-sm font-medium text-accent"
+                          : "rounded-lg border border-border bg-surface-muted min-h-11 px-3 py-1 text-left text-sm text-ink hover:border-border-strong hover:bg-surface-muted"
                       }
                     >
                       {prompt.text}
@@ -635,7 +767,7 @@ export function JournalView({
               {selectedPrompt !== null ? (
                 <p
                   data-testid="journal-prompt-hint"
-                  className="rounded-lg bg-stone-100 px-3 py-2 text-xs italic text-stone-600"
+                  className="rounded-lg bg-surface-muted px-3 py-2 text-sm italic text-ink-muted"
                 >
                   {t("journal.promptHint", { hint: selectedPrompt.hint })}
                 </p>
@@ -656,7 +788,7 @@ export function JournalView({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("journal.titlePlaceholder")}
-              className="w-full border-0 border-b border-stone-200 bg-transparent pb-2 text-lg font-medium text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none"
+              className="w-full border-0 border-b border-border bg-transparent pb-2 text-lg font-medium text-ink placeholder:text-ink-muted focus:border-accent-bg"
             />
           </div>
 
@@ -673,21 +805,21 @@ export function JournalView({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={t("journal.editorPlaceholder")}
-              className="w-full resize-y rounded-lg border border-stone-200 bg-stone-50/40 p-3.5 text-sm leading-relaxed text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:bg-white focus:outline-none"
+              className="w-full resize-y rounded-lg border border-border bg-bg p-3.5 text-base leading-relaxed text-ink placeholder:text-ink-muted focus:border-accent-bg"
             />
           </div>
 
           {/* Footer controls: emotion toggle, Save now, Delete with confirmation */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 pt-3">
-            <label className="flex items-center gap-2 text-xs text-stone-700">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+            <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
                 data-testid="journal-store-emotions-toggle"
                 checked={storeEmotions}
                 onChange={(e) => setStoreEmotions(e.target.checked)}
-                className="h-4 w-4 rounded border-stone-300 text-brand-700 focus:ring-brand-600"
+                className="h-4 w-4 rounded border-border-strong text-accent"
               />
-              <span>Save numeric emotion &amp; sentiment scores (in the clear)</span>
+              <span>{t("journal.storeEmotionsLabel")}</span>
             </label>
 
             <div className="flex items-center gap-2">
@@ -696,7 +828,7 @@ export function JournalView({
                   type="button"
                   data-testid="journal-delete-button"
                   onClick={() => setConfirmingDelete(true)}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                  className="rounded-lg border border-danger bg-surface min-h-11 px-3 py-1.5 text-sm font-medium text-danger"
                 >
                   {t("journal.deleteEntry")}
                 </button>
@@ -709,7 +841,7 @@ export function JournalView({
                 onClick={() => {
                   void performSave();
                 }}
-                className="rounded-lg bg-brand-700 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-accent-bg min-h-11 px-3.5 py-1.5 text-sm font-medium text-accent-fg disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saveState === "saving" ? t("journal.statusSaving") : t("journal.saveNow")}
               </button>
@@ -722,17 +854,15 @@ export function JournalView({
               role="alertdialog"
               aria-label={t("journal.deleteConfirmLabel")}
               data-testid="journal-delete-confirm-dialog"
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger bg-danger-soft px-4 py-3 text-sm text-danger"
             >
-              <span>
-                {t("journal.deleteAsk")}
-              </span>
+              <span>{t("journal.deleteAsk")}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   data-testid="journal-delete-cancel"
                   onClick={() => setConfirmingDelete(false)}
-                  className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 hover:bg-stone-50"
+                  className="min-h-11 rounded-md border border-border-strong bg-surface px-3 py-1 font-medium text-ink hover:bg-surface-muted"
                 >
                   {t("journal.deleteCancel")}
                 </button>
@@ -742,7 +872,7 @@ export function JournalView({
                   onClick={() => {
                     void handleConfirmDelete();
                   }}
-                  className="rounded-md bg-red-700 px-2.5 py-1 font-medium text-white hover:bg-red-800"
+                  className="min-h-11 rounded-md bg-danger-bg px-3 py-1 font-medium text-danger-fg"
                 >
                   {t("journal.deleteConfirm")}
                 </button>
@@ -754,24 +884,24 @@ export function JournalView({
           {exportedMarkdown !== null ? (
             <div
               data-testid="journal-export-preview"
-              className="space-y-2 rounded-lg border border-stone-200 bg-stone-50 p-3"
+              className="space-y-2 rounded-lg border border-border bg-surface-muted p-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-stone-800">
+                <span className="text-sm font-semibold text-ink">
                   {t("journal.exportTitle", { filename: exportedFilename })}
                 </span>
                 <button
                   type="button"
                   data-testid="journal-export-close"
                   onClick={() => setExportedMarkdown(null)}
-                  className="text-xs text-stone-500 hover:text-stone-800"
+                  className="min-h-11 px-2 text-sm text-ink-muted"
                 >
                   {t("journal.exportClose")}
                 </button>
               </div>
               <pre
                 data-testid="journal-export-output"
-                className="max-h-48 overflow-auto whitespace-pre-wrap rounded border border-stone-200 bg-white p-2.5 font-mono text-xs text-stone-800"
+                className="max-h-48 overflow-auto whitespace-pre-wrap rounded border border-border bg-surface p-2.5 font-mono text-sm text-ink"
               >
                 {exportedMarkdown}
               </pre>
@@ -784,18 +914,18 @@ export function JournalView({
           <aside
             aria-label={t("journal.entriesLabel")}
             data-testid="journal-sidebar"
-            className="space-y-4"
+            className="min-w-0 flex-[1_1_16rem] space-y-4 lg:max-w-[20rem]"
           >
             <div className="card space-y-3 p-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-stone-900">
-                  Your entries ({totalEntries})
+                <h2 className="text-sm font-semibold text-ink">
+                  {t("journal.entriesHeading", { count: totalEntries })}
                 </h2>
               </div>
 
               <div>
                 <label htmlFor="journal-search-input" className="sr-only">
-                  Search entries in browser
+                  {t("journal.searchLabel")}
                 </label>
                 <input
                   id="journal-search-input"
@@ -804,23 +934,21 @@ export function JournalView({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t("journal.searchPlaceholder")}
-                  className="w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none"
+                  className="w-full rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent-bg"
                 />
-                <p className="mt-1 text-[11px] text-stone-500">
-                  Searched locally in your browser — server-side search on ciphertext is impossible.
-                </p>
+                <p className="mt-1 text-sm text-ink-muted">{t("journal.searchLocalNote")}</p>
               </div>
 
               {loading ? (
-                <p className="py-4 text-center text-xs text-stone-500">{t("journal.decryptingEntries")}</p>
+                <p className="py-4 text-center text-sm text-ink-muted">
+                  {t("journal.decryptingEntries")}
+                </p>
               ) : filteredEntries.length === 0 ? (
                 <p
                   data-testid="journal-empty-state"
-                  className="py-4 text-center text-xs text-stone-500"
+                  className="py-4 text-center text-sm text-ink-muted"
                 >
-                  {searchQuery.trim() !== ""
-                    ? t("journal.searchEmpty")
-                    : t("journal.entriesEmpty")}
+                  {searchQuery.trim() !== "" ? t("journal.searchEmpty") : t("journal.entriesEmpty")}
                 </p>
               ) : (
                 <ul className="space-y-2" data-testid="journal-entry-list">
@@ -836,27 +964,27 @@ export function JournalView({
                           onClick={() => selectEntryIntoEditor(item)}
                           className={
                             isCurrent
-                              ? "w-full rounded-lg border border-brand-600 bg-brand-50/70 p-3 text-left"
-                              : "w-full rounded-lg border border-stone-200 bg-white p-3 text-left hover:border-stone-300 hover:bg-stone-50"
+                              ? "w-full rounded-lg border border-accent-bg bg-accent-soft p-3 text-left"
+                              : "w-full rounded-lg border border-border bg-surface p-3 text-left hover:border-border-strong hover:bg-surface-muted"
                           }
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-xs font-semibold text-stone-900">
+                            <span className="truncate text-sm font-semibold text-ink">
                               {displayTitle}
                             </span>
-                            <span className="shrink-0 text-[11px] text-stone-500">
-                              {item.word_count}w
+                            <span className="shrink-0 text-sm text-ink-muted">
+                              {t("journal.wordsShort", { count: item.word_count })}
                             </span>
                           </div>
-                          <p className="mt-1 line-clamp-2 text-xs text-stone-600">{item.body}</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-stone-500">
+                          <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{item.body}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
                             {item.template ? (
-                              <span className="rounded bg-stone-100 px-1.5 py-0.5 font-medium text-stone-700">
+                              <span className="rounded bg-surface-muted px-1.5 py-0.5 font-medium text-ink">
                                 {item.template}
                               </span>
                             ) : null}
                             {item.metadata?.primary_emotion ? (
-                              <span className="rounded bg-brand-50 px-1.5 py-0.5 font-medium text-brand-800">
+                              <span className="rounded bg-accent-soft px-1.5 py-0.5 font-medium text-accent">
                                 {item.metadata.primary_emotion}
                               </span>
                             ) : null}
@@ -875,9 +1003,9 @@ export function JournalView({
                   onClick={() => {
                     void handleLoadMore();
                   }}
-                  className="w-full rounded-lg border border-stone-300 bg-white py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                  className="min-h-11 w-full rounded-lg border border-border-strong bg-surface py-1.5 text-sm font-medium text-ink hover:bg-surface-muted"
                 >
-                  Load more entries
+                  {t("journal.loadMore")}
                 </button>
               ) : null}
             </div>

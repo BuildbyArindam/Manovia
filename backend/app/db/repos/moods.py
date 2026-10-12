@@ -47,6 +47,7 @@ class MoodRepository:
         factors: dict[str, object] | None = None,
         note: str | None = None,
         created_at: datetime | None = None,
+        client_id: uuid.UUID | None = None,
     ) -> MoodEntry:
         """Store one check-in; ``valence``/``energy`` are 1-5 (CHECK-enforced).
 
@@ -54,6 +55,11 @@ class MoodRepository:
         same clock reading it used to decide what "today" is — otherwise a request
         that crosses local midnight could answer with a streak that does not
         include the entry it just wrote. Left unset, the column default applies.
+
+        ``client_id`` is the idempotency key of a check-in queued offline (Day
+        25). ``(user_id, client_id)`` is unique, so a second insert with the same
+        key raises ``IntegrityError`` — the caller reads the winner with
+        :meth:`get_by_client_id` instead of storing a duplicate.
         """
         entry = MoodEntry(
             user_id=user_id,
@@ -62,6 +68,7 @@ class MoodRepository:
             emotions=list(emotions),
             factors=dict(factors or {}),
             note_encrypted=encrypt_optional(note),
+            client_id=client_id,
         )
         if created_at is not None:
             entry.created_at = created_at
@@ -72,6 +79,18 @@ class MoodRepository:
     async def get(self, entry_id: uuid.UUID) -> MoodEntry | None:
         """Fetch one check-in by id."""
         return await self._session.get(MoodEntry, entry_id)
+
+    async def get_by_client_id(self, user_id: uuid.UUID, client_id: uuid.UUID) -> MoodEntry | None:
+        """The check-in this user already stored under ``client_id``, if any.
+
+        Scoped to the user on purpose: a client id is only unique per person, and
+        a guessed id belonging to somebody else must read as "not stored yet",
+        never as their check-in.
+        """
+        stmt = select(MoodEntry).where(
+            MoodEntry.user_id == user_id, MoodEntry.client_id == client_id
+        )
+        return (await self._session.execute(stmt)).scalars().first()
 
     async def list_for_user(
         self,

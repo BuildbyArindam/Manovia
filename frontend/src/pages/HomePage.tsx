@@ -1,5 +1,5 @@
 /**
- * The home screen: a greeting, today's plan, a ten-second check-in, and the
+ * The home screen: a greeting, a ten-second check-in, today's plan, and the
  * two doors people come here for — the chat and the help line.
  *
  * The greeting is a time of day and nothing else: the app does not know a
@@ -33,7 +33,7 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
   const queryClient = useQueryClient();
   const [valence, setValence] = useState<number | null>(null);
   const [energy, setEnergy] = useState(3);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<"saved" | "queued" | null>(null);
 
   const checkIn = useMoodCheckIn(client);
 
@@ -42,8 +42,9 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
     if (valence === null || checkIn.isPending) {
       return;
     }
-    await checkIn.mutateAsync({ valence, energy, emotions: [], factors: [] });
-    setSaved(true);
+    const result = await checkIn.mutateAsync({ valence, energy, emotions: [], factors: [] });
+    // Day 25: offline, the check-in is queued on this device and sent later.
+    setSaved(result.kind);
     setValence(null);
     setEnergy(3);
     // A new check-in changes what tomorrow's plan can say; the day's plan is
@@ -55,8 +56,6 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
     <div className="space-y-6" data-testid="home-page">
       <PageHeader title={greeting.headline} lede={greeting.qualifier} />
 
-      <PlanCard client={client} />
-
       <section
         aria-labelledby="quick-checkin-heading"
         className="rounded-2xl border border-border bg-surface p-6 shadow-soft"
@@ -65,15 +64,15 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         <h2 id="quick-checkin-heading" className="text-lg">
           {t("home.quickCheckInHeading")}
         </h2>
-        {saved ? (
+        {saved !== null ? (
           <div className="mt-4">
             <p className="text-sm text-ink" role="status">
-              {t("home.quickSaved")}
+              {saved === "queued" ? t("home.quickQueued") : t("home.quickSaved")}
             </p>
             <button
               type="button"
-              className="mt-3 rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
-              onClick={() => setSaved(false)}
+              className="mt-3 min-h-11 rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
+              onClick={() => setSaved(null)}
             >
               {t("home.checkInAgain")}
             </button>
@@ -84,7 +83,7 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
               value={valence}
               onChange={(value) => {
                 setValence(value);
-                setSaved(false);
+                setSaved(null);
               }}
               legend={t("home.valenceLegend")}
               hint={t("home.valenceHint")}
@@ -118,6 +117,15 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         )}
       </section>
 
+      {/*
+        Day 25: the plan comes after the check-in. The check-in needs no data
+        and paints at once; the plan arrives from the API and grows when it
+        does, and anything below it moves. With the plan first, the check-in
+        jumped down under a reader's thumb as the page settled (Lighthouse
+        measured it); now only content below the fold moves.
+      */}
+      <PlanCard client={client} />
+
       <section
         aria-labelledby="home-links-heading"
         className="rounded-2xl border border-border bg-surface p-6 shadow-soft"
@@ -128,14 +136,14 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
             to="/chat"
-            className="rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg"
+            className="inline-flex min-h-11 items-center rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg"
             data-testid="home-chat-link"
           >
             {t("home.talkItThrough")}
           </Link>
           <Link
             to="/mood"
-            className="rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
+            className="inline-flex min-h-11 items-center rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
           >
             {t("home.fullMoodCheckIn")}
           </Link>

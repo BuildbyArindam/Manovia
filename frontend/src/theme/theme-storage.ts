@@ -19,3 +19,11 @@
 
 /** `localStorage` key holding `"light" | "dark"` (absent means "follow system"). */
 export const THEME_STORAGE_KEY = "manovia.theme";
+
+/**
+ * Day 25: `localStorage` key holding `"more" | "standard"` for the contrast
+ * choice (absent means "match my device", i.e. `prefers-contrast: more`). Same
+ * rule as the palette key: one definition, read by `first-paint` and written by
+ * `ThemeProvider`.
+ */
+export const CONTRAST_STORAGE_KEY = "manovia.contrast";

@@ -43,13 +43,13 @@ export function ReminderPreference(): ReactElement {
           }}
           className="h-6 w-6 accent-accent"
         />
-        <label htmlFor="mood-reminder-enabled" className="text-base">
+        <label htmlFor="mood-reminder-enabled" className="inline-flex min-h-11 items-center text-base">
           {MOOD_COPY.reminderToggle}
         </label>
       </div>
 
       <div className="mt-3 flex items-center gap-3">
-        <label htmlFor="mood-reminder-time" className="text-base">
+        <label htmlFor="mood-reminder-time" className="inline-flex min-h-11 items-center text-base">
           {MOOD_COPY.reminderTimeLabel}
         </label>
         <input

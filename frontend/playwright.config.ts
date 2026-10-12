@@ -31,6 +31,9 @@ if (!Array.isArray(chromiumArgs) || !chromiumArgs.every((arg) => typeof arg === 
 
 export default defineConfig({
   testDir: "./e2e",
+  // The Day 25 specs need the production build (service worker, real bundle)
+  // and run under playwright.prod.config.ts — never against the dev server.
+  testIgnore: ["day25/**"],
   /** One backend and one in-memory ephemeral store: serial keeps runs honest. */
   fullyParallel: false,
   workers: 1,

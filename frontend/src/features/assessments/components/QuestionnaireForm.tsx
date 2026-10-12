@@ -142,7 +142,7 @@ export function QuestionnaireForm({
       <button
         type="submit"
         disabled={busy}
-        className="mt-4 inline-flex min-h-12 items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-fg disabled:opacity-60"
+        className="mt-4 inline-flex min-h-12 items-center justify-center rounded-xl bg-accent-bg px-5 py-3 font-semibold text-accent-fg disabled:opacity-60"
       >
         {busy ? "Saving…" : "See my result"}
       </button>

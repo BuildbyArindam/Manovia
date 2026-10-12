@@ -20,7 +20,7 @@
  *   than letting a person believe a switch can do something it cannot.
  */
 
-import { useState, type ReactElement } from "react";
+import { useId, useState, type ReactElement } from "react";
 
 import { CHAT_COPY } from "./copy";
 import { CHAT_LOCALES, LOCALE_LABELS, type ChatLocale } from "./types";
@@ -50,6 +50,12 @@ export function ChatControls({
   onLocaleChange,
 }: ChatControlsProps): ReactElement {
   const [confirmingClear, setConfirmingClear] = useState(false);
+  // The header has a "Language" select too (the interface language). This one
+  // only changes the pre-written safety copy, so its explanation is attached
+  // as its description: a screen reader must not hear two identical
+  // "Language" controls with nothing to tell them apart (WCAG 2.4.6, found in
+  // the Day 25 keyboard walkthrough).
+  const languageHintId = useId();
 
   return (
     <section
@@ -138,6 +144,7 @@ export function ChatControls({
           <span className="font-semibold">{CHAT_COPY.languageLabel}</span>
           <select
             data-testid="language-select"
+            aria-describedby={languageHintId}
             value={locale}
             onChange={(event) => {
               const next = event.target.value as ChatLocale;
@@ -156,7 +163,7 @@ export function ChatControls({
         </label>
       </div>
 
-      <p className="mt-3 text-sm text-ink-muted">
+      <p id={languageHintId} className="mt-3 text-sm text-ink-muted">
         Language changes the written crisis and check-in messages. Manovia replies in the language
         you write in.
       </p>

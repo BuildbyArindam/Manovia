@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/vanillajs" />
 
 interface ImportMetaEnv {
   /** Where the API lives. Defaults to `/api/v1`, which the dev server proxies. */

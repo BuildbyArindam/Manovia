@@ -17,9 +17,27 @@ A privacy-first, safety-first mental wellbeing self-help companion—not therapy
 - **CBT thought record** — a seven-step, owner-only encrypted wizard with per-step safety screening and a closed-set thinking-trap helper ([ADR 0019](docs/adr/0019-cbt-thought-record.md)).
 - **PHQ-9 & GAD-7 screenings** — the official instrument wording and published scoring, with support options shown before any score when PHQ-9 item 9 is positive ([ADR 0020](docs/adr/0020-phq-9-and-gad-7-screenings.md)).
 - **Daily plan** — a transparent, rule-based planner that suggests at most three things a day, each with a "why this?" explanation, honours quiet hours, and reduces to support-only after a positive item 9 ([ADR 0021](docs/adr/0021-daily-plan-and-week-3-review.md)).
+- **Works offline, for everyone** — an installable app (PWA) in which "Need help now?" and the breathing exercises work with no signal; check-ins made offline wait on the device and are sent once you're back online with Manovia open; unsaved journal words survive a dropped connection. Built to WCAG 2.2 AA — keyboard-only use, screen-reader announcements, reflow at 200 % and 400 % zoom, 44 px targets, reduced motion and a high-contrast mode — with an in-app accessibility statement (`/accessibility`), and kept light for low-end phones on slow networks by bundle and Lighthouse budgets that fail CI ([ADR 0025](docs/adr/0025-pwa-accessibility-low-bandwidth.md)).
 - **Foundations** — guest auth with consent gating, structured logging with log redaction, security headers, field-level encryption, and a React frontend with design tokens, two navigations, an onboarding gate, and a crisis helpline dialog.
 
 Manovia is a self-help companion, not therapy or diagnosis. See [docs/architecture.md](docs/architecture.md) for how a message travels, and [docs/model-card.md](docs/model-card.md) for the safety model's intended use and limits.
+
+## Screenshots
+
+Captured from the production build in Chromium with a fresh guest account and
+synthetic content only (Day 25). Regenerate with the command in
+[docs/assets/README.md](docs/assets/README.md).
+
+| Home on a 360 × 640 phone | "Need help now?" with no connection | A check-in saved offline |
+| --- | --- | --- |
+| <img src="docs/assets/day25-home-mobile-360x640.png" width="240" alt="Manovia home screen on a small phone: a greeting, then a quick check-in with five face buttons from Very low to Very good, and the bottom navigation."> | <img src="docs/assets/day25-offline-help-mobile-360x640.png" width="240" alt="The Need help now dialog while offline: a note says these are the helplines saved on this device the last time you were online, followed by the first helpline entry."> | <img src="docs/assets/day25-offline-checkin-mobile-360x640.png" width="240" alt="The confirmation after checking in offline: saved on this device, it will be sent by itself the next time Manovia is open and you're online; the note stays on this device until then; a Need help now button."> |
+
+| Settings in high contrast | Exercises in dark high contrast | The accessibility statement |
+| --- | --- | --- |
+| <img src="docs/assets/day25-settings-high-contrast-desktop-1280x800.png" width="320" alt="Settings at desktop width with High contrast selected: palette and contrast choices as large radio cards, and a line saying text pairs are at least 7:1."> | <img src="docs/assets/day25-exercises-dark-high-contrast-desktop-1280x800.png" width="320" alt="The Exercises page in the dark high-contrast palette: a note that exercises work offline, the optional suggestions form, and exercise cards with large Try buttons."> | <img src="docs/assets/day25-accessibility-statement-desktop-1280x800.png" width="320" alt="The Accessibility page: what Manovia aims for (WCAG 2.2 AA and beyond) and a list of what it does, such as keyboard use, landmarks, labelled forms and 44 pixel targets."> |
+
+The Day 12 chat screenshots (light, dark and the crisis card, at both sizes)
+are in [docs/assets](docs/assets/README.md).
 
 ## Architecture
 
@@ -76,7 +94,11 @@ npm run dev
 | `make seed`                   | Create the demo user and its rows                   |
 | `make eval`                   | Run the Day 9 safety evaluation (`evals/run_safety_eval.py`) |
 
-The frontend's own commands live in [frontend/README.md](frontend/README.md).
+The frontend's own commands live in [frontend/README.md](frontend/README.md),
+including the Day 25 production-build checks: `npm run budget` (bundle
+budgets), `npm run test:e2e:prod` (axe, keyboard, zoom, offline and
+installability in a real browser) and `npm run lighthouse` (mobile Lighthouse
+with budgets). CI runs all three in `.github/workflows/a11y-lighthouse.yml`.
 
 ## Safety
 
@@ -91,4 +113,5 @@ Configuration comes only from environment variables (see `.env.example`); secret
 - **Week 1** — repository scaffolding, backend skeleton, data layer, auth with consent, frontend skeleton, NLP service, CI and Docker stack.
 - **Week 2** — crisis rules before any model call, the safety ML classifier and first eval set, the LLM provider layer with PII redaction, the chat orchestrator and chat UI, knowledge base and retrieval, output guard and encrypted conversation memory.
 - **Week 3** — mood check-ins, encrypted journal, guided exercises, the CBT thought record, PHQ-9/GAD-7 screenings, and the daily plan with a Week-3 review.
+- **Week 4 (in progress)** — privacy controls with export and real deletion, English/Hindi/Bengali, the evaluation harness, and offline support, accessibility and low-bandwidth performance (PWA).
 - **Next** — deployment workflows, clinician and native-speaker review of crisis content and safe replies (Hindi/Bengali first), and continued hardening of the safety surfaces.

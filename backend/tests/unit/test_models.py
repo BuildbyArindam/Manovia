@@ -113,6 +113,9 @@ def test_mood_and_journal_columns_match_the_spec() -> None:
         "emotions",
         "factors",
         "note_encrypted",
+        # Day 25: the device's idempotency key for a check-in queued offline —
+        # a random UUID, never content; unique per user (ADR 0025).
+        "client_id",
         "created_at",
     }
     assert _columns(JournalEntry) == {

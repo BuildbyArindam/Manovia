@@ -25,7 +25,18 @@ export function DataTableView({ table, id }: DataTableViewProps): ReactElement {
   const noteId = useId();
 
   return (
-    <div className="overflow-x-auto" data-testid="insight-data-table">
+    // Day 25: focusable and named, so a keyboard user can scroll a table that
+    // is wider than the screen (axe: scrollable-region-focusable). `relative`
+    // makes this the containing block of the cells' sr-only spans: without it
+    // those absolutely positioned spans escaped the scroll box and widened the
+    // whole page at 400% zoom.
+    <div
+      className="relative overflow-x-auto"
+      data-testid="insight-data-table"
+      tabIndex={0}
+      role="group"
+      aria-label={table.caption}
+    >
       <table
         id={id}
         aria-describedby={table.note === undefined ? undefined : noteId}
@@ -70,7 +81,9 @@ export function DataTableView({ table, id }: DataTableViewProps): ReactElement {
                       }`}
                     >
                       {value === null ? <span aria-hidden="true">—</span> : value}
-                      {value === null ? <span className="sr-only">{t("insights.noData")}</span> : null}
+                      {value === null ? (
+                        <span className="sr-only">{t("insights.noData")}</span>
+                      ) : null}
                     </td>
                   );
                 })}

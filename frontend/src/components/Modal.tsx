@@ -7,6 +7,13 @@
  * - Tab and Shift+Tab cycle inside the dialog (a real trap, not a suggestion).
  * - Escape closes.
  * - the page behind does not scroll while the dialog is open.
+ * - Day 25: it is rendered into `<body>` through a portal. Opened from the
+ *   sticky header, it used to live inside the header's stacking context
+ *   (`z-30`), so its own `z-50` only counted inside the header and the mobile
+ *   bottom navigation (also `z-30`, later in the page) was painted *over* the
+ *   lower part of the help dialog — covering helplines a reader may need to
+ *   reach (WCAG 2.4.11). A portal puts the dialog above everything, wherever
+ *   it was opened from.
  */
 
 import {
@@ -18,6 +25,8 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+
+import { createPortal } from "react-dom";
 
 import { getFocusableElements } from "@/lib/focus";
 
@@ -103,7 +112,7 @@ export function Modal({
     [onClose],
   );
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       onMouseDown={handleOverlayMouseDown}
@@ -121,6 +130,7 @@ export function Modal({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

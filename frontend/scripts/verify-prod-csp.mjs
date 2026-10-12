@@ -45,7 +45,9 @@ const HEADERS_FILE = join(repoRoot, "docker", "security-headers.conf");
 const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000";
 const PORT = Number(process.env.PORT ?? 4173);
 
-const ROUTES = ["/", "/chat", "/journal", "/mood", "/settings"];
+// Day 25 added the exercises and accessibility routes, and the service worker
+// check after the walk (worker-src falls back to script-src 'self').
+const ROUTES = ["/", "/chat", "/journal", "/mood", "/exercises", "/settings", "/accessibility"];
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -53,6 +55,7 @@ const MIME = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json",
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -204,6 +207,30 @@ async function main() {
     );
     for (const item of blocked) console.log(`    - ${item}`);
   }
+
+  // Day 25: the service worker must register and take control under the
+  // production policy too (its script is same-origin, so `script-src 'self'`
+  // allows it; an inline registration snippet would have been refused).
+  const worker = await page.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) return { supported: false };
+    const ready = await Promise.race([
+      navigator.serviceWorker.ready.then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 15_000)),
+    ]);
+    for (let i = 0; i < 30 && navigator.serviceWorker.controller === null; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    const registration = await navigator.serviceWorker.getRegistration();
+    return {
+      supported: true,
+      ready,
+      controlled: navigator.serviceWorker.controller !== null,
+      scope: registration?.scope ?? null,
+    };
+  });
+  const workerOk = worker.supported && worker.ready && worker.controlled;
+  if (!workerOk) failed = true;
+  console.log(`${workerOk ? "✓" : "✗"} service worker: ${JSON.stringify(worker)}`);
 
   await browser.close();
   server.close();

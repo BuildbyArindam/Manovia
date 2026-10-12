@@ -86,7 +86,9 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
     return (
       <section
         aria-labelledby="plan-heading"
-        className="rounded-2xl border border-border bg-surface p-6 shadow-soft"
+        // Day 25: about the height of a one-item plan (a new reader's), so the
+        // page does not jump when it arrives.
+        className="min-h-[16rem] rounded-2xl border border-border bg-surface p-6 shadow-soft"
         data-testid="plan-card"
       >
         <h2 id="plan-heading" className="text-lg">
@@ -172,7 +174,7 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
                       {link !== null && (
                         <Link
                           to={link.to}
-                          className="rounded-xl border border-border-strong px-3 py-2 text-sm font-semibold text-ink"
+                          className="inline-flex min-h-11 items-center rounded-xl border border-border-strong px-3 py-2 text-sm font-semibold text-ink"
                         >
                           {link.label}
                         </Link>

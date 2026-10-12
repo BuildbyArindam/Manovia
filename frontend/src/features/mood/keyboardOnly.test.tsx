@@ -89,7 +89,8 @@ describe("a full check-in with no mouse", () => {
     expect(save).toHaveFocus();
     await user.keyboard("{Enter}");
 
-    // The request carries exactly what was chosen, plus the device timezone.
+    // The request carries exactly what was chosen, plus the device timezone
+    // and (Day 25) a random idempotency key, so a retried send stores once.
     await waitFor(() => {
       expect(fake.sent).toHaveLength(1);
     });
@@ -102,6 +103,7 @@ describe("a full check-in with no mouse", () => {
       factors: ["sleep"],
       note: "Slept badly, again.",
       tz: expect.any(String),
+      client_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
 
     // The confirmation is announced, focused, and offers exactly one small thing.

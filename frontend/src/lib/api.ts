@@ -60,6 +60,33 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+/**
+ * The request never reached the server, or its answer never came back (Day 25).
+ *
+ * Thrown instead of an {@link ApiError} when the session could not be checked
+ * because the *network* failed — so a caller can tell "you are offline" apart
+ * from "you are signed out", which call for opposite responses: keep the work
+ * and retry later, versus ask the person to sign in again.
+ */
+export class NetworkUnavailableError extends Error {
+  constructor(message = "The network is unavailable.") {
+    super(message);
+    this.name = "NetworkUnavailableError";
+  }
+}
+
+/**
+ * True for any failure that means "the network did not answer": a rejected
+ * `fetch` (a `TypeError` in every browser) or a {@link NetworkUnavailableError}.
+ * An HTTP error response — the server answered — is never a network failure.
+ */
+export function isNetworkFailure(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return false;
+  }
+  return error instanceof NetworkUnavailableError || error instanceof TypeError;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -232,6 +259,8 @@ export class ApiClient {
   private readonly onAuthExpired: ((error: ApiError) => void) | undefined;
   private readonly refreshSkewMs: number;
   private refreshInFlight: Promise<boolean> | null = null;
+  /** True when the last refresh attempt failed because the network did. */
+  private lastRefreshWasNetworkFailure = false;
 
   constructor(options: ApiClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
@@ -298,6 +327,8 @@ export class ApiClient {
           headers.Authorization = `Bearer ${retried.accessToken}`;
         }
         response = await this.fetchImpl(this.url(path), init);
+      } else if (this.lastRefreshWasNetworkFailure) {
+        throw new NetworkUnavailableError();
       }
     }
     if (!response.ok) {
@@ -347,6 +378,8 @@ export class ApiClient {
           headers,
           signal: options.signal,
         });
+      } else if (this.lastRefreshWasNetworkFailure) {
+        throw new NetworkUnavailableError();
       }
     }
     if (!response.ok) {
@@ -405,12 +438,22 @@ export class ApiClient {
       this.tokens.clear();
       return false;
     }
+    this.lastRefreshWasNetworkFailure = false;
+    let response: Response;
     try {
-      const response = await this.fetchImpl(this.url("/auth/refresh"), {
+      response = await this.fetchImpl(this.url("/auth/refresh"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: tokens.refreshToken }),
       });
+    } catch {
+      // Day 25: the network failed, not the session. Nothing here says the
+      // refresh token is invalid, so it is kept: clearing it would sign a guest
+      // out of an account they have no password for, just for being offline.
+      this.lastRefreshWasNetworkFailure = true;
+      return false;
+    }
+    try {
       if (!response.ok) {
         // Expired, revoked, or reused: the family is gone, so drop the session.
         this.tokens.clear();
@@ -425,6 +468,7 @@ export class ApiClient {
       this.tokens.write(rotated);
       return true;
     } catch {
+      // The server answered with something that is not a session.
       this.tokens.clear();
       return false;
     }
@@ -458,6 +502,10 @@ export class ApiClient {
       if (refreshed) {
         // Replay the original request exactly once, with the new token.
         return this.send<T>(path, init, false);
+      }
+      if (this.lastRefreshWasNetworkFailure) {
+        // The session could not be checked, which is not the same as expired.
+        throw new NetworkUnavailableError();
       }
     }
 

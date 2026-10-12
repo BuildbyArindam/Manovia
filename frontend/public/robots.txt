@@ -1,0 +1,5 @@
+# Manovia is a single-page app: the only public page is the introduction, and
+# everything personal is behind sign-in and never rendered on the server.
+User-agent: *
+Allow: /
+Disallow: /api/

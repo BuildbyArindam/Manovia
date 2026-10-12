@@ -4,7 +4,8 @@
     "skipLink": "Skip to main content",
     "loading": "Loading…",
     "footerDisclaimer": "Manovia is a self-help companion — not therapy, not a diagnosis, and not a crisis service.",
-    "footerPrivacy": "Your entries are encrypted at rest. Nothing here is sold, shared, or used to train anyone else’s model."
+    "footerPrivacy": "Your entries are encrypted at rest. Nothing here is sold, shared, or used to train anyone else’s model.",
+    "footerAccessibility": "Accessibility statement"
   },
   "nav": {
     "primary": "Primary",
@@ -57,7 +58,9 @@
       "errorBody": "Please call your local emergency number, or a local helpline, right now.",
       "retry": "Try again",
       "retrying": "Trying again…",
-      "regionFallback": "We could not match the region you asked for, so these are international lines."
+      "regionFallback": "We could not match the region you asked for, so these are international lines.",
+      "offlineNote": "You're offline. These are the helplines saved on this device the last time you were online.",
+      "offlineErrorTitle": "You're offline, and the helplines haven't been saved on this device yet."
     }
   },
   "home": {
@@ -80,7 +83,8 @@
     "checkInError": "The check-in could not be saved just now. Please try again.",
     "whereNext": "Where to next?",
     "talkItThrough": "Talk it through",
-    "fullMoodCheckIn": "Full mood check-in"
+    "fullMoodCheckIn": "Full mood check-in",
+    "quickQueued": "Saved on this device. It will be sent once you're back online with Manovia open."
   },
   "chat": {
     "heading": "Chat",
@@ -271,7 +275,27 @@
       "todayFreeze": "A missed day will not reset this."
     },
     "pluralDays": "{{count}} days",
-    "pluralOneDay": "1 day"
+    "pluralOneDay": "1 day",
+    "offlineHint": "You're offline. This check-in will be kept on this device and sent once you're back online with Manovia open.",
+    "queuedHeading": "Saved on this device",
+    "queuedBody": "You're offline, so this check-in is waiting on this device. It will be sent by itself the next time Manovia is open and you're online — there's nothing else to do.",
+    "queuedPrivacy": "Until it's sent, it stays on this device only (your note too), and it won't show in your history yet.",
+    "queuedHelp": "If you'd like to talk to someone now, the helplines are saved on this device and work offline.",
+    "pendingHeading": "Waiting to be sent",
+    "pendingOne": "1 check-in is waiting on this device.",
+    "pendingMany": "{{count}} check-ins are waiting on this device.",
+    "pendingOffline": "They'll be sent once you're back online with Manovia open.",
+    "pendingSendNow": "Send now",
+    "pendingSending": "Sending…",
+    "failedLine": "Check-in from {{when}} couldn't be sent.",
+    "failedTooOld": "It's more than 7 days old.",
+    "failedTime": "Its time wasn't accepted — it may be over 7 days old, or this device's clock may be wrong.",
+    "failedAccount": "It was made under a different account on this device.",
+    "failedConsent": "Manovia needs your agreements again before it can save check-ins.",
+    "failedSession": "Your session ended. Sign in again to send it.",
+    "failedRejected": "The server couldn't accept it as it is.",
+    "failedDiscard": "Discard",
+    "failedDiscardLabel": "Discard the check-in from {{when}}"
   },
   "journal": {
     "eyebrow": "Encrypted reflections",
@@ -338,7 +362,19 @@
       "worryScaffoldTitle": "Setting down today's worries",
       "worryScaffoldBody": "What is looping in my head right now:\n- \n\nWhat is actually within my control in the next 24 hours:\n- \n\nWhat I give myself permission to set down until tomorrow:\n- \n"
     },
-    "decryptingEntries": "Decrypting your entries…"
+    "decryptingEntries": "Decrypting your entries…",
+    "statusOfflineDraft": "Offline — kept on this device",
+    "draftLocalNote": "You're offline. What you write is kept on this device only, and saved to your journal when you're back online.",
+    "draftRestoreTitle": "You have an unsaved draft from {{when}}",
+    "draftRestoreBody": "It was kept on this device only. Restore it to keep writing, or discard it.",
+    "draftRestore": "Restore draft",
+    "draftDiscard": "Discard draft",
+    "storeEmotionsLabel": "Save numeric emotion and sentiment scores (stored unencrypted)",
+    "entriesHeading": "Your entries ({{count}})",
+    "searchLabel": "Search your entries on this device",
+    "searchLocalNote": "Searched in your browser only — the server cannot search encrypted text.",
+    "loadMore": "Load more entries",
+    "wordsShort": "{{count}} words"
   },
   "cbt": {
     "ariaLabel": "Thought records",
@@ -401,7 +437,7 @@
     "heading": "Exercises",
     "lede": "One short practice, at your pace. You can pause or stop at any time.",
     "framing": "Self-help, not treatment. Instructions are currently in English. No sound is needed.",
-    "offline": "Once loaded, the exercise runs in this tab without a connection. Reloading offline is not supported.",
+    "offline": "Exercises work offline: once Manovia has loaded on this device, you can open and run them without a connection.",
     "suggestions": "Suggestions, if you want them",
     "suggestionsNote": "Choose how you feel to see rule-based suggestions. This is not a diagnosis, and your choice is not saved.",
     "why": "Why this?",
@@ -477,7 +513,11 @@
     "intensityLow": "Low",
     "intensityModerate": "Moderate",
     "intensityHigh": "High",
-    "suggestionsUnavailable": "Suggestions are not available right now. You can still choose any loaded exercise."
+    "suggestionsUnavailable": "Suggestions are not available right now. You can still choose any loaded exercise.",
+    "retryCatalog": "Retry exercises",
+    "tryExercise": "Try {{title}}",
+    "noAudio": "No audio needed",
+    "selectedAction": "Your small action: {{choice}}"
   },
   "assessments": {
     "title": "Screenings",
@@ -659,7 +699,17 @@
     "restartOnboarding": "Start onboarding again",
     "signOut": "Sign out",
     "signedOutMessage": "You are signed out. Starting again gives you a fresh guest account.",
-    "onboardingRestarted": "Onboarding restarted. You will see the welcome screen again."
+    "onboardingRestarted": "Onboarding restarted. You will see the welcome screen again.",
+    "contrastLegend": "Contrast",
+    "contrastStandard": "Standard",
+    "contrastStandardHint": "The default palette",
+    "contrastMore": "High contrast",
+    "contrastMoreHint": "Stronger text, borders and focus rings",
+    "contrastSystem": "Match my device",
+    "contrastSystemHint": "Follow the system contrast setting",
+    "contrastShowingMore": "High contrast is on: text pairs are at least 7:1.",
+    "contrastShowingStandard": "Standard contrast: text pairs are at least 4.5:1.",
+    "a11yStatementLink": "Read the accessibility statement"
   },
   "privacy": {
     "heading": "Privacy",
@@ -810,5 +860,69 @@
     "heading": "That page does not exist",
     "body": "The link may be old, or the page may have moved. Nothing is broken.",
     "backToChat": "Back to chat"
+  },
+  "pwa": {
+    "offlineTitle": "You're offline.",
+    "offlineBody": "Breathing exercises and the helplines behind “Need help now?” still work. Check-ins are kept on this device and sent once you're back online with Manovia open.",
+    "backOnline": "You're back online.",
+    "updateReady": "A new version of Manovia is ready.",
+    "updateReload": "Reload now",
+    "updateLater": "Later",
+    "syncedOne": "Your check-in from earlier has been sent.",
+    "syncedMany": "{{count}} check-ins from earlier have been sent.",
+    "syncedCrisisHeading": "About a check-in you saved while offline",
+    "syncedCrisisIntro": "Something in a note you wrote earlier sounded really hard. If you'd like to talk to someone, these are for you.",
+    "syncedCrisisClose": "Close",
+    "routeOfflineTitle": "This page needs a connection the first time",
+    "routeOfflineBody": "It hasn't been saved on this device yet. Breathing exercises and the helplines work offline.",
+    "routeErrorTitle": "This page didn't load",
+    "routeErrorBody": "Check your connection and try again.",
+    "routeRetry": "Try again",
+    "installHeading": "Install and offline use",
+    "installIntro": "Manovia can be added to your home screen like an app. It's optional, and it works the same either way.",
+    "installButton": "Install Manovia",
+    "installNotNow": "Not now",
+    "installInstalled": "Manovia is installed on this device.",
+    "installDismissed": "You chose not to install for now. You can still install from your browser's menu.",
+    "installIos": "On iPhone or iPad: tap the Share button, then “Add to Home Screen”.",
+    "installUnsupported": "If your browser supports it, you can add Manovia to your home screen from its menu.",
+    "offlineReady": "Offline use: ready. The helplines and breathing exercises work without a connection.",
+    "offlineNotReady": "Offline use: not ready yet. It turns on by itself once Manovia has loaded online.",
+    "offlineDataNote": "Kept on this device for offline use: the app itself, the helplines and the exercise steps. Your journal, check-ins and chats are not stored for offline reading."
+  },
+  "a11y": {
+    "title": "Accessibility",
+    "lede": "Manovia should work for everyone who needs it — with a keyboard, a screen reader, zoom, or a slow phone on a weak connection.",
+    "aimHeading": "What we aim for",
+    "aimBody": "We aim to meet the Web Content Accessibility Guidelines (WCAG) 2.2 at level AA, and go further where it matters for this app: larger tap targets, offline help, and a high-contrast mode.",
+    "doHeading": "What we do",
+    "do1": "Everything works with a keyboard alone, in a logical order, with a visible focus ring and a “Skip to main content” link.",
+    "do2": "Pages use headings and landmarks (header, navigation, main, footer), and every page has its own title.",
+    "do3": "Every form field has a label; errors are explained in words, linked to the field, and announced.",
+    "do4": "Changes that happen without a page load — a reply arriving, a check-in saved, the connection dropping — are announced to screen readers.",
+    "do5": "Buttons, links and form controls are at least 44 by 44 pixels; helpline links are at least 48 pixels tall.",
+    "do6": "Text follows your browser's font size, and pages reflow without loss at 200% and 400% zoom.",
+    "do7": "Text contrast is at least 4.5:1 in both palettes, and at least 7:1 in high-contrast mode. Windows high contrast is supported.",
+    "do8": "If your device asks for reduced motion, animations are switched off, including the breathing guide.",
+    "do9": "Nothing is timed against you: exercises can be paused at any point, updates wait for you to reload, and nothing signs you out for being slow or offline.",
+    "do10": "The app opens offline once it has loaded, so “Need help now?” and the breathing exercises still work without a signal.",
+    "checkHeading": "How we check",
+    "check1": "Every screen is scanned with axe-core in a real browser, in light, dark and high-contrast modes, on every change to the code.",
+    "check2": "Lighthouse runs on a simulated mid-range phone on a slow 4G connection, with budgets: performance at least 90 and accessibility at least 95.",
+    "check3": "Automated keyboard-only walkthroughs go from onboarding to settings, and layouts are checked at 200% and 400% zoom.",
+    "check4": "An offline test confirms the helplines, a breathing exercise and a check-in all work with the network switched off.",
+    "limitsHeading": "What doesn't work well yet",
+    "limit1": "The Hindi and Bengali text is an AI-assisted draft waiting for review by native speakers.",
+    "limit2": "Charts on the Insights page have a table view, but the charts themselves are not fully described to screen readers.",
+    "limit3": "Exercise instructions, helpline descriptions and the PHQ-9 and GAD-7 screenings are in English only for now.",
+    "limit4": "Chat needs a connection; it does not work offline.",
+    "limit5": "Manovia has not yet been tested with disabled people or audited by an independent accessibility specialist. Automated checks catch many problems, not all of them.",
+    "feedbackHeading": "Tell us",
+    "feedbackBody": "If something doesn't work for you, please tell us what you were trying to do and what happened. We read every report.",
+    "feedbackLink": "Report an accessibility problem on GitHub",
+    "opensInNewTab": "(opens in a new tab)",
+    "feedbackPrivacy": "Reports there are public. Please don't include anything personal, or anything you have written in Manovia.",
+    "reviewed": "This statement was last reviewed on {{date}}.",
+    "backToStart": "Back to Manovia"
   }
 }

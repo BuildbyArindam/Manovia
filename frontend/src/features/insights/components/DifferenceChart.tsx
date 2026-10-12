@@ -66,6 +66,7 @@ export function DifferenceChart({ rows, measureLabel }: DifferenceChartProps): R
   return (
     <div data-testid="difference-chart">
       <BarChart
+        accessibilityLayer={false}
         layout="vertical"
         width={CHART_GEOMETRY.width}
         height={Math.max(140, plotted.length * 56 + 40)}

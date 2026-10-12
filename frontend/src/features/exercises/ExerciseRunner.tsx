@@ -309,7 +309,7 @@ export function ExerciseRunner({
           ) : null}
           {choice !== null ? (
             <p className="rounded-xl bg-accent-soft p-3" data-testid="selected-action">
-              Your small action: {choice}
+              {t("exercises.selectedAction", { choice })}
             </p>
           ) : null}
           <progress

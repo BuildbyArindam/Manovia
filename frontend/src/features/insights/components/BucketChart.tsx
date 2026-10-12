@@ -46,6 +46,7 @@ export function BucketChart({
   return (
     <div data-testid="bucket-chart">
       <BarChart
+        accessibilityLayer={false}
         width={CHART_GEOMETRY.width}
         height={CHART_GEOMETRY.barHeight}
         data={rows.map((row) => ({ ...row }))}

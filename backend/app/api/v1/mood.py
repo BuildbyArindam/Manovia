@@ -45,6 +45,18 @@ the suggested action is a fixed mapping and the safety check is a local rules
 engine. Asking somebody to agree about AI before they may say how they feel
 would be a lie about what happens to their answer.
 
+**Offline check-ins (Day 25).** A check-in made with no connection is queued on
+the device and sent later with two extra fields. ``client_id`` is an idempotency
+key: the same check-in sent twice (a retry after a lost response, two tabs
+syncing at once) is stored once, and the replay answers ``200`` with the stored
+row and ``replayed: true`` — first write wins. ``recorded_at`` is when the person
+actually checked in, so a check-in made on a Tuesday morning offline still counts
+for Tuesday; it is accepted up to :data:`MAX_BACKDATE` in the past, and a value
+slightly in the future (a fast phone clock) is clamped to now. A replay is still
+screened, because the reason it is a replay may be that the first answer — the
+one carrying the helplines — never arrived; it does not write a second safety
+event.
+
 **Privacy of the note.** It is returned to its owner (it is their data) and
 stored encrypted; it is never logged. The streak query reads timestamps only, so
 a note is not even loaded for the calculation that cannot use it.
@@ -59,8 +71,9 @@ from typing import Annotated
 from zoneinfo import ZoneInfo
 
 import structlog
-from fastapi import APIRouter, Depends, Query, Request, status
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from fastapi import APIRouter, Depends, Query, Request, Response, status
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
@@ -75,7 +88,7 @@ from app.content.i18n import RenderedTemplate
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.repos import MoodRepository, SafetyEventRepository
-from app.models.enums import ConsentKind, SafetyEventSource
+from app.models.enums import ConsentKind, RiskLevel, SafetyEventSource
 from app.models.mood import MoodEntry
 from app.models.user import User
 from app.services.mood import (
@@ -111,6 +124,15 @@ ConsentedUser = Annotated[User, Depends(MoodConsentGate)]
 #: 365 rows, so the default is generous and the ceiling is still bounded.
 DEFAULT_PAGE_LIMIT = 100
 MAX_PAGE_LIMIT = 500
+
+#: How far in the past an offline check-in may be dated (Day 25). A week covers
+#: a phone that was offline for days; beyond that a date is more likely a broken
+#: clock than a real check-in, and it would rewrite a streak long settled.
+MAX_BACKDATE = timedelta(days=7)
+
+#: How far in the *future* a device clock may run before ``recorded_at`` is
+#: refused. Within this tolerance the value is clamped to the server's now.
+MAX_CLOCK_SKEW = timedelta(minutes=10)
 
 #: Shown when the safety engine cannot run. The same words the chat pipeline uses
 #: for the same failure, so a person meets one explanation, not two.
@@ -160,6 +182,22 @@ class MoodCheckInIn(BaseModel):
     tz: str | None = Field(default=None, max_length=64)
     #: UI language for the crisis message, if one is needed (``en``, ``hi``, ``bn``).
     locale: str | None = Field(default=None, max_length=16)
+    #: Day 25: idempotency key for a check-in queued offline (a random UUID).
+    client_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Random UUID generated on the device. Sending the same check-in again with the "
+            "same client_id returns the stored check-in instead of creating a second one."
+        ),
+    )
+    #: Day 25: when the person checked in, for a check-in that was queued offline.
+    recorded_at: AwareDatetime | None = Field(
+        default=None,
+        description=(
+            "When the check-in was made, with a UTC offset. Up to 7 days in the past; a "
+            "value a few minutes in the future is treated as now. Omit for 'now'."
+        ),
+    )
 
     @field_validator("emotions")
     @classmethod
@@ -283,6 +321,8 @@ class MoodCheckInOut(BaseModel):
     entry: MoodEntryOut
     streak: StreakOut
     crisis: MoodCrisisOut | None = None
+    #: True when this ``client_id`` was already stored and nothing new was written.
+    replayed: bool = False
 
 
 class MoodListOut(BaseModel):
@@ -323,6 +363,34 @@ def _now() -> datetime:
     arithmetic stops being reproducible.
     """
     return datetime.now(UTC)
+
+
+def _resolve_recorded_at(recorded_at: datetime | None, *, now: datetime) -> datetime:
+    """The instant to store a check-in under, or a 422 that says why not.
+
+    ``None`` is now. A device clock running a little fast is forgiven (clamped to
+    now); anything further in the future, or older than :data:`MAX_BACKDATE`, is
+    refused rather than silently moved, because moving it would file somebody's
+    check-in under a day they did not choose.
+    """
+    if recorded_at is None:
+        return now
+    instant = recorded_at.astimezone(UTC)
+    if instant > now + MAX_CLOCK_SKEW:
+        raise ApiError(
+            422,
+            "invalid_recorded_at",
+            "That check-in time is in the future. Check the date and time on this device.",
+        )
+    if instant > now:
+        return now
+    if instant < now - MAX_BACKDATE:
+        raise ApiError(
+            422,
+            "invalid_recorded_at",
+            "That check-in is more than 7 days old, so it can no longer be added.",
+        )
+    return instant
 
 
 def _zone_key(zone: ZoneInfo) -> str:
@@ -441,6 +509,7 @@ def _parse_bound(raw: str, *, zone: ZoneInfo, end: bool) -> datetime:
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=MoodCheckInOut)
 async def create_check_in(
     request: Request,
+    response: Response,
     body: MoodCheckInIn,
     user: ConsentedUser,
     session: SessionDep,
@@ -454,13 +523,21 @@ async def create_check_in(
     still stored, together with a metadata-only audit row. A note we could not
     screen is not stored at all, because the alternative is silently keeping
     somebody's worst sentence with nobody told to look at it.
+
+    A ``client_id`` that is already stored is a replay (Day 25): it is screened
+    like any other request — so a lost first answer cannot lose the helplines —
+    but nothing new is written and the answer is ``200`` with ``replayed: true``.
     """
     settings: Settings = request.app.state.settings
     zone, fallback_used = _resolve_zone(body.tz)
     now = _now()
+    recorded_at = _resolve_recorded_at(body.recorded_at, now=now)
     session_repo = MoodRepository(session)
+    # Primitive identity, kept before a possible rollback expires ORM objects.
+    user_id = user.id
 
     crisis: MoodCrisisOut | None = None
+    safety_event: tuple[RiskLevel, SafetyEventSource] | None = None
     if body.note is not None:
         try:
             assessment, decision = await run_ensemble(
@@ -495,27 +572,55 @@ async def create_check_in(
                 resources=list(plan.resources),
             )
             if plan.record_event:
-                await SafetyEventRepository(session).record(
-                    risk_level=plan.assessment.to_stored_level(),
-                    source=_event_source(decision),
-                    category=None,
-                    user_id=user.id,
-                )
+                safety_event = (plan.assessment.to_stored_level(), _event_source(decision))
 
-    stored = await session_repo.record(
-        user_id=user.id,
-        valence=body.valence,
-        energy=body.energy,
-        emotions=body.emotions,
-        factors=factors_document(body.factors),
-        note=body.note,
-        # The same clock reading that decided "today" a moment ago, so the streak
-        # returned here always includes the check-in it just wrote.
-        created_at=now,
-    )
-    await session.commit()
+    if body.client_id is not None:
+        existing = await session_repo.get_by_client_id(user_id, body.client_id)
+        if existing is not None:
+            response.status_code = status.HTTP_200_OK
+            return await _replay(
+                session, existing, crisis=crisis, zone=zone, fallback_used=fallback_used, now=now
+            )
 
-    streak = await _streak_for(session, user.id, zone=zone, fallback_used=fallback_used, now=now)
+    try:
+        if safety_event is not None:
+            await SafetyEventRepository(session).record(
+                risk_level=safety_event[0],
+                source=safety_event[1],
+                category=None,
+                user_id=user_id,
+            )
+        stored = await session_repo.record(
+            user_id=user_id,
+            valence=body.valence,
+            energy=body.energy,
+            emotions=body.emotions,
+            factors=factors_document(body.factors),
+            note=body.note,
+            # The same clock reading that decided "today" a moment ago (or the
+            # validated offline time), so the streak returned here always
+            # includes the check-in it just wrote.
+            created_at=recorded_at,
+            client_id=body.client_id,
+        )
+        await session.commit()
+    except IntegrityError:
+        # Two syncs of one queued check-in reached the server together. The
+        # unique index is the arbiter: read the winner rather than store twice.
+        # The rollback also drops this attempt's safety event, so the winner's
+        # event is the only one.
+        await session.rollback()
+        if body.client_id is None:
+            raise
+        winner = await session_repo.get_by_client_id(user_id, body.client_id)
+        if winner is None:
+            raise
+        response.status_code = status.HTTP_200_OK
+        return await _replay(
+            session, winner, crisis=crisis, zone=zone, fallback_used=fallback_used, now=now
+        )
+
+    streak = await _streak_for(session, user_id, zone=zone, fallback_used=fallback_used, now=now)
     _log.info(
         "mood_check_in_recorded",
         valence=body.valence,
@@ -526,9 +631,38 @@ async def create_check_in(
         has_note=body.note is not None,
         note_chars=len(body.note) if body.note else 0,
         crisis=bool(crisis),
+        queued_offline=body.client_id is not None,
+        backdated=recorded_at < now,
     )
     return MoodCheckInOut(
         entry=_entry_out(stored, zone=zone), streak=_streak_out(streak), crisis=crisis
+    )
+
+
+async def _replay(
+    session: AsyncSession,
+    entry: MoodEntry,
+    *,
+    crisis: MoodCrisisOut | None,
+    zone: ZoneInfo,
+    fallback_used: bool,
+    now: datetime,
+) -> MoodCheckInOut:
+    """Answer a repeated ``client_id`` with what is already stored.
+
+    First write wins: the stored row is returned even if this request's fields
+    differ, because changing a check-in under the same idempotency key would
+    make a retry something other than a retry.
+    """
+    streak = await _streak_for(
+        session, entry.user_id, zone=zone, fallback_used=fallback_used, now=now
+    )
+    _log.info("mood_check_in_replayed", crisis=bool(crisis))
+    return MoodCheckInOut(
+        entry=_entry_out(entry, zone=zone),
+        streak=_streak_out(streak),
+        crisis=crisis,
+        replayed=True,
     )
 
 

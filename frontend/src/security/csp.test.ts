@@ -100,12 +100,33 @@ describe("the shipped policy", () => {
     expect(HEADERS_CONF).toContain("the one deliberate");
   });
 
-  it("is included by both the server block and the cached-assets location", () => {
+  it("is included by the server block and by every location with its own headers", () => {
     // nginx drops inherited add_header lines inside a location that has its own.
+    // Day 25 added two such locations (sw.js and the manifest), so: four.
     const includes = NGINX_CONF.match(/include \/etc\/nginx\/security-headers\.conf;/g) ?? [];
-    expect(includes).toHaveLength(2);
+    expect(includes).toHaveLength(4);
+    for (const location of [
+      "location \\/assets\\/",
+      "location = \\/sw\\.js",
+      "location = \\/manifest\\.webmanifest",
+    ]) {
+      expect(NGINX_CONF).toMatch(
+        new RegExp(`${location} \\{[^}]*include \\/etc\\/nginx\\/security-headers\\.conf;`),
+      );
+    }
+    // Every location that sets a header includes the security headers too.
+    const blocks = NGINX_CONF.match(/location[^{]*\{[^}]*\}/g) ?? [];
+    for (const block of blocks) {
+      if (block.includes("add_header")) {
+        expect(block, block.split("{")[0]).toContain("include /etc/nginx/security-headers.conf;");
+      }
+    }
+  });
+
+  it("never lets a stale service worker or manifest be cached (Day 25)", () => {
+    expect(NGINX_CONF).toMatch(/location = \/sw\.js \{[^}]*Cache-Control "no-cache"/);
     expect(NGINX_CONF).toMatch(
-      /location \/assets\/ \{[^}]*include \/etc\/nginx\/security-headers\.conf;/,
+      /location = \/manifest\.webmanifest \{[^}]*application\/manifest\+json[^}]*Cache-Control "no-cache"/,
     );
   });
 

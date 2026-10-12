@@ -27,6 +27,9 @@ Legend:
 | `journal` | ✅ source | 🤖 | 🤖 | Fallback templates translate; backend-served prompts are English for now. |
 | `cbt` | ✅ source | 🤖 | 🤖 | Step labels, traps panel, record list. |
 | `plan`, `settings`, `privacy`, `onboarding`, `notFound` | ✅ source | 🤖 | 🤖 | Includes onboarding agreements and the AI disclosure wording. |
+| `pwa` (Day 25: offline banner, update notice, install offer, offline sync, page-load errors) | ✅ source | 🤖 | 🤖 | Offline copy must stay literally true: "kept on this device", and "sent once you're back online **with Manovia open**" (there is no background sync). `src/pwa/offlineCopy.test.ts` checks that hi/bn keep the "Manovia open" condition. Review against the behaviour in ADR 0025, not just the English. |
+| `a11y` (Day 25: accessibility statement) | ✅ source | 🤖 | 🤖 | `limit1` says the hi/bn text awaits native review — update it in all three languages when this ledger changes. |
+| Day 25 additions inside `mood`, `journal`, `crisis.modal`, `home`, `exercises`, `settings` (offline queue, local drafts, offline helpline notes, contrast switch) | ✅ source | 🤖 | 🤖 | Same review discipline as their groups; `exercises.offline` was *changed* (offline reloads now work) in all three languages. |
 
 Structural parity (same keys, same `{{placeholders}}`) between en/hi/bn is
 enforced by `frontend/src/lib/i18n/locales/parity.test.ts`.

@@ -30,6 +30,8 @@ import {
   type ConsentKind,
   type Credentials,
 } from "@/lib/endpoints";
+import { clearJournalDraft } from "@/features/journal/drafts";
+import { clearOutbox } from "@/features/mood/outbox";
 import { FALLBACK_CONSENT_VERSION } from "./copy";
 import {
   clearOnboardingRecord,
@@ -140,6 +142,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
       };
       saveOnboardingRecord(next);
       setRecord(next);
+      // Day 25: the button that had focus unmounts with the onboarding flow,
+      // which would drop focus on <body> and leave the page scrolled wherever
+      // the last step was. Start the app at the top, with focus on its main
+      // content, once the shell has rendered.
+      window.requestAnimationFrame(() => {
+        // Instant: a new page starts at the top, it does not glide there.
+        window.scrollTo({ top: 0, behavior: "instant" });
+        document.getElementById("main")?.focus({ preventScroll: true });
+      });
       return { ok: true, record: next };
     } catch (error) {
       if (isApiError(error)) {
@@ -149,10 +160,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
       // response. Both are honest failures, so say what is actually wrong.
       return {
         ok: false,
-        error:
-          error instanceof TypeError
-            ? t("onboarding.errNetwork")
-            : t("onboarding.errSession"),
+        error: error instanceof TypeError ? t("onboarding.errNetwork") : t("onboarding.errSession"),
       };
     }
   }, []);
@@ -160,6 +168,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
   const reset = useCallback(() => {
     clearOnboardingRecord();
     api.clearSession();
+    // Day 25: what this device kept for the account goes with the account — a
+    // queued check-in or a journal draft must never be sent, or shown, as the
+    // next person who signs in on a shared phone.
+    clearOutbox();
+    clearJournalDraft();
     setRecord(null);
   }, []);
 

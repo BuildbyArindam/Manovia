@@ -17,11 +17,33 @@ import { PlanSettingsSection } from "@/features/plan/PlanSettingsSection";
 import { PrivacySection } from "@/features/privacy/PrivacySection";
 import { signOut } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
-import { useTheme, type ThemePreference } from "@/theme/ThemeProvider";
+import { useTheme, type ContrastPreference, type ThemePreference } from "@/theme/ThemeProvider";
+import { InstallSection } from "@/pwa/InstallSection";
+import { Link } from "react-router-dom";
 import { useOnboarding } from "@/onboarding/OnboardingProvider";
 import { FALLBACK_AI_DISCLOSURE } from "@/onboarding/copy";
 import { t } from "@/lib/i18n/i18n";
 import { PageHeader } from "@/components/PageHeader";
+
+function contrastOptions(): ReadonlyArray<{
+  value: ContrastPreference;
+  label: string;
+  hint: string;
+}> {
+  return [
+    {
+      value: "standard",
+      label: t("settings.contrastStandard"),
+      hint: t("settings.contrastStandardHint"),
+    },
+    { value: "more", label: t("settings.contrastMore"), hint: t("settings.contrastMoreHint") },
+    {
+      value: "system",
+      label: t("settings.contrastSystem"),
+      hint: t("settings.contrastSystemHint"),
+    },
+  ];
+}
 
 function themeOptions(): ReadonlyArray<{ value: ThemePreference; label: string; hint: string }> {
   return [
@@ -32,7 +54,8 @@ function themeOptions(): ReadonlyArray<{ value: ThemePreference; label: string; 
 }
 
 export function SettingsPage(): ReactElement {
-  const { preference, resolved, setPreference } = useTheme();
+  const { preference, resolved, setPreference, contrast, resolvedContrast, setContrast } =
+    useTheme();
   const [showMoodHint, setShowMoodHint] = useMoodHintPreference();
   const { record, reset } = useOnboarding();
   const reduceMotion = usePrefersReducedMotion();
@@ -71,10 +94,7 @@ export function SettingsPage(): ReactElement {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t("settings.title")}
-        lede={t("settings.lede")}
-      />
+      <PageHeader title={t("settings.title")} lede={t("settings.lede")} />
 
       <section
         aria-labelledby="appearance-heading"
@@ -89,7 +109,7 @@ export function SettingsPage(): ReactElement {
             {themeOptions().map((option) => (
               <label
                 key={option.value}
-                className="flex cursor-pointer items-center gap-2 rounded-xl border border-border-strong px-4 py-2"
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border-strong px-4 py-2"
               >
                 <input
                   type="radio"
@@ -116,7 +136,47 @@ export function SettingsPage(): ReactElement {
             state: reduceMotion ? t("settings.motionOff") : t("settings.motionOn"),
           })}
         </p>
+
+        <fieldset className="mt-6">
+          <legend className="text-ink-muted">{t("settings.contrastLegend")}</legend>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {contrastOptions().map((option) => (
+              <label
+                key={option.value}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border-strong px-4 py-2"
+              >
+                <input
+                  type="radio"
+                  name="contrast"
+                  value={option.value}
+                  checked={contrast === option.value}
+                  onChange={() => {
+                    setContrast(option.value);
+                  }}
+                  className="h-4 w-4 accent-accent-bg"
+                />
+                <span className="font-semibold">{option.label}</span>
+                <span className="text-sm text-ink-muted">{option.hint}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="mt-4 text-sm text-ink-muted" data-testid="contrast-showing">
+          {resolvedContrast === "more"
+            ? t("settings.contrastShowingMore")
+            : t("settings.contrastShowingStandard")}
+        </p>
+        <p className="mt-4">
+          <Link
+            to="/accessibility"
+            className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4"
+          >
+            {t("settings.a11yStatementLink")}
+          </Link>
+        </p>
       </section>
+
+      <InstallSection />
 
       <PlanSettingsSection client={api} />
 
@@ -140,14 +200,10 @@ export function SettingsPage(): ReactElement {
           />
           <span>
             <span className="block font-semibold">{t("settings.moodHintLabel")}</span>
-            <span className="block text-sm text-ink-muted">
-              {t("settings.moodHintHelp")}
-            </span>
+            <span className="block text-sm text-ink-muted">{t("settings.moodHintHelp")}</span>
           </span>
         </label>
-        <p className="mt-3 text-sm text-ink-muted">
-          {t("settings.moodHintNote")}
-        </p>
+        <p className="mt-3 text-sm text-ink-muted">{t("settings.moodHintNote")}</p>
       </section>
 
       <section
@@ -198,15 +254,17 @@ export function SettingsPage(): ReactElement {
                     type="button"
                     disabled={deleteMemory.isPending}
                     onClick={() => deleteMemory.mutate()}
-                    className="rounded-xl border border-border-strong px-4 py-2 font-semibold disabled:opacity-60"
+                    className="min-h-11 rounded-xl border border-border-strong px-4 py-2 font-semibold disabled:opacity-60"
                   >
-                    {deleteMemory.isPending ? t("settings.memoryDeleting") : t("settings.memoryDeleteButton")}
+                    {deleteMemory.isPending
+                      ? t("settings.memoryDeleting")
+                      : t("settings.memoryDeleteButton")}
                   </button>
                   <button
                     type="button"
                     disabled={deleteMemory.isPending}
                     onClick={() => setConfirmMemoryDeletion(false)}
-                    className="rounded-xl border border-border-strong px-4 py-2 font-semibold disabled:opacity-60"
+                    className="min-h-11 rounded-xl border border-border-strong px-4 py-2 font-semibold disabled:opacity-60"
                   >
                     {t("settings.memoryKeep")}
                   </button>
@@ -216,7 +274,7 @@ export function SettingsPage(): ReactElement {
               <button
                 type="button"
                 onClick={() => setConfirmMemoryDeletion(true)}
-                className="mt-4 rounded-xl border border-border-strong px-4 py-2 font-semibold"
+                className="mt-4 min-h-11 rounded-xl border border-border-strong px-4 py-2 font-semibold"
               >
                 {t("settings.memoryDeletePrompt")}
               </button>
@@ -250,7 +308,9 @@ export function SettingsPage(): ReactElement {
           <div>
             <dt className="inline font-semibold text-ink">{t("settings.accountKindLabel")} </dt>
             <dd className="inline">
-              {record?.authMode === "account" ? t("settings.accountKindEmail") : t("settings.accountKindGuest")}
+              {record?.authMode === "account"
+                ? t("settings.accountKindEmail")
+                : t("settings.accountKindGuest")}
             </dd>
           </div>
           <div>
@@ -258,7 +318,9 @@ export function SettingsPage(): ReactElement {
             <dd className="inline">{record?.user.email ?? t("settings.accountEmailNone")}</dd>
           </div>
           <div>
-            <dt className="inline font-semibold text-ink">{t("settings.accountAgreementsLabel")} </dt>
+            <dt className="inline font-semibold text-ink">
+              {t("settings.accountAgreementsLabel")}{" "}
+            </dt>
             <dd className="inline">
               {Object.entries(record?.consents ?? {})
                 .filter(([, granted]) => granted)
@@ -270,13 +332,13 @@ export function SettingsPage(): ReactElement {
         <form className="mt-5 flex flex-wrap gap-3" onSubmit={handleReset}>
           <button
             type="submit"
-            className="rounded-xl border border-border-strong px-4 py-2 font-semibold"
+            className="min-h-11 rounded-xl border border-border-strong px-4 py-2 font-semibold"
           >
             {t("settings.restartOnboarding")}
           </button>
           <button
             type="button"
-            className="rounded-xl border border-border-strong px-4 py-2 font-semibold"
+            className="min-h-11 rounded-xl border border-border-strong px-4 py-2 font-semibold"
             onClick={() => {
               void handleSignOut();
             }}

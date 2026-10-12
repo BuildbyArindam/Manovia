@@ -1,0 +1,149 @@
+# Day 25 — accessibility, offline and performance gates, in a real browser.
+#
+# One job, because every check needs the same expensive setup: the real API
+# (Fake LLM provider, SQLite), the *production* frontend build (the service
+# worker only exists there) served by `vite preview` with the same-origin /api
+# proxy, and Playwright's Chromium. Then:
+#
+#   1. bundle budgets      — npm run budget (initial JS, per-route, precache)
+#   2. Playwright, prod    — axe on every route x 4 appearances (zero serious/
+#                            critical), 44px targets, keyboard-only walkthrough,
+#                            200%/400% zoom + 200% text, offline (helplines,
+#                            breathing, queued check-in sync), installability
+#   3. Lighthouse 13       — mobile profile on /, /chat, /mood, /exercises,
+#                            3 runs each (median); performance >= 90,
+#                            accessibility >= 95, CLS, script size, no
+#                            third-party requests (frontend/lighthouserc.json)
+#
+# Reports are uploaded as artifacts whether the job passes or not.
+#
+# Actions are pinned to the same commit SHAs as ci.yml (see the note there).
+name: Accessibility & Lighthouse
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  axe-lighthouse:
+    name: axe + keyboard + zoom + offline + Lighthouse (production build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      # Dev-only values for an ephemeral CI database; nothing here is a secret.
+      APP_ENV: development
+      SECRET_KEY: ci-only-day25-not-a-secret-0123456789abcdef
+      DATABASE_URL: sqlite+aiosqlite:///${{ github.workspace }}/ci-day25.db
+      LLM_PROVIDER: fake
+      LLM_FAKE_LATENCY_MS: "300"
+      EMOTION_ANALYZER: keyword
+      # Every spec registers its own guest; the shipping default (10/min) is
+      # unchanged and intentional — see PROGRESS.md (Day 20 known issue).
+      RATE_LIMIT_AUTH_PER_MINUTE: "240"
+      RATE_LIMIT_GLOBAL_PER_MINUTE: "12000"
+      CHAT_RATE_LIMIT_PER_MINUTE: "240"
+      LOG_LEVEL: WARNING
+      E2E_API_URL: http://127.0.0.1:8000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install the API
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Throwaway field-encryption key for this run
+        run: |
+          echo "FIELD_ENCRYPTION_KEY=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+
+      - name: Migrate and start the API (Fake LLM provider)
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8000/api/v1/ready && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Bundle budgets
+        working-directory: frontend
+        run: npm run budget
+
+      - name: Serve the production build (same-origin /api proxy)
+        working-directory: frontend
+        env:
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+        run: |
+          nohup npx vite preview --host 127.0.0.1 --port 4173 --strictPort > "$RUNNER_TEMP/preview.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:4173/api/v1/ready && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/preview.log"
+          exit 1
+
+      - name: Playwright — axe, targets, keyboard, zoom, offline, installability
+        working-directory: frontend
+        run: npm run test:e2e:prod
+
+      - name: Lighthouse (mobile, 3 runs per route, median)
+        working-directory: frontend
+        env:
+          LH_RUNS: "3"
+        run: |
+          export CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")"
+          npm run lighthouse
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: day25-a11y-lighthouse-reports
+          path: |
+            frontend/playwright-report/day25
+            frontend/test-results/day25
+            frontend/lighthouse-reports
+          retention-days: 14
+          if-no-files-found: warn
