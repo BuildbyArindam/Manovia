@@ -43,10 +43,15 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /srv/backend
 
 # App source (also makes the package importable from the workdir), alembic for
-# the entrypoint's dev migrations, and the entrypoint itself.
+# the entrypoint's dev migrations, the production server config, and the
+# entrypoint itself.
 COPY --chown=app:app backend/app ./app
 COPY --chown=app:app backend/alembic ./alembic
 COPY --chown=app:app backend/alembic.ini ./
+# Production server (Day 27): Gunicorn manages UvicornWorker processes; the
+# config file is the reviewed deployment contract, the CMD cannot drift.
+COPY --chown=app:app backend/gunicorn.conf.py ./
+COPY --chown=app:app backend/manovia_worker.py ./
 COPY --chmod=555 backend/docker-entrypoint.sh /usr/local/bin/manovia-entrypoint
 
 USER app
@@ -62,7 +67,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
 # The entrypoint runs `alembic upgrade head` when APP_ENV=development
 # (see backend/docker-entrypoint.sh — dev containers only), then execs CMD.
 ENTRYPOINT ["manovia-entrypoint"]
-# --no-access-log: uvicorn's access log prints the full request line including
-# query strings, which may carry user text (AGENTS.md rule 5). The app's own
-# path-only structlog request line comes from RequestIDMiddleware.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+# Production process model (Day 27): Gunicorn managing UvicornWorker
+# processes, configured entirely by gunicorn.conf.py (worker count, graceful
+# shutdown, heartbeat timeout). The HTTP access log is disabled in both the
+# config and the worker class — uvicorn's access line prints query strings,
+# which may carry user text (AGENTS.md rule 5); the app's path-only structlog
+# request line comes from RequestIDMiddleware.
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]

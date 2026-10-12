@@ -20,6 +20,12 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi==0.143.0",
     "uvicorn[standard]==0.54.0",
+    # Day 27: production process model. Gunicorn manages the worker processes
+    # (lifecycle, graceful restart, heartbeats); uvicorn-worker is the
+    # maintained UvicornWorker the config runs (uvicorn's own
+    # `uvicorn.workers` module is deprecated upstream).
+    "gunicorn==26.2.0",
+    "uvicorn-worker==0.4.0",
     "pydantic==2.14.1",
     "pydantic-settings==2.15.0",
     # [asyncio] pulls in greenlet, which SQLAlchemy's async sessions require.
@@ -186,6 +192,12 @@ plugins = ["pydantic.mypy"]
 module = [
     "langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*",
     "faiss.*", "sentence_transformers.*", "sklearn.*", "joblib.*",
+    # Day 27: gunicorn config/worker and the observability stack below.
+    # "manovia_worker.*" is checked here (it subclasses the untyped worker).
+    "uvicorn_worker.*", "gunicorn.*", "prometheus_client.*", "sentry_sdk.*",
+    "manovia_worker.*", "gunicorn.conf",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"
+# AccessLogFreeUvicornWorker subclasses the (untyped) UvicornWorker.
+disallow_subclassing_any = false

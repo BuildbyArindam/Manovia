@@ -1,0 +1,59 @@
+# Production-shaped compose stack (Day 27).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Same images and Postgres service as the dev stack; three differences:
+#
+# 1. The API container runs APP_ENV=production: stricter startup validation
+#    (SECRET_KEY / FIELD_ENCRYPTION_KEY required), the dev-only debug routes
+#    do not exist, and the entrypoint NEVER auto-migrates — in production,
+#    migrations are an explicit, observable release step, not a side effect of
+#    a container restart.
+# 2. That release step is the one-shot `migrate` service: the same image,
+#    `alembic upgrade head`, exit code decides the deploy (`--exit-code-from`).
+# 3. Secrets must come from the environment: `${VAR:?message}` makes compose
+#    refuse to start with a clear error instead of booting with a placeholder.
+#    This is the fail-fast posture production has (Settings would also refuse).
+#
+# This overlay is also the rehearsal target for the real deployment: a release
+# to Fly.io is `migrate` (release_command) followed by the api container.
+# `make prod-up` / `make prod-down` / `make prod-migrate` wrap these commands.
+
+name: manovia-prod
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-manovia}:${POSTGRES_PASSWORD:-manovia_dev_password}@postgres:5432/${POSTGRES_DB:-manovia}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env for the production profile}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY must be set in .env for the production profile}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # The entrypoint runs migrations only when APP_ENV=development, so under
+    # production posture this is exactly "run this command and exit".
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Boot the API only after the release migration succeeded.
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: production
+      # Production never auto-migrates on boot (see docker-entrypoint.sh).
+      RUN_MIGRATIONS: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-manovia}:${POSTGRES_PASSWORD:-manovia_dev_password}@postgres:5432/${POSTGRES_DB:-manovia}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env for the production profile}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY must be set in .env for the production profile}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      EMOTION_ANALYZER: ${EMOTION_ANALYZER:-keyword}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
