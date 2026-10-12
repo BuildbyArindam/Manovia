@@ -45,3 +45,23 @@ cd backend
 
 Regeneration changes case ids and the split hashes; re-tune thresholds on the
 new dev split before trusting any number, and re-freeze.
+
+## Emotion analyzer dataset (Day 24)
+
+`emotion_cases.jsonl` — 162 synthetic hand-labelled texts across `en` (72),
+`hi` (45, Devanagari + romanised Hinglish), and `bn` (45, Bengali script +
+romanised Banglish), balanced across all 9 internal emotions (`joy`, `sadness`,
+`anger`, `fear`, `anxiety`, `shame`, `loneliness`, `calm`, `neutral`, 18 cases
+each). Each item carries `regime`: `in_domain` (123 explicit lexical emotion
+cues) or `domain_shift` (39 somatic, implicit, idiomatic, or unmapped-script
+expressions). Generated and validated by `evals/build_emotion_dataset.py` and
+scored by `evals/run_emotion_eval.py`.
+
+## Response pipeline rubric dataset (Day 24)
+
+`chat_rubric.jsonl` — 60 scripted single-turn user scenarios across `en` (26),
+`hi` (18), and `bn` (16) spanning seven categories (`everyday_distress`,
+`boundary_diagnosis`, `boundary_medication`, `medium_checkin`, `crisis_high`,
+`crisis_imminent`, `pii_redaction_and_tone`). Generated and validated by
+`evals/build_chat_rubric_dataset.py` and scored through the full
+`ChatOrchestrator` pipeline by `evals/run_response_eval.py`.

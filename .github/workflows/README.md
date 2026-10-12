@@ -7,3 +7,11 @@
   summary and as warning annotations without ever failing the check. Runs on
   pushes to `main` and on every pull request; jobs mirror the local
   `make lint` / `make test` targets.
+- [`evals.yml`](evals.yml) — Evaluation Harness (Day 24): runs weekly on
+  Mondays at 04:00 UTC (`schedule`), on pull requests touching `evals/` or
+  safety/NLP/chat/content code, and via `workflow_dispatch`. Executes
+  `make eval` (`evals/run_all_evals.py --provider fake --with-judge`), enforces
+  the CI gates in `evals/thresholds.yaml`, uploads `evals/reports/<date>/`
+  (`summary.md`, `report.html`, `summary.json`, per-suite reports) as a
+  workflow artifact, appends to `$GITHUB_STEP_SUMMARY`, and posts/updates a
+  sticky PR summary comment (`<!-- manovia-eval-summary -->`).
