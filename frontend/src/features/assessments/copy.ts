@@ -15,99 +15,147 @@
  * instrument's own wording and the crisis templates are localised by the server.
  */
 
+import { t } from "@/lib/i18n/i18n";
+
 import type { AssessmentBand } from "./types";
 
-export const SCREENINGS_TITLE = "Screenings";
-export const SCREENINGS_LEDE =
-  "Two short, widely used questionnaires: the PHQ-9 for low mood and the GAD-7 for worry. They are screening tools, not tests you can pass or fail.";
+export function SCREENINGS_TITLE(): string {
+  return t("assessments.title");
+}
+export function SCREENINGS_LEDE(): string {
+  return t("assessments.lede");
+}
 
-export const SCREENINGS_NOTICE =
-  "A screening result describes how the last two weeks have been. It is not a diagnosis, and it is not a measure of who you are.";
+export function SCREENINGS_NOTICE(): string {
+  return t("assessments.notice");
+}
 
-export const ITEM9_BANNER_TITLE = "Before your score, please read this";
+export function ITEM9_BANNER_TITLE(): string {
+  return t("assessments.item9BannerTitle");
+}
 
 /** How the answer choices are labelled for a screen reader. */
 export function answerGroupLabel(position: number, itemText: string): string {
-  return `Question ${position}. ${itemText}`;
+  return t("assessments.answerGroupLabel", { position, itemText });
 }
 
 /** The line under the questionnaire's submit button. */
-export const SUBMIT_HINT =
-  "Answer every question, then submit. Nothing is saved until you submit, and you can take it again whenever you like.";
+export function SUBMIT_HINT(): string {
+  return t("assessments.submitHint");
+}
 
-export const INCOMPLETE_ERROR_TITLE = "Some questions are unanswered";
+export function INCOMPLETE_ERROR_TITLE(): string {
+  return t("assessments.incompleteErrorTitle");
+}
 
 export function incompleteErrorBody(count: number): string {
   return count === 1
-    ? "One question is still unanswered. Answer it and submit again."
-    : `${count} questions are still unanswered. Answer them and submit again.`;
+    ? t("assessments.incompleteErrorBodyOne")
+    : t("assessments.incompleteErrorBodyMany", { count });
 }
 
-export const SUBMIT_FAILED = "We couldn't save your answers just now. Please try again.";
+export function SUBMIT_FAILED(): string {
+  return t("assessments.submitFailed");
+}
 
-export const SCORE_HEADING = "Your result";
+export function SCORE_HEADING(): string {
+  return t("assessments.scoreHeading");
+}
 
 export function scoreLine(total: number, maxTotal: number, bandLabel: string): string {
-  return `${total} of ${maxTotal} — ${bandLabel.toLowerCase()}`;
+  return t("assessments.scoreLine", { total, maxTotal, band: bandLabel.toLowerCase() });
 }
 
-export const WHAT_HELPS_HEADING = "What usually helps";
+export function WHAT_HELPS_HEADING(): string {
+  return t("assessments.whatHelpsHeading");
+}
 
-export const WHEN_TO_TALK_HEADING = "When to talk to someone";
+export function WHEN_TO_TALK_HEADING(): string {
+  return t("assessments.whenToTalkHeading");
+}
 
-export const PRINT_BUTTON = "Print or save as PDF";
+export function PRINT_BUTTON(): string {
+  return t("assessments.printButton");
+}
 
-export const PRINT_HINT =
-  "Use your browser's print dialog and choose “Save as PDF” to keep a copy or share it with a clinician.";
+export function PRINT_HINT(): string {
+  return t("assessments.printHint");
+}
 
-export const HISTORY_HEADING = "Past results";
+export function HISTORY_HEADING(): string {
+  return t("assessments.historyHeading");
+}
 
-export const TREND_HEADING = "Scores over time";
+export function TREND_HEADING(): string {
+  return t("assessments.trendHeading");
+}
 
-export const TREND_TABLE_CAPTION = "Every saved result for this questionnaire, oldest first.";
+export function TREND_TABLE_CAPTION(): string {
+  return t("assessments.trendTableCaption");
+}
 
-export const TREND_CHART_NOTE =
-  "The dashed lines are the questionnaire's band boundaries. The table below has the same numbers.";
+export function TREND_CHART_NOTE(): string {
+  return t("assessments.trendChartNote");
+}
 
-export const PROVENANCE_HEADING = "Where this questionnaire comes from";
+export function PROVENANCE_HEADING(): string {
+  return t("assessments.provenanceHeading");
+}
 
-export const PROVENANCE_VERBATIM =
-  "The questions, the answer options and the scoring bands are reproduced exactly as published.";
+export function PROVENANCE_VERBATIM(): string {
+  return t("assessments.provenanceVerbatim");
+}
 
-export const NOT_A_DIAGNOSIS_FALLBACK =
-  "This is a screening result, not a diagnosis. Only a qualified professional can diagnose, and they would do it by talking with you.";
+export function NOT_A_DIAGNOSIS_FALLBACK(): string {
+  return t("assessments.notADiagnosisFallback");
+}
 
 /** The sentence that goes above a chart built from stored results. */
 export function trendSummary(
   points: readonly { total: number; maxTotal: number; date: string }[],
 ): string {
   if (points.length === 0) {
-    return "No saved results yet. Your first one will appear here.";
+    return t("assessments.trendEmpty");
   }
   const first = points[0];
   const latest = points[points.length - 1];
   if (first === undefined || latest === undefined) {
-    return "No saved results yet. Your first one will appear here.";
+    return t("assessments.trendEmpty");
   }
   if (points.length === 1) {
-    return `One result so far: ${latest.total} of ${latest.maxTotal} on ${latest.date}. A change needs at least two results to compare, so this is a starting point rather than a trend.`;
+    return t("assessments.trendOne", {
+      latestTotal: latest.total,
+      latestMax: latest.maxTotal,
+      latestDate: latest.date,
+    });
   }
   const change = latest.total - first.total;
   const direction =
     change === 0
-      ? `the same as your first (${first.total})`
-      : `${Math.abs(change)} point${Math.abs(change) === 1 ? "" : "s"} ${
-          change < 0 ? "lower" : "higher"
-        } than your first (${first.total})`;
-  const plural = points.length === 1 ? "result" : "results";
-  return `Across ${points.length} ${plural}, your latest score is ${latest.total} of ${latest.maxTotal} — ${direction}. Scores move for many reasons (sleep, stress, the time of day), so read the direction rather than the size.`;
+      ? t("assessments.trendSame", { firstTotal: first.total })
+      : t("assessments.trendDelta", {
+          delta: Math.abs(change),
+          points:
+            Math.abs(change) === 1 ? t("assessments.trendPoint") : t("assessments.trendPoints"),
+          direction: change < 0 ? t("assessments.trendLower") : t("assessments.trendHigher"),
+          firstTotal: first.total,
+        });
+  const plural = points.length === 1 ? t("assessments.trendResult") : t("assessments.trendResults");
+  return t("assessments.trendAcross", {
+    count: points.length,
+    results: plural,
+    latestTotal: latest.total,
+    latestMax: latest.maxTotal,
+    direction,
+  });
 }
 
 /** The item-9 line on the result page and the printout. */
-export const ITEM9_SUMMARY =
-  "You answered above “Not at all” on the question about thoughts of being better off dead or of hurting yourself. That is why support and helplines were shown first, whatever your total score says.";
+export function ITEM9_SUMMARY(): string {
+  return t("assessments.item9Summary");
+}
 
 /** A short line under the score for the band, used in the printable summary. */
 export function bandLine(band: AssessmentBand, label: string, min: number, max: number): string {
-  return `${label} (${band}, scores ${min}–${max})`;
+  return t("assessments.bandLine", { label, band, min, max });
 }

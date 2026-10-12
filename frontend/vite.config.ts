@@ -24,13 +24,17 @@ import { defineConfig } from "vitest/config";
  * everything else is same-origin, which is what makes the proxy-only topology
  * (the browser never calls `localhost` directly) enforceable rather than merely
  * conventional.
+ *
+ * The two Google Fonts origins mirror the production allowance (see
+ * `docker/security-headers.conf`) so Hindi and Bengali render with Noto Sans
+ * Devanagari / Bengali in development too.
  */
 export const DEV_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data:",
-  "font-src 'self'",
+  "font-src 'self' https://fonts.gstatic.com",
   "connect-src 'self' ws: wss:",
   "object-src 'none'",
   "base-uri 'self'",

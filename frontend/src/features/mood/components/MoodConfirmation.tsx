@@ -19,7 +19,7 @@
 import { useEffect, useRef, type ReactElement } from "react";
 
 import { CrisisCard } from "@/components/CrisisCard";
-import { MOOD_COPY, pluralDays, streakDetail, streakHeadline } from "../copy";
+import { MOOD_COPY, streakDetail, streakHeadline } from "../copy";
 import { suggestedAction } from "../suggestedAction";
 import type { MoodCheckInResponse } from "../types";
 
@@ -56,7 +56,7 @@ export function MoodConfirmation({ result, onAnother }: MoodConfirmationProps): 
         <p>{streakHeadline(streak)}</p>
         {detail !== null ? <p className="mt-1 text-sm text-ink-muted">{detail}</p> : null}
         <p className="mt-1 text-sm text-ink-muted">
-          {MOOD_COPY.savedStreakEmpty} · {pluralDays(streak.total_check_ins)} in total.
+          {MOOD_COPY.savedStreakTotal(streak.total_check_ins)}
         </p>
       </div>
 
@@ -67,7 +67,7 @@ export function MoodConfirmation({ result, onAnother }: MoodConfirmationProps): 
             resources={crisis.resources}
             emergency={crisis.emergency}
             announce
-            heading="There is support for this, right now"
+            heading={MOOD_COPY.crisisSupportHeading}
             testId="mood-crisis-card"
           />
           <p className="mt-2 text-sm text-ink-muted">{MOOD_COPY.crisisNotice}</p>

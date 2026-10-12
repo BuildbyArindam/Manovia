@@ -3,10 +3,13 @@ import { Link } from "react-router-dom";
 import type { ReactElement } from "react";
 
 import { CrisisHelpButton } from "@/components/CrisisHelpButton";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { t } from "@/lib/i18n/i18n";
 
 /**
- * The app header. Present on every route, and carrying the one control that must
- * never be more than one glance away: "Need help now?".
+ * The app header. Present on every route, and carrying the two controls that
+ * matter at a glance: the language of the whole interface, and "Need help
+ * now?", which is never more than one glance away.
  */
 export function Header(): ReactElement {
   return (
@@ -16,9 +19,12 @@ export function Header(): ReactElement {
           to="/"
           className="rounded-lg font-serif text-lg font-semibold tracking-tight text-ink"
         >
-          Manovia
+          {t("app.name")}
         </Link>
-        <CrisisHelpButton />
+        <div className="flex items-center gap-3 sm:gap-4">
+          <LanguageSwitcher />
+          <CrisisHelpButton />
+        </div>
       </div>
     </header>
   );

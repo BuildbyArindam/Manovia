@@ -12,8 +12,9 @@
 
 import { useState, type ReactElement } from "react";
 
-import { emotionLabel, energyPoint, factorLabel, valencePoint } from "../taxonomy";
+import { emotionLabel, energyPoint, factorLabel, localisedEnergyLabel, localisedValenceLabel, valencePoint } from "../taxonomy";
 import { MOOD_COPY } from "../copy";
+import { intlLocale, t } from "@/lib/i18n/i18n";
 import type { MoodEntry } from "../types";
 import { useDeleteMoodEntry, useMoodHistory } from "../useMood";
 import type { ApiClient } from "@/lib/api";
@@ -29,7 +30,7 @@ export function formatLocalDay(isoDate: string): string {
   if (!year || !month || !day) {
     return isoDate;
   }
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(undefined, {
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(intlLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -87,8 +88,8 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
                   <MoodFace shape={valence.face} />
                 </span>
                 <p className="text-base">
-                  <time dateTime={entry.local_date}>{day}</time> · {valence.label} · energy{" "}
-                  {energy.label}
+                  <time dateTime={entry.local_date}>{day}</time> · {localisedValenceLabel(valence)} ·{" "}
+                  {t("mood.energyWord")} {localisedEnergyLabel(energy)}
                 </p>
               </div>
 

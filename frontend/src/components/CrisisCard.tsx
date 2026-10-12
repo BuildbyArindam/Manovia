@@ -23,6 +23,7 @@
 import { useId, type ReactElement } from "react";
 
 import type { CrisisMessage, CrisisResource } from "@/lib/endpoints";
+import { t } from "@/lib/i18n/i18n";
 
 export interface CrisisCardProps {
   /** The pre-written message, when the assessment produced one. */
@@ -62,7 +63,7 @@ function ContactLinks({ resource }: { resource: CrisisResource }): ReactElement 
         href={resource.tel_href}
         className={`${TARGET_CLASSES} bg-accent-bg font-semibold text-accent-fg`}
       >
-        Call {resource.number}
+        {t("crisis.card.call", { number: resource.number })}
       </a>,
     );
   }
@@ -74,10 +75,12 @@ function ContactLinks({ resource }: { resource: CrisisResource }): ReactElement 
         href={resource.sms_href}
         className={`${TARGET_CLASSES} border-2 border-border-strong font-semibold`}
       >
-        Text {resource.number}
         {resource.text_keyword !== null && resource.text_keyword !== ""
-          ? ` “${resource.text_keyword}”`
-          : ""}
+          ? t("crisis.card.textKeyword", {
+              number: resource.number,
+              keyword: resource.text_keyword,
+            })
+          : t("crisis.card.text", { number: resource.number })}
       </a>,
     );
   }
@@ -91,7 +94,7 @@ function ContactLinks({ resource }: { resource: CrisisResource }): ReactElement 
         rel="noreferrer noopener"
         className={`${TARGET_CLASSES} border-2 border-border-strong font-semibold text-accent`}
       >
-        {resource.type === "chat" ? "Open chat" : "Visit website"}
+        {resource.type === "chat" ? t("crisis.card.openChat") : t("crisis.card.visitWebsite")}
       </a>,
     );
   }
@@ -118,10 +121,7 @@ function ResourceEntry({ resource }: { resource: CrisisResource }): ReactElement
         <p className="mt-2 text-sm text-ink-muted">{resource.instructions}</p>
       ) : null}
       {resource.needs_verification ? (
-        <p className="mt-2 text-sm text-ink-muted">
-          We could not fully confirm this entry, so please check it still applies before you rely on
-          it.
-        </p>
+        <p className="mt-2 text-sm text-ink-muted">{t("crisis.card.needsVerification")}</p>
       ) : null}
       <ContactLinks resource={resource} />
     </li>
@@ -135,7 +135,7 @@ export function CrisisCard({
   lastVerified = null,
   disclaimer = null,
   announce = true,
-  heading = "Helplines",
+  heading = t("crisis.defaultHeading"),
   testId = "crisis-card",
 }: CrisisCardProps): ReactElement | null {
   const headingId = useId();
@@ -153,7 +153,9 @@ export function CrisisCard({
   return (
     <section
       data-testid={testId}
-      {...(showsHeading ? { "aria-labelledby": headingId } : { "aria-label": "Helplines" })}
+      {...(showsHeading
+        ? { "aria-labelledby": headingId }
+        : { "aria-label": t("crisis.defaultHeading") })}
       {...(announce ? { role: "status", "aria-live": "polite" } : {})}
       className="rounded-2xl border-2 border-border-strong bg-surface p-4 sm:p-6"
     >
@@ -227,7 +229,7 @@ export function CrisisCard({
 
       {lastVerified !== null || disclaimer !== null ? (
         <p className="mt-6 text-sm text-ink-muted">
-          {lastVerified !== null ? `Last checked by a person on ${lastVerified}. ` : ""}
+          {lastVerified !== null ? `${t("crisis.card.lastChecked", { date: lastVerified })} ` : ""}
           {disclaimer ?? ""}
         </p>
       ) : null}

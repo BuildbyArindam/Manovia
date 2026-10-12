@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { CrisisHelpButton } from "@/components/CrisisHelpButton";
 import { PageHeader } from "@/components/PageHeader";
+import { t } from "@/lib/i18n/i18n";
 import type { ApiClient } from "@/lib/api";
 import { PlanCard, planKeys } from "@/features/plan/PlanCard";
 import { greetingNow } from "@/features/plan/greeting";
@@ -62,19 +63,19 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         data-testid="quick-check-in"
       >
         <h2 id="quick-checkin-heading" className="text-lg">
-          Quick check-in
+          {t("home.quickCheckInHeading")}
         </h2>
         {saved ? (
           <div className="mt-4">
             <p className="text-sm text-ink" role="status">
-              Saved. Thanks for checking in — that is the whole job.
+              {t("home.quickSaved")}
             </p>
             <button
               type="button"
               className="mt-3 rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
               onClick={() => setSaved(false)}
             >
-              Check in again
+              {t("home.checkInAgain")}
             </button>
           </div>
         ) : (
@@ -85,15 +86,15 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
                 setValence(value);
                 setSaved(false);
               }}
-              legend="How do you feel right now?"
-              hint="One tap is enough."
+              legend={t("home.valenceLegend")}
+              hint={t("home.valenceHint")}
               name="quick-valence"
             />
             <EnergyScale
               value={energy}
               onChange={setEnergy}
-              legend="How much energy is there?"
-              hint="A guess is fine."
+              legend={t("home.energyLegend")}
+              hint={t("home.energyHint")}
               name="quick-energy"
             />
             <div className="flex flex-wrap items-center gap-3">
@@ -102,12 +103,14 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
                 disabled={valence === null || checkIn.isPending}
                 className="rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {checkIn.isPending ? "Saving…" : "Save check-in"}
+                {checkIn.isPending ? t("home.saving") : t("home.save")}
               </button>
-              {valence === null && <p className="text-sm text-ink-muted">Pick a face to save.</p>}
+              {valence === null && (
+                <p className="text-sm text-ink-muted">{t("home.pickFace")}</p>
+              )}
               {checkIn.isError && (
                 <p role="alert" className="text-sm text-danger">
-                  The check-in could not be saved just now. Please try again.
+                  {t("home.checkInError")}
                 </p>
               )}
             </div>
@@ -120,7 +123,7 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
         className="rounded-2xl border border-border bg-surface p-6 shadow-soft"
       >
         <h2 id="home-links-heading" className="text-lg">
-          Where to next?
+          {t("home.whereNext")}
         </h2>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
@@ -128,13 +131,13 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
             className="rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg"
             data-testid="home-chat-link"
           >
-            Talk it through
+            {t("home.talkItThrough")}
           </Link>
           <Link
             to="/mood"
             className="rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-ink"
           >
-            Full mood check-in
+            {t("home.fullMoodCheckIn")}
           </Link>
         </div>
       </section>

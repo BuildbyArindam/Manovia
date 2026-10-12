@@ -20,25 +20,55 @@
  * share, or to nothing at all.
  */
 
+import { t } from "@/lib/i18n/i18n";
+
 import type { MoodEntry } from "./types";
 
 /** The fallback: always available, always doable, always small. */
-export const FALLBACK_ACTION =
-  "Two slow breaths, with the out-breath longer than the in. That's the whole task.";
+export function fallbackAction(): string {
+  return t("mood.actionFallback");
+}
 
+/**
+ * The suggestions, read through the translation layer at call time so a
+ * language switch re-words them. The ids are the review vocabulary: each key
+ * is one named situation from the docstring above.
+ */
 export const SUGGESTED_ACTIONS = {
-  depleted: "Pick the next smallest thing and let the rest wait. A glass of water counts.",
-  sleep: "Ten minutes lying down somewhere quiet. Resting counts, even if you do not sleep.",
-  people: "One short message to somebody who knows you. It does not have to explain anything.",
-  work: "Write down the first line of the thing that is pressing, then stop for now.",
-  money: "Write the number down where you can see it. You do not have to solve it this minute.",
-  weather: "A minute at a window, or just outside the door, if you can get there.",
-  hardMoment: "Put a hand on the table and feel it for a few seconds. Nothing else needs doing.",
-  quietMiddle: "Choose one thing and do half of it. Half counts.",
-  ordinary: "Name one small thing that went okay today. It can be very small.",
-  goodEnergy: "If you have energy to spare, spend ten minutes on something you actually like.",
-  good: "Take ten seconds to let this land before you move on.",
-} as const;
+  get depleted() {
+    return t("mood.actions.depleted");
+  },
+  get sleep() {
+    return t("mood.actions.sleep");
+  },
+  get people() {
+    return t("mood.actions.people");
+  },
+  get work() {
+    return t("mood.actions.work");
+  },
+  get money() {
+    return t("mood.actions.money");
+  },
+  get weather() {
+    return t("mood.actions.weather");
+  },
+  get hardMoment() {
+    return t("mood.actions.hardMoment");
+  },
+  get quietMiddle() {
+    return t("mood.actions.quietMiddle");
+  },
+  get ordinary() {
+    return t("mood.actions.ordinary");
+  },
+  get goodEnergy() {
+    return t("mood.actions.goodEnergy");
+  },
+  get good() {
+    return t("mood.actions.good");
+  },
+};
 
 /**
  * Choose one suggestion. The order is the priority order, and it is deliberate:
@@ -75,7 +105,7 @@ export function suggestedAction(
     return SUGGESTED_ACTIONS.hardMoment;
   }
   if (valence <= 2) {
-    return FALLBACK_ACTION;
+    return fallbackAction();
   }
   if (valence === 3 && energy <= 2) {
     return SUGGESTED_ACTIONS.quietMiddle;

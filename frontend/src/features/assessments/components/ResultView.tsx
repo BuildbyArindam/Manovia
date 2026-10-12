@@ -60,7 +60,7 @@ export function ResultView({
       {crisis !== null ? (
         <div data-testid="crisis-block" className="mb-6">
           <h2 id="item9-heading" className="text-xl sm:text-2xl">
-            {ITEM9_BANNER_TITLE}
+            {ITEM9_BANNER_TITLE()}
           </h2>
           <p className="mt-2 max-w-prose text-ink-muted">{crisis.explanation}</p>
           <div className="mt-4">
@@ -84,7 +84,7 @@ export function ResultView({
           className="rounded-2xl border border-border bg-surface p-6 shadow-soft sm:p-8"
         >
           <h2 id="result-heading" className="text-xl sm:text-2xl">
-            {SCORE_HEADING}
+            {SCORE_HEADING()}
           </h2>
           <p className="mt-1 text-sm text-ink-muted">
             {shortName} · {historical ? "a saved result" : "just submitted"}
@@ -105,12 +105,12 @@ export function ResultView({
         {historical &&
         result.answers.some((answer) => answer.value > 0 && answer.item_id.endsWith("_9")) ? (
           <p className="mt-4 max-w-prose rounded-xl border border-border-strong bg-surface-muted p-4 text-sm">
-            {ITEM9_SUMMARY}
+            {ITEM9_SUMMARY()}
           </p>
         ) : null}
 
         <section className="mt-6 rounded-2xl border border-border bg-surface p-6 shadow-soft">
-          <h3 className="text-lg">{WHAT_HELPS_HEADING}</h3>
+          <h3 className="text-lg">{WHAT_HELPS_HEADING()}</h3>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             {result.what_helps.map((line) => (
               <li key={line}>{line}</li>
@@ -119,7 +119,7 @@ export function ResultView({
         </section>
 
         <section className="mt-6 rounded-2xl border border-border bg-surface p-6 shadow-soft">
-          <h3 className="text-lg">{WHEN_TO_TALK_HEADING}</h3>
+          <h3 className="text-lg">{WHEN_TO_TALK_HEADING()}</h3>
           <p className="mt-3 max-w-prose">{result.when_to_seek_help}</p>
         </section>
 
@@ -135,9 +135,9 @@ export function ResultView({
             onClick={onPrint}
             className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border-strong bg-surface px-5 py-3 font-semibold"
           >
-            {PRINT_BUTTON}
+            {PRINT_BUTTON()}
           </button>
-          <p className="mt-2 max-w-prose text-sm text-ink-muted">{PRINT_HINT}</p>
+          <p className="mt-2 max-w-prose text-sm text-ink-muted">{PRINT_HINT()}</p>
         </div>
       </div>
     </section>

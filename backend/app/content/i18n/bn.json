@@ -2,7 +2,14 @@
   "version": 1,
   "locale": "bn",
   "display_name": "বাংলা",
-  "placeholder_whitelist": ["emergency_number"],
+  "placeholder_whitelist": [
+    "emergency_number",
+    "exercise_title",
+    "days",
+    "week_days",
+    "day_part",
+    "preference_note"
+  ],
   "templates": {
     "crisis.high": {
       "title": "আপনি যা অনুভব করছেন তা সত্যি, এবং এটা আপনাকে একা বয়ে যেতে হবে না",
@@ -82,5 +89,40 @@
       "closing": "কোনো তাড়া নেই — আমি আছি।",
       "disclaimer": "Manovia একটি সেলফ-হেল্প সঙ্গী। এটি থেরাপি নয়, রোগ নির্ণয় করে না, এবং জরুরি সেবা নয়।"
     }
+  },
+  "numerals": [
+    "০",
+    "১",
+    "২",
+    "৩",
+    "৪",
+    "৫",
+    "৬",
+    "৭",
+    "৮",
+    "৯"
+  ],
+  "strings": {
+    "day_part.morning": "সকাল",
+    "day_part.afternoon": "দুপুর",
+    "day_part.evening": "সন্ধ্যা",
+    "plan.first_check_in.title": "প্রথম মুড চেক-ইন করুন",
+    "plan.first_check_in.why": "এখনও কোনো মুড চেক-ইন হয়নি। দশ সেকেন্ডেই ম্যানোভিয়া আপনার ছন্দ বুঝতে শেখে; আজকের দিনটা ঠিক না লাগলে এড়িয়ে যাওয়াও একদম ঠিক আছে।",
+    "plan.open_thought_record.title": "একটি থট রেকর্ড শেষ করুন",
+    "plan.open_thought_record.why": "সাম্প্রতিক একটি থট রেকর্ডে 'কী সাহায্য করেছিল' এখনো খালি। ইচ্ছে করলে যেকোনো সময় যোগ করুন, অথবা রেকর্ডটি যেমন আছে তেমনই থাকতে দিন।",
+    "plan.low_mood.title": "একটি হালকা ব্যায়াম করুন",
+    "plan.low_mood.why": "গত কয়েক দিনের আপনার চেক-ইনগুলো আগের দিনগুলোর তুলনায় নিচে। {exercise_title} ছোট, আর এটি করার কোনো একটা সঠিক উপায় নেই।",
+    "plan.anxiety.title": "কয়েক মিনিট গ্রাউন্ডিং করুন",
+    "plan.anxiety.why": "সাম্প্রতিক একটি চেক-ইনে উদ্বেগ বা ভয়ের ট্যাগ ছিল। {exercise_title} চাইলে বাইরের কোনো দিকে মনোযোগ দেয়। এটি পুরোপুরি ঐচ্ছিক।",
+    "plan.missed_check_in.title": "তৈরি হলে চেক-ইন করুন",
+    "plan.missed_check_in.why": "আপনার শেষ চেক-ইন ছিল {days} দিন আগে। ছোট একটি চেক-ইন ছবিটা সৎ রাখে, আর এড়িয়ে গেলে কোনো ক্ষতি নেই।",
+    "plan.exercise_habit.title": "{day_part}-এর জন্য একটি ছোট ব্যায়াম",
+    "plan.exercise_habit.why": "গত {week_days} দিনের মধ্যে আপনি {days} দিন ব্যায়াম করেছেন। {exercise_title} একটি ছোট পরের ধাপ। {preference_note}",
+    "plan.preference_note.matched": "এটি সেটিংসে আপনার বেছে নেওয়া ব্যায়ামের ধরনগুলোর সাথে মেলে।",
+    "plan.preference_note.time_of_day": "এটি দিনের এই সময়টার সাথে মানানসই।",
+    "plan.rest.title": "আজ বিশ্রামের দিন হতে পারে",
+    "plan.rest.why": "গত {week_days} দিনের মধ্যে আপনি {days} দিন সক্রিয় ছিলেন। আজ কিছু না করাও হিসাবে ধরা হবে।",
+    "plan.support.title": "সহায়তার উপায়গুলো এখানেই আছে",
+    "plan.support.why": "আপনার সবচেয়ে সাম্প্রতিক স্ক্রিনিংয়ে এমন একটি উত্তর ছিল যার জন্য আমরা সহায়তার উপায় দেখাই। আজকের পরিকল্পনা শুধু এটাই করে; বাকি সব সরিয়ে রাখা হয়েছে।"
   }
 }

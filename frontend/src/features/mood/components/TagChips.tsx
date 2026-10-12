@@ -13,6 +13,7 @@
 
 import type { ReactElement } from "react";
 
+import { localisedChipLabel } from "../taxonomy";
 import type { EmotionOption } from "../taxonomy";
 
 export interface TagChipsProps {
@@ -83,7 +84,7 @@ export function TagChips({
                     : "border-border bg-surface text-ink-muted hover:border-border-strong"
                 } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
               >
-                {option.label}
+                {localisedChipLabel(option)}
               </label>
             </li>
           );

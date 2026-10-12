@@ -27,14 +27,15 @@ import {
   type ConsentRequirementsResponse,
 } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
+import { t } from "@/lib/i18n/i18n";
 import {
-  AI_DISCLOSURE_COPY,
-  CONSENT_COPY,
-  CONSENT_COPY_NOTE,
   FALLBACK_AI_DISCLOSURE,
   FALLBACK_CONSENT_VERSION,
-  SCOPE_COPY,
-  WELCOME_COPY,
+  aiDisclosureHeadingCopy,
+  consentCopy,
+  consentCopyNote,
+  scopeCopy,
+  welcomeCopy,
 } from "./copy";
 import { useOnboarding } from "./OnboardingProvider";
 import { NO_CONSENTS, type AuthMode, type ConsentState } from "./storage";
@@ -47,13 +48,16 @@ interface Step {
   heading: string;
 }
 
-const STEPS: readonly Step[] = [
-  { id: "welcome", label: "Welcome", heading: WELCOME_COPY.heading },
-  { id: "scope", label: "What Manovia is", heading: SCOPE_COPY.heading },
-  { id: "ai", label: "AI disclosure", heading: AI_DISCLOSURE_COPY.heading },
-  { id: "consent", label: "Your agreements", heading: "Your agreements" },
-  { id: "account", label: "How to start", heading: "Choose how to start" },
-];
+/** Re-evaluated per render so the labels follow the chosen language. */
+function steps(): readonly Step[] {
+  return [
+    { id: "welcome", label: t("onboarding.steps.welcomeLabel"), heading: t("onboarding.welcomeHeading") },
+    { id: "scope", label: t("onboarding.steps.scopeLabel"), heading: t("onboarding.scopeHeading") },
+    { id: "ai", label: t("onboarding.steps.aiLabel"), heading: t("onboarding.aiHeading") },
+    { id: "consent", label: t("onboarding.steps.consentLabel"), heading: t("onboarding.steps.consentHeading") },
+    { id: "account", label: t("onboarding.steps.accountLabel"), heading: t("onboarding.steps.accountHeading") },
+  ];
+}
 
 const HEADING_ID = "onboarding-heading";
 
@@ -85,13 +89,21 @@ export function OnboardingFlow(): ReactElement {
   // the content instead of being stranded where the old step ended.
   useEffect(() => {
     headingRef.current?.focus();
-    const current = STEPS[stepIndex];
+    const allSteps = steps();
+    const current = allSteps[stepIndex];
     if (current !== undefined) {
-      setAnnouncement(`Step ${stepIndex + 1} of ${STEPS.length}: ${current.heading}`);
+      setAnnouncement(
+        t("onboarding.stepAnnouncement", {
+          current: stepIndex + 1,
+          total: allSteps.length,
+          heading: current.heading,
+        }),
+      );
     }
   }, [stepIndex]);
 
-  const step = STEPS[stepIndex];
+  const allSteps = steps();
+  const step = allSteps[stepIndex];
   if (step === undefined) {
     // Unreachable (stepIndex is clamped), but noUncheckedIndexedAccess makes the
     // narrowing necessary. Every hook has already run, so the order holds.
@@ -105,12 +117,12 @@ export function OnboardingFlow(): ReactElement {
 
   function goTo(index: number): void {
     setError(null);
-    setStepIndex(Math.min(Math.max(index, 0), STEPS.length - 1));
+    setStepIndex(Math.min(Math.max(index, 0), steps().length - 1));
   }
 
   function handleConsentContinue(): void {
     if (!allRequiredGranted) {
-      setError("Manovia needs the three required agreements before you can start.");
+      setError(t("onboarding.gateError"));
       return;
     }
     goTo(stepIndex + 1);
@@ -138,21 +150,21 @@ export function OnboardingFlow(): ReactElement {
   return (
     <div className="min-h-screen bg-bg text-ink">
       <a className="skip-link" href="#onboarding-main">
-        Skip to main content
+        {t("onboarding.skipLink")}
       </a>
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <p className="font-serif text-lg font-semibold">Manovia</p>
           <p className="text-sm text-ink-muted">
-            Step {stepIndex + 1} of {STEPS.length}
+            {t("onboarding.stepCounter", { current: stepIndex + 1, total: allSteps.length })}
           </p>
         </div>
       </header>
 
       <main id="onboarding-main" tabIndex={-1} className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
-        <nav aria-label="Onboarding progress">
+        <nav aria-label={t("onboarding.navLabel")}>
           <ol className="flex flex-wrap gap-2 text-sm">
-            {STEPS.map((entry, index) => {
+            {allSteps.map((entry, index) => {
               const state =
                 index === stepIndex ? "current" : index < stepIndex ? "done" : "upcoming";
               return (
@@ -165,7 +177,7 @@ export function OnboardingFlow(): ReactElement {
                       : "rounded-full border border-border px-3 py-1 text-ink-muted"
                   }
                 >
-                  <span className="sr-only">{state === "done" ? "Completed: " : ""}</span>
+                  <span className="sr-only">{state === "done" ? t("onboarding.completedPrefix") : ""}</span>
                   {entry.label}
                 </li>
               );
@@ -187,32 +199,32 @@ export function OnboardingFlow(): ReactElement {
 
           {step.id === "welcome" ? (
             <div className="mt-4 space-y-4">
-              <p className="text-lg">{WELCOME_COPY.intro}</p>
+              <p className="text-lg">{welcomeCopy().intro}</p>
               <ul className="list-disc space-y-2 pl-6 text-ink-muted">
-                {WELCOME_COPY.points.map((point) => (
+                {welcomeCopy().points.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
               </ul>
-              <p className="rounded-xl bg-accent-soft p-4 text-ink">{WELCOME_COPY.reassurance}</p>
+              <p className="rounded-xl bg-accent-soft p-4 text-ink">{welcomeCopy().reassurance}</p>
             </div>
           ) : null}
 
           {step.id === "scope" ? (
             <div className="mt-4 space-y-6">
-              <p className="text-ink-muted">{SCOPE_COPY.intro}</p>
+              <p className="text-ink-muted">{scopeCopy().intro}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl border border-border bg-accent-soft p-4">
-                  <h2 className="text-lg">What it is</h2>
+                  <h2 className="text-lg">{t("onboarding.scopeIsHeading")}</h2>
                   <ul className="mt-2 list-disc space-y-2 pl-5 text-ink-muted">
-                    {SCOPE_COPY.is.map((item) => (
+                    {scopeCopy().is.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
                 </div>
                 <div className="rounded-xl border border-border bg-danger-soft p-4">
-                  <h2 className="text-lg">What it is not</h2>
+                  <h2 className="text-lg">{t("onboarding.scopeIsNotHeading")}</h2>
                   <ul className="mt-2 list-disc space-y-2 pl-5 text-ink-muted">
-                    {SCOPE_COPY.isNot.map((item) => (
+                    {scopeCopy().isNot.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
@@ -223,7 +235,7 @@ export function OnboardingFlow(): ReactElement {
 
           {step.id === "ai" ? (
             <div className="mt-4 space-y-4">
-              <p className="text-ink-muted">{AI_DISCLOSURE_COPY.intro}</p>
+              <p className="text-ink-muted">{aiDisclosureHeadingCopy().intro}</p>
               <blockquote
                 data-testid="ai-disclosure"
                 className="rounded-xl border border-border bg-surface-muted p-4 text-ink"
@@ -232,8 +244,7 @@ export function OnboardingFlow(): ReactElement {
               </blockquote>
               {requirements.isError ? (
                 <p className="text-sm text-ink-muted">
-                  Manovia could not fetch the current disclosure, so this is the copy shipped with
-                  the app.
+                  {t("onboarding.aiFallbackNote")}
                 </p>
               ) : null}
             </div>
@@ -241,8 +252,8 @@ export function OnboardingFlow(): ReactElement {
 
           {step.id === "consent" ? (
             <fieldset className="mt-6">
-              <legend className="sr-only">Your agreements</legend>
-              <p className="text-ink-muted">{CONSENT_COPY_NOTE}</p>
+              <legend className="sr-only">{t("onboarding.consentLegend")}</legend>
+              <p className="text-ink-muted">{consentCopyNote()}</p>
               <ul className="mt-4 space-y-4">
                 {ALL_CONSENTS.map((kind) => (
                   <li key={kind} className="rounded-xl border border-border bg-surface-muted p-4">
@@ -252,27 +263,28 @@ export function OnboardingFlow(): ReactElement {
                         type="checkbox"
                         className="mt-1 h-5 w-5 shrink-0 accent-accent-bg"
                         checked={consents[kind]}
-                        aria-required={CONSENT_COPY[kind].required}
+                        aria-required={consentCopy()[kind].required}
                         aria-describedby={`consent-${kind}-summary`}
                         onChange={() => toggleConsent(kind)}
                       />
                       <span className="block">
                         <span className="block font-semibold">
                           {requirementFor(requirements.data, kind)?.title ??
-                            CONSENT_COPY[kind].title}
+                            consentCopy()[kind].title}
                           <span className="ml-2 text-sm font-normal text-ink-muted">
-                            (version{" "}
-                            {requirementFor(requirements.data, kind)?.version ??
-                              FALLBACK_CONSENT_VERSION}
-                            )
+                            {t("onboarding.versionNote", {
+                              version:
+                                requirementFor(requirements.data, kind)?.version ??
+                                FALLBACK_CONSENT_VERSION,
+                            })}
                           </span>
                         </span>
                         <span id={`consent-${kind}-summary`} className="mt-1 block text-ink-muted">
                           {requirementFor(requirements.data, kind)?.summary ??
-                            CONSENT_COPY[kind].summary}
+                            consentCopy()[kind].summary}
                         </span>
                         <span className="mt-2 inline-block rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
-                          {CONSENT_COPY[kind].required ? "Required" : "Optional"}
+                          {consentCopy()[kind].required ? t("onboarding.requiredBadge") : t("onboarding.optionalBadge")}
                         </span>
                       </span>
                     </label>
@@ -285,8 +297,7 @@ export function OnboardingFlow(): ReactElement {
           {step.id === "account" ? (
             <div className="mt-6 space-y-5">
               <p className="text-ink-muted">
-                You can start right now without an email address, or create an account so your
-                entries follow you to another device.
+                {t("onboarding.accountIntro")}
               </p>
               <button
                 type="button"
@@ -296,7 +307,7 @@ export function OnboardingFlow(): ReactElement {
                   void handleFinish("guest");
                 }}
               >
-                {submitting ? "Starting…" : "Continue as a guest"}
+                {submitting ? t("onboarding.guestStarting") : t("onboarding.guestButton")}
               </button>
               <div className="border-t border-border pt-5">
                 <button
@@ -308,7 +319,7 @@ export function OnboardingFlow(): ReactElement {
                     setShowAccountForm((value) => !value);
                   }}
                 >
-                  Create an account with email
+                  {t("onboarding.createToggle")}
                 </button>
                 {showAccountForm ? (
                   <form
@@ -318,7 +329,7 @@ export function OnboardingFlow(): ReactElement {
                   >
                     <div>
                       <label htmlFor="onboarding-email" className="block font-semibold">
-                        Email
+                        {t("onboarding.emailLabel")}
                       </label>
                       <input
                         id="onboarding-email"
@@ -334,7 +345,7 @@ export function OnboardingFlow(): ReactElement {
                     </div>
                     <div>
                       <label htmlFor="onboarding-password" className="block font-semibold">
-                        Password
+                        {t("onboarding.passwordLabel")}
                       </label>
                       <input
                         id="onboarding-password"
@@ -349,7 +360,7 @@ export function OnboardingFlow(): ReactElement {
                         className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-4 py-2"
                       />
                       <p className="mt-1 text-sm text-ink-muted">
-                        At least 10 characters. Length matters more than symbols.
+                        {t("onboarding.passwordHelp")}
                       </p>
                     </div>
                     <button
@@ -357,7 +368,7 @@ export function OnboardingFlow(): ReactElement {
                       className="rounded-xl bg-accent-bg px-5 py-3 font-semibold text-accent-fg disabled:opacity-60"
                       disabled={submitting}
                     >
-                      {submitting ? "Creating…" : "Create account and start"}
+                      {submitting ? t("onboarding.accountCreating") : t("onboarding.createSubmit")}
                     </button>
                   </form>
                 ) : null}
@@ -383,7 +394,7 @@ export function OnboardingFlow(): ReactElement {
                 goTo(stepIndex - 1);
               }}
             >
-              Back
+              {t("onboarding.backButton")}
             </button>
             {step.id === "consent" ? (
               <button
@@ -393,7 +404,7 @@ export function OnboardingFlow(): ReactElement {
                 aria-describedby="consent-hint"
                 onClick={handleConsentContinue}
               >
-                Continue
+                {t("onboarding.continueButton")}
               </button>
             ) : null}
             {step.id !== "consent" && step.id !== "account" ? (
@@ -404,22 +415,21 @@ export function OnboardingFlow(): ReactElement {
                   goTo(stepIndex + 1);
                 }}
               >
-                Continue
+                {t("onboarding.continueButton")}
               </button>
             ) : null}
           </div>
           {step.id === "consent" ? (
             <p id="consent-hint" className="mt-3 text-sm text-ink-muted">
               {allRequiredGranted
-                ? "You can change these later in Settings."
-                : "Tick the three required agreements to continue. The optional one is up to you."}
+                ? t("onboarding.consentHintGranted")
+                : t("onboarding.consentHintPending")}
             </p>
           ) : null}
         </section>
 
         <p className="mt-8 text-sm text-ink-muted">
-          Manovia is not a crisis service. If you are in danger or thinking about harming yourself,
-          please contact your local emergency services or a helpline now.
+          {t("onboarding.footer")}
         </p>
       </main>
 

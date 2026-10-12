@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { ApiError, type ApiClient } from "@/lib/api";
+import { t } from "@/lib/i18n/i18n";
 import { api as defaultClient } from "@/lib/api";
 import { CrisisResourcesModal } from "@/components/CrisisResourcesModal";
 
@@ -28,13 +29,13 @@ export const planKeys = {
 function linkFor(item: PlanItem): { to: string; label: string } | null {
   switch (item.kind) {
     case "check_in":
-      return { to: "/mood", label: "Go to check-in" };
+      return { to: "/mood", label: t("plan.linkToCheckIn") };
     case "exercise":
       return item.ref !== null
-        ? { to: `/exercises/${item.ref}`, label: "Open exercise" }
-        : { to: "/exercises", label: "Browse exercises" };
+        ? { to: `/exercises/${item.ref}`, label: t("plan.linkOpenExercise") }
+        : { to: "/exercises", label: t("plan.linkBrowseExercises") };
     case "thought_record":
-      return { to: "/cbt", label: "Open thought records" };
+      return { to: "/cbt", label: t("plan.linkOpenThoughtRecords") };
     default:
       return null;
   }
@@ -43,11 +44,11 @@ function linkFor(item: PlanItem): { to: string; label: string } | null {
 function statusWord(status: PlanItem["status"]): string {
   switch (status) {
     case "done":
-      return "Done";
+      return t("plan.statusDone");
     case "skipped":
-      return "Skipped";
+      return t("plan.statusSkipped");
     case "pending":
-      return "To do";
+      return t("plan.statusPending");
   }
 }
 
@@ -75,8 +76,8 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
     onError: (error) => {
       setErrorMessage(
         error instanceof ApiError
-          ? "That could not be saved just now. Please try again."
-          : "That could not be saved just now. Please try again.",
+          ? t("plan.saveError")
+          : t("plan.saveError"),
       );
     },
   });
@@ -89,9 +90,9 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
         data-testid="plan-card"
       >
         <h2 id="plan-heading" className="text-lg">
-          Today&rsquo;s plan
+          {t("plan.cardHeading")}
         </h2>
-        <p className="mt-3 text-sm text-ink-muted">Putting today together…</p>
+        <p className="mt-3 text-sm text-ink-muted">{t("plan.loading")}</p>
       </section>
     );
   }
@@ -104,10 +105,10 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
         data-testid="plan-card"
       >
         <h2 id="plan-heading" className="text-lg">
-          Today&rsquo;s plan
+          {t("plan.cardHeading")}
         </h2>
         <p className="mt-3 text-sm text-ink-muted">
-          The plan could not be loaded right now. Everything else still works.
+          {t("plan.loadError")}
         </p>
       </section>
     );
@@ -122,17 +123,16 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
       data-testid="plan-card"
     >
       <h2 id="plan-heading" className="text-lg">
-        Today&rsquo;s plan
+        {t("plan.cardHeading")}
       </h2>
 
       {plan.quiet_hours_active && plan.items.length === 0 ? (
         <p className="mt-3 text-sm text-ink-muted" data-testid="plan-quiet-hours">
-          Quiet hours are on, so there are no suggestions right now. Nothing has been cancelled —
-          the plan simply waits.
+          {t("plan.quietHoursActive")}
         </p>
       ) : plan.items.length === 0 ? (
         <p className="mt-3 text-sm text-ink-muted" data-testid="plan-empty">
-          Nothing to suggest today — and that is a fine answer. Do what feels manageable.
+          {t("plan.empty")}
         </p>
       ) : (
         <ul className="mt-4 space-y-4">
@@ -149,11 +149,11 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-semibold">{item.title}</h3>
                   <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent">
-                    {item.kind === "support" ? "Support" : statusWord(item.status)}
+                    {item.kind === "support" ? t("plan.statusSupport") : statusWord(item.status)}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-ink-muted">
-                  <span className="font-semibold">Why this? </span>
+                  <span className="font-semibold">{t("plan.whyLabel")} </span>
                   {item.why}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -165,7 +165,7 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
                       onClick={() => setSupportOpen(true)}
                       className="rounded-xl border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-semibold text-danger"
                     >
-                      See support options
+                      {t("plan.seeSupport")}
                     </button>
                   ) : (
                     <>
@@ -184,14 +184,14 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
                             onClick={() => settle.mutate({ id: item.id, action: "done" })}
                             className="rounded-xl bg-accent-bg px-3 py-2 text-sm font-semibold text-accent-fg"
                           >
-                            Done
+                            {t("plan.doneButton")}
                           </button>
                           <button
                             type="button"
                             onClick={() => settle.mutate({ id: item.id, action: "skip" })}
                             className="rounded-xl border border-border px-3 py-2 text-sm text-ink-muted"
                           >
-                            Skip
+                            {t("plan.skipButton")}
                           </button>
                         </>
                       )}

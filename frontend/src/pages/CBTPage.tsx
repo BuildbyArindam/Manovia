@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from "react";
 import { CrisisCard } from "@/components/CrisisCard";
 import { api, type ApiClient } from "@/lib/api";
+import { t } from "@/lib/i18n/i18n";
 import type { CrisisMessage, CrisisResource } from "@/lib/endpoints";
 
 type TextKey =
@@ -38,15 +39,20 @@ interface RecordView extends RecordData {
 interface SaveResult extends ScreenResult {
   record: RecordView | null;
 }
-const steps = [
-  "Situation",
-  "Automatic thought",
-  "Emotions + intensity",
-  "Evidence for",
-  "Evidence against",
-  "Alternative balanced thought",
-  "Re-rate emotion intensity",
+const stepLabelKeys = [
+  "cbt.steps.situation",
+  "cbt.steps.automaticThought",
+  "cbt.steps.emotions",
+  "cbt.steps.evidenceFor",
+  "cbt.steps.evidenceAgainst",
+  "cbt.steps.balanced",
+  "cbt.steps.reRate",
 ] as const;
+
+function stepLabel(index: number): string {
+  const key = stepLabelKeys[index];
+  return key !== undefined ? t(key) : "";
+}
 const fields: Partial<Record<number, TextKey>> = {
   0: "situation",
   1: "automatic_thought",
@@ -54,14 +60,29 @@ const fields: Partial<Record<number, TextKey>> = {
   4: "evidence_against",
   5: "balanced_thought",
 };
-const emotions = ["anxiety", "sadness", "anger", "fear", "shame", "guilt", "frustration", "other"];
-const tags = [
-  "looking at evidence",
-  "another perspective",
-  "taking a pause",
-  "talking to someone",
-  "writing it down",
-];
+const emotions = ["anxiety", "sadness", "anger", "fear", "shame", "guilt", "frustration", "other"] as const;
+
+function emotionLabel(id: string): string {
+  return t(`cbt.emotions.${id}`, { defaultValue: id });
+}
+/**
+ * The stored values are the English phrases (the backend validates them as a
+ * fixed literal list), so `what_helped` data stays stable across languages;
+ * only the rendered label is localised, via this phrase -> key lookup.
+ */
+const tagPhraseKeys: Readonly<Record<string, string>> = {
+  "looking at evidence": "cbt.tags.lookingAtEvidence",
+  "another perspective": "cbt.tags.anotherPerspective",
+  "taking a pause": "cbt.tags.takingAPause",
+  "talking to someone": "cbt.tags.talkingToSomeone",
+  "writing it down": "cbt.tags.writingItDown",
+};
+const tags = Object.keys(tagPhraseKeys);
+
+function tagLabel(phrase: string): string {
+  const key = tagPhraseKeys[phrase];
+  return key !== undefined ? t(key) : phrase;
+}
 const initial: RecordData = {
   situation: "",
   automatic_thought: "",
@@ -88,7 +109,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
     try {
       setRecords(await client.get<RecordView[]>("/cbt/records"));
     } catch {
-      setError("We couldn't load your records. Try again later.");
+      setError(t("cbt.loadError"));
     }
   }
 
@@ -100,7 +121,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
       const field = fields[step];
       if (field) {
         if (!draft[field].trim()) {
-          setError("Please write a few words first.");
+          setError(t("cbt.writeFirst"));
           return;
         }
         const payload = { field, text: draft[field] };
@@ -129,7 +150,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
       }
       setStep((value) => value + 1);
     } catch {
-      setError("We couldn't check this step. Nothing was saved. Please try again.");
+      setError(t("cbt.stepError"));
     } finally {
       setBusy(false);
     }
@@ -137,12 +158,11 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
 
   const field = fields[step];
   return (
-    <section className="mx-auto max-w-2xl space-y-6" aria-label="Thought records">
+    <section className="mx-auto max-w-2xl space-y-6" aria-label={t("cbt.ariaLabel")}>
       <header>
-        <h1 className="text-3xl font-semibold">Thought record</h1>
+        <h1 className="text-3xl font-semibold">{t("cbt.heading")}</h1>
         <p className="text-ink-muted">
-          A space to notice a thought, look at the evidence, and find your own perspective. This is
-          not a diagnosis.
+          {t("cbt.lede")}
         </p>
       </header>
       {error && (
@@ -161,20 +181,23 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
               void refresh();
             }}
           >
-            {step > 0 ? "Resume reflection" : "Start a reflection"}
+            {step > 0 ? t("cbt.resumeButton") : t("cbt.startButton")}
           </button>
-          <h2 className="text-xl font-semibold">Your progress</h2>
-          {records.length === 0 && <p>No saved reflections yet.</p>}
+          <h2 className="text-xl font-semibold">{t("cbt.progressHeading")}</h2>
+          {records.length === 0 && <p>{t("cbt.noRecords")}</p>}
           {records.map((record) => (
             <article key={record.id} className="rounded-xl border border-border bg-surface p-4">
               <h3 className="font-semibold">{record.situation}</h3>
               <p>
-                {record.emotion}: before {record.intensity_before}/100 → after{" "}
-                {record.intensity_after}/100
+                {t("cbt.intensityLine", {
+                  emotion: emotionLabel(record.emotion),
+                  before: record.intensity_before,
+                  after: record.intensity_after,
+                })}
               </p>
               <p>
-                What helped:{" "}
-                {record.what_helped.length ? record.what_helped.join(", ") : "Not noted"}
+                {t("cbt.whatHelpedPrefix")}{" "}
+                {record.what_helped.length ? record.what_helped.map(tagLabel).join(", ") : t("cbt.notNoted")}
               </p>
               <button
                 type="button"
@@ -184,11 +207,11 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
                     await client.request(`/cbt/records/${record.id}`, { method: "DELETE" });
                     await refresh();
                   } catch {
-                    setError("We couldn't delete this record. Try again.");
+                    setError(t("cbt.deleteError"));
                   }
                 }}
               >
-                Delete record
+                {t("cbt.deleteRecord")}
               </button>
             </article>
           ))}
@@ -196,7 +219,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
       )}
       {active && crisis && (
         <div className="space-y-4" role="alert">
-          <h2 className="text-xl font-semibold">Let's pause here</h2>
+          <h2 className="text-xl font-semibold">{t("cbt.pauseHeading")}</h2>
           <CrisisCard
             message={crisis.message}
             resources={crisis.resources}
@@ -207,17 +230,17 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
             className="rounded-xl border border-border px-5 py-3"
             onClick={() => setActive(false)}
           >
-            Continue later
+            {t("cbt.continueLater")}
           </button>
           <button
             type="button"
             className="rounded-xl border border-border px-5 py-3"
             onClick={() => setCrisis(null)}
           >
-            Edit this step
+            {t("cbt.editThisStep")}
           </button>
           <p className="text-sm text-ink-muted">
-            This unfinished reflection is only held in this tab. Leaving or reloading will clear it.
+            {t("cbt.crisisNote")}
           </p>
         </div>
       )}
@@ -229,11 +252,11 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
             void next();
           }}
         >
-          <p className="text-sm text-ink-muted">Step {step + 1} of 7</p>
-          <h2 className="text-xl font-semibold">{steps[step]}</h2>
+          <p className="text-sm text-ink-muted">{t("cbt.stepCounter", { current: step + 1, total: 7 })}</p>
+          <h2 className="text-xl font-semibold">{stepLabel(step)}</h2>
           {field && (
             <label className="block space-y-2" htmlFor="cbt-text">
-              <span>{steps[step]}</span>
+              <span>{stepLabel(step)}</span>
               <textarea
                 id="cbt-text"
                 required
@@ -249,11 +272,11 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
             <>
               {traps && (
                 <aside
-                  aria-label="Possible thinking traps"
+                  aria-label={t("cbt.trapsLabel")}
                   className="rounded-lg bg-accent-soft p-4"
                 >
-                  <h3 className="font-semibold">Possible thinking traps</h3>
-                  <p>These might be worth exploring, not facts about you.</p>
+                  <h3 className="font-semibold">{t("cbt.trapsLabel")}</h3>
+                  <p>{t("cbt.trapsIntro")}</p>
                   <ul>
                     {traps.candidates.map((trap) => (
                       <li key={trap.id}>
@@ -265,7 +288,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
                 </aside>
               )}
               <label className="block" htmlFor="cbt-emotion">
-                Emotion
+                {t("cbt.emotionLabel")}
               </label>
               <select
                 id="cbt-emotion"
@@ -274,11 +297,13 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
                 className="rounded-lg border p-2"
               >
                 {emotions.map((emotion) => (
-                  <option key={emotion}>{emotion}</option>
+                  <option key={emotion} value={emotion}>
+                    {emotionLabel(emotion)}
+                  </option>
                 ))}
               </select>
               <label className="block" htmlFor="cbt-before">
-                Intensity before (0–100)
+                {t("cbt.intensityBefore")}
               </label>
               <input
                 id="cbt-before"
@@ -297,7 +322,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
           {step === 6 && (
             <>
               <label className="block" htmlFor="cbt-after">
-                Intensity after (0–100)
+                {t("cbt.intensityAfter")}
               </label>
               <input
                 id="cbt-after"
@@ -312,7 +337,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
                 className="rounded-lg border p-2"
               />
               <fieldset>
-                <legend>What helped? (optional)</legend>
+                <legend>{t("cbt.whatHelpedLegend")}</legend>
                 {tags.map((tag) => (
                   <label key={tag} className="block py-1">
                     <input
@@ -327,7 +352,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
                         })
                       }
                     />{" "}
-                    {tag}
+                    {tagLabel(tag)}
                   </label>
                 ))}
               </fieldset>
@@ -340,7 +365,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
                 className="rounded-xl border px-5 py-3"
                 onClick={() => setStep(step - 1)}
               >
-                Back
+                {t("cbt.backButton")}
               </button>
             )}
             <button
@@ -348,14 +373,14 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
               disabled={busy}
               className="rounded-xl bg-accent px-5 py-3 text-white disabled:opacity-50"
             >
-              {step === 6 ? "Save reflection" : "Next"}
+              {step === 6 ? t("cbt.saveButton") : t("cbt.nextButton")}
             </button>
             <button
               type="button"
               className="rounded-xl border px-5 py-3"
               onClick={() => setActive(false)}
             >
-              Continue later
+              {t("cbt.continueLater")}
             </button>
           </div>
         </form>

@@ -52,11 +52,17 @@ async function record(input: string, init?: RequestInit): Promise<Response> {
 }
 
 describe("plan endpoints", () => {
-  it("fetches today's plan with the device timezone", async () => {
+  it("fetches today's plan with the device timezone and the interface language", async () => {
     const client = clientWith(record);
     const plan = await fetchTodayPlan(client);
     expect(plan.count).toBe(1);
-    expect(calls[0]?.url).toBe("/api/v1/plan/today?tz=Asia%2FKolkata");
+    expect(calls[0]?.url).toBe("/api/v1/plan/today?tz=Asia%2FKolkata&locale=en");
+  });
+
+  it("lets the caller override the plan language", async () => {
+    const client = clientWith(record);
+    await fetchTodayPlan(client, "hi");
+    expect(calls[0]?.url).toBe("/api/v1/plan/today?tz=Asia%2FKolkata&locale=hi");
   });
 
   it("marks an item done with a POST and no body", async () => {

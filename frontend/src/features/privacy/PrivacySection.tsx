@@ -22,6 +22,7 @@ import { useState, type ReactElement } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isApiError, type ApiClient } from "@/lib/api";
+import { t } from "@/lib/i18n/i18n";
 import { api as defaultClient } from "@/lib/api";
 import { formatDateTime } from "@/lib/dates";
 import { useOnboarding } from "@/onboarding/OnboardingProvider";
@@ -44,54 +45,45 @@ export const privacyKeys = {
  * request cannot drift apart. */
 export const DELETE_CONFIRMATION = "DELETE";
 
-const CONSENT_LABELS: Record<string, string> = {
-  terms: "Terms of use",
-  privacy: "Privacy notice",
-  ai_disclosure: "About the AI",
-  store_chat: "Saving chat history",
+const CONSENT_LABEL_KEYS: Record<string, string> = {
+  terms: "privacy.consentTerms",
+  privacy: "privacy.consentPrivacy",
+  ai_disclosure: "privacy.consentAi",
+  store_chat: "privacy.consentStoreChat",
 };
 
+function consentLabel(kind: string): string {
+  const key = CONSENT_LABEL_KEYS[kind];
+  return key !== undefined ? t(key) : kind;
+}
+
 /** Plain-language: what is stored, where it lives, and how it is protected. */
-const STORAGE_FACTS: ReadonlyArray<{ title: string; detail: string }> = [
-  {
-    title: "On this device only",
-    detail:
-      "Your palette, whether the mood hint is shown, and your sign-in tokens stay in this browser. They are never sent anywhere as preferences.",
-  },
-  {
-    title: "On Manovia's server, encrypted",
-    detail:
-      "Journal entries, the messages of chats you chose to save, and any note you attach to a check-in. Each is encrypted with a key that belongs to your account, so it is unreadable at rest without you.",
-  },
-  {
-    title: "On Manovia's server, as numbers",
-    detail:
-      "Check-in scales (how you rated mood and energy), which tags you picked, and thought-record ratings. These are what make trends possible.",
-  },
-  {
-    title: "Safety events: never your words",
-    detail:
-      "When a screening answer is high risk, Manovia records the level, the source and a category — no message text, no journal text, no note. That is why you can delete everything above and the safety record still contains nothing you wrote.",
-  },
-];
+function storageFacts(): ReadonlyArray<{ title: string; detail: string }> {
+  return [
+    { title: t("privacy.storageDeviceTitle"), detail: t("privacy.storageDeviceDetail") },
+    { title: t("privacy.storageEncryptedTitle"), detail: t("privacy.storageEncryptedDetail") },
+    { title: t("privacy.storageNumbersTitle"), detail: t("privacy.storageNumbersDetail") },
+    { title: t("privacy.storageSafetyTitle"), detail: t("privacy.storageSafetyDetail") },
+  ];
+}
 
 function describeKeptFor(days: number | null): string {
   if (days === null) {
-    return "Keep everything until I delete it.";
+    return t("privacy.retentionForever");
   }
   if (days === 30) {
-    return "Delete anything older than 30 days.";
+    return t("privacy.retention30");
   }
   if (days === 90) {
-    return "Delete anything older than 3 months.";
+    return t("privacy.retention90");
   }
   if (days === 180) {
-    return "Delete anything older than 6 months.";
+    return t("privacy.retention180");
   }
   if (days === 365) {
-    return "Delete anything older than 1 year.";
+    return t("privacy.retention365");
   }
-  return `Delete anything older than ${days} days.`;
+  return t("privacy.retentionGeneric", { days });
 }
 
 export interface PrivacySectionProps {
@@ -123,15 +115,15 @@ export function PrivacySection({
   const save = useMutation<PrivacySettings, Error, Partial<PrivacySettings>>({
     mutationFn: (patch) => savePrivacySettings(patch, client),
     onSuccess: async (saved) => {
-      setMessage("Saved. This is what Manovia will do from now on.");
+      setMessage(t("privacy.saved"));
       queryClient.setQueryData(privacyKeys.settings, saved);
       await queryClient.invalidateQueries({ queryKey: privacyKeys.settings });
     },
     onError: (error) => {
       setMessage(
         isApiError(error)
-          ? `That choice could not be saved (${error.code}). Please try again.`
-          : "That choice could not be saved right now. Please try again.",
+          ? t("privacy.saveErrorApi", { code: error.code })
+          : t("privacy.saveErrorGeneric"),
       );
     },
   });
@@ -143,15 +135,13 @@ export function PrivacySection({
       return { filename };
     },
     onSuccess: ({ filename }) => {
-      setMessage(
-        `${filename} has been prepared and your browser is downloading it. It is decrypted so you can read it — keep it somewhere safe.`,
-      );
+      setMessage(t("privacy.exportDone", { filename }));
     },
     onError: (error) => {
       setMessage(
         isApiError(error)
-          ? `The export could not be prepared (${error.code}). Nothing was downloaded.`
-          : "The export could not be prepared right now. Nothing was downloaded.",
+          ? t("privacy.exportErrorApi", { code: error.code })
+          : t("privacy.exportErrorGeneric"),
       );
     },
   });
@@ -166,9 +156,7 @@ export function PrivacySection({
       ),
     onSuccess: (result) => {
       setReceipt(result);
-      setMessage(
-        "Your account and its data have been deleted. The receipt below is all that remains.",
-      );
+      setMessage(t("privacy.deletedMessage"));
       client.clearSession();
       reset();
       onDeleted?.(result);
@@ -178,7 +166,7 @@ export function PrivacySection({
         setMessage(deletionErrorMessage(error.code, error.message));
         return;
       }
-      setMessage("Deletion could not be completed. Nothing was deleted.");
+      setMessage(t("privacy.deleteFailed"));
     },
   });
 
@@ -192,15 +180,14 @@ export function PrivacySection({
       data-testid="privacy-section"
     >
       <h2 id="privacy-heading" className="text-lg">
-        Privacy
+        {t("privacy.heading")}
       </h2>
       <p className="mt-2 text-sm text-ink-muted">
-        What Manovia keeps, what it does not, and how to take it or remove it. Nothing on this page
-        needs a reason or an explanation.
+        {t("privacy.lede")}
       </p>
 
       <div className="mt-4 space-y-3">
-        {STORAGE_FACTS.map((fact) => (
+        {storageFacts().map((fact) => (
           <div key={fact.title} className="rounded-xl bg-surface-muted p-4">
             <p className="font-semibold">{fact.title}</p>
             <p className="mt-1 text-sm text-ink-muted">{fact.detail}</p>
@@ -210,16 +197,15 @@ export function PrivacySection({
 
       {settingsQuery.isLoading ? (
         <p className="mt-5 text-sm text-ink-muted" role="status">
-          Loading your privacy choices…
+          {t("privacy.loadingSettings")}
         </p>
       ) : settingsQuery.isError || settings === undefined ? (
         <p className="mt-5 text-sm text-ink-muted" role="alert">
-          Your privacy choices could not be loaded right now. Everything else on this page still
-          works.
+          {t("privacy.loadSettingsError")}
         </p>
       ) : (
         <fieldset className="mt-5 space-y-4" disabled={save.isPending}>
-          <legend className="font-semibold">Your choices</legend>
+          <legend className="font-semibold">{t("privacy.choicesLegend")}</legend>
 
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border-strong px-4 py-3">
             <input
@@ -231,10 +217,9 @@ export function PrivacySection({
               className="mt-1 h-5 w-5 accent-accent-bg"
             />
             <span>
-              <span className="block font-semibold">Let me save chats</span>
+              <span className="block font-semibold">{t("privacy.storeChatLabel")}</span>
               <span className="block text-sm text-ink-muted">
-                Off means saved chats stop being written and existing saved chats stop gaining new
-                turns. You can still talk to Manovia — those conversations are simply not kept.
+                {t("privacy.storeChatHelp")}
               </span>
             </span>
           </label>
@@ -249,16 +234,15 @@ export function PrivacySection({
               className="mt-1 h-5 w-5 accent-accent-bg"
             />
             <span>
-              <span className="block font-semibold">Keep mood scores from my writing</span>
+              <span className="block font-semibold">{t("privacy.storeSentimentLabel")}</span>
               <span className="block text-sm text-ink-muted">
-                These are guesses made by a language model, not measurements. Off means new journal
-                entries store no score. Your words are still saved as you wrote them.
+                {t("privacy.storeSentimentHelp")}
               </span>
             </span>
           </label>
 
           <label className="block">
-            <span className="font-semibold">How long to keep things</span>
+            <span className="font-semibold">{t("privacy.retentionLegend")}</span>
             <select
               data-testid="retention-select"
               value={settings.retention_days === null ? "forever" : String(settings.retention_days)}
@@ -268,7 +252,7 @@ export function PrivacySection({
               }}
               className="mt-2 block rounded-xl border border-border-strong bg-surface px-3 py-2"
             >
-              <option value="forever">Keep everything until I delete it</option>
+              <option value="forever">{t("privacy.retentionForeverOption")}</option>
               {settings.retention_choices.map((days) => (
                 <option key={days} value={String(days)}>
                   {describeKeptFor(days)}
@@ -276,22 +260,17 @@ export function PrivacySection({
               ))}
             </select>
             <span className="mt-2 block text-sm text-ink-muted">
-              A cleanup job runs against this window and deletes older entries. Deleting removes
-              them; it does not anonymise them.{" "}
-              {settings.been_saved
-                ? ""
-                : "Nothing here has been saved yet, so the defaults are showing."}
+              {t("privacy.retentionHelp")}{" "}
+              {settings.been_saved ? "" : t("privacy.retentionDefaultsNote")}
             </span>
           </label>
         </fieldset>
       )}
 
       <div className="mt-6 border-t border-border pt-5">
-        <h3 className="font-semibold">Take your data with you</h3>
+        <h3 className="font-semibold">{t("privacy.exportHeading")}</h3>
         <p className="mt-1 text-sm text-ink-muted">
-          One file, everything Manovia holds about you, decrypted so you can read it: profile,
-          agreements, saved chats, journal, check-ins, assessments, exercises, thought records, plan
-          and safety events. Keep it somewhere safe — it is unencrypted once downloaded.
+          {t("privacy.exportHelp")}
         </p>
         <button
           type="button"
@@ -300,22 +279,22 @@ export function PrivacySection({
           onClick={() => exportData.mutate()}
           className="mt-3 rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-60"
         >
-          {exportData.isPending ? "Preparing your file…" : "Download my data"}
+          {exportData.isPending ? t("privacy.exportPreparing") : t("privacy.exportButton")}
         </button>
       </div>
 
       <div className="mt-6 border-t border-border pt-5">
-        <h3 className="font-semibold">What you have agreed to</h3>
+        <h3 className="font-semibold">{t("privacy.consentsHeading")}</h3>
         {consentsQuery.isLoading ? (
           <p className="mt-2 text-sm text-ink-muted" role="status">
-            Loading your agreements…
+            {t("privacy.consentsLoading")}
           </p>
         ) : consentsQuery.isError ? (
           <p className="mt-2 text-sm text-ink-muted" role="alert">
-            Your agreement history could not be loaded right now.
+            {t("privacy.consentsLoadError")}
           </p>
         ) : (consentsQuery.data?.items.length ?? 0) === 0 ? (
-          <p className="mt-2 text-sm text-ink-muted">No agreements recorded on this account yet.</p>
+          <p className="mt-2 text-sm text-ink-muted">{t("privacy.consentsEmpty")}</p>
         ) : (
           <ul className="mt-3 space-y-2" data-testid="consent-history">
             {consentsQuery.data?.items.map((item) => (
@@ -323,9 +302,10 @@ export function PrivacySection({
                 key={`${item.kind}-${item.version}-${item.created_at}`}
                 className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-surface-muted px-4 py-3"
               >
-                <span className="font-medium">{CONSENT_LABELS[item.kind] ?? item.kind}</span>
+                <span className="font-medium">{consentLabel(item.kind)}</span>
                 <span className="text-sm text-ink-muted">
-                  {item.granted ? "agreed" : "withdrawn"} · version {item.version} ·{" "}
+                  {item.granted ? t("privacy.consentAgreed") : t("privacy.consentWithdrawn")} ·{" "}
+                  {t("privacy.consentVersion", { version: item.version })} ·{" "}
                   {formatDateTime(item.created_at)}
                 </span>
               </li>
@@ -333,33 +313,28 @@ export function PrivacySection({
           </ul>
         )}
         <p className="mt-2 text-sm text-ink-muted">
-          Withdrawing an agreement is not offered here because it does not work like a switch:
-          asking Manovia to stop using your data is what deletion below does. Everything else stays
-          available to you either way.
+          {t("privacy.consentsNote")}
         </p>
       </div>
 
       <div className="mt-6 border-t border-border pt-5">
-        <h3 className="font-semibold">Anonymous mode</h3>
+        <h3 className="font-semibold">{t("privacy.anonymousHeading")}</h3>
         <p className="mt-2 text-sm text-ink-muted" data-testid="anonymous-mode-copy">
           {record === null
-            ? "Anonymous accounts carry no email and no password, so nothing here points back at a person. Everything else works exactly the same."
+            ? t("privacy.anonymousSignedOut")
             : record.user.isAnonymous
-              ? "You are using an anonymous account: no email, no password, nothing that identifies you. Everything else works the same — the data belongs to this device. The trade-off is that nobody, including you, can recover it if this browser forgets its tokens, so keep a copy of anything you want to keep."
-              : "You signed up with an email address, which is the only thing that identifies you. If you would rather not be identifiable, you can delete this account and start again anonymously: everything works the same, and the data then belongs to the device alone."}
+              ? t("privacy.anonymousActive")
+              : t("privacy.anonymousEmail")}
         </p>
         <p className="mt-2 text-sm text-ink-muted">
-          Anonymous does not mean invisible: your language, your region and the content you choose
-          to save are still stored as described above, and safety screens still run. It means
-          Manovia holds no name, no email and no phone number that could point back at you.
+          {t("privacy.anonymousCaveat")}
         </p>
       </div>
 
       <div className="mt-6 border-t border-border pt-5">
-        <h3 className="font-semibold">Delete everything</h3>
+        <h3 className="font-semibold">{t("privacy.deleteHeading")}</h3>
         <p className="mt-2 text-sm text-ink-muted">
-          This deletes your account and every row attached to it, in one transaction. It cannot be
-          undone, and it also ends this session — you would come back to a fresh, empty account.
+          {t("privacy.deleteHelp")}
         </p>
         {receipt !== null ? (
           <div
@@ -367,9 +342,9 @@ export function PrivacySection({
             data-testid="deletion-receipt"
             className="mt-3 rounded-xl border border-border-strong bg-surface-muted p-4"
           >
-            <p className="font-semibold">Deleted. Here is your receipt.</p>
+            <p className="font-semibold">{t("privacy.receiptHeading")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Reference {receipt.account_ref} · {receipt.total_rows} rows removed ·{" "}
+              {t("privacy.receiptLine", { ref: receipt.account_ref, rows: receipt.total_rows })}{" "}
               {formatDateTime(receipt.created_at)}
             </p>
             <ul className="mt-2 text-sm text-ink-muted">
@@ -377,19 +352,18 @@ export function PrivacySection({
                 .filter(([, count]) => count > 0)
                 .map(([table, count]) => (
                   <li key={table}>
-                    {count} × {table}
+                    {t("privacy.receiptCountLine", { count, table })}
                   </li>
                 ))}
             </ul>
             <p className="mt-2 text-sm text-ink-muted">
-              The reference is a one-way hash, not your account number: it proves the deletion
-              happened without recording who you are.
+              {t("privacy.receiptNote")}
             </p>
           </div>
         ) : (
           <>
             <label className="mt-3 block">
-              <span className="text-sm font-semibold">Type {DELETE_CONFIRMATION} to confirm</span>
+              <span className="text-sm font-semibold">{t("privacy.typeToConfirm", { word: DELETE_CONFIRMATION })}</span>
               <input
                 type="text"
                 data-testid="delete-confirmation-input"
@@ -401,7 +375,7 @@ export function PrivacySection({
             </label>
             {record?.user.isAnonymous === false ? (
               <label className="mt-3 block">
-                <span className="text-sm font-semibold">Your password</span>
+                <span className="text-sm font-semibold">{t("privacy.passwordLabel")}</span>
                 <input
                   type="password"
                   data-testid="delete-password-input"
@@ -411,7 +385,7 @@ export function PrivacySection({
                   className="mt-1 block w-64 rounded-xl border border-border-strong bg-surface px-3 py-2"
                 />
                 <span className="mt-1 block text-sm text-ink-muted">
-                  Required because this account signs in with a password.
+                  {t("privacy.passwordHelp")}
                 </span>
               </label>
             ) : null}
@@ -422,7 +396,7 @@ export function PrivacySection({
               onClick={() => deleteAccountMutation.mutate()}
               className="mt-3 rounded-xl bg-danger-bg px-4 py-2 text-sm font-semibold text-danger-fg disabled:opacity-60"
             >
-              {deleteAccountMutation.isPending ? "Deleting…" : "Delete my account and data"}
+              {deleteAccountMutation.isPending ? t("privacy.deleting") : t("privacy.deleteButton")}
             </button>
           </>
         )}
@@ -441,15 +415,15 @@ export function PrivacySection({
 function deletionErrorMessage(code: string, message: string): string {
   switch (code) {
     case "confirmation_required":
-      return "The confirmation phrase did not match. Nothing was deleted.";
+      return t("privacy.errConfirmationRequired");
     case "reauth_required":
-      return "Enter your password to confirm. Nothing was deleted.";
+      return t("privacy.errReauthRequired");
     case "invalid_credentials":
-      return "That password was not right. Nothing was deleted.";
+      return t("privacy.errInvalidCredentials");
     case "account_locked":
-      return "Too many wrong passwords, so deletion is paused for a while. Nothing was deleted.";
+      return t("privacy.errAccountLocked");
     default:
-      return `Deletion failed: ${message} Nothing was deleted.`;
+      return t("privacy.errDeleteGeneric", { message });
   }
 }
 

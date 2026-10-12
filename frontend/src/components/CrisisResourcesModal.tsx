@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import { fetchCrisisResources } from "@/lib/endpoints";
 import { CrisisCard } from "@/components/CrisisCard";
 import { Modal } from "@/components/Modal";
+import { t } from "@/lib/i18n/i18n";
 
 const TITLE_ID = "crisis-dialog-title";
 const DESCRIPTION_ID = "crisis-dialog-description";
@@ -48,43 +49,35 @@ export function CrisisResourcesModal({
     >
       <div className="flex items-start justify-between gap-4">
         <h2 id={TITLE_ID} className="text-xl sm:text-2xl">
-          Need help now?
+          {t("crisis.modal.title")}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("crisis.modal.close")}
           className="rounded-lg border border-border-strong px-3 py-1 text-sm font-semibold"
         >
-          Close
+          {t("crisis.modal.close")}
         </button>
       </div>
 
       <p id={DESCRIPTION_ID} className="mt-3 text-ink-muted">
-        You do not have to handle this alone. These lines are free, confidential, and staffed by
-        trained people.{" "}
-        <strong className="text-ink">
-          If you are in immediate danger, call your local emergency number now
-        </strong>{" "}
-        (for example 911, 999, or 112).
+        {t("crisis.modal.intro")}{" "}
+        <strong className="text-ink">{t("crisis.modal.introEmphasis")}</strong>{" "}
+        {t("crisis.modal.introExamples")}
       </p>
-      <p className="mt-2 text-sm text-ink-muted">
-        Manovia is not a crisis service. It cannot send help to you, and nothing you type here
-        reaches a person.
-      </p>
+      <p className="mt-2 text-sm text-ink-muted">{t("crisis.modal.notCrisis")}</p>
 
       {isPending ? (
         <p aria-busy="true" className="mt-6 rounded-xl bg-surface-muted p-4 text-ink-muted">
-          Loading helplines…
+          {t("crisis.modal.loading")}
         </p>
       ) : null}
 
       {isError ? (
         <div role="alert" className="mt-6 rounded-xl bg-danger-soft p-4">
-          <p className="font-semibold text-danger">The helpline list could not be loaded.</p>
-          <p className="mt-1 text-ink-muted">
-            Please call your local emergency number, or a local helpline, right now.
-          </p>
+          <p className="font-semibold text-danger">{t("crisis.modal.errorTitle")}</p>
+          <p className="mt-1 text-ink-muted">{t("crisis.modal.errorBody")}</p>
           <button
             type="button"
             onClick={() => {
@@ -92,7 +85,7 @@ export function CrisisResourcesModal({
             }}
             className="mt-3 rounded-xl border border-border-strong px-4 py-2 font-semibold"
           >
-            {isFetching ? "Trying again…" : "Try again"}
+            {isFetching ? t("crisis.modal.retrying") : t("crisis.modal.retry")}
           </button>
         </div>
       ) : null}
@@ -108,9 +101,7 @@ export function CrisisResourcesModal({
             testId="crisis-modal-card"
           />
           {data.fallback_used ? (
-            <p className="mt-3 text-sm text-ink-muted">
-              We could not match the region you asked for, so these are international lines.
-            </p>
+            <p className="mt-3 text-sm text-ink-muted">{t("crisis.modal.regionFallback")}</p>
           ) : null}
         </div>
       ) : null}

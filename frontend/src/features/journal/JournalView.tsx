@@ -1,5 +1,6 @@
 import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CrisisCard } from "@/components/CrisisCard";
+import { t } from "@/lib/i18n/i18n";
 import {
   createJournalEntry,
   deleteJournalEntry,
@@ -34,32 +35,31 @@ export interface JournalViewProps {
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
-const FALLBACK_TEMPLATES: readonly JournalTemplate[] = [
-  {
-    id: "free",
-    label: "Free writing",
-    description: "An open page with no structure — write whatever is on your mind.",
-    scaffold_title: "",
-    scaffold_body: "",
-  },
-  {
-    id: "gratitude",
-    label: "Gratitude",
-    description: "Notice three small, concrete things that steadied or supported you today.",
-    scaffold_title: "Three small anchors today",
-    scaffold_body:
-      "1. One small moment or detail I appreciated today:\n\n2. Something or someone that made the day a little easier:\n\n3. One thing my body or mind helped me get through today:\n",
-  },
-  {
-    id: "worry_dump",
-    label: "Worry dump",
-    description:
-      "Get looping thoughts out of your head onto the page, then separate what you can act on from what can wait.",
-    scaffold_title: "Setting down today's worries",
-    scaffold_body:
-      "What is looping in my head right now:\n- \n\nWhat is actually within my control in the next 24 hours:\n- \n\nWhat I give myself permission to set down until tomorrow:\n- \n",
-  },
-];
+function fallbackTemplates(): readonly JournalTemplate[] {
+  return [
+    {
+      id: "free",
+      label: t("journal.templates.freeLabel"),
+      description: t("journal.templates.freeDescription"),
+      scaffold_title: "",
+      scaffold_body: "",
+    },
+    {
+      id: "gratitude",
+      label: t("journal.templates.gratitudeLabel"),
+      description: t("journal.templates.gratitudeDescription"),
+      scaffold_title: t("journal.templates.gratitudeScaffoldTitle"),
+      scaffold_body: t("journal.templates.gratitudeScaffoldBody"),
+    },
+    {
+      id: "worry_dump",
+      label: t("journal.templates.worryLabel"),
+      description: t("journal.templates.worryDescription"),
+      scaffold_title: t("journal.templates.worryScaffoldTitle"),
+      scaffold_body: t("journal.templates.worryScaffoldBody"),
+    },
+  ];
+}
 
 function readSessionValue(key: string): string | null {
   try {
@@ -93,7 +93,7 @@ export function JournalView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [prompts, setPrompts] = useState<JournalPrompt[]>([]);
-  const [templates, setTemplates] = useState<readonly JournalTemplate[]>(FALLBACK_TEMPLATES);
+  const [templates, setTemplates] = useState<readonly JournalTemplate[]>(() => fallbackTemplates());
 
   // Active editor state
   const [activeId, setActiveId] = useState<string | null>(() =>
@@ -204,7 +204,7 @@ export function JournalView({
       } catch (err) {
         if (!cancelled) {
           setErrorMessage(
-            isApiError(err) ? err.message : "Could not load your journal entries right now.",
+            isApiError(err) ? err.message : t("journal.loadError"),
           );
         }
       } finally {
@@ -270,7 +270,7 @@ export function JournalView({
       return saved;
     } catch (err) {
       setSaveState("error");
-      setErrorMessage(isApiError(err) ? err.message : "Could not save your reflection right now.");
+      setErrorMessage(isApiError(err) ? err.message : t("journal.saveError"));
       return null;
     } finally {
       saveInFlightRef.current = false;
@@ -373,7 +373,7 @@ export function JournalView({
       setConfirmingDelete(false);
       handleStartNewEntry("free");
     } catch (err) {
-      setErrorMessage(isApiError(err) ? err.message : "Could not delete this journal entry.");
+      setErrorMessage(isApiError(err) ? err.message : t("journal.deleteError"));
     }
   }, [activeId, client, handleStartNewEntry]);
 
@@ -415,7 +415,7 @@ export function JournalView({
       setTotalEntries(next.total);
       setHasMore(next.has_more);
     } catch (err) {
-      setErrorMessage(isApiError(err) ? err.message : "Could not load more journal entries.");
+      setErrorMessage(isApiError(err) ? err.message : t("journal.loadMoreError"));
     }
   }, [client, entries.length]);
 
@@ -437,12 +437,11 @@ export function JournalView({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-brand-700">
-            Encrypted reflections
+            {t("journal.eyebrow")}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-stone-900">Journal</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-stone-900">{t("journal.heading")}</h1>
           <p className="mt-1 text-sm text-stone-600">
-            Write freely. Your title and words are encrypted at rest with your per-user AES-256-GCM
-            key.
+            {t("journal.lede")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -453,7 +452,7 @@ export function JournalView({
             onClick={() => setDistractionFree((prev) => !prev)}
             className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
           >
-            {distractionFree ? "Exit distraction-free" : "Distraction-free mode"}
+            {distractionFree ? t("journal.exitFocus") : t("journal.focusMode")}
           </button>
           <button
             type="button"
@@ -461,7 +460,7 @@ export function JournalView({
             onClick={() => handleStartNewEntry("free")}
             className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
           >
-            New entry
+            {t("journal.newEntry")}
           </button>
           <button
             type="button"
@@ -469,7 +468,7 @@ export function JournalView({
             onClick={handleExportMarkdown}
             className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 hover:bg-brand-100"
           >
-            Export to Markdown
+            {t("journal.exportMarkdown")}
           </button>
         </div>
       </div>
@@ -481,7 +480,7 @@ export function JournalView({
           resources={activeCrisis.resources}
           emergency={activeCrisis.emergency}
           announce
-          heading="There is support for this, right now"
+          heading={t("journal.crisisHeading")}
           testId="journal-crisis-card"
         />
       ) : null}
@@ -500,7 +499,7 @@ export function JournalView({
       {/* Private by default explainer */}
       {!distractionFree ? (
         <section
-          aria-label="Private by default explainer"
+          aria-label={t("journal.privacyExplainerLabel")}
           data-testid="journal-privacy-explainer"
           className="rounded-xl border border-brand-200 bg-brand-50/50 p-4 text-sm text-stone-800"
         >
@@ -508,7 +507,7 @@ export function JournalView({
             <div className="flex items-center gap-2">
               <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-brand-700" />
               <strong className="font-semibold text-stone-900">
-                Private by default — AES-256-GCM envelope encryption
+                {t("journal.privacyBadge")}
               </strong>
             </div>
             <button
@@ -518,13 +517,13 @@ export function JournalView({
               onClick={() => setShowPrivacyDetails((prev) => !prev)}
               className="text-xs font-medium text-brand-800 underline hover:text-brand-900"
             >
-              {showPrivacyDetails ? "Hide threat model details" : "How encryption & search work"}
+              {showPrivacyDetails ? t("journal.privacyToggleHide") : t("journal.privacyToggleShow")}
             </button>
           </div>
           <p className="mt-1.5 text-xs leading-relaxed text-stone-600">
-            Every entry’s title and body are encrypted with your per-user 256-bit data key wrapped
-            by <code>FIELD_ENCRYPTION_KEY</code>, bound to your account ID and column name via
-            Associated Data (AAD) so ciphertexts cannot be swapped.
+            {t("journal.privacyIntro1")}{" "}
+            <code>FIELD_ENCRYPTION_KEY</code>
+            {t("journal.privacyIntro2")}
           </p>
           {showPrivacyDetails ? (
             <div
@@ -532,21 +531,18 @@ export function JournalView({
               className="mt-3 space-y-2 border-t border-brand-200/80 pt-3 text-xs leading-relaxed text-stone-700"
             >
               <p>
-                <strong>Client-side search only:</strong> Because ciphertexts use fresh random
-                96-bit nonces, the database cannot search inside encrypted entries. Search runs
-                locally in your browser after your entries are fetched.
+                <strong>{t("journal.searchOnlyPrefix")}</strong>{" "}
+                {t("journal.searchOnlyBody")}
               </p>
               <p>
-                <strong>Optional numeric emotion scores:</strong> By default, sentiment and emotion
-                scores are computed in memory when you save and only the numbers are stored in the
-                clear for trend charts. You can turn this off below for any entry.
+                <strong>{t("journal.scoresPrefix")}</strong>{" "}
+                {t("journal.scoresBody")}
               </p>
               <p>
-                <strong>What is NOT protected (threat model):</strong> Because the server wraps and
-                unwraps data keys in memory using <code>FIELD_ENCRYPTION_KEY</code>, an attacker who
-                compromises the running application server and reads process memory or environment
-                variables can decrypt entries. This protects against database dumps, SQL injection
-                reads, and disk theft — not a live server compromise.
+                <strong>{t("journal.threatPrefix")}</strong>{" "}
+                {t("journal.threatBody1")}{" "}
+                <code>FIELD_ENCRYPTION_KEY</code>
+                {t("journal.threatBody2")}
               </p>
             </div>
           ) : null}
@@ -558,7 +554,7 @@ export function JournalView({
       >
         {/* Main Distraction-Free Editor Column */}
         <section
-          aria-label="Journal editor"
+          aria-label={t("journal.editorLabel")}
           data-testid="journal-editor"
           className="card space-y-4 p-6"
         >
@@ -566,7 +562,7 @@ export function JournalView({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div
               role="group"
-              aria-label="Journal templates"
+              aria-label={t("journal.templatesLabel")}
               className="flex flex-wrap items-center gap-1.5"
             >
               {templates.map((tpl) => {
@@ -593,14 +589,18 @@ export function JournalView({
             {/* Word count + Autosave status */}
             <div className="flex items-center gap-3 text-xs text-stone-500">
               <span data-testid="journal-word-count" className="font-medium text-stone-700">
-                {liveWordCount} {liveWordCount === 1 ? "word" : "words"}
+                {liveWordCount === 1
+                  ? t("journal.wordCountOne", { count: liveWordCount })
+                  : t("journal.wordCountMany", { count: liveWordCount })}
               </span>
               <span aria-live="polite" data-testid="journal-save-status">
-                {saveState === "saving" && "Saving…"}
-                {saveState === "dirty" && "Unsaved changes…"}
-                {saveState === "saved" && (lastSavedAt ? `Saved` : "Saved")}
-                {saveState === "error" && "Save failed"}
-                {saveState === "idle" && "Ready"}
+                {saveState === "saving" && t("journal.statusSaving")}
+                {saveState === "dirty" && t("journal.statusUnsaved")}
+                {saveState === "saved" && (
+                  <span title={lastSavedAt ?? undefined}>{t("journal.statusSaved")}</span>
+                )}
+                {saveState === "error" && t("journal.statusSaveFailed")}
+                {saveState === "idle" && t("journal.statusReady")}
               </span>
             </div>
           </div>
@@ -609,7 +609,7 @@ export function JournalView({
           {prompts.length > 0 && !distractionFree ? (
             <div className="space-y-2" data-testid="journal-prompts-bar">
               <p className="text-xs font-medium text-stone-600">
-                Writing prompts (click a chip to use):
+                {t("journal.promptsIntro")}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {prompts.map((prompt) => {
@@ -637,7 +637,7 @@ export function JournalView({
                   data-testid="journal-prompt-hint"
                   className="rounded-lg bg-stone-100 px-3 py-2 text-xs italic text-stone-600"
                 >
-                  Prompt hint: {selectedPrompt.hint}
+                  {t("journal.promptHint", { hint: selectedPrompt.hint })}
                 </p>
               ) : null}
             </div>
@@ -646,7 +646,7 @@ export function JournalView({
           {/* Title input */}
           <div>
             <label htmlFor="journal-title-input" className="sr-only">
-              Entry title
+              {t("journal.titleLabel")}
             </label>
             <input
               id="journal-title-input"
@@ -655,7 +655,7 @@ export function JournalView({
               maxLength={200}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Give this reflection a title (optional)…"
+              placeholder={t("journal.titlePlaceholder")}
               className="w-full border-0 border-b border-stone-200 bg-transparent pb-2 text-lg font-medium text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none"
             />
           </div>
@@ -672,7 +672,7 @@ export function JournalView({
               maxLength={20000}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Write whatever is on your mind. Changes autosave automatically as you pause typing…"
+              placeholder={t("journal.editorPlaceholder")}
               className="w-full resize-y rounded-lg border border-stone-200 bg-stone-50/40 p-3.5 text-sm leading-relaxed text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:bg-white focus:outline-none"
             />
           </div>
@@ -698,7 +698,7 @@ export function JournalView({
                   onClick={() => setConfirmingDelete(true)}
                   className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
                 >
-                  Delete entry
+                  {t("journal.deleteEntry")}
                 </button>
               ) : null}
 
@@ -711,7 +711,7 @@ export function JournalView({
                 }}
                 className="rounded-lg bg-brand-700 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {saveState === "saving" ? "Saving…" : "Save now"}
+                {saveState === "saving" ? t("journal.statusSaving") : t("journal.saveNow")}
               </button>
             </div>
           </div>
@@ -720,13 +720,12 @@ export function JournalView({
           {confirmingDelete ? (
             <div
               role="alertdialog"
-              aria-label="Confirm delete journal entry"
+              aria-label={t("journal.deleteConfirmLabel")}
               data-testid="journal-delete-confirm-dialog"
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900"
             >
               <span>
-                Delete this reflection permanently? Its ciphertext will be erased from the database
-                and cannot be recovered.
+                {t("journal.deleteAsk")}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -735,7 +734,7 @@ export function JournalView({
                   onClick={() => setConfirmingDelete(false)}
                   className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 hover:bg-stone-50"
                 >
-                  Cancel
+                  {t("journal.deleteCancel")}
                 </button>
                 <button
                   type="button"
@@ -745,7 +744,7 @@ export function JournalView({
                   }}
                   className="rounded-md bg-red-700 px-2.5 py-1 font-medium text-white hover:bg-red-800"
                 >
-                  Confirm delete
+                  {t("journal.deleteConfirm")}
                 </button>
               </div>
             </div>
@@ -759,7 +758,7 @@ export function JournalView({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-stone-800">
-                  Exported Markdown ({exportedFilename})
+                  {t("journal.exportTitle", { filename: exportedFilename })}
                 </span>
                 <button
                   type="button"
@@ -767,7 +766,7 @@ export function JournalView({
                   onClick={() => setExportedMarkdown(null)}
                   className="text-xs text-stone-500 hover:text-stone-800"
                 >
-                  Close
+                  {t("journal.exportClose")}
                 </button>
               </div>
               <pre
@@ -783,7 +782,7 @@ export function JournalView({
         {/* Sidebar: Client-side search & Past entries list */}
         {!distractionFree ? (
           <aside
-            aria-label="Past journal entries"
+            aria-label={t("journal.entriesLabel")}
             data-testid="journal-sidebar"
             className="space-y-4"
           >
@@ -804,7 +803,7 @@ export function JournalView({
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search decrypted entries locally…"
+                  placeholder={t("journal.searchPlaceholder")}
                   className="w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-900 placeholder:text-stone-400 focus:border-brand-600 focus:outline-none"
                 />
                 <p className="mt-1 text-[11px] text-stone-500">
@@ -813,22 +812,22 @@ export function JournalView({
               </div>
 
               {loading ? (
-                <p className="py-4 text-center text-xs text-stone-500">Decrypting your entries…</p>
+                <p className="py-4 text-center text-xs text-stone-500">{t("journal.decryptingEntries")}</p>
               ) : filteredEntries.length === 0 ? (
                 <p
                   data-testid="journal-empty-state"
                   className="py-4 text-center text-xs text-stone-500"
                 >
                   {searchQuery.trim() !== ""
-                    ? "No entries match your local search."
-                    : "No journal entries yet. Start typing to autosave your first reflection."}
+                    ? t("journal.searchEmpty")
+                    : t("journal.entriesEmpty")}
                 </p>
               ) : (
                 <ul className="space-y-2" data-testid="journal-entry-list">
                   {filteredEntries.map((item) => {
                     const isCurrent = item.id === activeId;
                     const displayTitle =
-                      item.title.trim() !== "" ? item.title : "Untitled reflection";
+                      item.title.trim() !== "" ? item.title : t("journal.untitled");
                     return (
                       <li key={item.id}>
                         <button

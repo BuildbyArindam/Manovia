@@ -40,7 +40,8 @@
   --manovia-focus: #8a5a00;
 
   --manovia-font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans Devanagari", "Noto Sans Bengali", Arial, sans-serif;
   --manovia-font-serif:
     "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
 }
@@ -126,6 +127,42 @@
     font-weight: 600;
     line-height: 1.25;
     letter-spacing: -0.01em;
+  }
+
+  /*
+   * Indic scripts (Day 23). Devanagari and Bengali carry vowel signs above and
+   * below the consonant cluster, so the tight Latin heading line-height clips
+   * them, and the serif stack has no Indic face to offer. Under `lang="hi"` /
+   * `lang="bn"` (set by the i18n layer on <html>) headings borrow the sans
+   * stack — which lists Noto Sans Devanagari / Noto Sans Bengali first among
+   * named faces — and get a taller line-height instead.
+   */
+  html[lang="hi"] h1,
+  html[lang="hi"] h2,
+  html[lang="hi"] h3,
+  html[lang="bn"] h1,
+  html[lang="bn"] h2,
+  html[lang="bn"] h3 {
+    font-family: var(--manovia-font-sans);
+    line-height: 1.45;
+    letter-spacing: 0;
+  }
+
+  html[lang="hi"] body,
+  html[lang="bn"] body {
+    line-height: 1.85;
+  }
+
+  html[lang="hi"] {
+    --manovia-font-sans:
+      "Noto Sans Devanagari", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  html[lang="bn"] {
+    --manovia-font-sans:
+      "Noto Sans Bengali", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
   /* A visible, high-contrast focus ring for every interactive element. */

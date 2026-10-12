@@ -45,6 +45,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, require_consent
+from app.content.i18n import resolve_locale
 from app.core.errors import ApiError
 from app.db.repos import AssessmentRepository, MoodRepository, PlanRepository, SettingsRepository
 from app.db.repos.exercises import ExerciseRepository
@@ -88,6 +89,18 @@ TZ_QUERY = Query(
         "Omitted or blank means UTC, and the response says so."
     ),
     examples=["Asia/Kolkata"],
+)
+
+LOCALE_QUERY = Query(
+    default=None,
+    max_length=16,
+    description=(
+        "UI language the suggestion copy is written in (en, hi, bn). Omitted "
+        "means the account's saved language. A plan is generated once per local "
+        "day, so the language of the first request of the day sticks for that "
+        "plan; an unknown locale falls back to English."
+    ),
+    examples=["hi"],
 )
 
 
@@ -197,7 +210,7 @@ def _item9_flagged(results: list[AssessmentResult], *, cutoff: datetime) -> bool
 
 
 async def _gather_context(
-    user: User, session: SessionDep, *, now_utc: datetime, zone: ZoneInfo
+    user: User, session: SessionDep, *, now_utc: datetime, zone: ZoneInfo, locale: str
 ) -> PlannerContext:
     """Everything the planner may know about this person, and nothing more."""
     window_start = now_utc - timedelta(days=LOOKBACK_DAYS)
@@ -249,6 +262,7 @@ async def _gather_context(
         open_thought_records=open_thought_records,
         phq9_item9_flagged=_item9_flagged(phq9, cutoff=now_utc - timedelta(days=ITEM9_WINDOW_DAYS)),
         preferences=_preferences(settings_row),
+        locale=locale,
     )
 
 
@@ -259,7 +273,10 @@ async def _gather_context(
 
 @router.get("/today", response_model=PlanTodayOut)
 async def plan_today(
-    user: PlanUser, session: SessionDep, tz: str | None = TZ_QUERY
+    user: PlanUser,
+    session: SessionDep,
+    tz: str | None = TZ_QUERY,
+    locale: str | None = LOCALE_QUERY,
 ) -> PlanTodayOut:
     """Today's plan. Generated once per person per local day."""
     zone, tz_default_used = _resolve_zone(tz)
@@ -275,7 +292,14 @@ async def plan_today(
         quiet_hours_active = is_quiet_hours(now_local, _preferences(settings_row))
         support_only = any(item.kind == PlanItemKind.SUPPORT for item in existing)
     else:
-        context = await _gather_context(user, session, now_utc=now_utc, zone=zone)
+        # The copy language is resolved like every other locale in the backend:
+        # the request wins over the profile, unknown values fall back to
+        # English, and because a plan is written once per local day, the first
+        # request of the day decides its language.
+        resolved_locale, _ = resolve_locale(locale or user.language)
+        context = await _gather_context(
+            user, session, now_utc=now_utc, zone=zone, locale=resolved_locale
+        )
         plan = build_daily_plan(context)
         quiet_hours_active = plan.quiet_hours_active
         support_only = plan.support_only

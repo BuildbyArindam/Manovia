@@ -11,6 +11,7 @@
  */
 
 import { useId, type ReactElement } from "react";
+import { t } from "@/lib/i18n/i18n";
 
 import type { DataTable } from "../series";
 
@@ -69,7 +70,7 @@ export function DataTableView({ table, id }: DataTableViewProps): ReactElement {
                       }`}
                     >
                       {value === null ? <span aria-hidden="true">—</span> : value}
-                      {value === null ? <span className="sr-only">no data</span> : null}
+                      {value === null ? <span className="sr-only">{t("insights.noData")}</span> : null}
                     </td>
                   );
                 })}

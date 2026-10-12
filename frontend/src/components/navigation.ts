@@ -1,24 +1,62 @@
 import type { IconName } from "@/components/icons";
+import { t } from "@/lib/i18n/i18n";
 
 /** The app's surfaces, in the order they appear in both navigations. */
 export interface NavItem {
   to: string;
-  label: string;
+  /** Returns the label at call time, so a language switch renames the nav. */
+  label(): string;
   icon: IconName;
   /** One line of what this surface is for, used by the desktop navigation. */
-  hint: string;
+  hint(): string;
   /** Exact match only. Required for `/`, which is a prefix of every route. */
   end?: boolean;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { to: "/", label: "Home", icon: "home", hint: "Today's plan", end: true },
-  { to: "/chat", label: "Chat", icon: "chat", hint: "Talk it through" },
-  { to: "/mood", label: "Mood", icon: "mood", hint: "Check in" },
-  { to: "/journal", label: "Journal", icon: "journal", hint: "Write freely" },
-  { to: "/cbt", label: "Thought record", icon: "journal", hint: "Reflect on a thought" },
-  { to: "/exercises", label: "Exercises", icon: "exercises", hint: "Short practices" },
-  { to: "/assessments", label: "Screenings", icon: "assessments", hint: "PHQ-9 and GAD-7" },
-  { to: "/insights", label: "Insights", icon: "insights", hint: "Patterns over time" },
-  { to: "/settings", label: "Settings", icon: "settings", hint: "Your choices" },
+  {
+    to: "/",
+    label: () => t("nav.home"),
+    icon: "home",
+    hint: () => t("nav.homeHint"),
+    end: true,
+  },
+  { to: "/chat", label: () => t("nav.chat"), icon: "chat", hint: () => t("nav.chatHint") },
+  { to: "/mood", label: () => t("nav.mood"), icon: "mood", hint: () => t("nav.moodHint") },
+  {
+    to: "/journal",
+    label: () => t("nav.journal"),
+    icon: "journal",
+    hint: () => t("nav.journalHint"),
+  },
+  {
+    to: "/cbt",
+    label: () => t("nav.cbt"),
+    icon: "journal",
+    hint: () => t("nav.cbtHint"),
+  },
+  {
+    to: "/exercises",
+    label: () => t("nav.exercises"),
+    icon: "exercises",
+    hint: () => t("nav.exercisesHint"),
+  },
+  {
+    to: "/assessments",
+    label: () => t("nav.assessments"),
+    icon: "assessments",
+    hint: () => t("nav.assessmentsHint"),
+  },
+  {
+    to: "/insights",
+    label: () => t("nav.insights"),
+    icon: "insights",
+    hint: () => t("nav.insightsHint"),
+  },
+  {
+    to: "/settings",
+    label: () => t("nav.settings"),
+    icon: "settings",
+    hint: () => t("nav.settingsHint"),
+  },
 ];

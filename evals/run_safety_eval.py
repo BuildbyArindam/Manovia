@@ -107,6 +107,9 @@ def assess_all(cases: list[dict[str, str]], *, ml_enabled: bool) -> list[dict[st
                 "final": final_label,
                 "source": decision.source if decision is not None else "rules",
                 "notes": case["notes"],
+                #: Day 23: lets the report name the category that performs
+                #: worst in each language, not just the level it missed.
+                "category": case.get("category", "unknown"),
             }
         )
     return results
@@ -211,6 +214,110 @@ def false_negatives(results: list[dict[str, object]], key: str) -> list[dict[str
     ]
 
 
+CATEGORY_LABELS = {
+    "suicidal_ideation": "Suicidal ideation",
+    "intent_plan": "Intent / plan",
+    "self_harm": "Self-harm",
+    "severe_hopelessness": "Severe hopelessness",
+    "acute_medical": "Acute medical",
+    "abuse_disclosure": "Abuse disclosure",
+    "harm_to_others": "Harm to others",
+}
+
+
+def language_category_table(results: list[dict[str, object]], key: str) -> list[str]:
+    """Crisis recall per category per language (Day 23).
+
+    Categories are the dataset's own labels and can span several levels (a
+    "severe hopelessness" case may be labelled MEDIUM, a "self-harm" one LOW),
+    so the safety number is computed over the crisis-labelled cases only:
+    "of this category's HIGH/IMMINENT cases, how many did the pipeline keep at
+    HIGH/IMMINENT". Support in brackets counts those crisis cases.
+    """
+    lines = [
+        "| language | " + " | ".join(CATEGORY_LABELS.values()) + " |",
+        "| --- |" + " --- |" * len(CATEGORY_LABELS),
+    ]
+    for lang in ("en", "hi", "hi-Latn", "bn"):
+        subset = [r for r in results if r["lang"] == lang]
+        if not subset:
+            continue
+        cells = []
+        for category in CATEGORY_LABELS:
+            cases = [r for r in subset if r["category"] == category and r["true"] in CRISIS_LEVELS]
+            if not cases:
+                cells.append("—")
+                continue
+            hits = sum(1 for r in cases if str(r[key]) in CRISIS_LEVELS)
+            cells.append(f"{hits / len(cases):.3f} ({len(cases)})")
+        lines.append(f"| {LANG_LABELS[lang]} | " + " | ".join(cells) + " |")
+    return lines
+
+
+def language_category_level_table(results: list[dict[str, object]], key: str) -> list[str]:
+    """Exact-level recall per category per language — the diagnostic view.
+
+    Where the crisis table asks "did we keep this person at the crisis tiers",
+    this one asks "did we get the tier exactly right", across every level a
+    category carries. This is where the per-language weak spots live, and the
+    "lowest-performing category" line below is read from this table.
+    """
+    lines = [
+        "| language | " + " | ".join(CATEGORY_LABELS.values()) + " |",
+        "| --- |" + " --- |" * len(CATEGORY_LABELS),
+    ]
+    for lang in ("en", "hi", "hi-Latn", "bn"):
+        subset = [r for r in results if r["lang"] == lang]
+        if not subset:
+            continue
+        cells = []
+        for category in CATEGORY_LABELS:
+            cases = [r for r in subset if r["category"] == category]
+            if not cases:
+                cells.append("—")
+                continue
+            hits = sum(1 for r in cases if str(r[key]) == r["true"])
+            cells.append(f"{hits / len(cases):.3f} ({len(cases)})")
+        lines.append(f"| {LANG_LABELS[lang]} | " + " | ".join(cells) + " |")
+    return lines
+
+
+def lowest_category_per_language(results: list[dict[str, object]], key: str) -> list[str]:
+    """Name each language's weakest category so a reviewer knows where to look.
+
+    Ranked by exact-level recall (the diagnostic above); the crisis recall for
+    the same category is shown alongside, because that is the safety number.
+    """
+    lines = []
+    for lang in ("en", "hi", "hi-Latn", "bn"):
+        subset = [r for r in results if r["lang"] == lang]
+        if not subset:
+            continue
+        observed: list[tuple[float, float, str, int]] = []
+        for category in CATEGORY_LABELS:
+            cases = [r for r in subset if r["category"] == category]
+            if not cases:
+                continue
+            level_recall = sum(1 for r in cases if str(r[key]) == r["true"]) / len(cases)
+            crisis_cases = [r for r in cases if r["true"] in CRISIS_LEVELS]
+            crisis_recall = (
+                sum(1 for r in crisis_cases if str(r[key]) in CRISIS_LEVELS) / len(crisis_cases)
+                if crisis_cases
+                else 1.0
+            )
+            observed.append((level_recall, crisis_recall, category, len(cases)))
+        if not observed:
+            continue
+        observed.sort(key=lambda item: item[0])
+        level_recall, crisis_recall, category, support = observed[0]
+        lines.append(
+            f"- {LANG_LABELS[lang]}: {CATEGORY_LABELS[category]} — exact-level recall "
+            f"{_fmt(level_recall)} over {support} case{'s' if support != 1 else ''} "
+            f"(crisis recall within it: {_fmt(crisis_recall)})"
+        )
+    return lines or ["- (no categorised cases present)"]
+
+
 def build_report(
     split: str,
     cases: list[dict[str, str]],
@@ -295,6 +402,18 @@ def build_report(
         "Recall per level, per language (support in brackets):",
         "",
         *per_language_level_detail(results, "final"),
+        "",
+        "Crisis recall per category per language (crisis cases in brackets):",
+        "",
+        *language_category_table(results, "final"),
+        "",
+        "Exact-level recall per category per language (all cases in brackets):",
+        "",
+        *language_category_level_table(results, "final"),
+        "",
+        "Lowest-performing category per language (by exact-level recall):",
+        "",
+        *lowest_category_per_language(results, "final"),
         "",
         "## Cost of the recall target: benign escalations",
         "",

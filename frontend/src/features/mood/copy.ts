@@ -23,85 +23,181 @@
  * which renders exactly the words it is handed.
  */
 
+import { t } from "@/lib/i18n/i18n";
+
 import type { MoodStreak } from "./types";
 
 /** "1 day" / "3 days" without a plural library and without "1 day(s)". */
 export function pluralDays(count: number): string {
-  return count === 1 ? "1 day" : `${count} days`;
+  return count === 1 ? t("mood.pluralOneDay") : t("mood.pluralDays", { count });
 }
 
 export const MOOD_COPY = {
-  heading: "Mood",
-  lede: "A ten-second check-in. Two questions with words you would actually use, and a note if you want one.",
-
-  formHeading: "How are you right now?",
-  formIntro: "There is no wrong answer, and you can change any of it before you save.",
-
-  valenceLegend: "How do you feel?",
-  valenceHint: "Pick the closest face. Nothing is measured by it.",
-
-  energyLegend: "How much energy do you have?",
-  energyHint: "Move the slider with the arrow keys. The words change with it.",
-
-  emotionsLegend: "What is here? (optional)",
-  emotionsHint: "Up to three words. Skip it if none of them fit.",
-  emotionsFull: "That is three. Tap one off to choose a different one.",
-
-  factorsLegend: "What is going on around it? (optional)",
-  factorsHint: "Up to five. These are context, not causes.",
-  factorsFull: "That is five. Tap one off to choose a different one.",
-
-  noteLegend: "Anything you want to add? (optional)",
-  notePlaceholder: "A line, a sentence, a fragment. Or nothing at all.",
-  notePrivacy: "Stored encrypted, and only ever shown back to you here.",
-  noteRemaining: (remaining: number): string => `${remaining} characters left`,
-  noteOver: "That is longer than the note can be. Try shortening it a little.",
-
-  valenceRequired:
-    "Choose the face that is closest. If none of them fit, pick the one you are nearest to.",
-  energyRequired: "Choose how much energy you have.",
-
-  submit: "Save check-in",
-  submitting: "Saving…",
-  submitHint: "Nothing is sent anywhere until you press Save check-in.",
-
-  errorHeading: "That did not save.",
-  errorBody:
-    "Your check-in is still on this screen — nothing was lost. Press Save check-in to try again.",
-  errorConsent: "This account still needs the data agreements before a check-in can be saved.",
-
-  savedHeading: "Saved.",
-  savedBody: "Thanks for telling me. That is the whole check-in.",
-  savedCrisisLine: "Your check-in is saved. You can also look at this:",
-  savedStreakEmpty: "Whenever you come back is fine.",
-  savedAgain: "Add another check-in",
-  savedActionHeading: "One small thing, if it helps",
-
-  streakHeading: "Your check-ins",
-  streakLoading: "Checking your last few days…",
-
-  reminderHeading: "A daily reminder",
-  reminderBody:
-    "A nudge at the time you choose, on this device. Reminders are not being sent yet — the setting is kept for when they are.",
-  reminderToggle: "Remember to remind me",
-  reminderTimeLabel: "Remind me at",
-  reminderSaved: "Saved on this device. No reminders are sent yet.",
-  reminderTimeInvalid: "Use a time like 20:00.",
-
-  historyHeading: "Recent check-ins",
-  historyEmpty: "Nothing here yet. The first one takes ten seconds.",
-  historyLoading: "Loading your check-ins…",
-  historyNoteLabel: "Note",
-  historyDelete: (day: string): string => `Delete the check-in from ${day}`,
-  historyDeleteConfirm: "Delete it?",
-  historyDeleteConfirmBody: "This removes the check-in and its note. It cannot be undone.",
-  historyDeleteYes: "Yes, delete it",
-  historyDeleteNo: "Keep it",
-  historyDeleted: "Deleted. Your other check-ins are untouched.",
-  historyError: "Your check-ins could not be loaded just now.",
-
-  crisisNotice:
-    "Manovia is not a crisis service. If you are in immediate danger, contact your local emergency number.",
+  get heading() {
+    return t("mood.heading");
+  },
+  get lede() {
+    return t("mood.lede");
+  },
+  get formHeading() {
+    return t("mood.formHeading");
+  },
+  get formIntro() {
+    return t("mood.formIntro");
+  },
+  get valenceLegend() {
+    return t("mood.valenceLegend");
+  },
+  get valenceHint() {
+    return t("mood.valenceHint");
+  },
+  get energyLegend() {
+    return t("mood.energyLegend");
+  },
+  get energyHint() {
+    return t("mood.energyHint");
+  },
+  get emotionsLegend() {
+    return t("mood.emotionsLegend");
+  },
+  get emotionsHint() {
+    return t("mood.emotionsHint");
+  },
+  get emotionsFull() {
+    return t("mood.emotionsFull");
+  },
+  get factorsLegend() {
+    return t("mood.factorsLegend");
+  },
+  get factorsHint() {
+    return t("mood.factorsHint");
+  },
+  get factorsFull() {
+    return t("mood.factorsFull");
+  },
+  get noteLegend() {
+    return t("mood.noteLegend");
+  },
+  get notePlaceholder() {
+    return t("mood.notePlaceholder");
+  },
+  get notePrivacy() {
+    return t("mood.notePrivacy");
+  },
+  noteRemaining: (remaining: number): string => t("mood.noteRemaining", { count: remaining }),
+  get noteOver() {
+    return t("mood.noteOver");
+  },
+  get valenceRequired() {
+    return t("mood.valenceRequired");
+  },
+  get energyRequired() {
+    return t("mood.energyRequired");
+  },
+  get submit() {
+    return t("mood.submit");
+  },
+  get submitting() {
+    return t("mood.submitting");
+  },
+  get submitHint() {
+    return t("mood.submitHint");
+  },
+  get errorHeading() {
+    return t("mood.errorHeading");
+  },
+  get errorBody() {
+    return t("mood.errorBody");
+  },
+  get errorConsent() {
+    return t("mood.errorConsent");
+  },
+  get savedHeading() {
+    return t("mood.savedHeading");
+  },
+  get savedBody() {
+    return t("mood.savedBody");
+  },
+  get savedCrisisLine() {
+    return t("mood.savedCrisisLine");
+  },
+  get savedStreakEmpty() {
+    return t("mood.savedStreakEmpty");
+  },
+  /** The streak summary line: "{empty} · {days} in total." */
+  savedStreakTotal: (totalCheckIns: number): string =>
+    t("mood.savedStreakTotal", {
+      empty: t("mood.savedStreakEmpty"),
+      days: pluralDays(totalCheckIns),
+    }),
+  /** The heading the crisis card gets inside the saved-check-in screen. */
+  get crisisSupportHeading() {
+    return t("mood.crisisSupportHeading");
+  },
+  get savedAgain() {
+    return t("mood.savedAgain");
+  },
+  get savedActionHeading() {
+    return t("mood.savedActionHeading");
+  },
+  get streakHeading() {
+    return t("mood.streakHeading");
+  },
+  get streakLoading() {
+    return t("mood.streakLoading");
+  },
+  get reminderHeading() {
+    return t("mood.reminderHeading");
+  },
+  get reminderBody() {
+    return t("mood.reminderBody");
+  },
+  get reminderToggle() {
+    return t("mood.reminderToggle");
+  },
+  get reminderTimeLabel() {
+    return t("mood.reminderTimeLabel");
+  },
+  get reminderSaved() {
+    return t("mood.reminderSaved");
+  },
+  get reminderTimeInvalid() {
+    return t("mood.reminderTimeInvalid");
+  },
+  get historyHeading() {
+    return t("mood.historyHeading");
+  },
+  get historyEmpty() {
+    return t("mood.historyEmpty");
+  },
+  get historyLoading() {
+    return t("mood.historyLoading");
+  },
+  get historyNoteLabel() {
+    return t("mood.historyNoteLabel");
+  },
+  historyDelete: (day: string): string => t("mood.historyDelete", { day }),
+  get historyDeleteConfirm() {
+    return t("mood.historyDeleteConfirm");
+  },
+  get historyDeleteConfirmBody() {
+    return t("mood.historyDeleteConfirmBody");
+  },
+  get historyDeleteYes() {
+    return t("mood.historyDeleteYes");
+  },
+  get historyDeleteNo() {
+    return t("mood.historyDeleteNo");
+  },
+  get historyDeleted() {
+    return t("mood.historyDeleted");
+  },
+  get historyError() {
+    return t("mood.historyError");
+  },
+  get crisisNotice() {
+    return t("mood.crisisNotice");
+  },
 } as const;
 
 /**
@@ -119,17 +215,17 @@ export const MOOD_COPY = {
 export function streakHeadline(streak: MoodStreak): string {
   switch (streak.state) {
     case "never":
-      return "No streak running. Whenever you start, that is day one.";
+      return t("mood.streak.never");
     case "today":
       return streak.current_streak === 1
-        ? "Today's check-in is saved — that is one day."
-        : `Today's check-in is saved. That is ${pluralDays(streak.current_streak)} running.`;
+        ? t("mood.streak.todayOne")
+        : t("mood.streak.todayMany", { days: pluralDays(streak.current_streak) });
     case "open":
-      return `You have checked in for ${pluralDays(streak.current_streak)} in a row. Today is still open.`;
+      return t("mood.streak.open", { days: pluralDays(streak.current_streak) });
     case "returning":
-      return "Welcome back.";
+      return t("mood.streak.returning");
     default:
-      return "Welcome back.";
+      return t("mood.streak.returning");
   }
 }
 
@@ -137,19 +233,25 @@ export function streakHeadline(streak: MoodStreak): string {
 export function streakDetail(streak: MoodStreak): string | null {
   if (streak.state === "returning") {
     const days = streak.days_since_last_check_in;
-    const last = days === null ? "a while ago" : days === 1 ? "yesterday" : `${days} days ago`;
+    const last =
+      days === null
+        ? t("mood.streak.lastAWhileAgo")
+        : days === 1
+          ? t("mood.streak.lastYesterday")
+          : t("mood.streak.lastDaysAgo", { count: days });
     if (streak.longest_streak > 0) {
-      return `Last check-in was ${last}. Your longest run so far is ${pluralDays(
-        streak.longest_streak,
-      )}, and starting again counts the same as starting the first time.`;
+      return t("mood.streak.returningDetailLongest", {
+        last,
+        longest: pluralDays(streak.longest_streak),
+      });
     }
-    return `Last check-in was ${last}. Starting again counts the same as starting the first time.`;
+    return t("mood.streak.returningDetail", { last });
   }
   if (streak.state === "open" && streak.freeze_available) {
-    return "Miss a day and nothing resets — you can miss one in any week.";
+    return t("mood.streak.openFreeze");
   }
   if (streak.state === "today" && streak.freeze_available && streak.freezes_used === 0) {
-    return "A missed day will not reset this.";
+    return t("mood.streak.todayFreeze");
   }
   return null;
 }

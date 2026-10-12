@@ -8,6 +8,7 @@
  * drop the gate. `OnboardingFlow.test.tsx` asserts both halves of it.
  */
 
+import { t } from "@/lib/i18n/i18n";
 import {
   createContext,
   useCallback,
@@ -80,9 +81,9 @@ async function resolveConsentVersions(): Promise<Record<ConsentKind, string>> {
 function friendlyAuthError(code: string, message: string): string {
   switch (code) {
     case "invalid_email":
-      return "That email address does not look right. Please check it and try again.";
+      return t("onboarding.errInvalidEmail");
     case "email_taken":
-      return "An account with this email already exists. Try signing in instead.";
+      return t("onboarding.errEmailTaken");
     case "password_invalid":
       return message;
     default:
@@ -108,7 +109,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
         input.credentials.email.trim() === "" ||
         input.credentials.password === "")
     ) {
-      return { ok: false, error: "Enter an email address and a password to create an account." };
+      return { ok: false, error: t("onboarding.errMissingCredentials") };
     }
 
     try {
@@ -150,8 +151,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }): React
         ok: false,
         error:
           error instanceof TypeError
-            ? "Manovia could not be reached. Check your connection and try again."
-            : "Something went wrong while setting up your session. Please try again.",
+            ? t("onboarding.errNetwork")
+            : t("onboarding.errSession"),
       };
     }
   }, []);

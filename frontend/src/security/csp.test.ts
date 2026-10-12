@@ -80,15 +80,24 @@ describe("the shipped policy", () => {
     expect(directives.get("connect-src")).toBe("'self'");
   });
 
-  it("relaxes exactly one thing, and says so", () => {
+  it("relaxes exactly two things, and says so", () => {
     const directives = directivesOf(HEADERS_CONF);
-    // Inline *styles* are allowed (React sets element styles); nothing else is.
-    expect(directives.get("style-src")).toBe("'self' 'unsafe-inline'");
+    // Relaxation one: inline *styles* (React sets element styles).
+    // Relaxation two (Day 23): the two Google Fonts origins, so Hindi and
+    // Bengali get Noto Sans Devanagari / Bengali. Each is pinned to its exact
+    // origin — the stylesheet host in style-src, the file host in font-src.
+    expect(directives.get("style-src")).toBe(
+      "'self' 'unsafe-inline' https://fonts.googleapis.com",
+    );
+    expect(directives.get("font-src")).toBe("'self' https://fonts.gstatic.com");
     for (const name of ["script-src", "default-src", "connect-src", "img-src"]) {
       expect(directives.get(name)).not.toContain("unsafe-inline");
       expect(directives.get(name)).not.toContain("unsafe-eval");
+      expect(directives.get(name)).not.toContain("fonts.googleapis.com");
+      expect(directives.get(name)).not.toContain("fonts.gstatic.com");
     }
     expect(HEADERS_CONF).toContain("it is the one relaxation here and it is");
+    expect(HEADERS_CONF).toContain("the one deliberate");
   });
 
   it("is included by both the server block and the cached-assets location", () => {

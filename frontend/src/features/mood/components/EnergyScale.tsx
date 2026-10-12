@@ -15,7 +15,7 @@
 
 import type { ReactElement } from "react";
 
-import { ENERGY_POINTS, energyPoint } from "../taxonomy";
+import { ENERGY_POINTS, energyPoint, localisedEnergyLabel } from "../taxonomy";
 
 export interface EnergyScaleProps {
   value: number;
@@ -52,7 +52,7 @@ export function EnergyScale({
           max={5}
           step={1}
           value={value}
-          aria-valuetext={current.label}
+          aria-valuetext={localisedEnergyLabel(current)}
           aria-describedby={hintId}
           onChange={(event) => {
             onChange(Number(event.target.value));
@@ -60,7 +60,7 @@ export function EnergyScale({
           className="h-12 w-full cursor-pointer accent-accent"
         />
         <p className="text-base" data-testid="mood-energy-readout" aria-live="polite">
-          <span className="font-semibold">{value}</span> — {current.label}
+          <span className="font-semibold">{value}</span> — {localisedEnergyLabel(current)}
         </p>
         <ul className="mt-2 flex justify-between text-xs text-ink-muted" aria-hidden="true">
           {ENERGY_POINTS.map((point) => (
@@ -69,7 +69,7 @@ export function EnergyScale({
               data-current={point.value === value ? "true" : "false"}
               className={point.value === value ? "font-semibold text-ink" : undefined}
             >
-              {point.label}
+              {localisedEnergyLabel(point)}
             </li>
           ))}
         </ul>

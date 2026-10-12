@@ -50,6 +50,35 @@ REQUIRED_TEMPLATES: Final = (
     "check_in.low",
 )
 
+#: Simple key → sentence templates every locale must also carry (Day 23).
+#: These are the planner's suggestion titles and their "why this?" lines — the
+#: same honesty rules as the crisis copy apply, so they live in the same files
+#: and fail the same way: a missing string is a startup error, never a blank
+#: card or a stray English sentence shown to a Hindi- or Bengali-speaking user.
+REQUIRED_STRINGS: Final = (
+    "day_part.morning",
+    "day_part.afternoon",
+    "day_part.evening",
+    "plan.first_check_in.title",
+    "plan.first_check_in.why",
+    "plan.open_thought_record.title",
+    "plan.open_thought_record.why",
+    "plan.low_mood.title",
+    "plan.low_mood.why",
+    "plan.anxiety.title",
+    "plan.anxiety.why",
+    "plan.missed_check_in.title",
+    "plan.missed_check_in.why",
+    "plan.exercise_habit.title",
+    "plan.exercise_habit.why",
+    "plan.preference_note.matched",
+    "plan.preference_note.time_of_day",
+    "plan.rest.title",
+    "plan.rest.why",
+    "plan.support.title",
+    "plan.support.why",
+)
+
 #: ``{name}`` — the only substitution syntax templates may use.
 _PLACEHOLDER_RE: Final = re.compile(r"\{([a-z_][a-z0-9_]*)\}")
 
@@ -107,14 +136,31 @@ class LocalisedContent(BaseModel):
     locale: str = Field(min_length=2, max_length=16)
     #: Native-script name, for a language picker.
     display_name: str = Field(min_length=1, max_length=80)
-    #: Placeholders this file is allowed to use. Only ``emergency_number`` today.
+    #: Placeholders this file is allowed to use — the crisis templates only ever
+    #: substitute ``emergency_number``; the plan strings additionally name the
+    #: exercise and the counts they explain.
     placeholder_whitelist: list[str] = Field(min_length=1)
     templates: dict[str, CrisisTemplate] = Field(min_length=1)
+    #: The ten digits the locale writes with, ``"0"`` to ``"9"`` mapped by index.
+    #: Devanagari and Bengali numerals are not a flourish: an ASCII ``3`` inside
+    #: a Hindi sentence is a foreign token, so the planner's counts are written
+    #: with these (see :meth:`format_count`).
+    numerals: list[str] = Field(default_factory=lambda: list("0123456789"), min_length=10)
+    #: Simple key → sentence templates (the planner's copy, Day 23). Held to the
+    #: same placeholder discipline as the crisis templates.
+    strings: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("locale")
     @classmethod
     def _lower_locale(cls, value: str) -> str:
         return value.strip().lower()
+
+    @field_validator("numerals")
+    @classmethod
+    def _ten_single_chars(cls, value: list[str]) -> list[str]:
+        if len(value) != 10 or any(len(digit) != 1 for digit in value):
+            raise ValueError("numerals must be exactly ten single characters")
+        return value
 
     def template(self, template_id: str) -> CrisisTemplate:
         """Look one template up; raises ``KeyError`` if the locale lacks it.
@@ -168,6 +214,47 @@ class LocalisedContent(BaseModel):
             closing=_fill_optional(template.closing, values),
             disclaimer=_fill_optional(template.disclaimer, values),
         )
+
+    def string(self, key: str) -> str:
+        """Look one simple string up; ``KeyError`` if the locale lacks it.
+
+        Callers resolve the locale first, so a missing key is a content bug the
+        loader should have caught at startup, not a runtime surprise.
+        """
+        return self.strings[key]
+
+    def render_string(self, key: str, values: Mapping[str, str]) -> str:
+        """Substitute the whitelisted placeholders in one simple string.
+
+        The same contract as :meth:`render`: every placeholder the string uses
+        must have a value, and no unused value may be passed — a caller and a
+        template disagreeing about substitutions is a bug worth failing on.
+        """
+        text = self.string(key)
+        allowed = set(self.placeholder_whitelist)
+        used = set(_PLACEHOLDER_RE.findall(text))
+
+        unknown = sorted(used - allowed)
+        if unknown:
+            raise ValueError(f"{self.locale}/{key} uses unlisted placeholders {unknown}")
+        missing = sorted(used - {name for name, value in values.items() if value})
+        if missing:
+            raise ValueError(f"{self.locale}/{key} needs values for {missing}")
+        extra = sorted(set(values) - used)
+        if extra:
+            raise ValueError(f"{self.locale}/{key} was given unused values {extra}")
+
+        return _fill(text, values)
+
+    def format_count(self, value: int) -> str:
+        """Write a whole number in this locale's own digits.
+
+        Counts only — the planner's "{days} days ago" and "3 of the last 7".
+        Anything richer (dates, decimals) belongs to the frontend's ``Intl``.
+        """
+        if value < 0:
+            raise ValueError("counts are never negative")
+        return "".join(self.numerals[int(digit)] for digit in str(value))
 
 
 class RenderedTemplate(BaseModel):
@@ -240,6 +327,10 @@ def parse_localisation(payload: dict[str, Any]) -> LocalisedContent:
     if missing:
         raise ValueError(f"locale {content.locale} is missing templates {missing}")
 
+    missing_strings = [key for key in REQUIRED_STRINGS if not content.strings.get(key, "").strip()]
+    if missing_strings:
+        raise ValueError(f"locale {content.locale} is missing strings {missing_strings}")
+
     declared = set(content.placeholder_whitelist)
     for template_id, template in content.templates.items():
         for text in template.strings():
@@ -249,6 +340,13 @@ def parse_localisation(payload: dict[str, Any]) -> LocalisedContent:
                         f"locale {content.locale}/{template_id} uses {name!r}, "
                         f"which is not in placeholder_whitelist"
                     )
+    for key, text in content.strings.items():
+        for name in _PLACEHOLDER_RE.findall(text):
+            if name not in declared:
+                raise ValueError(
+                    f"locale {content.locale}/{key} uses {name!r}, "
+                    f"which is not in placeholder_whitelist"
+                )
     return content
 
 
@@ -296,6 +394,7 @@ def load_localisation(locale: str | None = None) -> LocalisedContent:
 __all__ = [
     "FALLBACK_LOCALE",
     "I18N_DIR",
+    "REQUIRED_STRINGS",
     "REQUIRED_TEMPLATES",
     "CrisisTemplate",
     "LocalisedContent",

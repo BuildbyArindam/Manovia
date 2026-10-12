@@ -69,7 +69,7 @@ export function QuestionnaireForm({
           data-testid="questionnaire-error"
           className="mt-4 rounded-xl border border-border-strong bg-surface-muted p-4"
         >
-          <p className="font-semibold">{INCOMPLETE_ERROR_TITLE}</p>
+          <p className="font-semibold">{INCOMPLETE_ERROR_TITLE()}</p>
           <p className="mt-1 text-ink-muted">{error}</p>
         </div>
       ) : null}
@@ -138,7 +138,7 @@ export function QuestionnaireForm({
         })}
       </ol>
 
-      <p className="mt-6 text-sm text-ink-muted">{SUBMIT_HINT}</p>
+      <p className="mt-6 text-sm text-ink-muted">{SUBMIT_HINT()}</p>
       <button
         type="submit"
         disabled={busy}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
+import { t } from "@/lib/i18n/i18n";
 
 import { FaceScale } from "@/features/mood/components/FaceScale";
 import { ApiError, type ApiClient } from "@/lib/api";
@@ -133,7 +134,7 @@ export function ExerciseRunner({
 
       <aside
         className="rounded-xl border border-border-strong bg-surface-muted p-4"
-        aria-label="Exercise safety notes"
+        aria-label={t("exercises.safetyNotesLabel")}
       >
         <h3 className="font-semibold">{COPY.beforeBegin}</h3>
         <ul className="mt-2 list-disc space-y-2 pl-5 text-sm">
@@ -217,7 +218,7 @@ export function ExerciseRunner({
           {saved === null ? (
             <>
               <fieldset disabled={payload !== null} className="border-0 p-0">
-                <legend className="sr-only">Optional after rating</legend>
+                <legend className="sr-only">{t("exercises.optionalAfterRating")}</legend>
                 <FaceScale
                   value={postRating}
                   onChange={setPostRating}
@@ -315,7 +316,7 @@ export function ExerciseRunner({
             className="h-3 w-full accent-accent"
             max={exercise.duration_seconds * 1000}
             value={state.elapsedMs}
-            aria-label="Exercise progress"
+            aria-label={t("exercises.progressLabel")}
           />
           {paused ? <p className="rounded-xl bg-surface-muted p-3">{pauseText}</p> : null}
           <div className="flex flex-wrap gap-3">

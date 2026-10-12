@@ -6,57 +6,106 @@
  * one place than spread over nine components, and the tests assert on these
  * constants rather than on literals that a copy edit would silently break.
  *
+ * Day 23: the words themselves now live in `src/lib/i18n/locales/*.json`
+ * (English, Hindi, Bengali). The accessors below read through i18next at call
+ * time, so a language switch re-renders this surface in the new language with
+ * no code change here. Tests still read the same properties and see the
+ * English tree, because the app starts in English.
+ *
  * The pre-written crisis copy is **not** here — it arrives already written and
  * already localised from the backend, and the UI never rewords it.
  */
 
+import { t } from "@/lib/i18n/i18n";
+
 export const CHAT_COPY = {
-  heading: "Chat",
-  lede: "A quiet conversation about how you are doing. Take your time; nothing is timed.",
+  get heading() {
+    return t("chat.heading");
+  },
+  get lede() {
+    return t("chat.lede");
+  },
 
   /** The permanent line under the conversation. Always visible, never hidden. */
-  companionNotice: "AI companion — not a therapist.",
-  companionNoticeAction: "Need help now?",
+  get companionNotice() {
+    return t("chat.companionNotice");
+  },
+  get companionNoticeAction() {
+    return t("chat.companionNoticeAction");
+  },
 
-  composerLabel: "What is on your mind?",
-  composerPlaceholder: "Write as much or as little as you like.",
-  send: "Send",
-  sending: "Sending…",
+  get composerLabel() {
+    return t("chat.composerLabel");
+  },
+  get composerPlaceholder() {
+    return t("chat.composerPlaceholder");
+  },
+  get send() {
+    return t("chat.send");
+  },
+  get sending() {
+    return t("chat.sending");
+  },
 
-  typingIndicator: "Manovia is thinking",
+  get typingIndicator() {
+    return t("chat.typingIndicator");
+  },
   /** Screen-reader text while a reply is streaming. */
-  typingAnnouncement: "Manovia is replying…",
+  get typingAnnouncement() {
+    return t("chat.typingAnnouncement");
+  },
 
-  youSaid: "You said",
-  manoviaSaid: "Manovia said",
+  get youSaid() {
+    return t("chat.youSaid");
+  },
+  get manoviaSaid() {
+    return t("chat.manoviaSaid");
+  },
 
   /** Shown above a reply that stands in for a model answer that failed. */
-  degradedNotice:
-    "Manovia could not reach its language model just now, so this is a short written reply instead.",
+  get degradedNotice() {
+    return t("chat.degradedNotice");
+  },
 
-  newChat: "Start a new chat",
-  clearConversation: "Clear conversation",
-  clearConfirm:
-    "Clear this conversation from your screen? Nothing is deleted from Manovia's storage — use Start a new chat for a fresh session.",
-  saveConversation: "Save this conversation",
-  saveConversationHint:
-    "Off: this chat stays in memory only and is forgotten when you leave. On: it is stored, encrypted, on your account.",
-  languageLabel: "Language",
+  get newChat() {
+    return t("chat.newChat");
+  },
+  get clearConversation() {
+    return t("chat.clearConversation");
+  },
+  get clearConfirm() {
+    return t("chat.clearConfirm");
+  },
+  get saveConversation() {
+    return t("chat.saveConversation");
+  },
+  get saveConversationHint() {
+    return t("chat.saveConversationHint");
+  },
+  get languageLabel() {
+    return t("chat.languageLabel");
+  },
 
-  jumpToLatest: "Jump to latest",
+  get jumpToLatest() {
+    return t("chat.jumpToLatest");
+  },
 
   /** Shown under a reply whose stream was cut off. */
-  incompleteReply: "This reply was cut off before it finished.",
+  get incompleteReply() {
+    return t("chat.incompleteReply");
+  },
 
   /** Suggested starters. Generic on purpose: they must not presume a problem. */
-  starters: ["I feel anxious", "I can't sleep", "I had a bad day"] as readonly string[],
+  get starters(): readonly string[] {
+    return [t("chat.starter1"), t("chat.starter2"), t("chat.starter3")];
+  },
 
   /** Announced once a reply finishes, so a screen reader reads the answer. */
-  replyAnnouncement: (text: string): string => `Manovia replied: ${text}`,
-  crisisAnnouncement:
-    "Manovia has shown help lines because this message may be about safety. " +
-    "They are free, confidential, and staffed by people.",
-} as const;
+  replyAnnouncement: (text: string): string => t("chat.replyAnnouncement", { text }),
+  get crisisAnnouncement() {
+    return t("chat.crisisAnnouncement");
+  },
+};
 
 /**
  * Plain-language failures.
@@ -67,48 +116,46 @@ export const CHAT_COPY = {
  * cases the client knows better than the server: no network, an aborted
  * request, and a stream that stopped half way.
  */
+export interface ChatErrorCopy {
+  title: string;
+  body: string;
+  action: string;
+}
+
+function chatError(kind: string): ChatErrorCopy {
+  return {
+    title: t(`chat.errors.${kind}Title`),
+    body: t(`chat.errors.${kind}Body`),
+    action: t(`chat.errors.${kind}Action`),
+  };
+}
+
 export const CHAT_ERRORS = {
-  offline: {
-    title: "You appear to be offline",
-    body: "Manovia could not reach its server. Your message has not been sent — check your connection and try again.",
-    action: "Try again",
+  get offline(): ChatErrorCopy {
+    return chatError("offline");
   },
-  network: {
-    title: "The connection dropped",
-    body: "Manovia could not reach its server. Nothing was sent. Please try again.",
-    action: "Try again",
+  get network(): ChatErrorCopy {
+    return chatError("network");
   },
-  streamInterrupted: {
-    title: "The reply was cut off",
-    body: "The connection dropped while Manovia was answering, so this reply may be incomplete. Your message was sent; asking again will get a full answer.",
-    action: "Ask again",
+  get streamInterrupted(): ChatErrorCopy {
+    return chatError("streamInterrupted");
   },
-  streamError: {
-    title: "Manovia could not finish that reply",
-    body: "Something went wrong part way through the answer. Please try again.",
-    action: "Try again",
+  get streamError(): ChatErrorCopy {
+    return chatError("streamError");
   },
-  consent: {
-    title: "One more agreement needed",
-    body: "Manovia needs your agreement that it is an AI before it can reply. You can give it in Settings.",
-    action: "Open Settings",
+  get consent(): ChatErrorCopy {
+    return chatError("consent");
   },
-  rateLimited: {
-    title: "Let's take a breath",
-    body: "That was a lot of messages in a short time. Please wait a moment, then send again.",
-    action: "Try again",
+  get rateLimited(): ChatErrorCopy {
+    return chatError("rateLimited");
   },
-  session: {
-    title: "This conversation has ended",
-    body: "Start a new chat to keep talking.",
-    action: "Start a new chat",
+  get session(): ChatErrorCopy {
+    return chatError("session");
   },
-  unknown: {
-    title: "Something went wrong",
-    body: "Manovia could not send that. Please try again.",
-    action: "Try again",
+  get unknown(): ChatErrorCopy {
+    return chatError("unknown");
   },
-} as const;
+};
 
 /** The message length ceiling. Mirrors the backend's `CHAT_MAX_MESSAGE_CHARS`. */
 export const MAX_MESSAGE_CHARS = 4000;

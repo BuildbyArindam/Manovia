@@ -2,7 +2,14 @@
   "version": 1,
   "locale": "hi",
   "display_name": "हिन्दी",
-  "placeholder_whitelist": ["emergency_number"],
+  "placeholder_whitelist": [
+    "emergency_number",
+    "exercise_title",
+    "days",
+    "week_days",
+    "day_part",
+    "preference_note"
+  ],
   "templates": {
     "crisis.high": {
       "title": "आप जो महसूस कर रहे हैं वह असली है, और आपको यह अकेले सहने की ज़रूरत नहीं है",
@@ -82,5 +89,40 @@
       "closing": "कोई जल्दी नहीं — मैं यहाँ हूँ।",
       "disclaimer": "Manovia एक सेल्फ़-हेल्प साथी है। यह थेरेपी नहीं है, यह निदान नहीं करता, और यह संकट-सेवा नहीं है।"
     }
+  },
+  "numerals": [
+    "०",
+    "१",
+    "२",
+    "३",
+    "४",
+    "५",
+    "६",
+    "७",
+    "८",
+    "९"
+  ],
+  "strings": {
+    "day_part.morning": "सुबह",
+    "day_part.afternoon": "दोपहर",
+    "day_part.evening": "शाम",
+    "plan.first_check_in.title": "पहला मूड चेक-इन कीजिए",
+    "plan.first_check_in.why": "अभी तक कोई मूड चेक-इन नहीं हुआ है। दस सेकंड से मनोविया को आपकी लय समझने में मदद मिलती है; आज का दिन ठीक न लगे तो छोड़ देना भी बिल्कुल ठीक है।",
+    "plan.open_thought_record.title": "एक विचार-रिकॉर्ड पूरा कीजिए",
+    "plan.open_thought_record.why": "हाल के एक विचार-रिकॉर्ड में 'क्या मदद कर गया' अभी खाली है। जब चाहें भर दीजिए, या रिकॉर्ड जैसा है वैसा ही रहने दीजिए।",
+    "plan.low_mood.title": "एक हल्का-सा अभ्यास कीजिए",
+    "plan.low_mood.why": "पिछले कुछ दिनों के आपके चेक-इन उनसे पहले के दिनों की तुलना में नीचे हैं। {exercise_title} छोटा है, और इसे करने का कोई एक सही तरीका नहीं है।",
+    "plan.anxiety.title": "दो-चार मिनट ग्राउंडिंग कीजिए",
+    "plan.anxiety.why": "हाल के एक चेक-इन पर चिंता या डर का टैग था। {exercise_title} बाहर की किसी चीज़ पर ध्यान देता है, अगर आप चाहें। यह पूरी तरह वैकल्पिक है।",
+    "plan.missed_check_in.title": "जब तैयार हों, चेक-इन कर लीजिए",
+    "plan.missed_check_in.why": "आपका पिछला चेक-इन {days} दिन पहले हुआ था। एक छोटा चेक-इन तस्वीर को सच रखता है, और छोड़ने की कोई कीमत नहीं।",
+    "plan.exercise_habit.title": "{day_part} के लिए एक छोटा अभ्यास",
+    "plan.exercise_habit.why": "पिछले {week_days} दिनों में आपने {days} दिन अभ्यास किए हैं। {exercise_title} एक छोटा अगला कदम है। {preference_note}",
+    "plan.preference_note.matched": "यह उन अभ्यास प्रकारों से मेल खाता है जो आपने सेटिंग्स में चुने थे।",
+    "plan.preference_note.time_of_day": "यह दिन के इस हिस्से के लिए ठीक बैठता है।",
+    "plan.rest.title": "आज आराम का दिन हो सकता है",
+    "plan.rest.why": "पिछले {week_days} दिनों में आप {days} दिन सक्रिय रहे हैं। आज कुछ न करना भी गिना जाएगा।",
+    "plan.support.title": "सहारे के विकल्प यहीं हैं",
+    "plan.support.why": "आपकी सबसे हाल की स्क्रीनिंग में एक जवाब ऐसा था जिसके लिए हम सहारे के विकल्प दिखाते हैं। आज की योजना सिर्फ़ इतना ही करती है; बाक़ी सब किनारे रख दिया गया है।"
   }
 }

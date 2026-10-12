@@ -13,6 +13,7 @@ import { useEffect, useState, type ReactElement } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isApiError, type ApiClient } from "@/lib/api";
+import { t } from "@/lib/i18n/i18n";
 import { api as defaultClient } from "@/lib/api";
 
 import { fetchPlanSettings, savePlanSettings } from "./endpoints";
@@ -64,14 +65,14 @@ export function PlanSettingsSection({
       ),
     onSuccess: async (saved) => {
       setDraft(saved);
-      setMessage("Saved. The plan will follow these choices from now on.");
+      setMessage(t("plan.settingsSaved"));
       await queryClient.invalidateQueries({ queryKey: planSettingsKeys.current });
     },
     onError: (error) => {
       setMessage(
         isApiError(error)
-          ? "Those choices could not be saved. Please check them and try again."
-          : "Those choices could not be saved right now. Please try again.",
+          ? t("plan.settingsErrorApi")
+          : t("plan.settingsErrorGeneric"),
       );
     },
   });
@@ -84,10 +85,10 @@ export function PlanSettingsSection({
         data-testid="plan-settings"
       >
         <h2 id="plan-settings-heading" className="text-lg">
-          Daily plan
+          {t("plan.settingsHeading")}
         </h2>
         <p className="mt-3 text-sm text-ink-muted" role="status">
-          Loading your plan choices…
+          {t("plan.settingsLoading")}
         </p>
       </section>
     );
@@ -101,10 +102,10 @@ export function PlanSettingsSection({
         data-testid="plan-settings"
       >
         <h2 id="plan-settings-heading" className="text-lg">
-          Daily plan
+          {t("plan.settingsHeading")}
         </h2>
         <p className="mt-3 text-sm text-ink-muted" role="alert">
-          Plan settings could not be loaded right now. Nothing else on this page is affected.
+          {t("plan.settingsLoadError")}
         </p>
       </section>
     );
@@ -131,18 +132,16 @@ export function PlanSettingsSection({
       data-testid="plan-settings"
     >
       <h2 id="plan-settings-heading" className="text-lg">
-        Daily plan
+        {t("plan.settingsHeading")}
       </h2>
       <p className="mt-2 text-sm text-ink-muted">
-        The plan suggests at most three small things a day, and each one explains itself. These
-        choices shape it; none of them is required.
+        {t("plan.settingsIntro")}
       </p>
 
       <fieldset className="mt-4">
-        <legend className="font-semibold">Exercise types you prefer</legend>
+        <legend className="font-semibold">{t("plan.settingsTagsLegend")}</legend>
         <p className="mt-1 text-sm text-ink-muted">
-          A soft preference: the plan leans on these tags when it can, and still suggests something
-          appropriate when nothing matches. Pick none for no preference.
+          {t("plan.settingsTagsHelp")}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {knownTags.map((tag) => {
@@ -168,7 +167,7 @@ export function PlanSettingsSection({
       </fieldset>
 
       <fieldset className="mt-5">
-        <legend className="font-semibold">Quiet hours</legend>
+        <legend className="font-semibold">{t("plan.settingsQuietLegend")}</legend>
         <label className="mt-2 inline-flex cursor-pointer items-start gap-3 rounded-xl border border-border-strong px-4 py-3">
           <input
             type="checkbox"
@@ -179,16 +178,15 @@ export function PlanSettingsSection({
             className="mt-1 h-5 w-5 accent-accent-bg"
           />
           <span>
-            <span className="block font-semibold">Keep the plan quiet at these hours</span>
+            <span className="block font-semibold">{t("plan.settingsQuietToggle")}</span>
             <span className="block text-sm text-ink-muted">
-              No suggestions during quiet hours. Support options still show when a screening answer
-              asks for them.
+              {t("plan.settingsQuietHelp")}
             </span>
           </span>
         </label>
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <label className="block">
-            <span className="text-sm font-semibold">From</span>
+            <span className="text-sm font-semibold">{t("plan.settingsFrom")}</span>
             <input
               type="time"
               value={draft.quiet_start}
@@ -199,7 +197,7 @@ export function PlanSettingsSection({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-semibold">Until</span>
+            <span className="text-sm font-semibold">{t("plan.settingsUntil")}</span>
             <input
               type="time"
               value={draft.quiet_end}
@@ -211,7 +209,7 @@ export function PlanSettingsSection({
           </label>
         </div>
         <p className="mt-2 text-sm text-ink-muted">
-          A window that crosses midnight is fine — for example 22:00 until 07:00.
+          {t("plan.settingsMidnight")}
         </p>
       </fieldset>
 
@@ -222,7 +220,7 @@ export function PlanSettingsSection({
           disabled={save.isPending}
           className="rounded-xl bg-accent-bg px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-60"
         >
-          {save.isPending ? "Saving…" : "Save plan choices"}
+          {save.isPending ? t("plan.settingsSaving") : t("plan.settingsSave")}
         </button>
         {message !== null && (
           <p role="status" className="text-sm text-ink-muted">
