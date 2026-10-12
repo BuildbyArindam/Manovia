@@ -61,6 +61,17 @@ class Settings(BaseSettings):
     # and closed-set categories only — never user text or identifiers. Turn it
     # off only when a sidecar publishes metrics instead.
     metrics_enabled: bool = True
+    # Sentry error reporting. Without a DSN nothing is initialised and no
+    # network call ever happens. Every event passes a before_send scrubber
+    # (app.core.sentry.scrub_sentry_event) that drops request bodies, query
+    # strings and cookies, and PII-redacts free text — there is no flag that
+    # turns the scrubbing off.
+    sentry_dsn: str | None = None
+    # Defaults to APP_ENV when unset (what most Sentry projects want anyway).
+    sentry_environment: str | None = None
+    # Performance tracing is off by default: traces add volume without adding
+    # safety. Enable deliberately (0.0-1.0 fraction of requests).
+    sentry_traces_sample_rate: float = 0.0
 
     # --- Authentication and consent (Day 4) ---
     # Password policy: length only, no composition theatre (NIST SP 800-63B).
@@ -385,6 +396,8 @@ class Settings(BaseSettings):
             raise ValueError("max_request_bytes must be at least 1024")
         if self.request_timeout_seconds <= 0:
             raise ValueError("request_timeout_seconds must be positive")
+        if not 0.0 <= self.sentry_traces_sample_rate <= 1.0:
+            raise ValueError("sentry_traces_sample_rate must be within [0, 1]")
         return self
 
     @model_validator(mode="after")

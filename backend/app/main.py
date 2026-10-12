@@ -48,6 +48,7 @@ from app.core.middleware import (
     SecurityHeadersMiddleware,
 )
 from app.core.ratelimit import InMemoryRateLimiter
+from app.core.sentry import init_sentry
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
 from app.services.chat import ChatOrchestrator, build_session_service
@@ -66,6 +67,10 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     """
     app_settings = settings or get_settings()
     configure_logging(app_settings.log_level)
+    # Day 27: error reporting first, so a failure during the rest of startup
+    # is visible in Sentry. Without SENTRY_DSN this is a no-op (offline by
+    # default), and every event it ever sends passes the PII scrubber.
+    init_sentry(app_settings)
     # Reject the whole exercise catalogue before serving any request.
     get_catalog()
 

@@ -64,6 +64,10 @@ dependencies = [
     # latency, error rate, safety events by level, LLM fallback rate and
     # output-guard block rate. Small, offline, no agent process.
     "prometheus-client==0.26.0",
+    # Day 27 error reporting. Opt-in via SENTRY_DSN (no DSN = no network, so
+    # the offline suite and self-hosted deploys never contact Sentry). Every
+    # event passes the privacy scrubber in app/core/sentry.py.
+    "sentry-sdk==2.72.0",
 ]
 
 [project.optional-dependencies]

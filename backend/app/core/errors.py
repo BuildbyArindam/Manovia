@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import REQUEST_ID_HEADER
+from app.core.sentry import capture_exception
 
 
 class ErrorBody(BaseModel):
@@ -151,6 +152,9 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Last-resort handler: log the failure, return a generic envelope."""
     structlog.get_logger().exception("unhandled_exception", path=request.url.path)
+    # Day 27: report to Sentry when it is active (no-op without a DSN). The
+    # scrubber in app.core.sentry runs inside the SDK before anything leaves.
+    capture_exception(exc)
     return error_response(
         status_code=500,
         code="internal_error",
