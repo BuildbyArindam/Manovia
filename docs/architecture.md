@@ -118,6 +118,31 @@ preferred exercise tags and quiet hours, stored in `user_settings` with strict
 `HH:MM` bounds — are the only settings the planner reads, managed at
 `GET/PUT /settings`.
 
+## Offline: what the service worker may answer (Day 25)
+
+The production build registers a service worker (`frontend/src/sw/sw.ts`); the
+dev server never does. It sits between the page and `/api/v1` and is allowed to
+answer from Cache Storage for exactly three things. Everything else goes to the
+network as before. The full reasoning is in
+[ADR 0025](adr/0025-pwa-accessibility-low-bandwidth.md).
+
+```mermaid
+flowchart LR
+    PAGE["Page (React)"] -->|"navigations, JS/CSS"| SW["Service worker"]
+    SW -->|"precached app shell"| CACHE[("Cache Storage")]
+    SW -->|"GET /crisis/resources: network first, 3 s"| API["FastAPI /api/v1"]
+    SW -->|"GET /exercises: stale-while-revalidate"| API
+    SW -.->|"saved copy when offline"| CACHE
+    PAGE -->|"everything with Authorization: never cached"| API
+    PAGE --> OUTBOX[("localStorage: mood outbox, one journal draft")]
+    OUTBOX -->|"POST /mood with client_id + recorded_at, once online with the app open"| API
+```
+
+The worker never sees the session token and has no background sync. Offline
+check-ins are sent by the page (`features/mood/OutboxSync.tsx`); the server
+deduplicates them by `(user_id, client_id)` and screens every note, including a
+replay, before storing it.
+
 ## Response contract
 
 JSON: `{reply, session_id, message_id, metadata}`.
