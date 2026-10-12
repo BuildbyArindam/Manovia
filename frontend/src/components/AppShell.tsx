@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
   const isDesktop = useMediaQuery(DESKTOP_QUERY, true);
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="flex min-h-screen flex-col bg-bg text-ink">
       <a className="skip-link" href="#main" data-print="hide">
         {t("app.skipLink")}
       </a>
@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
       <Header />
       <OfflineBanner />
 
-      <div className="mx-auto flex w-full max-w-6xl gap-8 px-4 pb-28 pt-6 md:pb-14">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-4 pb-28 pt-6 md:pb-14">
         {isDesktop ? <SideNav /> : null}
         <main id="main" tabIndex={-1} className="min-w-0 flex-1">
           {children}

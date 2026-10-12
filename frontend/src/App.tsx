@@ -6,15 +6,15 @@
  * mood) can be reached without them.
  *
  * Day 25 (low-bandwidth & offline):
- * - Heavy routes (`InsightsPage`, `JournalPage`, `CBTPage`, `AssessmentsPage`,
- *   `ExercisesPage`, `MoodPage`, `ChatPage`, `SettingsPage`,
- *   `AccessibilityPage`) are code-split via `React.lazy` so a low-end phone on a
- *   slow connection only parses the shell + home route for first paint.
+ * - Primary bottom-bar surfaces (`HomePage`, `ChatPage`, `MoodPage`,
+ *   `ExercisesPage`, `SettingsPage`) are part of the core shell so tab switches
+ *   have zero layout shift (CLS = 0) and work synchronously offline.
+ * - Heavy secondary routes (`InsightsPage` + Recharts, `JournalPage`,
+ *   `CBTPage`, `AssessmentsPage`, `AccessibilityPage`) are code-split via
+ *   `React.lazy` so a low-end phone on a slow connection never downloads the
+ *   charting engine or long-form tools until opened.
  * - Once mounted, `warmOfflineResources` prefetches the public crisis helplines
- *   and guided exercises into TanStack Query + local offline cache, and warms
- *   the core route chunks on idle so going offline after initial load never
- *   strands the reader without "Need help now?", breathing exercises, or mood
- *   check-ins.
+ *   and guided exercises into TanStack Query + local offline cache.
  */
 
 import { Suspense, lazy, useEffect, useState, type ReactElement } from "react";
@@ -31,16 +31,14 @@ import { warmOfflineResources } from "@/lib/pwa/offlineCache";
 import { createQueryClient } from "@/lib/queryClient";
 import { OnboardingFlow } from "@/onboarding/OnboardingFlow";
 import { OnboardingProvider, useOnboarding } from "@/onboarding/OnboardingProvider";
+import { ChatPage } from "@/pages/ChatPage";
+import { ExercisesPage } from "@/pages/ExercisesPage";
 import { HomePage } from "@/pages/HomePage";
+import { MoodPage } from "@/pages/MoodPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
-const loadChatPage = () =>
-  import("@/pages/ChatPage").then((module) => ({ default: module.ChatPage }));
-const loadMoodPage = () =>
-  import("@/pages/MoodPage").then((module) => ({ default: module.MoodPage }));
-const loadExercisesPage = () =>
-  import("@/pages/ExercisesPage").then((module) => ({ default: module.ExercisesPage }));
 const loadJournalPage = () =>
   import("@/pages/JournalPage").then((module) => ({ default: module.JournalPage }));
 const loadCBTPage = () =>
@@ -49,21 +47,15 @@ const loadAssessmentsPage = () =>
   import("@/pages/AssessmentsPage").then((module) => ({ default: module.AssessmentsPage }));
 const loadInsightsPage = () =>
   import("@/pages/InsightsPage").then((module) => ({ default: module.InsightsPage }));
-const loadSettingsPage = () =>
-  import("@/pages/SettingsPage").then((module) => ({ default: module.SettingsPage }));
 const loadAccessibilityPage = () =>
   import("@/pages/AccessibilityPage").then((module) => ({
     default: module.AccessibilityPage,
   }));
 
-const ChatPage = lazy(loadChatPage);
-const MoodPage = lazy(loadMoodPage);
-const ExercisesPage = lazy(loadExercisesPage);
 const JournalPage = lazy(loadJournalPage);
 const CBTPage = lazy(loadCBTPage);
 const AssessmentsPage = lazy(loadAssessmentsPage);
 const InsightsPage = lazy(loadInsightsPage);
-const SettingsPage = lazy(loadSettingsPage);
 const AccessibilityPage = lazy(loadAccessibilityPage);
 
 function PageFallback(): ReactElement {
@@ -71,7 +63,7 @@ function PageFallback(): ReactElement {
     <p
       role="status"
       aria-live="polite"
-      className="rounded-2xl border border-border bg-surface p-6 text-ink-muted shadow-soft"
+      className="min-h-[60vh] rounded-2xl border border-border bg-surface p-6 text-ink-muted shadow-soft"
     >
       {t("app.loading")}
     </p>
@@ -92,14 +84,8 @@ function AppRoutes(): ReactElement {
       () => fetchExercises(api),
     );
     const timer = window.setTimeout(() => {
-      void Promise.allSettled([
-        loadExercisesPage(),
-        loadMoodPage(),
-        loadChatPage(),
-        loadSettingsPage(),
-        loadAccessibilityPage(),
-      ]);
-    }, 150);
+      void Promise.allSettled([loadJournalPage(), loadAccessibilityPage()]);
+    }, 300);
     return () => {
       window.clearTimeout(timer);
     };

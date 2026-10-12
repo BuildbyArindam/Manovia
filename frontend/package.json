@@ -21,7 +21,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "icons": "node scripts/generate-pwa-icons.mjs",
-    "lhci": "lhci autorun --config=lighthouserc.cjs"
+    "lhci": "lhci autorun --config=lighthouserc.json"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",

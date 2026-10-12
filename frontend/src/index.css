@@ -254,7 +254,6 @@
 
   /* WCAG 1.4.4 / 1.4.10 reflow: long words and URLs wrap instead of forcing horizontal scroll at 200%-400% zoom. */
   p,
-  li,
   dd,
   dt,
   h1,
@@ -263,6 +262,16 @@
   label,
   legend {
     overflow-wrap: anywhere;
+  }
+
+  fieldset {
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
   }
 }
 

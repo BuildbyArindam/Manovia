@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "jest-axe";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -79,5 +84,22 @@ describe("Journal local-only draft persistence", () => {
 
     await user.click(screen.getByTestId("journal-discard-draft"));
     expect(loadJournalDraft()).toBeNull();
+  });
+
+  it("uses design tokens (never undefined brand-* or low-contrast stone-* classes) and passes axe", async () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const journalSource = readFileSync(resolve(here, "../JournalView.tsx"), "utf8");
+    expect(journalSource).not.toMatch(/\b(bg|text|border)-brand-/);
+    expect(journalSource).not.toMatch(/\b(bg|text|border)-stone-/);
+
+    setNavigatorOnline(false);
+    const offlineClient = new ApiClient({
+      tokens: new MemoryTokenStore(),
+      fetchImpl: async () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    const { container } = render(<JournalView client={offlineClient} />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

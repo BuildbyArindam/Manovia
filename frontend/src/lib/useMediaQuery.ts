@@ -8,7 +8,17 @@ import { useEffect, useState } from "react";
  * first paint sane. Tests stub `window.matchMedia` to drive this.
  */
 export function useMediaQuery(query: string, defaultValue = false): boolean {
-  const [matches, setMatches] = useState(defaultValue);
+  const [matches, setMatches] = useState(() => {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      typeof navigator !== "undefined" &&
+      !navigator.userAgent.includes("jsdom")
+    ) {
+      return window.matchMedia(query).matches;
+    }
+    return defaultValue;
+  });
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") {

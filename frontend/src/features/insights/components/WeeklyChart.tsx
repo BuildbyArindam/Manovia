@@ -43,6 +43,7 @@ export function WeeklyChart({
   return (
     <div data-testid="weekly-chart">
       <BarChart
+        accessibilityLayer={false}
         width={CHART_GEOMETRY.width}
         height={CHART_GEOMETRY.barHeight}
         data={data}

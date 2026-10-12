@@ -25,7 +25,13 @@ export function DataTableView({ table, id }: DataTableViewProps): ReactElement {
   const noteId = useId();
 
   return (
-    <div className="overflow-x-auto" data-testid="insight-data-table">
+    <div
+      className="overflow-x-auto"
+      data-testid="insight-data-table"
+      tabIndex={0}
+      role="region"
+      aria-label={table.caption}
+    >
       <table
         id={id}
         aria-describedby={table.note === undefined ? undefined : noteId}
