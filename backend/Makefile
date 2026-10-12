@@ -1,4 +1,6 @@
-.PHONY: dev test lint format migrate migrate-down migrate-check revision ingest eval
+.PHONY: dev test lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response
+
+PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 
 # Development API server (install first: pip install -e ".[dev]")
 # --no-access-log: uvicorn's access log prints the full request line including
@@ -39,12 +41,23 @@ migrate-check:
 revision:
 	alembic revision --autogenerate -m "$(m)"
 
-# Day 9 safety eval: score rules + ML ensemble against the labelled dataset.
-# Dev split by default (tuning may look at it); the test split is frozen by
-# hash and is scored deliberately, not as a default: `make eval SPLIT=test`.
+# Day 24 unified evaluation harness: runs safety (dev split), emotion (162
+# multilingual cases), and response pipeline (60 scripted scenarios), writes
+# evals/reports/<date>/summary.md + report.html + pr_comment.md, and enforces
+# the CI gates in evals/thresholds.yaml.
 SPLIT ?= dev
+EVAL_PROVIDER ?= fake
 eval:
-	python ../evals/run_safety_eval.py --split $(SPLIT)
+	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_all_evals.py --provider $(EVAL_PROVIDER) --with-judge
+
+eval-safety:
+	$(PYTHON) ../evals/run_safety_eval.py --split $(SPLIT)
+
+eval-emotion:
+	$(PYTHON) ../evals/run_emotion_eval.py
+
+eval-response:
+	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_response_eval.py --provider $(EVAL_PROVIDER) --with-judge
 
 # Day 13 knowledge ingestion: chunk + embed + store the curated corpus,
 # idempotently (a second run is a no-op). RAG_EMBEDDER picks the embedder

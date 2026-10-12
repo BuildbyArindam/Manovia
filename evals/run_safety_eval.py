@@ -1096,6 +1096,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="report gate failures without exiting non-zero",
     )
     parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="output markdown path (default: evals/reports/safety_<today>.md)",
+    )
+    parser.add_argument(
         "--json-out",
         type=Path,
         default=None,
@@ -1114,14 +1120,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         stem += f"_{args.split}"
     if args.no_ml:
         stem += "_rules_only"
-    out_path = REPORTS_DIR / f"{stem}.md"
+    default_out_path = REPORTS_DIR / f"{stem}.md"
+    out_path = args.out or default_out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     curr_snap = current_metrics_snapshot(results)
     prev_path = find_previous_report(
         args.split,
         ml_enabled=ml_enabled,
         compare_path=args.compare,
-        current_out_path=out_path,
+        current_out_path=default_out_path,
         current_snap=curr_snap,
     )
     prev_metrics = (

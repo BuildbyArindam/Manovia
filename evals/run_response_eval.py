@@ -424,9 +424,6 @@ async def run_scenarios(
     judge_mode: str = "none",
     safety_ml: bool = False,
 ) -> tuple[list[ScenarioEvalResult], str]:
-    structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING)
-    )
     llm_provider, provider_label, fake_ref = build_eval_provider(provider_mode, scenarios)
     engine = build_engine()
     classifier = build_ml_classifier() if safety_ml else NullClassifier(reason="disabled")
@@ -883,6 +880,9 @@ async def _async_main(argv: list[str] | None = None) -> int:
         help="Report CI gate status without returning non-zero exit code on failure.",
     )
     args = parser.parse_args(argv)
+    structlog.configure(
+        wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING)
+    )
 
     judge_mode = args.judge
     if judge_mode == "none" and args.with_judge:

@@ -1,0 +1,134 @@
+# Manovia — Evaluation Harness Workflow (Day 24).
+#
+# Runs `make eval` (safety ensemble + rules baseline, 9-class multilingual
+# emotion analyzer, and 60-scenario response pipeline with FakeLLMProvider):
+#   * Weekly on Mondays at 04:00 UTC (`schedule`)
+#   * On pull requests touching safety, NLP, chat, content, or evals (`pull_request`)
+#   * On demand (`workflow_dispatch`)
+#
+# Enforces the CI gates in `evals/thresholds.yaml`, publishes the HTML/Markdown
+# report bundle as an artifact, writes to `$GITHUB_STEP_SUMMARY`, and posts or
+# updates a sticky PR summary comment (`<!-- manovia-eval-summary -->`).
+
+name: Evaluation Harness
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "evals/**"
+      - "backend/app/services/safety/**"
+      - "backend/app/services/nlp/**"
+      - "backend/app/services/chat/**"
+      - "backend/app/services/llm/**"
+      - "backend/app/content/**"
+      - "Makefile"
+      - "backend/Makefile"
+      - ".github/workflows/evals.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  evaluate:
+    name: Run safety, emotion & response evaluations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      APP_ENV: test
+      LLM_PROVIDER: fake
+      EMOTION_ANALYZER: keyword
+      RAG_EMBEDDER: tfidf
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend & evaluation dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run unified evaluation harness (make eval)
+        id: run_eval
+        run: |
+          REPORT_DATE="$(date -u +%F)"
+          echo "report_date=${REPORT_DATE}" >> "$GITHUB_OUTPUT"
+          make eval PYTHON=python
+
+      - name: Publish evaluation summary to GitHub Step Summary
+        if: always()
+        run: |
+          REPORT_DIR="evals/reports/${{ steps.run_eval.outputs.report_date }}"
+          if [ -f "${REPORT_DIR}/pr_comment.md" ]; then
+            cat "${REPORT_DIR}/pr_comment.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload evaluation report bundle (Markdown + HTML + JSON)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: eval-reports-${{ steps.run_eval.outputs.report_date }}
+          path: evals/reports/${{ steps.run_eval.outputs.report_date }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Post or update PR evaluation comment
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const reportDate = '${{ steps.run_eval.outputs.report_date }}';
+            const commentPath = `evals/reports/${reportDate}/pr_comment.md`;
+            if (!fs.existsSync(commentPath)) {
+              core.info(`No ${commentPath} found; skipping PR comment.`);
+              return;
+            }
+            const body = fs.readFileSync(commentPath, 'utf8');
+            const marker = '<!-- manovia-eval-summary -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (c) => c.user && c.user.type === 'Bot' && c.body && c.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
