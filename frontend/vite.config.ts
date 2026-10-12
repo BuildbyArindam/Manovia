@@ -2,8 +2,9 @@ import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
-import type { ManifestTransform } from "workbox-build";
 import { defineConfig } from "vitest/config";
+
+import { filterPrecacheManifest } from "./src/pwa/precache";
 
 /**
  * Single Vite/Vitest configuration.
@@ -43,24 +44,6 @@ export const DEV_CSP = [
   "form-action 'self'",
   "frame-ancestors 'none'",
 ].join("; ");
-
-/**
- * Day 25 — chunks that are not worth a byte of somebody's data plan offline.
- *
- * The service worker precaches the app shell so the app opens with no network.
- * Insights is the one surface that is useless offline (it is a view of
- * server-side data) and it carries the chart library, which is the single
- * largest chunk in the build — so it is left out of the precache and fetched
- * the first time somebody opens it online, exactly as before.
- */
-const PRECACHE_EXCLUDED_CHUNKS = [/^assets\/charts-/, /^assets\/InsightsPage-/];
-
-export const filterPrecacheManifest: ManifestTransform = (entries) => ({
-  manifest: entries.filter(
-    (entry) => !PRECACHE_EXCLUDED_CHUNKS.some((pattern) => pattern.test(entry.url)),
-  ),
-  warnings: [],
-});
 
 /** Vendor code that should not be re-downloaded when only app code changes. */
 function manualChunks(id: string): string | undefined {

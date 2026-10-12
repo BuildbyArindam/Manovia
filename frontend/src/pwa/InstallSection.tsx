@@ -84,7 +84,9 @@ export function InstallSection(): ReactElement {
       <p className="mt-4 font-semibold" data-testid="offline-ready">
         {offlineReady ? t("pwa.offlineReady") : t("pwa.offlineNotReady")}
       </p>
-      <p className="mt-1 text-sm text-ink-muted">{t("pwa.offlineDataNote")}</p>
+      <p className="mt-1 text-sm text-ink-muted" data-testid="offline-data-note">
+        {t("pwa.offlineDataNote")}
+      </p>
     </section>
   );
 }
