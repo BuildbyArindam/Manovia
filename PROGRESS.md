@@ -1,5 +1,46 @@
 # Manovia — Progress
 
+**Day 23 — Multilingual (English, Hindi, Bengali) — is built and verified
+(2026-10-12).** The whole interface now speaks three languages: i18next with
+bundled `en`/`hi`/`bn` trees (740 keys each, structural parity pinned by a
+build-failing test), a language switcher with a persisted preference
+(stored choice → browser subtag → English), `Intl` date/number formatting
+that follows the choice, pseudo-localisation mode (`?pseudo=1` — accented,
+~35% longer, ⟦bracketed⟧) as the hard-coded-string and overflow detector, and
+Noto Sans Devanagari / Bengali with Indic-aware line-height under
+`html[lang=hi/bn]`, paid for with exactly two pinned Google-Fonts origins in
+both CSPs. Every feature module was converted — the string scanner reports
+**0 hard-coded UI strings**. Server copy (crisis messages, check-in lines,
+plan text, insight templates) lives in `backend/app/content/i18n/{en,hi,bn}.json`
+behind a validating loader; the daily plan speaks the language of its first
+request for the day; chat takes `locale` per turn and instructs the model in
+the reader's language. Safety: Indic patterns (Devanagari + Bengali script,
+romanised variants, euphemisms) in the rules engine, eval corpus past the
+≥60-cases-per-language floor (en 241 · hi 92 · hi-Latn 118 · bn 121), and
+re-run evals with **crisis recall 1.000 in every language cell that has
+crisis cases and zero false negatives** (the recall-first precision cost on
+benign text is reported, not hidden). Clinical instruments stay English-only —
+PHQ-9/GAD-7 are shown as published with an in-app notice until officially
+validated Hindi/Bengali editions are sourced with provenance; nothing is ever
+machine-translated. All hi/bn copy is AI-produced and marked per key group
+🤖 *needs native-speaker review* in `translations/STATUS.md` — no review is
+claimed. Final numbers: backend **3646 passed / 3 skipped** (safety 644, chat
+190), frontend **489 passed / 3 skipped**, `ruff check`/`format`, `mypy`,
+`tsc`, ESLint and the production build all clean. Decisions:
+[ADR 0023](docs/adr/0023-multilingual-english-hindi-bengali.md). Evidence:
+[Day 23 verification](docs/verification/day23-multilingual-english-hindi-bengali.md).
+This Arena session is fixed to **`arena/09204924-manovia`**; the requested
+`day-23-multilingual-english-hindi-bengali` branch cannot be created here
+(precedent: Days 21/22). One PR, no merge.
+
+**Known issue (Day 23, honest debt):** every hi/bn string is an AI-produced
+draft pending native-speaker review (`translations/STATUS.md` sign-off table
+is empty by design); helpline names/descriptions, backend exercise
+instructions and journal prompts stay English (content, not chrome); the
+sandbox has no Chromium and no Google-Fonts access, so the five-screen and
+360px Indic-rendering screenshots need a real browser (checklist in the
+verification doc).
+
 **Day 21 — Daily plan and Week-3 review — is built and verified (2026-10-12).**
 A transparent rule-based planner (`services/plan/daily_plan.py`): a table of
 six named rules over metadata-only context (mood trend, last check-in gap,
@@ -1008,6 +1049,131 @@ prompt v2 rules; rag settings validation; knowledge API (auth, list, detail, 404
   [docs/verification/day22-privacy-controls-and-security-hardening.md](docs/verification/day22-privacy-controls-and-security-hardening.md)
   for the PASS/FAIL table, the CBT AAD defect, the setuptools advisory and the
   three biggest remaining risks.
+
+### Day 23 (session branch `arena/09204924-manovia`) — multilingual (English, Hindi, Bengali)
+
+- **Frontend i18n foundation.** `frontend/src/lib/i18n/` — i18next
+  initialised synchronously with bundled resources (no runtime fetch), the
+  resolver `stored → browser primary subtag → en`, persistence in
+  `manovia.language.v1`, `<html lang>` mirrored, and a provider that bumps a
+  revision counter so every component re-reads `t()` on switch without a
+  reload. `locales/{en,hi,bn}.json` — **740 keys each**;
+  `locales/parity.test.ts` fails the build on missing/orphan keys, changed
+  placeholders or empty translations. `LanguageSwitcher` in the settings/home
+  chrome; every feature module converted (home, chat, mood, journal,
+  exercises, assessments, CBT, insights, plan, onboarding, privacy, settings,
+  auth, crisis surfaces, 404) — copy modules became getters/zero-arg
+  functions so nothing freezes English at import time. Stored/API-contract
+  values stay English (CBT `what_helped` phrases, taxonomy ids, the `DELETE`
+  confirmation word).
+- **Pseudo-localisation.** `pseudo.ts` post-processor (accent map, ~1.35×
+  expansion, ⟦⟧ wrapping) registered via `postProcess: [name]` — the day's
+  own tests caught that registration alone activates nothing — plus a
+  `pseudo` resource mirroring `en`; `?pseudo=1/0` and `manovia.pseudo.v1`;
+  `intlLocale()` maps pseudo → en for formatting.
+- **Indic rendering.** Noto Sans Devanagari/Bengali linked in `index.html`
+  (preconnect + `display=swap`); `html[lang=hi]`/`[lang=bn]` get an
+  Indic-first font stack with headings/body line-height raised (1.45 / 1.85)
+  so matras never clip. The CSP (production `docker/security-headers.conf`,
+  dev `vite.config.ts`, pinned byte-for-byte by `security/csp.test.ts`)
+  allows exactly `fonts.googleapis.com` in `style-src` and
+  `fonts.gstatic.com` in `font-src`.
+- **String hygiene.** `scripts/scan-ui-strings.mjs` reports **0 candidate
+  hard-coded strings**; the scanner's known blind spots (non-listed string
+  props, conditional/array literals) were covered by a manual grep sweep of
+  every converted file.
+- **Backend content localisation.** `backend/app/content/i18n/{en,hi,bn}.json`
+  (crisis copy, check-in lines, plan text, insight templates) loaded through
+  `app/content/i18n.py` — required-string list, `{emergency_number}`
+  placeholder whitelist, BCP-47 fallback (`hi-IN` → `hi`, unknown → English
+  with `locale_fallback_used`). Plan titles/reasons via `LocalizedTitle` on
+  exercise definitions with per-rule locale templates (the plan keeps the
+  language of its first request for the day); insight templates accept a
+  `locale` parameter and the frontend passes the UI language in the query key
+  so switching refetches. Journal prompts/deck copy and helpline
+  names/descriptions stay English — recorded as known issues, not silently.
+- **Chat in the reader's language.** The orchestrator resolves
+  `expected_language` = explicit `locale` → language detection (confidence
+  ≥ 0.60) → `en`, injects it into the system prompt, and the output guard
+  rejects a reply in the wrong language (then falls back to a safe template —
+  never raw model output). `RenderedTemplate` carries the localized copy
+  verbatim; `ChatMetadata.locale` mirrors the resolved locale. New suite
+  `backend/tests/chat/test_chat_api_locale.py` (6 tests) pins: Hindi/Bengali
+  crisis messages return the pre-written card in that script (asserted by
+  Unicode range), benign Indic turns report the reader's locale and hand the
+  model a prompt naming the language, English-without-locale stays English.
+  The deterministic BN crisis sentence is the rules-engine catch because the
+  test environment deliberately disables the ML path (`SAFETY_ML_ENABLED=
+  false` pins Day-8 text suites).
+- **Safety: Indic rules + eval scale.** `patterns_indic.yaml` adds Devanagari
+  and Bengali script patterns plus romanised variants and euphemisms; the
+  eval corpus grew to en 241 · hi 92 · hi-Latn 118 · bn 121 cases (≥60 per
+  language). Full eval re-run on the dev split: ensemble precision 0.543,
+  **crisis recall 1.000, 0 false negatives**, and per-language crisis recall
+  1.000 for English, Hindi-Devanagari, Hindi-Latin and Bengali; exact-level
+  recall gaps (benign over-escalation) are reported per cell in
+  `evals/reports/safety_2026-10-12.md`.
+- **Clinical instruments held at English.** PHQ-9/GAD-7 items are served
+  verbatim from their provenance-bearing content files; the Assessments page
+  shows an explicit English-only notice; no machine-translated instrument
+  text exists anywhere in the repo.
+- **Translation review ledger.** `translations/STATUS.md` marks every hi/bn
+  key group 🤖 "needs native-speaker review" with a per-group table and a
+  deliberately empty sign-off log; it also lists what stays English and why.
+- **Verification.** See
+  [docs/verification/day23-multilingual-english-hindi-bengali.md](docs/verification/day23-multilingual-english-hindi-bengali.md)
+  for the PASS/FAIL table and the manual checklist the sandbox cannot run
+  (Chromium, Google Fonts and Playwright downloads are off the sandbox
+  network allowlist).
+
+## Verification (Day 23 — real command output)
+
+Full PASS/FAIL table and the manual-browser checklist:
+[docs/verification/day23-multilingual-english-hindi-bengali.md](docs/verification/day23-multilingual-english-hindi-bengali.md).
+Key outputs, run in this session:
+
+```text
+$ pytest backend/tests -q                      # full backend suite
+3646 passed, 3 skipped
+
+$ pytest backend/tests/safety -q               # safety gate
+644 passed
+
+$ pytest backend/tests/chat -q                 # chat incl. 6 new locale tests
+190 passed
+
+$ ruff check . && ruff format --check .        # backend
+All checks passed!   ·   317 files already formatted
+
+$ mypy app tests                               # backend
+Success: no issues found in 264 source files
+
+$ node frontend/scripts/scan-ui-strings.mjs    # bundle scan
+Total: 0 candidate hard-coded strings in 0 files
+
+$ npx vitest run                               # frontend
+489 passed, 3 skipped (56 files)               # tsc, eslint, vite build: clean
+```
+
+Safety eval (`python evals/run_safety_eval.py`, dev split, 116 cases):
+
+```text
+| pipeline            | precision | recall | crisis cases |
+| rules + ML ensemble | 0.543     | 1.000  | 51           |
+
+| language            | cases | crisis recall | crisis precision |
+| English             | 49    | 1.000 (22)    | 0.595            |
+| Hindi (Devanagari)  | 18    | 1.000 (8)     | 0.500            |
+| Hindi (romanised)   | 24    | 1.000 (10)    | 0.556            |
+| Bengali             | 25    | 1.000 (11)    | 0.478            |
+```
+
+Crisis recall 1.000 in every language cell with crisis cases; exact-level
+recall gaps (benign over-escalation) reported per cell in
+`evals/reports/safety_2026-10-12.md`. What the sandbox could not do (no
+Chromium, no Google-Fonts network access): the five-screen hi/bn screenshots,
+360px Indic font rendering, and a live pseudo-mode walkthrough — checklist in
+the verification doc.
 
 ## Verification (Day 18 — real command output)
 
@@ -2456,8 +2622,38 @@ other three jobs.
 - [0018 — Guided exercises](docs/adr/0018-guided-exercises.md): strict YAML, public content/private idempotent numeric history, auditable emotion rules, associative comparisons, local timing and explicit loaded-tab offline scope.
 
 - [0022 — Privacy controls: export everything, delete everything, keep nothing secret from its owner](docs/adr/0022-privacy-controls-and-data-export.md): the export is decrypted for the owner and declares its own limits (`truncated_tables`, per-row `decryption_failed`, `format_version`) because a silent omission in a data export is the one failure it must not have; deletion is one cascade transaction with re-authentication and a receipt that proves *that* it happened and never *what* was in it (`account_ref` = keyed HMAC, no content column); privacy settings default rather than 404 and a `PATCH` never resets fields it was not given; retention is a real job with a dry run, per-user windows and idempotence, deliberately **not** self-scheduling (the gap is stated, not papered over with a thread); and the alternatives rejected on the way (passphrase-encrypted exports, streaming exports, a soft-delete recovery window, an in-container cron) are recorded with the reason each lost.
+- [0023 — Multilingual: English, Hindi, Bengali — in that order of trust](docs/adr/0023-multilingual-english-hindi-bengali.md): one bundled locale tree per language with build-failing structural parity; resolution order stored choice → browser subtag → English; server copy validated at load with `{emergency_number}` the only placeholder; the daily plan keeps the language of its first request for the day; Indic script + romanised patterns with per-language eval floors; PHQ-9/GAD-7 held at their published English wordings until validated editions are sourced (never machine-translated); AI-produced hi/bn marked per key group for native review in `translations/STATUS.md` with an empty sign-off log; pseudo-localisation as the hard-coded-string and overflow detector; exactly two pinned Google-Fonts origins added to both CSPs for Noto Devanagari/Bengali.
 
 ## Known issues
+
+### Day 23 implementation notes
+
+- **hi/bn are AI-produced drafts.** Every key group is marked 🤖
+  "needs native-speaker review" in `translations/STATUS.md`; the sign-off
+  table is empty. Shipping to real users should wait on named reviewers —
+  the app's copy is honest about this state in-repo.
+- **Backend content not yet localised:** helpline names/descriptions
+  (`helplines.json`), exercise instructions and journal prompts stay
+  English. The UI surfaces say so where readers meet them (exercises
+  `framing` line, assessments English-only notice). Localising needs the
+  review pipeline, not a translation pass.
+- **PHQ-9 / GAD-7 stay English-only** until officially validated Hindi /
+  Bengali editions are sourced with provenance; this is deliberate, not a
+  gap.
+- **The safety eval's benign over-escalation is visible:** exact-level
+  recall gaps in `evals/reports/safety_2026-10-12.md` (worst cells: en
+  Severe hopelessness 0.000/6, hi-Dev Intent/plan 0.000/2, bn Intent/plan
+  0.200/5). Crisis recall is 1.000 in every language; the trade-off is the
+  recall-first posture documented since Day 9.
+- **The test environment disables the safety ML path** (`SAFETY_ML_ENABLED=
+  false` pins Day-8 text suites), so Indic crisis detection in API tests
+  relies on rules; the ML raise path is measured by the evals instead.
+- **Screenshots need a real browser:** no Chromium in the sandbox and
+  Google Fonts is off the network allowlist — the five-screen hi/bn set,
+  360px Indic rendering and the pseudo-mode walkthrough are a manual
+  checklist in the Day 23 verification doc.
+- Docker/PostgreSQL remain unverified (no docker in the sandbox) — carried
+  from Day 22.
 
 ### Day 18 implementation notes
 
@@ -3167,6 +3363,33 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - Server-side encrypted draft resume across devices, only after deciding how
   HIGH-risk drafts should be handled.
 - Paginate thought-record history beyond the current newest-100 limit.
+
+## Next steps (Day 24 — first three)
+
+1. **Translation review pipeline.** Turn `translations/STATUS.md` from a
+   ledger into a workflow: export the hi/bn trees per key group for native
+   speakers, accept corrections back, flip 🤖 → ✅ with reviewer + date, and
+   fail CI if a reviewed key's source string changes without re-review. This
+   is the single gate between "built" and "shippable" for the two Indic
+   locales.
+2. **Localised backend content behind that review:** helpline names and
+   descriptions (`helplines.json`), exercise instructions and journal prompts
+   — the last English reader-facing content, deliberately held back until the
+   pipeline above exists.
+3. **Refresh-token cookie** (carried from Day 22's review): move the refresh
+   token out of `localStorage` into an `HttpOnly`, `SameSite=Strict` cookie
+   with CSRF protection — still the highest-value security change left.
+
+## Parking lot (Day 23)
+
+- Per-locale number/date formatting samples in Storybook-style fixtures so
+  the `Intl` routing stays visible during review.
+- User-selectable per-feature language (e.g. English interface, Hindi crisis
+  copy) once the review pipeline confirms the hi/bn crisis wording.
+- Language-detection telemetry (which locale readers actually pick, region
+  distribution) — metadata only, behind the existing privacy settings.
+- Playwright coverage of the switcher round-trip and pseudo mode once a
+  browser can run in CI (Playwright downloads are off the sandbox allowlist).
 
 ## Next steps (Day 23 — first three)
 
