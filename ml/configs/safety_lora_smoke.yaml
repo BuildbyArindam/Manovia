@@ -1,0 +1,129 @@
+# The CI path for Day 33: the whole cost-sensitive safety pipeline on a tiny
+# random-init XLM-R, in seconds, on one CPU, with no network.
+#
+# What this config is FOR: the cost-weighted loss, the expected-cost decision
+# rule, temperature scaling, the conformal quantile, the abstention policy, the
+# TF-IDF comparison, the artefact layout and the MLflow record — every piece of
+# plumbing between a config and a usable model. What it is NOT: a quality claim.
+# `base_model: tiny://xlm-roberta` builds a 2-layer, 32-hidden stand-in whose
+# weights are random, and the training slice is 20 rows of the hand-written
+# fixture, so every number below is noise by construction. Every report it
+# produces says so, in those words.
+#
+# The real run is configs/safety_lora_xlmr.yaml on a GPU
+# (ml/notebooks/colab_safety_lora.ipynb). This file exists so a broken training
+# loop cannot hide behind "it needs a GPU".
+name: safety_lora_smoke
+
+seed: 20261013
+
+notes: >-
+  Tiny random-init XLM-R, 12 optimiser steps, 20 hand-written fixture rows for
+  training, 20 for dev, 20 for calibration (temperature + conformal) and 20 as a
+  held-out slice. Plumbing only — the numbers measure the pipeline, not safety
+  classification. The frozen Day-9 test split is not used by this config.
+
+data:
+  train:
+    path: data/safety_toy/train.jsonl
+    sha256: "a836bdf194d721fbbd04167b4a12c333ecb54dbe6d62c2cd1409adf4690f3345"
+    rows: 20
+  # Dev: model selection (early stopping on crisis recall).
+  eval:
+    path: data/safety_toy/dev.jsonl
+    sha256: "354d5742fba80deaaad76a025804130c58a3c2b7b82641356474e9e2028dd4c0"
+    rows: 20
+  # Calibration: the temperature and the conformal quantile are fitted HERE and
+  # nowhere else. Never the test split.
+  validation:
+    path: data/safety_toy/calibration.jsonl
+    sha256: "4ab3ff975172e1754b9c36732843a6824c8daa590c08bccf045032752981b647"
+    rows: 20
+  # Held out from training, from dev and from calibration. For the smoke run this
+  # is a slice of the hand-written fixture; for the real run it is the frozen
+  # Day-9 file (see configs/safety_lora_xlmr.yaml).
+  test:
+    path: data/safety_toy/test.jsonl
+    sha256: "1128d9a42d6f6714d93dff9791d537bf7452417d4820974cf8656e15d5e9445a"
+    rows: 20
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [none, low, medium, high, imminent]
+
+model:
+  kind: safety_lora
+  base_model: tiny://xlm-roberta
+  tokenizer_max_length: 32
+  lora:
+    rank: 4
+    alpha: 8
+    dropout: 0.05
+    target_modules: [query, value]
+    bias: none
+    freeze_base: false
+  training:
+    epochs: 2
+    batch_size: 8
+    eval_batch_size: 16
+    learning_rate: 3.0e-3
+    weight_decay: 0.0
+    warmup_ratio: 0.1
+    max_grad_norm: 1.0
+    label_smoothing: 0.0
+    class_weighting: balanced
+    scheduler: cosine
+    mixed_precision: auto
+    early_stopping_patience: 0
+    max_steps: 12
+    log_every_steps: 4
+
+evaluation:
+  # The tolerance for the reproducibility check. A torch run on CPU is not
+  # bit-exact (blocked reductions reorder their sums), so the thresholded
+  # metrics are pinned tighter than the continuous ones; see
+  # configs/emotion_lora_smoke.yaml for the measurement behind this number.
+  tolerance: 5.0e-2
+  metrics: [accuracy, macro_f1, weighted_f1]
+  confusion_matrix: true
+
+safety:
+  # The cost matrix is in taxonomy.py; this is whether it is used and how.
+  cost:
+    matrix: default
+    normalise_per_row: true
+    label_smoothing: 0.0
+    cost_decision_rule: true
+  calibration:
+    enabled: true
+    bins: 5
+    lower: 0.05
+    upper: 10.0
+  conformal:
+    enabled: true
+    alpha: 0.05
+    policy: abstain_medium
+  report:
+    bootstrap_resamples: 200
+    confidence_level: 0.95
+    error_cases: 20
+    compare_baseline: true
+  # The baseline's class weighting: `balanced` is the scalar approximation of the
+  # cost matrix (see taxonomy.class_weights_from_cost); `none` is the unweighted
+  # Day-9 operating point.
+  baseline_class_weight: balanced
+  artifact_dir: artifacts/safety
+  artifact_name: manovia-safety-smoke
+
+tracking:
+  experiment: manovia-ml-safety
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: smoke
+    model: tiny-random-xlm-roberta
+    data: hand-written safety toy fixture
+    gpu: not-required
+
+threads: 1
