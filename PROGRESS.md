@@ -1,5 +1,249 @@
 # Manovia — Progress
 
+**Day 32 — fine-tune a multilingual emotion model (LoRA) — is built, verified in
+the sandbox and committed (2026-10-13).** The brief asked for a new branch
+`day-32-fine-tune-multilingual-emotion` created from `main`; this session is
+pinned to its Arena branch (`arena/7faf4c1a-manovia`), as on Days 19–31, so the
+work is committed there and the PR comes from it. Nothing was pushed to `main`.
+
+**What exists now:** a full LoRA fine-tuning path in `ml/` (label mapping,
+conversion, overlap checks, trainer, threshold tuning, ≤12-trial Optuna sweep,
+inference-only evaluation, report and model card), two real-run configs
+(XLM-R default, MuRIL comparison), a hand-written 174-row en/hi/bn held-out set
+with its own dataset card, a Colab/Kaggle notebook for the GPU run, the
+`EMOTION_ANALYZER=trained` path in the backend with a never-fatal fallback, ADR
+0032, an updated model card, and **110 new tests** (**ml 220**, up from 139;
+the backend's `tests/unit/test_nlp_trained.py` adds 29).
+
+**What does not exist, and why:** a trained model with real numbers. This
+sandbox has no GPU and cannot reach the Hugging Face hub, so the 278M-parameter
+run, GoEmotions and the Colab notebook are owner steps, and the day is honest
+about it instead of shipping a metric from a random stand-in. The smoke run
+exists to prove the *pipeline*; every report it writes says its numbers are noise.
+
+### Completed (Day 32)
+
+- **The taxonomy is one table, with a test per row** (`ml/src/manovia_ml/training/emotion/taxonomy.py`).
+  Weighted, many-to-many mapping from GoEmotions/EmoNoBa onto Manovia's nine
+  emotions (`nervousness → anxiety 1.0`, `remorse → shame 0.9`, `relief → calm 0.9`,
+  `approval → joy 0.6`, …), a rationale per weight, and the weights become **soft
+  targets** in training instead of a hard relabel. `neutral` is *derived* (a row
+  is neutral only when nothing else clears the threshold), which is why
+  `unreachable_targets()` is a real, tested fact: **GoEmotions cannot express
+  `loneliness` at all**, EmoNoBa cannot express anxiety, shame, loneliness or
+  calm, and every run manifest records that.
+- **Conversion that reports what it dropped** (`data.py`): `rows_in`,
+  `rows_with_emotion_target`, `rows_neutral_only`, per-label drop counts. A
+  conversion that quietly loses half a corpus is how a model ends up describing
+  a dataset nobody checked.
+- **A held-out check that is exact *and* near-duplicate.** Character 3-gram
+  Jaccard at 0.80 plus a difflib paraphrase rule at 0.85 behind a word-overlap
+  prefilter, because the first rule alone missed a reworded "flight cancelled"
+  pair scoring 0.548. The thresholds sit above the worst measured within-set pair
+  (0.500) with the measurement in the test. The trainer **refuses to run** when
+  the held-out set overlaps training; the CLI can check it too
+  (`python -m manovia_ml.training.emotion.data overlap …`).
+- **The hand-written held-out set** `ml/data/validation/emotion_validation.jsonl`:
+  174 rows, 58 each en/hi/bn, 12 multi-label, all nine labels, sha256
+  `fb116c7c…1b08c`, none of it third-party or personal, with its own
+  `DATASET_CARD.md`. A deliberate, narrow exception to "only the toy fixture is
+  committed" — a per-language number is impossible without data in those
+  languages — and the card says what it is not: **no native-speaker review yet**.
+- **The trainer is one config-driven function** with the brief's list as named
+  pieces: BCE-with-logits on soft targets, per-label `pos_weight` (neg/pos,
+  capped at 50) from the training split only, label smoothing, cosine schedule
+  with warmup, gradient clipping, early stopping that restores the best adapter,
+  AMP on CUDA only (logged), thresholds tuned on **validation** only (a label
+  below `min_support` keeps 0.5 *with the reason recorded*), then the artefact,
+  the MLflow record, the report and the model card.
+- **Evaluation that cannot cheat** (`evaluate.py`): inference-only, and it raises
+  if the trainer was imported in the same process, so a quoted number can only
+  have come from the saved artefact. Per-label and per-language F1, subset
+  accuracy, ECE with reliability bins, the argmax confusion matrix, row-seeded
+  bootstrap 95% intervals, and a top-20 error analysis grouped by cause
+  (including `untrained_language` and `neutral_absorbed_a_positive`).
+- **Comparison against the two baselines, per language.** The report renders
+  keyword chain, Day-6 off-the-shelf checkpoint and the fine-tuned model side by
+  side, and emits an explicit sentence for every language where a baseline wins —
+  a model card that cannot contain that sentence is not a model card.
+- **≤12-trial Optuna sweep** over LoRA rank and learning rate where each trial is
+  a *normal run* under a nested MLflow run, scored on validation macro-F1 at
+  default thresholds (tuning thresholds inside the sweep would fit the split that
+  is choosing the hyperparameters).
+- **The offline stand-in** `tiny://xlm-roberta`: a seeded 2-layer, 32-hidden
+  encoder with a WordPiece vocab trained on the fixture, saved as an *encoder* so
+  the 9-label head is built fresh (a checkpoint that carried a head broke the
+  moment the taxonomy changed — found the hard way on Day 31's tiny model).
+  It lets the whole path run in seconds on a CPU, with no network, which is what
+  makes the CI step possible at all.
+- **Two real-run configs, both hub-verified on 2026-10-13.**
+  `emotion_lora_xlmr.yaml` → `FacebookAI/xlm-roberta-base` (MIT, sha `e73636d4…`,
+  278,885,778 params, ~100 languages including en/hi/bn);
+  `emotion_lora_muril.yaml` → `google/muril-base-cased` (Apache-2.0, sha
+  `afd9f36c…`, 17 Indic languages, and its card says it is not expected to do
+  well outside them). XLM-R is the default because the product is not only
+  Indic; MuRIL stays as the comparison to be decided by the three-way numbers.
+- **Packaging**: `model/` (merged weights — no `adapter_config.json` in a
+  shipped artefact), `tokenizer/`, `thresholds.json`, `manifest.json` (base
+  model, labels, data hashes, seed, library versions, **the MLflow run id**, the
+  unreachable labels) and `MODEL_CARD.md` written from the template.
+- **Serving, behind the existing interface** (`backend/app/services/nlp/trained.py`):
+  `EMOTION_ANALYZER=trained` (+ `EMOTION_TRAINED_DIR`), lazy under a lock, a
+  failed load remembered, the same nine-label schema, thresholds used through
+  `asserted_labels()` rather than by rescaling the distribution (`primary` stays
+  the argmax, as the schema defines it), and **never fatal**: a missing
+  directory, a missing torch, or a corrupt file becomes one warning and the
+  lexicon answers. Deleting the weights is a supported state.
+- **Safety is untouched.** The emotion model is a tone hint: it cannot lower a
+  risk level and is never called at HIGH or IMMINENT risk (ADR 0009). No rule,
+  threshold or gate in the safety path changed today.
+- **Docs**: ADR 0032 (the decision, the XLM-R-vs-MuRIL evidence, the held-out
+  set's exception, why thresholds are validation-only, why evaluation is
+  inference-only, why the fallback is not a failure), `docs/model-card.md` v1.1
+  (C4's alternate path, the fine-tuned section with *no* quality claim and why,
+  and **F13 — domain shift from social-media text** as a numbered limitation),
+  `ml/notebooks/colab_emotion_lora.ipynb` + its README section, `ml/README.md`
+  for Days 31–32, and the make targets `ml-emotion-{smoke,train,eval,tune,data}`.
+
+### Verification (Day 32, final tree, every command run in the sandbox)
+
+| check | result |
+| --- | --- |
+| `cd ml && pytest -q` | **220 passed** in 28.0 s, offline (tmp file-store MLflow, tiny random-init model) |
+| `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 69 files formatted; **53 source files** typed — the tests are type-checked, not just the package |
+| `make ml-emotion-smoke` — the whole Day-32 path on a CPU, offline | run **`17e8e06c…`** FINISHED; validation macro-F1 0.285714, test 0.137393 (95% CI 0.125405–0.150131), ECE 0.159948, `mixed_precision=off`, device `cpu`. **Plumbing numbers on a random stand-in — not quality**, and the artefact's own card says so in its first paragraph |
+| the config is data — nothing about the run is in the code | config fingerprint `4872b102…`, seed 20261013 (`PYTHONHASHSEED=0`, BLAS/torch threads 1, `seed.torch_seeded=true`), git commit + `dirty=false`, per-file data sha256s, library versions (torch 2.9.1, transformers 4.57.3, peft 0.18.1, optuna 4.7.0, numpy 2.4.6) — all in the run's params and `environment.json` |
+| check 2 — three-way table on the 174-row held-out set | fine-tuned (stand-in) **0.1374** [0.124, 0.150]; **keyword 0.1583** [0.103, 0.201]; **sentiment 0.0335** [0.017, 0.056]; off-the-shelf checkpoint **not run here** (see below). The report prints *"This model is worse than a baseline on at least one language"* and names it: `keyword` scores 0.2353 on `en` against the model's 0.1374 |
+| check 3 — re-run the evaluation from the saved artefact, fresh process, no training code | macro-F1, its interval, micro-F1, its interval, subset accuracy, every per-label F1, the per-language block and the thresholds are **identical to the last digit** to what the training run logged; ECE differs by **1e-6** (0.159947 vs 0.159948), the documented CPU float noise. Two root causes were found and fixed getting here (see below) |
+| check 4 — `EMOTION_ANALYZER=trained / baseline / keyword` | `trained` → the artefact, primary `anger` 0.514; `baseline` → `emotion_model_unavailable error_type=OSError` then the lexicon answers (primary `neutral`); `keyword` → the lexicon directly. With the artefact directory **deleted**: two warnings (`trained_emotion_artifact_missing`, `trained_emotion_model_missing`) and the lexicon answers — **a fallback, not an outage** |
+| check 5 — exact + near-duplicate overlap, with counts | clean case: 60 train rows vs 174 held-out → **0 exact, 0 near**, exit 0. Planted exact copy → **1 exact**, exit 1. Planted paraphrase ("my flight got cancelled and I spent my birthday in an airport" → "…was cancelled so I spent my birthday in the airport") → **1 near at 0.839**, exit 1. The check is not a formality: it fails loudly |
+| check 6 — CPU latency, 40-token input | p50 **1.54 ms**, p95 **1.70 ms**, max 1.75 ms (30 distinct inputs, so the analyzer's cache does not answer instead of the model; cold load 12 ms). **These are the 2-layer stand-in's numbers.** A 278M-parameter XLM-R on this CPU will be ~3 orders of magnitude slower, so the real latency check belongs on the machine that runs the real model — it is in the parking lot, and it is why the number is quoted with its caveat |
+| check 7 — the artefact's own model card | contains **"Domain shift from social-media text."** under *Known limitations and biases*, plus no-native-review, `loneliness` unsupported, multi-label collapse, small single-author set, and "not evaluated on real Manovia traffic". Failed on the first attempt only because the check searched lowercase against a capitalised heading |
+| backend: `ruff check .` / `ruff format --check .` (357 files) / `mypy app` (148 files) / `mypy tests` (149 files) | **all clean** |
+| backend: `pytest tests/unit/test_nlp_trained.py tests/unit/test_config.py tests/unit/test_nlp_factory.py -q` | **102 passed** (29 of them the analyzer's own) |
+| backend: `pytest tests/integration/test_nlp_hf_pipeline.py -q` | **7 passed**, after fixing the root cause below |
+| backend: full `pytest -q` (the final tree) | **4208 passed, 1 skipped, 5 deselected** in 1043.20 s (17:23). The first full run on this branch had reported 6 failed / 4202 passed / 1 skipped / 5 deselected in 1058.71 s, all six in `test_nlp_hf_pipeline.py`; the fixture bug behind them is fixed, 4202 + 6 = 4208, and nothing was skipped to get there |
+| the make targets, each one actually run | `emotion-smoke` (writes run + artefact + report), `emotion-eval` against that artefact (2000 resamples), `emotion-tune` refusing a config with `optuna.enabled: false` ("a sweep is a deliberate act"), `emotion-data` without `SRC` printing usage and exiting 2, `emotion-data` on a real 5-row GoEmotions file (4 rows out, drops reported). The two targets that used to inherit the Day-31 linear `CONFIG` default — and therefore could never succeed — now say so instead of throwing a traceback |
+| frontend: `npm run typecheck` / `npm run lint` / `npm run test:run` | clean; clean; **601 passed, 3 skipped** in 73 files (1 file skipped) — 81 s |
+| `git status` at the end | nothing Day-32 left uncommitted; the artefact directory and `ml/mlruns/` are git-ignored, and no weights or datasets are tracked (`ci.yml`'s "No datasets or model weights tracked in Git" step covers it) |
+| the numbers in the docs were checked against the hub before being written | licence, sha, parameter count, languages and last-modified date for both candidate base models came from the Hub API, not from memory |
+
+**Two root causes found by running the checks instead of assuming them**
+
+1. *The report crashed instead of reporting.* `available_baselines()` decided
+   whether the off-the-shelf checkpoint could run from whether the `nlp` extra
+   could be **imported**; the weights are a download, so on any offline machine
+   the CLI died with a traceback half-way through and threw away the trained
+   model's numbers. It now asks the Hugging Face cache and, if the checkpoint is
+   absent, says so in the report — and a baseline that raises is caught and named
+   rather than allowed to take the run down. The checkpoint id also moved into
+   one constant (it was duplicated between `ml/` and the backend settings).
+   Regression tests: the availability check with and without a cached
+   checkpoint, the cache probe, and the CLI surviving a raising baseline.
+2. *The published interval was not reproducible.* The trainer derives its
+   bootstrap seed from the config seed and the split; the CLI bootstrapped with
+   seed 0, so a fresh process produced *different interval endpoints* (0.124027/
+   0.150196 against 0.125405/0.150131) for the same artefact. An interval nobody
+   can reproduce is not a reproducible result, so the seed now travels with the
+   artefact (`bootstrap_seed_for()`, `--seed` to override) and the equality is
+   asserted by a test that runs the CLI in a subprocess and compares its payload
+   with the run's MLflow artefacts.
+
+A third, smaller one: the full backend suite's six failures were a *fixture* bug
+— a `BertTokenizerFast` next to a `DistilBertForSequenceClassification` — which
+transformers used to absorb by dropping `token_type_ids` and no longer does. The
+product code was never wrong; the fixture was, and the fix is in the fixture.
+
+### Known issues (as of Day 32)
+
+- **No real training run has happened.** No GPU here and the hub is unreachable,
+  so the model itself — the one thing the day is *about* — is unrun. What is
+  tested is everything around it. The notebook is written so that the first GPU
+  run differs from the smoke run in data and scale, not in code.
+- **Hindi and Bengali are evaluated, not supervised.** GoEmotions is English, so
+  a hi/bn number from this pipeline measures how a multilingual encoder carries
+  English supervision. The honest answer to "is it good in Hindi?" is still the
+  natively reviewed corpus in `ml/data/planned/hi_bn_emotion/`.
+- **`loneliness` has no supervision in any usable corpus**, `calm` only arrives
+  through `relief`, `anxiety` only through `nervousness`. Those three labels are
+  where the fine-tune is expected to be weakest, and the manifests say so before
+  a report has to.
+- **The held-out set has not been natively reviewed** (its card says so), has no
+  Romanised rows, and 174 rows is enough for a direction, not a claim.
+- **CPU float noise is real and documented**: thresholded metrics reproduce
+  bit-for-bit, continuous ones (ECE) move by ~1e-2 between runs of the same
+  config. Mitigated by an explicit tolerance and a test; not "fixed", because it
+  is not a bug in this code.
+- **`torch` was not seeded before today** (`seeds.py` now seeds it and records
+  that it did). Found while chasing the ECE wobble: model initialisation was
+  reproducible only by accident of what else had drawn from the RNG first.
+- **The six backend failures the first full run found are fixed and the suite is
+  green** (4208 passed). The cause was a *fixture*: `BertTokenizerFast` emits
+  `token_type_ids`, `DistilBertForSequenceClassification.forward` no longer
+  accepts them, and transformers no longer drops them silently — so a *Bert*
+  tokenizer next to a *DistilBert* model now raises. The product code was never
+  wrong; the fixture was. No test was weakened, skipped or deleted.
+- **CI's emotion smoke step has never run on GitHub Actions** (the workflow is
+  validated as YAML and the same commands run here; `act`/Docker remain
+  unavailable in the sandbox). It is the first thing to watch on the pull
+  request.
+- **`ml/` still adds nothing to the product's safety path** (by design), and the
+  artefact directory is never committed — a deployment must place it.
+
+### Parking lot (Day 32)
+
+- **The first real run** (owner, Colab/Kaggle): bring back the run id, the pins,
+  `evaluation.json`, the report and the card; then paste the numbers here.
+- **MuRIL vs XLM-R decided by numbers**, per language, with intervals — the
+  comparison config already exists.
+- **A Hindi/Bengali continuation** (`hi-Latn` included) once the hand-written set
+  has native review: today's run can only measure transfer.
+- **A `loneliness` source**: the label is reachable from no usable corpus, so it
+  needs a small hand-written slice or an ontology with a loneliness-equivalent
+  class.
+- **GPU determinism**: `torch.use_deterministic_algorithms(True)` on a real run,
+  to see whether CUDA reproduces what CPU float noise prevents here.
+- **Register the artefact** in a model registry (MLflow 3.x has one) once a real
+  run exists, instead of a directory path in an env var.
+- **A latency budget check** in CI: p50/p95 for a 40-token input on the artefact,
+  so "it is fast enough" is a number rather than an assumption.
+- **Quantised serving** (ONNX/int8) if the artefact is ever shipped with the API
+  image; today it is a directory an operator places.
+- From Day 31 and still open: DVC remote, MLflow server deployment, scheduled
+  catalogue re-verification, the `crisis_v1` retrain on red-team hard negatives.
+
+### Day 32 handoff status
+
+The brief asked for a `day-32-fine-tune-multilingual-emotion` branch created
+from `main`; this session is pinned to its Arena branch
+(`arena/7faf4c1a-manovia`), so the thirty-second day of work is committed there.
+Everything asked for is on disk and verified **except the things the sandbox
+cannot do**: a real GPU training run, a Hugging Face download, a Colab notebook
+execution, and a first GitHub Actions execution of the new CI step. The pull
+request opens from this branch and is not merged.
+
+### Next steps (Day 33 — first three)
+
+1. **Run the suite from a fresh clone, not from this working tree.** A clone is
+   what caught the stale `dvc.lock` and the four `ml/` modules that `.gitignore`
+   was swallowing on Day 31; the 4208-passed run above still came from a tree
+   that had months of sandbox state in it. `git clone` → `make data` →
+   `cd ml && pytest` → the backend suite. Anything that only works here shows up
+   in that run, and nothing else will find it.
+2. **Do the first real training run** (owner): `ml/notebooks/colab_emotion_lora.ipynb`
+   → XLM-R on GoEmotions → the three-way table on the 174-row held-out set →
+   paste the numbers, the pins, the report and the card back into the repository.
+   The Message-2 checklist (MLflow dump, CIs, fresh-process re-eval, fallback,
+   overlap, latency, PASS/FAIL table) is the script for that session — and the
+   latency row is the one that cannot be answered here, because the 1.54 ms
+   measured above belongs to a 2-layer stand-in.
+3. **Wire the artefact into a deployment story** before anything else calls it:
+   where the directory lives in each environment, what happens on first request
+   (the load is lazy and ~2 s on CPU for a 278M encoder; the number needs
+   measuring on the real artefact), and whether the emotion chip in the UI should
+   say the label came from a model that has never seen a real user's text
+   distribution.
+
 **Day 31 — ML foundation: data catalogue, experiment tracking, reproducibility
 — is built, verified and merged (2026-10-13).** The brief asked for
 `day-31-ml-foundation-data-catalogue`; this session is pinned to its Arena
