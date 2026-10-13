@@ -1,11 +1,32 @@
 # Manovia — Progress
 
 **Day 31 — ML foundation: data catalogue, experiment tracking, reproducibility
-— is built and verified (2026-10-13).** The brief asked for
+— is built, verified and merged (2026-10-13).** The brief asked for
 `day-31-ml-foundation-data-catalogue`; this session is pinned to its Arena
 branch (`arena/020f8dea-manovia`), as on Days 19–30, so the work is committed
-there and the PR comes from it. Nothing was pushed to `main`, and the PR is
-**not merged**: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38).
+there and the PR came from it. Nothing was pushed to `main`:
+[PR #38](https://github.com/BuildbyArindam/Manovia/pull/38) was **merged by the
+owner** as `0332904` (second parent `ba9649c`).
+
+**Two follow-ups are open in [PR #39](https://github.com/BuildbyArindam/Manovia/pull/39)**
+(six commits, from the same branch), because they were written after the merge
+point:
+
+1. **`main`'s committed `ml/dvc.lock` is stale.** It names
+   `src/manovia_ml/data/toy.py` as `3b335bcf…` while the file in `main` hashes to
+   `3f703fb9…` — the lint fix in `cd20772` changed the file after the lock was
+   written. The pipeline is deterministic (the split outputs are byte-identical
+   when rebuilt), but the lock in `main` describes a pipeline `main` does not
+   contain. The fix regenerates it **and** adds `manovia_ml.data.dvc_lock` as a CI
+   step *before* `dvc repro` — the existing job cannot catch this by
+   construction, because repro rewrites the lock before anything reads it.
+2. **The Day-31 numbers and the fresh-clone rehearsal**, including the results of
+   re-verifying the whole tree from a clone: ml **139** tests, backend **4160**
+   passed, frontend **601** passed, coverage gate satisfied.
+
+Until #39 merges, the ML job on `main` will keep printing "Data and pipelines are
+up to date" while the committed lock disagrees with the code — which is exactly
+the kind of green-but-wrong the follow-up step exists to eliminate.
 
 ### Completed (Day 31)
 
@@ -195,13 +216,20 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 
 The brief asked for a `day-31-ml-foundation-data-catalogue` branch created from
 `main`; this session is pinned to its Arena branch (as on Days 19–30), so the
-thirty-first day of work is committed to `arena/020f8dea-manovia` and the PR is
-opened from it: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38)
-(seven commits, not merged). Everything asked for is on disk and verified except the things
+thirty-first day of work is committed to `arena/020f8dea-manovia` and the PR came
+from it: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38), merged by
+the owner as `0332904`. The six commits written after that merge point are in
+[PR #39](https://github.com/BuildbyArindam/Manovia/pull/39) — see the note at the
+top of this block for what they fix and why they exist. Everything asked for is on disk and verified except the things
 the sandbox cannot do: a real GPU training run, a GPU/network Colab notebook
 execution, and a first GitHub Actions execution of the new `ml-smoke` job.
 
-### Next steps (Day 32 — first three)
+### Next steps (Day 32 — first three, revised after the merge)
+
+0. **Merge [PR #39](https://github.com/BuildbyArindam/Manovia/pull/39)** first
+   (owner): it regenerates `main`'s stale `ml/dvc.lock` and adds the CI step that
+   would have caught it. Until then `main`'s ML job is green for the wrong reason.
+
 
 1. **Run the first real training run** (owner, Colab/Kaggle):
    `ml/notebooks/colab_goemotions_tfidf.ipynb` → bring back the report, the
