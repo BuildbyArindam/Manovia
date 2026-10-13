@@ -274,7 +274,22 @@ jobs:
           MLFLOW_ALLOW_FILE_STORE: "true"
 
       - name: Tests (offline)
-        run: python -m pytest -q
+        # The log of a failed step is not always readable from a sandboxed
+        # environment (the signed log URLs live on a host that may be blocked);
+        # annotations are readable through the API. So when pytest fails, its
+        # failing test ids are *also* emitted as error annotations, which is what
+        # makes a red CI here diagnosable without the raw log.
+        run: |
+          set +e
+          python -m pytest -q > /tmp/pytest.log 2>&1
+          status=$?
+          tail -n 40 /tmp/pytest.log
+          if [ "$status" -ne 0 ]; then
+            grep -E "^(FAILED|ERROR)" /tmp/pytest.log | head -30 | while read -r line; do
+              echo "::error::$line"
+            done
+          fi
+          exit "$status"
 
       - name: Lint and types
         run: |
