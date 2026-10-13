@@ -1,0 +1,174 @@
+{"id": "val-en-joy-01", "labels": ["joy"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the bus was late but a stranger held the door for me and I grinned the whole way"}
+{"id": "val-en-joy-02", "labels": ["joy"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "my little cousin learned to whistle today and now she will not stop"}
+{"id": "val-en-joy-03", "labels": ["joy"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "we finished the presentation early and went for ice cream together"}
+{"id": "val-en-joy-04", "labels": ["joy"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the first tomato from my balcony plant actually tasted sweet"}
+{"id": "val-en-joy-05", "labels": ["joy"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "an old flatmate sent a photo of our old kitchen and I laughed out loud"}
+{"id": "val-en-joy-06", "labels": ["joy"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "after weeks of practice I finally swam a full lap without stopping"}
+{"id": "val-en-sadness-01", "labels": ["sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the festival was cancelled and the whole street felt empty"}
+{"id": "val-en-sadness-02", "labels": ["sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I found my grandmother's handwriting in an old notebook and had to sit down"}
+{"id": "val-en-sadness-03", "labels": ["sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "my flight was rescheduled and I spent my birthday in an airport"}
+{"id": "val-en-sadness-04", "labels": ["sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I watered the plant too much and now it is gone"}
+{"id": "val-en-sadness-05", "labels": ["sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the teacher marked my essay and wrote only one word on it"}
+{"id": "val-en-sadness-06", "labels": ["sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I did not get the internship I had prepared for all year"}
+{"id": "val-en-anger-01", "labels": ["anger"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the shop closed early and the sign still said open till nine"}
+{"id": "val-en-anger-02", "labels": ["anger"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "someone threw a cup out of the bus window right in front of me"}
+{"id": "val-en-anger-03", "labels": ["anger"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "my landlord let himself into my room again without telling me"}
+{"id": "val-en-anger-04", "labels": ["anger"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the app charged me twice and support keeps sending the same template"}
+{"id": "val-en-anger-05", "labels": ["anger"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the driver took a longer route and still asked for extra"}
+{"id": "val-en-anger-06", "labels": ["anger"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "they moved the exam three days before the paper"}
+{"id": "val-en-fear-01", "labels": ["fear"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "there was a loud crack from the ceiling and I did not move for a minute"}
+{"id": "val-en-fear-02", "labels": ["fear"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the dog on the corner started running at me and my legs went cold"}
+{"id": "val-en-fear-03", "labels": ["fear"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the lift stopped between two floors and the light flickered"}
+{"id": "val-en-fear-04", "labels": ["fear"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I heard glass break next door and everyone went quiet"}
+{"id": "val-en-fear-05", "labels": ["fear"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the clinic called and asked me to come in earlier than planned"}
+{"id": "val-en-fear-06", "labels": ["fear"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the bike skidded on the wet road and my hands shook afterwards"}
+{"id": "val-en-anxiety-01", "labels": ["anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the interview is on Monday and I keep rehearsing answers in the shower"}
+{"id": "val-en-anxiety-02", "labels": ["anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I have not heard back about the loan and I check my phone every ten minutes"}
+{"id": "val-en-anxiety-03", "labels": ["anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the report is not out yet and my mind keeps going to the worst version"}
+{"id": "val-en-anxiety-04", "labels": ["anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the results come out tomorrow and my stomach feels tight"}
+{"id": "val-en-anxiety-05", "labels": ["anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I have to speak in front of fifty people next week and I keep waking up early"}
+{"id": "val-en-anxiety-06", "labels": ["anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "one stamp is still missing on the form and the deadline is Friday"}
+{"id": "val-en-shame-01", "labels": ["shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I snapped at my mother and could not look at her at dinner"}
+{"id": "val-en-shame-02", "labels": ["shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I forgot the words on stage and everyone was watching"}
+{"id": "val-en-shame-03", "labels": ["shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I told everyone the work was finished and now I have to admit it is not"}
+{"id": "val-en-shame-04", "labels": ["shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I was short with the waiter and the whole table went quiet"}
+{"id": "val-en-shame-05", "labels": ["shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "my marks came back and I hid the paper from my parents"}
+{"id": "val-en-shame-06", "labels": ["shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I borrowed money and have not been able to return it for months"}
+{"id": "val-en-loneliness-01", "labels": ["loneliness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the group chat is busy all day but nobody replies to me"}
+{"id": "val-en-loneliness-02", "labels": ["loneliness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I moved to a new city and know nobody on this street"}
+{"id": "val-en-loneliness-03", "labels": ["loneliness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I ate dinner alone again and the kitchen felt very big"}
+{"id": "val-en-loneliness-04", "labels": ["loneliness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "my friends made plans in front of me and did not invite me"}
+{"id": "val-en-loneliness-05", "labels": ["loneliness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "it is my birthday and only the bank sent a message"}
+{"id": "val-en-loneliness-06", "labels": ["loneliness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I have a lot to say but there is nobody to call at this hour"}
+{"id": "val-en-calm-01", "labels": ["calm"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "rain on the window and a cup of tea, nothing to do today"}
+{"id": "val-en-calm-02", "labels": ["calm"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I walked slowly by the lake and did not check the time once"}
+{"id": "val-en-calm-03", "labels": ["calm"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the house is quiet now and everything I needed to do is done"}
+{"id": "val-en-calm-04", "labels": ["calm"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I sat on the terrace after dinner and watched the lights come on"}
+{"id": "val-en-calm-05", "labels": ["calm"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I breathed out for four counts and my shoulders came down"}
+{"id": "val-en-calm-06", "labels": ["calm"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I folded the washing while the music played, no rush at all"}
+{"id": "val-en-neutral-01", "labels": ["neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the shop is on the second floor next to the pharmacy"}
+{"id": "val-en-neutral-02", "labels": ["neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I have a dentist appointment at four on Thursday"}
+{"id": "val-en-neutral-03", "labels": ["neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the train to the airport leaves every thirty minutes"}
+{"id": "val-en-neutral-04", "labels": ["neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the form asks for my address and my date of birth"}
+{"id": "val-en-neutral-05", "labels": ["neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "my cousin works in a bank in Pune"}
+{"id": "val-en-neutral-06", "labels": ["neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "there is a new bus stop near the market"}
+{"id": "val-hi-joy-01", "labels": ["joy"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "आज पहली बार अपने हाथ से बनी चाय सबको पसंद आई"}
+{"id": "val-hi-joy-02", "labels": ["joy"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "बारिश रुकी और बच्चे छत पर खेलने दौड़ गए"}
+{"id": "val-hi-joy-03", "labels": ["joy"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "दो साल बाद पुराना दोस्त मिला और बातें खत्म ही नहीं हुईं"}
+{"id": "val-hi-joy-04", "labels": ["joy"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "सर ने मेरे काम की तारीफ की, दिन बन गया"}
+{"id": "val-hi-joy-05", "labels": ["joy"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "छोटी बहन ने पहली बार अपना नाम लिखा"}
+{"id": "val-hi-joy-06", "labels": ["joy"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "आम का पहला टुकड़ा मीठा निकला और पूरा घर हँसा"}
+{"id": "val-hi-sadness-01", "labels": ["sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "दादी की लिखी पुरानी डायरी मिली और मैं देर तक बैठा रहा"}
+{"id": "val-hi-sadness-02", "labels": ["sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "साल भर जिस नौकरी की तैयारी की थी, वह मुझे नहीं मिली"}
+{"id": "val-hi-sadness-03", "labels": ["sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "पौधा सूख गया क्योंकि मैं समय पर पानी नहीं दे पाया"}
+{"id": "val-hi-sadness-04", "labels": ["sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "त्योहार रद्द हो गया और गली सुनसान लगने लगी"}
+{"id": "val-hi-sadness-05", "labels": ["sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "शिक्षक ने मेरी कॉपी पर सिर्फ एक शब्द लिखा"}
+{"id": "val-hi-sadness-06", "labels": ["sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "उसके जाने के बाद कमरा बहुत खाली लगता है"}
+{"id": "val-hi-anger-01", "labels": ["anger"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "दुकान जल्दी बंद हो गई और बोर्ड पर अब भी नौ बजे लिखा था"}
+{"id": "val-hi-anger-02", "labels": ["anger"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "मकान मालिक ने बिना बताए फिर से कमरे का ताला खोल दिया"}
+{"id": "val-hi-anger-03", "labels": ["anger"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ऐप ने दो बार पैसे काटे और सपोर्ट वही संदेश बार-बार भेज रहा है"}
+{"id": "val-hi-anger-04", "labels": ["anger"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ऑटो ने लंबा रास्ता लिया और फिर भी ज्यादा किराया माँगा"}
+{"id": "val-hi-anger-05", "labels": ["anger"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "परीक्षा की तारीख तीन दिन पहले बदल दी गई"}
+{"id": "val-hi-anger-06", "labels": ["anger"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "सामने वाले ने कूड़ा सड़क पर फेंका और हँसता हुआ चला गया"}
+{"id": "val-hi-fear-01", "labels": ["fear"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "छत से तेज़ आवाज़ आई और मैं एक मिनट तक हिला नहीं"}
+{"id": "val-hi-fear-02", "labels": ["fear"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "लिफ्ट दो मंजिलों के बीच रुक गई और बत्ती टिमटिमाने लगी"}
+{"id": "val-hi-fear-03", "labels": ["fear"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "पड़ोस में काँच टूटने की आवाज़ आई और सब चुप हो गए"}
+{"id": "val-hi-fear-04", "labels": ["fear"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "गीली सड़क पर बाइक फिसली और बाद में हाथ काँप रहे थे"}
+{"id": "val-hi-fear-05", "labels": ["fear"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "गली का कुत्ता भागता हुआ मेरी तरफ आया और पैर ठंडे पड़ गए"}
+{"id": "val-hi-fear-06", "labels": ["fear"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "अंधेरी गली में पीछे किसी की आहट सुनाई दी"}
+{"id": "val-hi-anxiety-01", "labels": ["anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "कल नतीजा आएगा और पेट में गाँठ बँधी हुई लगती है"}
+{"id": "val-hi-anxiety-02", "labels": ["anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "इंटरव्यू सोमवार को है और मैं बार-बार जवाब दोहरा रहा हूँ"}
+{"id": "val-hi-anxiety-03", "labels": ["anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "लोन की कोई खबर नहीं आई और मैं हर दस मिनट फोन देखता हूँ"}
+{"id": "val-hi-anxiety-04", "labels": ["anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "रिपोर्ट अभी नहीं आई और मन सबसे बुरी बात सोचता रहता है"}
+{"id": "val-hi-anxiety-05", "labels": ["anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "अगले हफ्ते पचास लोगों के सामने बोलना है और नींद खुल जाती है"}
+{"id": "val-hi-anxiety-06", "labels": ["anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "फॉर्म पर एक मोहर बाकी है और आखिरी तारीख शुक्रवार है"}
+{"id": "val-hi-shame-01", "labels": ["shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "मैंने माँ पर चिल्लाया और खाने के वक्त उनकी तरफ देख नहीं पाया"}
+{"id": "val-hi-shame-02", "labels": ["shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "मंच पर शब्द भूल गया और सब देख रहे थे"}
+{"id": "val-hi-shame-03", "labels": ["shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "मैंने कह दिया कि काम पूरा है और अब सच बताना पड़ेगा"}
+{"id": "val-hi-shame-04", "labels": ["shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "मैंने पैसे उधार लिए और महीनों से लौटा नहीं पाया"}
+{"id": "val-hi-shame-05", "labels": ["shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "नंबर आए और मैंने कागज़ माता-पिता से छिपा दिया"}
+{"id": "val-hi-shame-06", "labels": ["shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "रसोइए से बुरा बर्ताव हुआ और पूरी मेज़ चुप हो गई"}
+{"id": "val-hi-loneliness-01", "labels": ["loneliness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ग्रुप चैट दिन भर चलती है पर मेरे संदेश का जवाब कोई नहीं देता"}
+{"id": "val-hi-loneliness-02", "labels": ["loneliness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "नए शहर में आया हूँ और इस गली में किसी को नहीं जानता"}
+{"id": "val-hi-loneliness-03", "labels": ["loneliness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "आज फिर अकेले खाना खाया और रसोई बहुत बड़ी लगी"}
+{"id": "val-hi-loneliness-04", "labels": ["loneliness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "दोस्तों ने मेरे सामने योजना बनाई और मुझे नहीं बुलाया"}
+{"id": "val-hi-loneliness-05", "labels": ["loneliness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "आज मेरा जन्मदिन है और बधाई सिर्फ बैंक ने भेजी"}
+{"id": "val-hi-loneliness-06", "labels": ["loneliness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "बहुत कुछ कहना है पर इस समय किसी को फोन नहीं कर सकता"}
+{"id": "val-hi-calm-01", "labels": ["calm"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "खिड़की पर बारिश और चाय का कप, आज कुछ करना नहीं है"}
+{"id": "val-hi-calm-02", "labels": ["calm"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "झील के किनारे धीरे चला और एक बार भी समय नहीं देखा"}
+{"id": "val-hi-calm-03", "labels": ["calm"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "घर अब शांत है और जो ज़रूरी था वह पूरा हो गया"}
+{"id": "val-hi-calm-04", "labels": ["calm"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "खाने के बाद छत पर बैठकर लाइटें जलती देखीं"}
+{"id": "val-hi-calm-05", "labels": ["calm"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "चार तक गिनते हुए साँस छोड़ी और कंधे नीचे आ गए"}
+{"id": "val-hi-calm-06", "labels": ["calm"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "संगीत चल रहा था और मैंने आराम से कपड़े तह किए"}
+{"id": "val-hi-neutral-01", "labels": ["neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "दुकान दूसरी मंजिल पर है, दवाखाने के पास"}
+{"id": "val-hi-neutral-02", "labels": ["neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "गुरुवार को चार बजे दाँत के डॉक्टर के पास जाना है"}
+{"id": "val-hi-neutral-03", "labels": ["neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "एयरपोर्ट जाने वाली ट्रेन हर तीस मिनट में मिलती है"}
+{"id": "val-hi-neutral-04", "labels": ["neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "फॉर्म में पता और जन्म की तारीख भरनी है"}
+{"id": "val-hi-neutral-05", "labels": ["neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "मेरा चचेरा भाई पुणे के बैंक में काम करता है"}
+{"id": "val-hi-neutral-06", "labels": ["neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "बाज़ार के पास नया बस स्टॉप बना है"}
+{"id": "val-bn-joy-01", "labels": ["joy"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "আজ নিজের হাতে বানানো চা সবার পছন্দ হলো"}
+{"id": "val-bn-joy-02", "labels": ["joy"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "বৃষ্টি থামতেই বাচ্চারা ছাদে খেলতে ছুটে গেল"}
+{"id": "val-bn-joy-03", "labels": ["joy"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "দুই বছর পরে পুরোনো বন্ধুর সঙ্গে দেখা, কথা শেষই হলো না"}
+{"id": "val-bn-joy-04", "labels": ["joy"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "দাদা আমার কাজের প্রশংসা করল, দিনটা ভালো কেটে গেল"}
+{"id": "val-bn-joy-05", "labels": ["joy"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ছোট বোন প্রথমবার নিজের নাম লিখল"}
+{"id": "val-bn-joy-06", "labels": ["joy"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "আমের প্রথম টুকরো মিষ্টি হলো, পুরো বাড়ি হাসল"}
+{"id": "val-bn-sadness-01", "labels": ["sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ঠাকুরমার লেখা পুরোনো ডায়েরি পেলাম, অনেকক্ষণ বসে রইলাম"}
+{"id": "val-bn-sadness-02", "labels": ["sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "সারা বছর প্রস্তুতি নেওয়া চাকরিটা আমি পাইনি"}
+{"id": "val-bn-sadness-03", "labels": ["sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "গাছটা শুকিয়ে গেল, সময়মতো জল দিতে পারিনি"}
+{"id": "val-bn-sadness-04", "labels": ["sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "উৎসব বাতিল হলো আর গলিটা ফাঁকা লাগতে শুরু করল"}
+{"id": "val-bn-sadness-05", "labels": ["sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "স্যার আমার খাতায় একটা শব্দ লিখে দিলেন"}
+{"id": "val-bn-sadness-06", "labels": ["sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ও চলে যাওয়ার পর ঘরটা খুব খালি লাগে"}
+{"id": "val-bn-anger-01", "labels": ["anger"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "দোকান তাড়াতাড়ি বন্ধ হয়ে গেল, সাইনবোর্ডে ন'টা লেখা ছিল"}
+{"id": "val-bn-anger-02", "labels": ["anger"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "বাড়িওয়ালা আবার না জানিয়ে ঘরের তালা খুলে ঢুকেছে"}
+{"id": "val-bn-anger-03", "labels": ["anger"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "অ্যাপ দুবার টাকা কেটেছে আর সাপোর্ট একই মেসেজ পাঠাচ্ছে"}
+{"id": "val-bn-anger-04", "labels": ["anger"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "অটো লম্বা রাস্তা নিয়ে তারপরও বাড়তি ভাড়া চাইল"}
+{"id": "val-bn-anger-05", "labels": ["anger"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "পরীক্ষার তারিখ তিন দিন আগে বদলে দেওয়া হলো"}
+{"id": "val-bn-anger-06", "labels": ["anger"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "সামনের লোকটা রাস্তায় ময়লা ফেলে হাসতে হাসতে চলে গেল"}
+{"id": "val-bn-fear-01", "labels": ["fear"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ছাদ থেকে জোরে শব্দ এল, এক মিনিট নড়িনি"}
+{"id": "val-bn-fear-02", "labels": ["fear"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "লিফট দুই তলার মাঝে থেমে গেল, আলো নিভে আসছিল"}
+{"id": "val-bn-fear-03", "labels": ["fear"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "পাশের বাড়িতে কাচ ভাঙার শব্দ, সবাই চুপ হয়ে গেল"}
+{"id": "val-bn-fear-04", "labels": ["fear"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ভিজে রাস্তায় বাইক পিছলে গেল, পরে হাত কাঁপছিল"}
+{"id": "val-bn-fear-05", "labels": ["fear"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "রাস্তার কুকুর ছুটে আমার দিকে এল, পা ঠান্ডা হয়ে গেল"}
+{"id": "val-bn-fear-06", "labels": ["fear"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "অন্ধকার গলিতে পিছনে কারও পায়ের শব্দ পেলাম"}
+{"id": "val-bn-anxiety-01", "labels": ["anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "কাল ফলাফল আসবে, পেটে যেন একটা গিঁট বাঁধা"}
+{"id": "val-bn-anxiety-02", "labels": ["anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "সোমবার ইন্টারভিউ, বারবার উত্তর মনে মনে বলছি"}
+{"id": "val-bn-anxiety-03", "labels": ["anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "লোনের কোনো খবর নেই, দশ মিনিটে ফোন দেখছি"}
+{"id": "val-bn-anxiety-04", "labels": ["anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "রিপোর্ট এখনও আসেনি, মন খারাপের কথাই ভাবে"}
+{"id": "val-bn-anxiety-05", "labels": ["anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "পরের সপ্তাহে পঞ্চাশ জনের সামনে বলতে হবে, ঘুম ভেঙে যায়"}
+{"id": "val-bn-anxiety-06", "labels": ["anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ফর্মে একটা সিল বাকি, শেষ তারিখ শুক্রবার"}
+{"id": "val-bn-shame-01", "labels": ["shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "মায়ের ওপর চিৎকার করলাম, খেতে বসে চোখ তুলতে পারলাম না"}
+{"id": "val-bn-shame-02", "labels": ["shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "মঞ্চে শব্দ ভুলে গেলাম, সবাই দেখছিল"}
+{"id": "val-bn-shame-03", "labels": ["shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "কাজ শেষ বলেছি, এখন সত্যি বলতে হবে"}
+{"id": "val-bn-shame-04", "labels": ["shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "টাকা ধার নিয়েছি, মাসের পর মাস ফেরাতে পারিনি"}
+{"id": "val-bn-shame-05", "labels": ["shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "নম্বর এলো, খাতা বাবা-মায়ের থেকে লুকিয়ে রাখলাম"}
+{"id": "val-bn-shame-06", "labels": ["shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ওয়েটারের সঙ্গে খারাপ ব্যবহার হলো, পুরো টেবিল চুপ"}
+{"id": "val-bn-loneliness-01", "labels": ["loneliness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "গ্রুপ চ্যাট সারাদিন চলে, আমার মেসেজের উত্তর কেউ দেয় না"}
+{"id": "val-bn-loneliness-02", "labels": ["loneliness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "নতুন শহরে এসেছি, এই গলিতে কাউকে চিনি না"}
+{"id": "val-bn-loneliness-03", "labels": ["loneliness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "আজ আবার একা খেলাম, রান্নাঘরটা বড় লাগল"}
+{"id": "val-bn-loneliness-04", "labels": ["loneliness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "বন্ধুরা আমার সামনে পরিকল্পনা করল, ডাকল না"}
+{"id": "val-bn-loneliness-05", "labels": ["loneliness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "আজ আমার জন্মদিন, শুধু ব্যাংক মেসেজ পাঠিয়েছে"}
+{"id": "val-bn-loneliness-06", "labels": ["loneliness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "অনেক কথা বলার আছে, কিন্তু এই সময়ে কাউকে ফোন করতে পারি না"}
+{"id": "val-bn-calm-01", "labels": ["calm"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "জানালায় বৃষ্টি আর এক কাপ চা, আজ কিছু করার নেই"}
+{"id": "val-bn-calm-02", "labels": ["calm"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "হ্রদের পাশে আস্তে হাঁটলাম, একবারও সময় দেখিনি"}
+{"id": "val-bn-calm-03", "labels": ["calm"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ঘর এখন শান্ত, দরকারের সব কাজ শেষ"}
+{"id": "val-bn-calm-04", "labels": ["calm"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "খাওয়ার পরে ছাদে বসে আলো জ্বলতে দেখলাম"}
+{"id": "val-bn-calm-05", "labels": ["calm"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "চার পর্যন্ত গুনে শ্বাস ছাড়লাম, কাঁধ নেমে এল"}
+{"id": "val-bn-calm-06", "labels": ["calm"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "গান চলছিল, আমি আরাম করে কাপড় ভাঁজ করলাম"}
+{"id": "val-bn-neutral-01", "labels": ["neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "দোকানটা দ্বিতীয় তলায়, ওষুধের দোকানের পাশে"}
+{"id": "val-bn-neutral-02", "labels": ["neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "বৃহস্পতিবার চারটায় দাঁতের ডাক্তারের কাছে যেতে হবে"}
+{"id": "val-bn-neutral-03", "labels": ["neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "বিমানবন্দরের ট্রেন আধ ঘণ্টা অন্তর ছাড়ে"}
+{"id": "val-bn-neutral-04", "labels": ["neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ফর্মে ঠিকানা আর জন্ম তারিখ লিখতে হবে"}
+{"id": "val-bn-neutral-05", "labels": ["neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "আমার খুড়তুতো ভাই পুনের একটা ব্যাংকে কাজ করে"}
+{"id": "val-bn-neutral-06", "labels": ["neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "বাজারের পাশে নতুন বাস স্টপ হয়েছে"}
+{"id": "val-en-multi-01", "labels": ["anxiety", "shame"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "I have to present tomorrow and I cannot stop replaying what went wrong last time"}
+{"id": "val-en-multi-02", "labels": ["loneliness", "sadness"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "nobody has called me in weeks and I have stopped expecting it"}
+{"id": "val-en-multi-03", "labels": ["fear", "anxiety"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the plane dropped suddenly and my hands kept shaking for the rest of the flight"}
+{"id": "val-en-multi-04", "labels": ["calm", "neutral"], "lang": "en", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "the flat is quiet, tomorrow's calls are cancelled and I am just sitting here"}
+{"id": "val-hi-multi-05", "labels": ["anxiety", "shame"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "कल प्रस्तुति है और पिछली बार की गलती बार-बार याद आती है"}
+{"id": "val-hi-multi-06", "labels": ["loneliness", "sadness"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "कई हफ्तों से किसी का फोन नहीं आया, उम्मीद छूटने लगी है"}
+{"id": "val-hi-multi-07", "labels": ["fear", "anxiety"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "फ्लाइट में अचानक हिचकोले आए और हाथ देर तक काँपते रहे"}
+{"id": "val-hi-multi-08", "labels": ["calm", "neutral"], "lang": "hi", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "घर शांत है, कल की सारी कॉल रद्द हैं, मैं बस बैठा हूँ"}
+{"id": "val-bn-multi-09", "labels": ["anxiety", "shame"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "কাল প্রেজেন্টেশন, গতবারের ভুলটা বারবার মনে পড়ছে"}
+{"id": "val-bn-multi-10", "labels": ["loneliness", "sadness"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "কয়েক সপ্তাহ ধরে কেউ ফোন করেনি, আশা ছেড়ে দিচ্ছি"}
+{"id": "val-bn-multi-11", "labels": ["fear", "anxiety"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ফ্লাইটে হঠাৎ ঝাঁকুনি, হাত অনেকক্ষণ কাঁপছিল"}
+{"id": "val-bn-multi-12", "labels": ["calm", "neutral"], "lang": "bn", "licence": "MIT (this repository)", "source": "handwritten-val-v1", "text": "ঘর শান্ত, কালকের সব কল বাতিল, আমি শুধু বসে আছি"}
