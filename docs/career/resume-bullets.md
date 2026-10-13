@@ -14,7 +14,7 @@ is below the bullets, and nothing here is rounded upward.
 1. Built and launched **v1.0.0** of a safety-first mental-wellbeing companion
    (FastAPI + React/TypeScript, English/Hindi/Bengali) solo in 30 days:
    **62 API operations**, an installable offline-capable PWA, and a test
-   suite of **4,162 backend and 601 frontend tests** with a branch-coverage
+   suite of **4,160 backend and 601 frontend tests** with a branch-coverage
    gate that requires **95% branch coverage on every safety module**
    (measured 100% in the release run).
 
@@ -53,7 +53,8 @@ is below the bullets, and nothing here is rounded upward.
 | 62 API operations | `docs/api.md` (header line) |
 | 4,162 backend / 601 frontend tests; safety modules at 100% branches, 95% gate | `docs/verification/day30-launch.md` (release-day run); gate thresholds in `backend/scripts/coverage_gate.py` |
 | 1.000 recall, CI [1.000, 1.000]; precision 0.543; n=116 dev split | `evals/reports/2026-10-13/summary.md` |
-| 51/51 frozen test split, lower bound 0.930 | `evals/reports/safety_2026-10-12_test.md`, cited in `docs/evaluation-report.md` and `README.md` |
+| 51/51 frozen test split, precision 0.567 | `evals/reports/safety_2026-10-12_test.md` (recall 1.000, precision 0.567, 51 crisis cases) |
+| exact 95% lower bound 0.930 for 51/51 | `docs/model-card.md` (Clopper–Pearson interval [0.930, 1.000]) |
 | 60/60 scenarios · six checks; 17/17 crisis bypass | `evals/reports/2026-10-13/summary.md` |
 | 0.804 macro-F1, 162 cases | `evals/reports/2026-10-13/summary.md` |
 | 150/150 final, 82/140 baseline | `evals/reports/redteam/2026-10-13-final/summary.md`, `evals/reports/redteam/2026-10-13-baseline/`, `docs/redteam-report.md` |
