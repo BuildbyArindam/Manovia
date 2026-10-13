@@ -132,7 +132,7 @@ def test_the_settings_defaults_are_safe() -> None:
     assert settings.llm_redact_pii is True
     assert settings.llm_redact_names is False
     assert settings.llm_timeout_seconds > 0
-    assert settings.llm_prompt_version == "system_v2"  # Day 13 default (was v1)
+    assert settings.llm_prompt_version == "system_v3"  # Day 29 default (v1 -> v2 Day 13)
 
 
 @pytest.mark.parametrize(
