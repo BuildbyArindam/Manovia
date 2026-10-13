@@ -49,6 +49,12 @@ jobs:
       LLM_PROVIDER: fake
       EMOTION_ANALYZER: keyword
       RAG_EMBEDDER: tfidf
+      # Day 27: this curated run deliberately opts into the advisory-only
+      # 4-axis judge (FEATURE_LLM_JUDGE satisfies run_response_eval's gate;
+      # EVALS_LLM_JUDGE makes `make eval` pass --with-judge). Deterministic
+      # CI gates are unaffected either way.
+      FEATURE_LLM_JUDGE: "1"
+      EVALS_LLM_JUDGE: "1"
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 

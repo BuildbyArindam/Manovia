@@ -468,8 +468,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--with-judge",
         action="store_true",
-        default=True,
-        help="Include the optional 4-axis rubric judge scores (default: True).",
+        help="Include the optional 4-axis rubric judge scores. Opt-in (Day 27 "
+        "feature flag FEATURE_LLM_JUDGE must also be set): the judge is "
+        "advisory-only and uncalibrated against human ratings (ADR 0024).",
     )
     parser.add_argument(
         "--no-gate",
@@ -501,6 +502,12 @@ def main(argv: list[str] | None = None) -> int:
             "--no-gate",
         ]
     )
+    if rc_safety != 0:
+        print(
+            f"safety evaluation failed (exit {rc_safety}); see its output above.",
+            file=sys.stderr,
+        )
+        return rc_safety
     (REPORTS_DIR / f"safety_{run_date}.md").write_text(
         safety_md_path.read_text(encoding="utf-8"), encoding="utf-8"
     )
@@ -515,6 +522,12 @@ def main(argv: list[str] | None = None) -> int:
             "--no-gate",
         ]
     )
+    if rc_emotion != 0:
+        print(
+            f"emotion evaluation failed (exit {rc_emotion}); see its output above.",
+            file=sys.stderr,
+        )
+        return rc_emotion
     (REPORTS_DIR / f"emotion_{run_date}.md").write_text(
         emotion_md_path.read_text(encoding="utf-8"), encoding="utf-8"
     )
@@ -532,6 +545,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.with_judge:
         resp_args.append("--with-judge")
     rc_response = asyncio.run(run_response_eval._async_main(resp_args))
+    if rc_response != 0:
+        # The child prints its own explanation (e.g. the Day-27 judge gate).
+        # Fail with its code instead of crashing on the report it did not
+        # write - a gate refusal is a clean, actionable stop, not a traceback.
+        print(
+            f"response evaluation failed (exit {rc_response}); see its output above.",
+            file=sys.stderr,
+        )
+        return rc_response
     (REPORTS_DIR / f"response_{run_date}.md").write_text(
         response_md_path.read_text(encoding="utf-8"), encoding="utf-8"
     )
@@ -598,10 +620,10 @@ def main(argv: list[str] | None = None) -> int:
         encoding="utf-8",
     )
 
-    print(f"\n=== Unified Evaluation Artifacts ({day_dir.relative_to(REPO_ROOT)}) ===")
-    print(f"  summary markdown : {summary_md_path.relative_to(REPO_ROOT)}")
-    print(f"  html report      : {report_html_path.relative_to(REPO_ROOT)}")
-    print(f"  pr comment       : {pr_comment_path.relative_to(REPO_ROOT)}")
+    print(f"\n=== Unified Evaluation Artifacts ({day_dir.relative_to(REPO_ROOT) if day_dir.is_relative_to(REPO_ROOT) else day_dir}) ===")
+    print(f"  summary markdown : {summary_md_path.relative_to(REPO_ROOT) if summary_md_path.is_relative_to(REPO_ROOT) else summary_md_path}")
+    print(f"  html report      : {report_html_path.relative_to(REPO_ROOT) if report_html_path.is_relative_to(REPO_ROOT) else report_html_path}")
+    print(f"  pr comment       : {pr_comment_path.relative_to(REPO_ROOT) if pr_comment_path.is_relative_to(REPO_ROOT) else pr_comment_path}")
     print(f"  overall CI gate  : {'PASS' if overall_gate_passed else 'FAIL'}")
 
     if not overall_gate_passed and not args.no_gate:
