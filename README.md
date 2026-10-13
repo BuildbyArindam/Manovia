@@ -1,5 +1,7 @@
 # Manovia
 
+**Beta — portfolio demo, not a clinical service.** Manovia is a portfolio project. It has not completed the [clinical review](docs/clinical-review.md), and any live demo is labelled the same way in the app footer. Do not rely on it for care.
+
 A privacy-first, safety-first self-help companion for mental wellbeing. It is not therapy, not a diagnosis, and not a crisis service.
 
 > **If you are in danger or in crisis, call your local emergency number now.** The list below is a starting point, not a substitute. See [Crisis and emergency help](#crisis-and-emergency-help).
