@@ -1,5 +1,94 @@
 # Manovia — Progress
 
+**Day 28 — documentation, model card and portfolio polish — is built and
+checked, with known failures recorded (2026-10-13).** No new features. Work
+is on `arena/63972da8-manovia`.
+
+What changed: the model card was rewritten to cover every model, its metrics
+and its failure modes ([docs/model-card.md](docs/model-card.md)); the clinical
+review checklist exists and has no sign-offs
+([docs/clinical-review.md](docs/clinical-review.md)); the API reference is
+generated from the OpenAPI schema with a drift test
+([docs/api.md](docs/api.md), `backend/scripts/export_openapi.py`,
+[ADR 0027](docs/adr/0027-generated-api-reference.md)); the architecture doc has
+sequence diagrams for a chat turn and a crisis turn; ADRs 0027 to 0029 were
+added with an index that flags the missing 0016
+([docs/adr/README.md](docs/adr/README.md)); the README was rewritten with the
+crisis anchor, a three-command quick start, and an honest coverage badge; the
+demo script and the manual test list were written; and the community files
+gained a pull request template.
+
+Corrections made during the checks: the old card named OpenAI as a provider
+(it is not one); the helplines were called "verified" in two places, but
+`in-kiran` is flagged `needs_verification`; the model card's domain-shift count
+was 37 of 39, not 38 of 39, and its emotion cell sizes were 5 to 8 items, not
+40 to 50; the privacy document's "verified helplines" became "schema-checked";
+and Prettier had failed on 18 frontend files (line wrapping only, fixed).
+
+Verification (Day 28 tree): backend `ruff check`, `ruff format --check`, and
+`mypy app tests` clean. Backend pytest: **3921 passed, 3 skipped** (exit 0).
+Frontend: lint, `format:check` and typecheck clean; `test:run` **600 passed,
+3 skipped**. **Coverage gate: FAILS, exit 1** (overall statements 96.55% and
+branches 89.87% pass; the safety group is 91.67% against 95%). The README
+badge reports the measured values and says the gate is failing. Full results:
+[docs/verification/day28-documentation-and-portfolio.md](docs/verification/day28-documentation-and-portfolio.md).
+Manual checks the sandbox could not run (Docker, smoke, screenshots, phones,
+clinician and native-speaker review, the demo recording):
+[docs/verification/day28-manual-tests.md](docs/verification/day28-manual-tests.md).
+
+### Known issues (as of Day 28)
+
+- **Safety branch gate fails** (91.67% against 95%). The two uncovered
+  locations are `ensemble.py` lines 253 to 258 (`decide()` with a disabled
+  classifier; no test covers it) and `patterns.py` line 480 (the loader's
+  "not a mapping" error). The Day 26 and Day 27 "gate PASS" claims do not hold
+  for this tree. Decision open: add the two tests, or change the floor (the
+  floor should not change without an explicit decision). See
+  [ADR 0029](docs/adr/0029-branch-coverage-gates.md).
+- **CI does not run the branch gate.** `ci.yml` runs pytest with an 80%
+  statement floor and no branch measurement. `make test` runs the gate locally.
+- **Chat stream puts the user's message in the query string**
+  (`GET /api/v1/chat/sessions/{id}/stream?message=`, `chat.py`). Query strings
+  reach access logs and proxies. Open and unfixed. Options: remove the GET
+  route, or document the risk. Decision open.
+- **LICENSE copyright line is a placeholder** (`[Your Name]`). Owner's decision.
+- **Private vulnerability reporting is disabled** on GitHub
+  (`{"enabled":false}`). Owner's decision; repo settings were not changed.
+- **No age policy and no age gate.** None was found in the consent documents
+  or the docs. Owner's decision.
+- **OpenAPI schema lacks `securitySchemes`** (Bearer auth is absent from the
+  generated document; `docs/api.md` states it in prose). **422 responses**
+  are served as the project's error envelope, while the schema lists
+  FastAPI's `HTTPValidationError`. Both parked.
+- **Refresh token is in the JSON body**, not a cookie (see the open item for
+  moving it out of client storage).
+- **Helplines:** `needs_verification=true` on `in-icall` (hours conflict),
+  `in-kiran` (only secondary sources), `in-aasra`, and `au-kids-helpline`. Check
+  by phone before launch.
+- **Translations** (hi, bn) are AI-produced and not reviewed by a native speaker.
+- **Model version is not recorded** in the repository (no hard-coded id, by
+  design); `ANTHROPIC_MODEL` is set in the environment.
+- **Frontend `format:check` (Prettier) is not in CI.** CI runs lint, typecheck,
+  `test:run` and build. Prettier passed on Day 28 after the formatting fix.
+- **The frozen test split has been scored twice** (2026-10-10 and 2026-10-12),
+  so its figures are not a clean held-out result.
+- **Test counts:** the Day 27 record says 3906 backend tests passed. The Day 28
+  baseline was 3910 and the final run 3921, which includes nine new API-docs
+  tests. The gap from 3910 to 3921 is not explained yet.
+
+### Day 28 handoff status
+
+The Day 27 "Next steps (Day 28 — first three)" items are **deferred, not
+built**:
+
+1. Retrain `crisis_v1.joblib` with hard negatives: deferred to **Day 29**
+   (the parking-lot item on the classifier, with the Day 27 evidence).
+2. Deploy for real per `docs/deploy.md`: deferred to **Day 29**; needs
+   accounts, which the sandbox does not have.
+3. Shared ephemeral-session store: deferred to the **parking lot**.
+
+Each of the Day 27 items is still open. The Day 28 scope excluded new features.
+
 **Day 27 — DevOps, observability and deployment — is built and verified
 (2026-10-13).** Production process model (Gunicorn managing `UvicornWorker`
 processes via `gunicorn.conf.py`, access log off for privacy, graceful
@@ -3672,7 +3761,7 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **Screenshots for the Privacy screen** in `docs/assets/README.md` (the
   Day-12 chat shots exist; Day-22 privacy shots do not).
 
-## Next steps (Day 28 — first three)
+## Next steps (Day 28 — first three; deferred, see Day 28 handoff status above)
 
 1. **Retrain `crisis_v1.joblib` on scikit-learn 1.9.1 with hard negatives**
    (Day-27 live evidence: benign "study schedule"/"hello there" traffic lands

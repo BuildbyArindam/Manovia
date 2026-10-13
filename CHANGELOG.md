@@ -12,34 +12,50 @@ note for each. When a release is tagged, the release workflow
 ### Added
 
 - `docs/model-card.md` rewritten as a full model card: every model in the
-  product (safety classifier, emotion model, language-model providers), intended
-  and out-of-scope use, training and evaluation data, metrics, known failure
-  modes, ethics and an update policy. The screening-instrument provenance is kept.
+  product (safety classifier, emotion analyser, language-model providers),
+  intended and out-of-scope use, training and evaluation data, metrics with
+  their intervals, known failure modes, ethical limits and an update policy.
+  Headline figures were checked against the evaluation reports, and the card states its limits. Corrections from that check are listed in the Day 28 verification note.
 - `docs/clinical-review.md`: the checklist a licensed professional should
   complete before public launch (crisis copy, helplines, knowledge base,
-  exercise instructions, screening presentation and escalation policy).
-- `docs/api.md`, generated from the FastAPI OpenAPI schema by
-  `scripts/export_openapi.py`; a test fails if the committed copy drifts.
-- `docs/architecture.md`: sequence diagrams for the chat and crisis flows.
-- ADRs for decisions that had none (see [docs/adr/README.md](docs/adr/README.md)).
-- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue forms and a pull
-  request template under `.github/`.
-- `docs/demo-script.md` (a 90-second demo) and demo assets under `docs/assets/`.
+  exercise instructions, screening presentation and escalation policy). It has
+  no sign-offs.
+- `docs/api.md` and `docs/openapi.json`, generated from the FastAPI application
+  by `backend/scripts/export_openapi.py`. `backend/tests/unit/test_api_docs_export.py`
+  fails if the committed copies drift ([ADR 0027](docs/adr/0027-generated-api-reference.md)).
+- `docs/architecture.md`: sequence diagrams for a chat turn and a crisis turn,
+  including the offline "Need help now" path.
+- Architecture decision records [0027](docs/adr/0027-generated-api-reference.md),
+  [0028](docs/adr/0028-model-card-and-clinical-review-gate.md) and
+  [0029](docs/adr/0029-branch-coverage-gates.md), and an index at
+  [docs/adr/README.md](docs/adr/README.md) that flags the missing 0016.
+- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue forms under
+  `.github/ISSUE_TEMPLATE/` and a pull request template.
+- `docs/demo-script.md`: a 90-second demo script. It has not been recorded.
+- `docs/verification/day28-documentation-and-portfolio.md` (the Day 28 checks) and
+  `docs/verification/day28-manual-tests.md` (what the sandbox could not run).
 
 ### Changed
 
-- `README.md` rewritten: pitch, feature list, architecture and sequence views,
-  safety and privacy summaries, evaluation headline numbers with a link to the
-  report, quick start, tech stack, roadmap and honest limitations.
-- `docs/safety-design.md`, `docs/ethics-and-limitations.md` finalised for launch
-  review, with the open clinical questions stated plainly.
+- `README.md` rewritten: a plain statement of what the product is and is not, a
+  three-command quick start, a crisis and emergency section, quality figures with
+  the gate status, privacy, a documentation index, known limitations and a roadmap.
+- `backend/app/api/v1/health.py`: the health router is tagged `health`, so it no
+  longer appears under "Other" in the API reference. This is the only
+  application-code change on Day 28.
+- `docs/privacy-and-threat-model.md`: helplines described as schema-checked, not
+  call-verified.
 
 ### Fixed
 
 - The model card claimed OpenAI was a supported provider. It is not: the
   configuration accepts `anthropic`, `ollama` and `fake` only.
 - The README's static "backend coverage 100%" badge did not match the measured
-  coverage. It now quotes the measured value, from the Day 28 verification run.
+  coverage. It now shows the measured statement and branch figures from the
+  Day 28 run, and says the safety branch gate is failing.
+- `docs/evaluation-report.md` and the README called the Indian helplines
+  "verified". `in-kiran` is flagged `needs_verification`; the wording now says so.
+- Prettier formatting in 17 frontend files (line wrapping only).
 
 ## Day 27 — DevOps, observability and deployment
 
@@ -60,6 +76,8 @@ note for each. When a release is tagged, the release workflow
 - Branch coverage measured; overall backend gate at 85%, every
   `app/services/safety` module at 95%, crypto and scoring at 100%
   (`backend/scripts/coverage_gate.py`, run by `make test`).
+- **Status on Day 28:** the safety group measures 91.67% and fails its 95%
+  floor. CI does not run the branch gate. See [ADR 0029](docs/adr/0029-branch-coverage-gates.md).
 
 ## Day 25 — Offline, accessibility and low bandwidth (PWA)
 
