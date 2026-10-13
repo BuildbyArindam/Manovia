@@ -213,10 +213,8 @@ def render_markdown(schema: dict[str, Any], sessions: dict[tuple[str, str], str]
         "",
         "- The OpenAPI document does **not** declare a security scheme, so the bearer "
         "requirement appears only in the **Session** column and in this prose.",
-        "- `GET /api/v1/chat/sessions/{session_id}/stream` takes the user's message in the "
-        "**query string** (`?message=`). Anything that logs request URLs will record it. "
-        "The web client uses only the POST variant. See the warning in the chat section "
-        "and [PROGRESS.md](../PROGRESS.md).",
+        "- There is no GET streaming route. A GET would carry the user's message in the "
+        "query string, so the route was removed on Day 28. Streaming uses POST only.",
         "",
         "## Contents",
         "",
@@ -238,15 +236,6 @@ def render_markdown(schema: dict[str, Any], sessions: dict[tuple[str, str], str]
             lines.append(
                 "These routes exist only when `APP_ENV` is not `production`. They are "
                 "for local debugging and must not be reachable from a deployed API."
-            )
-            lines.append("")
-        if tag == "chat":
-            lines.append(
-                "> **Warning — message text in the URL.** `GET .../stream?message=` puts the "
-                "user's message in the query string, where web server access logs and "
-                "browser history can record it. The web client uses `POST .../stream`, "
-                "which carries the message in the JSON body. Prefer POST. This is an open "
-                "issue, not a fixed behaviour."
             )
             lines.append("")
         lines.append("| Method | Path | Summary | Session | Status codes | Notes |")

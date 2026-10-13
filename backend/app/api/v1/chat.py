@@ -18,8 +18,6 @@ route                                                       what it does
 ``GET  /chat/sessions/{id}/messages``                       its history (owner only)
 ``POST /chat/sessions/{id}/messages``                       one message, JSON reply
 ``POST /chat/sessions/{id}/stream``                         one message, SSE reply
-``GET  /chat/sessions/{id}/stream?message=…``               the same, for clients
-                                                            that can only issue GETs
 ``GET  /chat/memory``                                       summaries for saved chats
 ``DELETE /chat/memory``                                    erase summaries irreversibly
 ==========================================================  =========================
@@ -49,10 +47,9 @@ its first event before the response starts. ``event: error`` exists only for a
 failure *after* streaming began. ``final.reply`` is authoritative; when
 ``replaced`` is true the client must swap its rendered text for it.
 
-**GET streaming and privacy.** ``GET .../stream`` takes the message in the query
-string because that is the only way a GET can carry one. Query strings are
-recorded by proxies and CDNs far more often than bodies, so clients should
-prefer ``POST``. Authentication is the ``Authorization`` header either way.
+**No GET streaming.** There is no ``GET .../stream`` route. A GET can carry the
+message only in the query string, and proxies, CDNs and access logs record query
+strings. The route was removed on Day 28. Send the message in the POST body.
 """
 
 from __future__ import annotations
@@ -414,21 +411,5 @@ async def stream_chat_message_post(
     user: ConsentedUser,
 ) -> StreamingResponse:
     """Send one message and stream the reply as Server-Sent Events."""
-    admitted, opened = await _admit(orchestrator, service, user, session_id, payload)
-    return await _stream_response(orchestrator, admitted, opened.conversation)
-
-
-@router.get("/sessions/{session_id}/stream")
-async def stream_chat_message_get(
-    session_id: uuid.UUID,
-    service: ChatServiceDep,
-    orchestrator: OrchestratorDep,
-    user: ConsentedUser,
-    message: Annotated[str, Query(min_length=1, max_length=MAX_PAYLOAD_CHARS)],
-    region: Annotated[str | None, Query(max_length=16)] = None,
-    locale: Annotated[str | None, Query(max_length=16)] = None,
-) -> StreamingResponse:
-    """The same stream for clients that can only issue GET (prefer POST — see module docs)."""
-    payload = MessageIn(message=message, region=region, locale=locale)
     admitted, opened = await _admit(orchestrator, service, user, session_id, payload)
     return await _stream_response(orchestrator, admitted, opened.conversation)

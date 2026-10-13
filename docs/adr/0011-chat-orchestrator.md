@@ -172,8 +172,8 @@ form that links to content.
 - The ordering is covered by tests that fail under mutation (gate disabled,
   redaction skipped, ownership unchecked).
 - **`GET …/stream?message=` puts the message in the URL**, which proxies and
-  access logs record. Prefer `POST`. The app's own access log is path-only; the
-  risk is infrastructure outside our control. Documented as a known issue.
+  access logs record. *Amended Day 28:* the GET route was removed. The POST
+  stream is the only streaming route.
 - **The ephemeral store and rate limiter are per-process.** With more than one
   worker, an ephemeral session id only works on the worker that created it and
   limits are per worker. A shared store (Redis) is parked.

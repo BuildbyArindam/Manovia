@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **0.1.0** · 63 operations across 52 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **0.1.0** · 62 operations across 52 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -16,7 +16,7 @@ Manovia API **0.1.0** · 63 operations across 52 paths. The machine-readable sch
 ## Known documentation gaps
 
 - The OpenAPI document does **not** declare a security scheme, so the bearer requirement appears only in the **Session** column and in this prose.
-- `GET /api/v1/chat/sessions/{session_id}/stream` takes the user's message in the **query string** (`?message=`). Anything that logs request URLs will record it. The web client uses only the POST variant. See the warning in the chat section and [PROGRESS.md](../PROGRESS.md).
+- There is no GET streaming route. A GET would carry the user's message in the query string, so the route was removed on Day 28. Streaming uses POST only.
 
 ## Contents
 
@@ -65,8 +65,6 @@ Manovia API **0.1.0** · 63 operations across 52 paths. The machine-readable sch
 
 ## Chat
 
-> **Warning — message text in the URL.** `GET .../stream?message=` puts the user's message in the query string, where web server access logs and browser history can record it. The web client uses `POST .../stream`, which carries the message in the JSON body. Prefer POST. This is an open issue, not a fixed behaviour.
-
 | Method | Path | Summary | Session | Status codes | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `GET` | `/api/v1/chat/memory` | List Chat Memory | yes | 200 | Show the user's summaries for saved chats (decrypted only for their owner). |
@@ -75,7 +73,6 @@ Manovia API **0.1.0** · 63 operations across 52 paths. The machine-readable sch
 | `GET` | `/api/v1/chat/sessions/{session_id}` | Get Chat Session | yes | 200, 422 | A session's public info. 404 if it is not yours (or does not exist). |
 | `GET` | `/api/v1/chat/sessions/{session_id}/messages` | List Chat Messages | yes | 200, 422 | The newest ``limit`` messages, oldest first. Owner only; 404 otherwise. |
 | `POST` | `/api/v1/chat/sessions/{session_id}/messages` | Send Chat Message | yes + consent | 200, 422 | Send one message and get the whole reply as JSON. |
-| `GET` | `/api/v1/chat/sessions/{session_id}/stream` | Stream Chat Message Get | yes + consent | 200, 422 | The same stream for clients that can only issue GET (prefer POST — see module docs). |
 | `POST` | `/api/v1/chat/sessions/{session_id}/stream` | Stream Chat Message Post | yes + consent | 200, 422 | Send one message and stream the reply as Server-Sent Events. |
 
 ## Knowledge base
