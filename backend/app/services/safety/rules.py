@@ -34,6 +34,7 @@ escalation copy never repeats a means word (WHO safe-messaging guidance).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -55,6 +56,7 @@ from app.services.safety.normalise import (
     looks_figurative,
     normalise,
     split_quotes,
+    to_primary,
 )
 from app.services.safety.patterns import PatternSet, RulePattern, load_patterns
 
@@ -67,6 +69,30 @@ CODE_FICTION: Final = "ctx.fiction_frame"
 CODE_TIMEFRAME: Final = "ctx.timeframe"
 CODE_EMPTY_INPUT: Final = "input.empty"
 CODE_TRUNCATED: Final = "input.truncated"
+#: Day 29: the message was longer than one window and was read in several.
+CODE_WINDOWED: Final = "input.windowed"
+#: Overlap between consecutive windows. Longer than any pattern can match, so a
+#: phrase that straddles a boundary is complete in one of the two windows.
+WINDOW_OVERLAP_CHARS: Final = 256
+#: Hard ceiling on how much of one message is read (16 windows). Far above every
+#: API limit (chat 20k payload, journal 20k, crisis/assess 8k); it exists so a
+#: direct caller cannot make one assessment unboundedly expensive.
+MAX_WINDOWED_CHARS: Final = 64_000
+
+#: Day 29: a frame *outside* the quotation that says the quoted words are the
+#: speaker's own ("I wrote", "my diary says", "telling myself", "to myself").
+#: Matched against the normalised text with the quoted spans removed. A
+#: genuine report ("my friend texted me '...'") has no such frame.
+_SELF_QUOTE: Final = re.compile(
+    r"\b(?:"
+    r"i\s+(?:just\s+|once\s+|had\s+|have\s+|already\s+)?"
+    r"(?:wrote|written|typed|said|posted|texted|tweeted|journaled|scribbled)"
+    r"|(?:keep\s+|kept\s+)?(?:telling|told)\s+myself"
+    r"|to\s+myself"
+    r"|my\s+(?:own\s+)?(?:diary|journal|notes?|notebook|words|post|thoughts|status)"
+    r"|what\s+i\s+(?:wrote|typed|said|posted)"
+    r")\b"
+)
 
 
 @dataclass(frozen=True)
@@ -153,12 +179,57 @@ class RuleEngine:
     # ------------------------------------------------------------------ #
 
     def assess(self, text: str, *, language: str | None = None) -> RiskAssessment:
-        """Assess one message.
+        """Assess one message — all of it, up to :data:`MAX_WINDOWED_CHARS`.
 
         ``language`` is an optional caller hint (a BCP-47 tag). It is recorded on
         the assessment for reporting, but never used to route: every pattern runs
         against every message, so a mis-detected language cannot hide a risk.
+
+        Day 29 (RT-S-LN-02/03): a message longer than :attr:`max_chars` used to
+        be cut at ``max_chars`` and the rest never read, so a risk phrase at
+        character 4,100 of a journal entry was invisible. Long text is now read
+        in overlapping windows of ``max_chars`` (the overlap is longer than any
+        pattern, so a phrase on a boundary is whole in one window) and the
+        highest-level window is the answer, tagged ``input.windowed``. Only text
+        beyond the hard cap is unread, and then ``truncated`` says so.
         """
+        if len(text) <= self._max_chars:
+            return self._assess_window(text, language=language)
+        return self._assess_windowed(text, language=language)
+
+    def _assess_windowed(self, text: str, *, language: str | None) -> RiskAssessment:
+        beyond_cap = len(text) > MAX_WINDOWED_CHARS
+        readable = text[:MAX_WINDOWED_CHARS]
+        overlap = min(WINDOW_OVERLAP_CHARS, self._max_chars // 2)
+        step = self._max_chars - overlap
+        best: RiskAssessment | None = None
+        start = 0
+        while True:
+            window = self._assess_window(
+                readable[start : start + self._max_chars], language=language
+            )
+            # Strictly greater: the earliest window wins a tie, so the answer is
+            # deterministic and its context codes come from one coherent window.
+            if best is None or window.level > best.level:
+                best = window
+            if start + self._max_chars >= len(readable):
+                break
+            start += step
+        codes = [
+            code for code in best.rationale_codes if code not in (CODE_EMPTY_INPUT, CODE_TRUNCATED)
+        ]
+        codes.append(CODE_WINDOWED)
+        if beyond_cap:
+            codes.append(CODE_TRUNCATED)
+        return best.model_copy(
+            update={
+                "rationale_codes": tuple(codes),
+                "context": best.context.model_copy(update={"truncated": beyond_cap}),
+            }
+        )
+
+    def _assess_window(self, text: str, *, language: str | None) -> RiskAssessment:
+        """Assess one window of at most :attr:`max_chars` characters."""
         message = normalise(text, self._patterns.context, max_chars=self._max_chars)
 
         if not message.primary:
@@ -432,6 +503,12 @@ class RuleEngine:
         primary = message.primary
         fiction_frame = context.fiction_frames_pattern.search(primary) is not None
         quoted_only = self._is_quoted_only(text, message, occurrences)
+        if quoted_only and _SELF_QUOTE.search(to_primary(split_quotes(text)[0])):
+            # Day 29 (RT-S-QT-01..03): "my diary says '...'", "pasting what I
+            # wrote: '...'" quote the speaker's *own* words. Reading them as
+            # somebody else's gave a person in crisis the supporter template
+            # and capped an imminent plan at HIGH.
+            quoted_only = False
 
         return MessageFlags(
             first_person=has_first_person(primary, context),
@@ -542,6 +619,9 @@ __all__ = [
     "CODE_THIRD_PERSON",
     "CODE_TIMEFRAME",
     "CODE_TRUNCATED",
+    "CODE_WINDOWED",
+    "MAX_WINDOWED_CHARS",
+    "WINDOW_OVERLAP_CHARS",
     "MessageFlags",
     "Occurrence",
     "RuleEngine",

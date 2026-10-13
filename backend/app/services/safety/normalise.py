@@ -114,7 +114,16 @@ _CLAUSE_WORDS: Final = re.compile(
 
 #: Quoted spans. A single-quoted span must contain a space, so an
 #: apostrophe-heavy sentence is not misread as a quotation.
-_QUOTES: Final = re.compile(r'"([^"]{2,})"|\u201c([^\u201d]{2,})\u201d|\'([^\']*\s[^\']*)\'')
+#: Day 29 (RT-S-QT-04): a single quote opens or closes a quotation only when it
+#: is not inside a word. Before, the apostrophes of "I'm" and "don't" were paired
+#: as a quotation, so "I'm so tired. I want to kill myself, I don't care" read as
+#: quoting somebody else and the person got the supporter-facing crisis copy.
+#: Apostrophes *inside* a real quotation ('I can't go on') are still allowed.
+_SINGLE_QUOTED_BODY: Final = r"(?:[^']|(?<=\w)'(?=\w))"
+_QUOTES: Final = re.compile(
+    r'"([^"]{2,})"|\u201c([^\u201d]{2,})\u201d'
+    rf"|(?<!\w)'({_SINGLE_QUOTED_BODY}*\s{_SINGLE_QUOTED_BODY}*)'(?!\w)"
+)
 
 
 @dataclass(frozen=True)
@@ -177,6 +186,68 @@ class NormalisedMessage:
 def strip_invisible(text: str) -> str:
     """Remove zero-width characters and apply NFKC (so matras compose consistently)."""
     return unicodedata.normalize("NFKC", text).translate(_INVISIBLE)
+
+
+#: Day 29 (RT-S-SP-07/08): Cyrillic and Greek letters that render like Latin
+#: ones. NFKC leaves them alone (they are different letters, not compatibility
+#: forms), so "kill" typed with a Cyrillic i (U+0456) sailed past every English
+#: rule. Written as escapes so the source itself is unambiguous.
+_CYRILLIC_LOOKALIKES: Final = (
+    "\u0430\u0432\u0435\u0451\u04bb\u0456\u0457\u0458\u043a\u04cf\u043c\u043d\u043e\u0440\u0441\u0455\u0442\u0443\u0445\u0501\u051b\u051d\u044c",
+    "abeehiijklmhopcstyxdqwb",
+)
+_GREEK_LOOKALIKES: Final = (
+    "\u03b1\u03b2\u03b5\u03b7\u03b9\u03ba\u03bd\u03bf\u03c1\u03c4\u03c5\u03c7\u03c9",
+    "abenikvoptuxw",
+)
+_CONFUSABLES: Final[dict[str, str]] = {
+    source: target
+    for sources, targets in (_CYRILLIC_LOOKALIKES, _GREEK_LOOKALIKES)
+    for source, target in zip(sources, targets, strict=True)
+}
+#: Combining diacritics that stack on Latin letters (Zalgo text, strikethrough
+#: U+0336). Indic matras live in other blocks and are never touched.
+_LATIN_COMBINING: Final = re.compile(
+    "[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]"
+)
+_TOKEN: Final = re.compile(r"\S+")
+
+
+def strip_latin_combining(text: str) -> str:
+    """Drop stacked Latin diacritics: ``d̶i̶e̶`` and Zalgo ``d́ìe`` read as ``die``.
+
+    Decomposes first so a precomposed accent goes too (this is a *variant*, the
+    accented primary is still searched), then recomposes so Indic text — whose
+    marks are outside these ranges — comes back exactly as it was.
+    """
+    stripped = _LATIN_COMBINING.sub("", unicodedata.normalize("NFKD", text))
+    return unicodedata.normalize("NFKC", stripped)
+
+
+def fold_confusables(text: str) -> str:
+    """Map Cyrillic/Greek look-alikes to Latin inside tokens that are pretending.
+
+    A token is folded only when every letter in it is either Latin or a
+    look-alike (a mixed token, or "die" typed wholly in Cyrillic look-alikes).
+    Most real Russian or Greek words contain a letter with no Latin twin and
+    are left alone; a short word made only of look-alikes (Russian "kak") folds
+    into harmless noise. It is an extra variant: the primary is still searched.
+    """
+
+    def fold(match: re.Match[str]) -> str:
+        token = match.group(0)
+        letters = [char for char in token if char.isalpha()]
+        if not letters or not any(char.casefold() in _CONFUSABLES for char in letters):
+            return token
+        # Every letter must be Latin or a look-alike; one letter with no Latin
+        # twin ("д", "λ") means a real word in another script.
+        if not all(
+            char.casefold() in _CONFUSABLES or "a" <= char.casefold() <= "z" for char in letters
+        ):
+            return token
+        return "".join(_CONFUSABLES.get(char.casefold(), char) for char in token)
+
+    return _TOKEN.sub(fold, text)
 
 
 def apply_leet(text: str, leet_map: Mapping[str, str]) -> str:
@@ -409,9 +480,14 @@ def normalise(
     # it keeps its clause boundaries and its pragmatics — negation and figurative
     # sense are still readable in it, because collapsing never joins two words.
     collapsed_variant = correct_spellings(collapse_repeats(primary), context)
+    # Day 29: homoglyphs and stacked diacritics. One extra variant (spelling
+    # corrected, so a homoglyph "suicide" with a typo is covered), searched like the
+    # rest; the primary keeps the person's real characters.
+    folded = to_primary(fold_confusables(strip_latin_combining(cleaned)))
+    folded_variant = correct_spellings(folded, context)
 
     variants: list[str] = []
-    for candidate in (primary, leet_variant, corrected, collapsed_variant):
+    for candidate in (primary, leet_variant, corrected, collapsed_variant, folded_variant):
         if candidate and candidate not in variants:
             variants.append(candidate)
 

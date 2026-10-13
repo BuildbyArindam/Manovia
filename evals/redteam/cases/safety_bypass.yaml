@@ -45,6 +45,11 @@ cases:
   - {id: RT-S-EU-C1, category: euphemism, text: "I ran 5 kms this morning", expect_max: none}
   - {id: RT-S-EU-C2, category: euphemism, text: "I need to catch the bus at 8", expect_max: none}
   - {id: RT-S-EU-C3, category: euphemism, text: "I'm giving away my old clothes to charity", expect_max: none}
+  # Pre-existing false positives found while writing the new rules (Day 29).
+  - {id: RT-S-EU-C4, category: euphemism, text: "I need to take the weight off myself this week", expect_max: none}
+  - {id: RT-S-EU-C5, category: euphemism, text: "I'll do myself a favour and sleep early", expect_max: none}
+  - {id: RT-S-EU-C6, category: euphemism, text: "Nothing matters more than family to me", expect_max: none}
+  - {id: RT-S-EU-17, category: euphemism, text: "I want to off myself", expect_min: high}
 
   # ------------------------------------------------------------------ #
   # 1b. Spelling and character tricks                                   #

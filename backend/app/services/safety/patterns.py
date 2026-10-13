@@ -37,12 +37,14 @@ from app.services.safety.base import RiskCategory, RiskLevel
 PATTERN_DIR: Final = "safety"
 
 #: Loaded in this order. ``patterns_context.yaml`` carries pragmatics (negation,
-#: third-person markers, benign frames); the other three carry risk vocabulary.
+#: third-person markers, benign frames); the others carry risk vocabulary.
 PATTERN_FILES: Final[tuple[str, ...]] = (
     "patterns_context.yaml",
     "patterns_core.yaml",
     "patterns_euphemisms.yaml",
     "patterns_indic.yaml",
+    # Day 29: gaps found by the red-team suite (evals/redteam).
+    "patterns_redteam.yaml",
 )
 
 CONTEXT_FILE: Final = "patterns_context.yaml"
@@ -56,7 +58,7 @@ _PATTERN_LEVELS: Final[frozenset[str]] = frozenset({"low", "medium", "high", "im
 
 _ID_RE: Final = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+$")
 _LANGUAGE_RE: Final = re.compile(r"^[a-z]{2}(?:-[a-z0-9]+)*$")
-_SCRIPTS: Final[frozenset[str]] = frozenset({"devanagari", "bengali", "latin"})
+_SCRIPTS: Final[frozenset[str]] = frozenset({"devanagari", "bengali", "latin", "arabic"})
 _UPPERCASE_RE: Final = re.compile(r"[A-Z]")
 #: Punctuation that must not appear in a pattern value: normalisation replaces it
 #: with a space, so a value containing it could never match.

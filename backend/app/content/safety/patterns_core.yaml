@@ -278,8 +278,15 @@ rules:
     category: intent_plan
     level: high
     kind: regex
-    value: "\\b(?:giving|gave|give)\\s+away\\s+(?:my|all|everything|the)\\s*(?:things|stuff|possessions|belongings|books|games|jewellery|jewelry)?\\b"
+    value: "\\b(?:giving|gave|give)\\s+away\\s+(?:my|all|everything|the)\\b(?!\\s+(?:old|spare|unused|outgrown|extra)\\b)(?!.{0,60}?\\b(?:to\\s+(?:a\\s+|the\\s+)?charity|charity\\s+shop|donat\\w*|op\\s+shop|goodwill|that\\s+(?:dont|doesnt|no\\s+longer)\\s+fit)\\b)\\s*(?:things|stuff|possessions|belongings|books|games|jewellery|jewelry)?\\b"
     negation_sensitive: true
+    note: >-
+      Day 29 (RT-S-EU-C3): 'giving away my old clothes to charity' was HIGH.
+      Decluttering words (old/spare/unused/outgrown) right after the
+      possessive, or a charity/donation destination within the clause, now
+      exempt the hit. Trade-off, recorded in docs/redteam-report.md: someone
+      who gives everything away *and* says it is to charity is no longer
+      caught by this rule alone.
   - id: ip.made_up_my_mind
     category: intent_plan
     level: medium
@@ -490,8 +497,9 @@ rules:
     category: severe_hopelessness
     level: medium
     kind: regex
-    value: "\\b(?:nothing\\s+matters|nothing\\s+is\\s+real|no\\s+point\\s+in\\s+anything|nothing\\s+feels\\s+real|everything\\s+is\\s+pointless|life\\s+is\\s+pointless|life\\s+is\\s+meaningless)\\b"
+    value: "\\b(?:nothing\\s+matters(?!\\s+(?:more|as\\s+much|less))|nothing\\s+is\\s+real|no\\s+point\\s+in\\s+anything|nothing\\s+feels\\s+real|everything\\s+is\\s+pointless|life\\s+is\\s+pointless|life\\s+is\\s+meaningless)\\b"
     negation_sensitive: false
+    note: "Day 29 (RT-S-EU-C6): 'nothing matters more than family' no longer fires."
   - id: hope.no_way_out
     category: severe_hopelessness
     level: high

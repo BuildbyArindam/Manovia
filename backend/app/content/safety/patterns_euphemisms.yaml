@@ -31,8 +31,12 @@ rules:
     category: suicidal_ideation
     level: high
     kind: regex
-    value: "\\b(?:off|do|top|waste)\\s+(?:myself|my\\s+self)\\b"
+    value: "(?<!weight\\s)(?<!pressure\\s)(?<!blame\\s)(?<!it\\s)\\b(?:off|top|waste)\\s+(?:myself|my\\s+self)\\b|\\bdo\\s+(?:myself|my\\s+self)\\b(?!\\s+(?:a\\s+favou?r|proud|justice|good|a\\s+disservice))"
     negation_sensitive: true
+    note: >-
+      Day 29 (RT-S-EU-C4/C5): 'take the weight off myself' and 'do myself a
+      favour' were HIGH. Those two idioms are excluded; 'off myself', 'top
+      myself' and a bare 'do myself' still fire.
   - id: eu.easy_way_out
     category: suicidal_ideation
     level: high

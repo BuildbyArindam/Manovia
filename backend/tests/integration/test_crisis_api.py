@@ -326,10 +326,14 @@ async def test_assess_rejects_blank_and_absurd_input(client: httpx.AsyncClient) 
     assert huge.status_code == 422
 
 
-async def test_assess_reports_a_truncated_message_rather_than_dropping_it(
+async def test_assess_reads_a_long_message_in_windows_rather_than_truncating(
     client: httpx.AsyncClient,
 ) -> None:
-    """A long entry is still assessed on what fit, and says so."""
+    """A long entry is read in full and says so (Day 29, RT-D-13).
+
+    Until Day 29 this test asserted ``truncated is True``: it pinned the bug
+    where text after the first 4,000 characters was never read.
+    """
     from app.services.safety.normalise import DEFAULT_MAX_INPUT_CHARS
 
     text = "I want to die " + ("and nothing helps " * 400)
@@ -338,5 +342,19 @@ async def test_assess_reports_a_truncated_message_rather_than_dropping_it(
     body = (await client.post(ASSESS, json={"text": text})).json()
 
     assert body["level"] == "high"
-    assert body["context"]["truncated"] is True
-    assert "input.truncated" in body["rationale_codes"]
+    assert body["context"]["truncated"] is False
+    assert "input.windowed" in body["rationale_codes"]
+    assert "input.truncated" not in body["rationale_codes"]
+
+
+async def test_assess_finds_risk_at_the_very_end_of_an_8000_char_message(
+    client: httpx.AsyncClient,
+) -> None:
+    """RT-D-13: the risk sentence is the last thing in a maximum-length request."""
+    padding = "I tidied my desk and answered emails. " * 220
+    text = (padding[: 8000 - 22] + "I want to kill myself")[:8000]
+
+    body = (await client.post(ASSESS, json={"text": text})).json()
+
+    assert body["level"] in {"high", "imminent"}
+    assert "input.windowed" in body["rationale_codes"]

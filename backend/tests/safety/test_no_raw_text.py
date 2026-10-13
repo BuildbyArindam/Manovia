@@ -163,6 +163,9 @@ def _assessment_vocabulary(engine: RuleEngine) -> set[str]:
         "ctx.timeframe",
         "input.empty",
         "input.truncated",
+        "input.windowed",
+        "session.accumulated_medium",
+        "session.accumulated_high",
     }
     # Field names appear as dict keys, not values; include them so the dump of a
     # model can be compared as a whole.
