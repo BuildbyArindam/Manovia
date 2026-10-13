@@ -19,10 +19,10 @@ def test_rt_d_15_stale_keys_are_swept_after_a_window() -> None:
     limiter = InMemoryRateLimiter(5, window_seconds=60, clock=lambda: now[0])
     for i in range(5000):
         limiter.hit(f"ip-{i}")
-    assert len(limiter) == 5000
+    assert limiter.tracked_keys == 5000
     now[0] += 3600
     limiter.hit("fresh")
-    assert len(limiter) == 1
+    assert limiter.tracked_keys == 1
 
 
 def test_the_sweep_keeps_keys_still_inside_the_window() -> None:
@@ -34,7 +34,7 @@ def test_the_sweep_keeps_keys_still_inside_the_window() -> None:
     limiter.hit("recent")
     now[0] = 70.0  # a sweep runs: "old" (t=0) is stale, "recent" (t=50) is not
     assert not limiter.hit("recent").allowed
-    assert len(limiter) == 1
+    assert limiter.tracked_keys == 1
 
 
 def test_privacy_export_per_hour_must_be_positive() -> None:
@@ -80,3 +80,8 @@ async def test_the_export_budget_is_off_when_rate_limiting_is_off(
     for _ in range(3):
         response = await client.get("/api/v1/privacy/export?format=json", headers=headers)
         assert response.status_code == 200
+
+
+def test_an_empty_limiter_is_truthy() -> None:
+    """Regression: ``limiter or default`` must keep an injected empty limiter."""
+    assert bool(InMemoryRateLimiter(1))

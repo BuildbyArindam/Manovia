@@ -123,3 +123,14 @@ def test_rt_i_kb_01_the_loader_rejects_a_document_that_addresses_the_model() -> 
 
 def test_every_shipped_document_still_loads() -> None:
     assert len(load_knowledge_docs()) >= 40
+
+
+def test_rt_d_05_an_invisible_only_message_is_empty() -> None:
+    from app.core.errors import ApiError
+    from app.services.chat.validation import validate_message
+
+    with pytest.raises(ApiError) as caught:
+        validate_message("\u200b\u200c\u2066\u2069", max_chars=4000)
+    assert caught.value.code == "message_empty"
+    # An emoji ZWJ sequence is a real message.
+    assert validate_message("\U0001f469\u200d\U0001f4bb", max_chars=4000)

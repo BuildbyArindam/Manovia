@@ -558,6 +558,8 @@ async def test_an_expired_ephemeral_session_is_a_404(
     ("message", "code"),
     [
         ("  \n  ", "message_empty"),
+        # Day 29 (RT-D-05): invisible characters only (ZWSP, ZWJ, RLO, BOM).
+        ("\u200b\u200d\u202e\ufeff ", "message_empty"),
         ("x" * 4001, "message_too_long"),
         ("hello\x00there", "message_encoding"),
         # A lone surrogate never reaches the orchestrator over HTTP: the JSON

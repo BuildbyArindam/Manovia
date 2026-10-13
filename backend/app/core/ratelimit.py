@@ -89,8 +89,13 @@ class InMemoryRateLimiter:
         for key in stale:
             del self._hits[key]
 
-    def __len__(self) -> int:
-        """Keys currently tracked (tests and diagnostics)."""
+    @property
+    def tracked_keys(self) -> int:
+        """Keys currently tracked (tests and diagnostics).
+
+        Deliberately not ``__len__``: that would make an empty limiter falsy,
+        and ``limiter or InMemoryRateLimiter(...)`` would silently replace it.
+        """
         return len(self._hits)
 
     def reset(self) -> None:
