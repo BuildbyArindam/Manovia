@@ -1,0 +1,55 @@
+# Manovia production configuration for Fly.io (Day 27).
+#
+# Docs: docs/deploy.md (exact steps), docs/adr/0026-deployment-platform.md
+# (why Fly), docs/backups.md (scheduled jobs this file anticipates).
+#
+# The image is backend/Dockerfile — the same one CI builds and compose runs.
+# Secrets (SECRET_KEY, FIELD_ENCRYPTION_KEY, DATABASE_URL, SENTRY_DSN,
+# ALLOWED_ORIGINS) live in `fly secrets`, never here.
+
+app = "manovia-api"
+primary_region = "bom"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  # Production posture: stricter startup validation, dev routes absent, and
+  # the entrypoint never auto-migrates — migrations run in the release
+  # command below, before these machines take traffic.
+  APP_ENV = "production"
+  RUN_MIGRATIONS = "false"
+  # The image ships without the torch/transformers extra; use the lexicon
+  # analyzers rather than paying a doomed HF model load on first request.
+  EMOTION_ANALYZER = "keyword"
+  LOG_LEVEL = "INFO"
+  PORT = "8000"
+
+[deploy]
+  # The release step: one-off machine, same image, production env, runs
+  # before the new release goes live. A failing migration fails the deploy.
+  release_command = "alembic upgrade head"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # A wellbeing companion should not cold-start on a person mid-conversation;
+  # keep at least one machine warm, add machines on demand.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 60
+    hard_limit = 100
+
+  # Liveness: the fast, dependency-free probe. The database is checked by
+  # /api/v1/ready — an external uptime monitor polls it (docs/deploy.md §4),
+  # so a DB blip pages a human without flapping machines.
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "get"
+    path = "/api/v1/health"
