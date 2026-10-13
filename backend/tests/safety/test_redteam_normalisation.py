@@ -149,3 +149,24 @@ def test_a_phrase_straddling_a_window_boundary_is_found() -> None:
 def test_the_highest_window_wins(engine: RuleEngine) -> None:
     text = "I feel a bit sad. " + "filler words here. " * 400 + "I am going to end my life tonight"
     assert engine.assess(text).level is RiskLevel.IMMINENT
+
+
+# -- RT-S-TP-01: a message-wide third-person frame vs a first-person hit ---
+
+
+def test_rt_s_tp_01_first_person_plan_is_not_capped_by_a_they_frame(engine: RuleEngine) -> None:
+    assessment = engine.assess("I'm going to kill myself tonight and they have no idea")
+    assert assessment.level is RiskLevel.IMMINENT
+    assert assessment.context.third_person is False
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "she told me she has a plan for tonight",
+        "My friend says she wants to kill herself",
+        "I think she wants to die",
+    ],
+)
+def test_reports_about_others_stay_third_person(engine: RuleEngine, text: str) -> None:
+    assert engine.assess(text).context.third_person is True

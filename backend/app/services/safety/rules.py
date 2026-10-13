@@ -79,6 +79,10 @@ WINDOW_OVERLAP_CHARS: Final = 256
 #: direct caller cannot make one assessment unboundedly expensive.
 MAX_WINDOWED_CHARS: Final = 64_000
 
+#: Day 29: subject pronouns that make the hit right after them about the
+#: speaker. Object forms ("told *me* she has a plan") are deliberately absent.
+_FIRST_PERSON_SUBJECTS: Final = frozenset({"i", "im", "ive", "id", "ill", "main", "mai", "ami"})
+
 #: Day 29: a frame *outside* the quotation that says the quoted words are the
 #: speaker's own ("I wrote", "my diary says", "telling myself", "to myself").
 #: Matched against the normalised text with the quoted spans removed. A
@@ -475,7 +479,14 @@ class RuleEngine:
         a writer asking about a character from somebody worried about a friend.
         """
         context = self._patterns.context
-        if any(pattern.search(message.primary) for pattern in context.third_person_patterns):
+        if any(pattern.search(message.primary) for pattern in context.third_person_patterns) and (
+            not any(self._hit_is_about_the_speaker(occurrence) for occurrence in accepted)
+        ):
+            # Day 29 (RT-S-TP-01): the frame is message-wide ("they have",
+            # "she said"), so it used to win even when the hit itself was "I'm
+            # going to kill myself tonight and they have no idea" — capping an
+            # imminent plan at HIGH. A hit with its own first-person subject is
+            # about the speaker whatever else the message mentions.
             return True
 
         clauses = {message.index.clause_at(occurrence.start).text for occurrence in accepted}
@@ -485,6 +496,22 @@ class RuleEngine:
             if context.third_person_marker_pattern.search(clause_text):
                 return True
         return False
+
+    def _hit_is_about_the_speaker(self, occurrence: Occurrence) -> bool:
+        """True when the hit, or the one token right before it, is first person.
+
+        Narrow on purpose: "i want to die" and "kill myself" qualify; "i think
+        she wants to die" and "she told me she has a plan" do not (the token
+        before the hit is "she" or the object "me"), and neither does "my
+        friend wants to die" (relations are blanked by :func:`has_first_person`).
+        """
+        clause = occurrence.clause
+        offset = max(0, occurrence.start - clause.start)
+        before = clause.text[:offset].split()[-1:]
+        if before and before[0] in _FIRST_PERSON_SUBJECTS:
+            return True
+        span = clause.text[offset : occurrence.end - clause.start]
+        return has_first_person(span, self._patterns.context)
 
     # ------------------------------------------------------------------ #
     # Levels                                                              #

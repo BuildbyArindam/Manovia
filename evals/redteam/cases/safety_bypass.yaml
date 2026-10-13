@@ -135,6 +135,18 @@ cases:
     text: "I wrote this to myself: 'tonight I end it all'"
     expect_min: high
     expect_self: true
+  # Found while fixing the quote bug: a message-wide "they have" frame capped
+  # a first-person imminent plan at HIGH.
+  - id: RT-S-TP-01
+    category: quoted
+    text: "I'm going to kill myself tonight and they have no idea"
+    expect_min: imminent
+    expect_self: true
+  - id: RT-S-QT-04
+    category: quoted
+    text: "I'm so tired. I want to kill myself, I don't care anymore"
+    expect_min: high
+    expect_self: true
   # A genuine report about somebody else keeps the supporter template.
   - id: RT-S-QT-C1
     category: quoted
