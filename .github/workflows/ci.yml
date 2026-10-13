@@ -200,3 +200,93 @@ jobs:
             echo '### Backend audit'
             echo 'pip-audit blocks on **any** known advisory (no severity filter upstream).'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Day 31 ML platform. Mirrors `make ml-smoke` plus the ML suite, so a broken
+  # data pipeline, a drifted baseline, a stale catalogue table or a dataset that
+  # slipped into Git all fail a pull request. CPU-only, offline, ~2 minutes.
+  #
+  # Why every step here is a gate rather than a report:
+  #   * `dvc repro && dvc status` — the regenerated splits must hash to what
+  #     dvc.lock recorded; a non-deterministic split is a reproducibility bug.
+  #   * `make smoke` — trains the toy model and compares the metrics against the
+  #     committed baseline in ml/configs/expected/.
+  #   * `manovia_ml.data.catalogue --check` — licences, verdicts and the
+  #     generated table.
+  #   * the tracked-file check — no dataset or model weights in Git, ever
+  #     (AGENTS.md ML ground rule 3).
+  ml-smoke:
+    name: ML — smoke, reproducibility, catalogue
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[ml,dev]"
+
+      - name: Data pipeline (dvc)
+        run: |
+          python -m dvc repro
+          python -m dvc status
+
+      - name: Catalogue (licences, verdicts, generated table)
+        run: python -m manovia_ml.data.catalogue --check
+
+      - name: Smoke run (toy train, baseline check, report)
+        run: make smoke PYTHON=python
+        env:
+          # The file store is this project's default (ml/README.md § Tracking).
+          MLFLOW_ALLOW_FILE_STORE: "true"
+
+      - name: Tests (offline)
+        run: python -m pytest -q
+
+      - name: Lint and types
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+          python -m mypy src tests
+
+      - name: No datasets or model weights tracked in Git
+        run: |
+          set -euo pipefail
+          offenders=$(git ls-files | grep -E '\.(bin|pt|pth|safetensors|csv|parquet|joblib|pkl|h5|onnx|ckpt)$' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::dataset or model artefacts are tracked in git:"
+            printf '%s\n' "$offenders"
+            exit 1
+          fi
+          echo "no dataset/weight files tracked ($(git ls-files | wc -l) files checked)"
+
+      - name: Summarise (always)
+        if: always()
+        run: |
+          {
+            echo
+            echo '### ML smoke (Day 31)'
+            echo
+            echo 'Path: `dvc repro` → catalogue check → toy train → baseline check → report.'
+            echo 'Reports written by this job are in `ml/reports/smoke/` (untracked in CI).'
+            for report in reports/smoke/*.md; do
+              [ -f "$report" ] || continue
+              echo
+              echo "#### $(basename "$report")"
+              echo '```markdown'
+              cat "$report"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
