@@ -1,0 +1,84 @@
+{"id": "toy-joy-en-01", "lang": "en", "label": "joy", "text": "the sun finally came out after three grey days"}
+{"id": "toy-joy-en-02", "lang": "en", "label": "joy", "text": "my sister called just to say she got the job"}
+{"id": "toy-joy-en-03", "lang": "en", "label": "joy", "text": "I finished the whole book in one sitting and loved it"}
+{"id": "toy-joy-en-04", "lang": "en", "label": "joy", "text": "we danced in the kitchen while dinner burned a little"}
+{"id": "toy-joy-en-05", "lang": "en", "label": "joy", "text": "the mango season started and the market smells wonderful"}
+{"id": "toy-joy-hi-01", "lang": "hi", "label": "joy", "text": "आज बारिश के बाद मौसम बहुत सुहावना हो गया"}
+{"id": "toy-joy-hi-02", "lang": "hi", "label": "joy", "text": "बहन ने नौकरी मिलने की खबर दी, दिल खुश हो गया"}
+{"id": "toy-joy-hi-03", "lang": "hi", "label": "joy", "text": "परीक्षा का नतीजा आया और मैं पास हो गया"}
+{"id": "toy-joy-hi-04", "lang": "hi", "label": "joy", "text": "पड़ोसी ने आज अपने बच्चे की मिठाई बाँटी"}
+{"id": "toy-joy-hilatn-01", "lang": "hi-Latn", "label": "joy", "text": "aaj mausam bahut accha hai, mann khush hai"}
+{"id": "toy-joy-hilatn-02", "lang": "hi-Latn", "label": "joy", "text": "dost ka phone aaya aur pura din ban gaya"}
+{"id": "toy-joy-hilatn-03", "lang": "hi-Latn", "label": "joy", "text": "chai aur pakode, kya maza aaya"}
+{"id": "toy-joy-bn-01", "lang": "bn", "label": "joy", "text": "আজ আকাশ পরিষ্কার, মনটা ভালো লাগছে"}
+{"id": "toy-joy-bn-02", "lang": "bn", "label": "joy", "text": "দাদা আজ নতুন চাকরির খবর দিয়েছে, খুব আনন্দ"}
+{"id": "toy-sadness-en-01", "lang": "en", "label": "sadness", "text": "the picnic got cancelled because of the rain"}
+{"id": "toy-sadness-en-02", "lang": "en", "label": "sadness", "text": "I missed the last bus home and waited an hour"}
+{"id": "toy-sadness-en-03", "lang": "en", "label": "sadness", "text": "my friend moved to another city last week"}
+{"id": "toy-sadness-en-04", "lang": "en", "label": "sadness", "text": "I could not sleep well and the day felt long"}
+{"id": "toy-sadness-en-05", "lang": "en", "label": "sadness", "text": "the plant I kept for two years finally dried up"}
+{"id": "toy-sadness-hi-01", "lang": "hi", "label": "sadness", "text": "पिकनिक बारिश की वजह से रद्द हो गई, मन उदास है"}
+{"id": "toy-sadness-hi-02", "lang": "hi", "label": "sadness", "text": "मेरा पुराना दोस्त दूसरे शहर चला गया"}
+{"id": "toy-sadness-hi-03", "lang": "hi", "label": "sadness", "text": "आज दिन बहुत लंबा और थका देने वाला लगा"}
+{"id": "toy-sadness-hi-04", "lang": "hi", "label": "sadness", "text": "काम में मन नहीं लगा, बस बैठा रहा"}
+{"id": "toy-sadness-hilatn-01", "lang": "hi-Latn", "label": "sadness", "text": "aaj kuch accha nahi laga, bas udaas tha"}
+{"id": "toy-sadness-hilatn-02", "lang": "hi-Latn", "label": "sadness", "text": "purana dost door chala gaya, bura laga"}
+{"id": "toy-sadness-hilatn-03", "lang": "hi-Latn", "label": "sadness", "text": "raat ko neend nahi aayi, subah bhaari lagi"}
+{"id": "toy-sadness-bn-01", "lang": "bn", "label": "sadness", "text": "আজ কিছু ভালো লাগছে না, মন খারাপ"}
+{"id": "toy-sadness-bn-02", "lang": "bn", "label": "sadness", "text": "বন্ধু অন্য শহরে চলে গেল, খারাপ লাগছে"}
+{"id": "toy-anger-en-01", "lang": "en", "label": "anger", "text": "the shop charged me twice and refused to fix it"}
+{"id": "toy-anger-en-02", "lang": "en", "label": "anger", "text": "someone cut the queue right in front of me"}
+{"id": "toy-anger-en-03", "lang": "en", "label": "anger", "text": "my complaint was closed without anyone reading it"}
+{"id": "toy-anger-en-04", "lang": "en", "label": "anger", "text": "the wifi died in the middle of the call again"}
+{"id": "toy-anger-en-05", "lang": "en", "label": "anger", "text": "they cancelled the train and gave no reason"}
+{"id": "toy-anger-hi-01", "lang": "hi", "label": "anger", "text": "दुकानदार ने दुगना पैसा लिया और मानने से इंकार कर दिया"}
+{"id": "toy-anger-hi-02", "lang": "hi", "label": "anger", "text": "मेरे आगे वाला बिना लाइन में खड़ा हो गया"}
+{"id": "toy-anger-hi-03", "lang": "hi", "label": "anger", "text": "ट्रेन बिना वजह रद्द कर दी गई"}
+{"id": "toy-anger-hi-04", "lang": "hi", "label": "anger", "text": "बार-बार नेटवर्क बंद हो रहा है, चिढ़ हो रही है"}
+{"id": "toy-anger-hilatn-01", "lang": "hi-Latn", "label": "anger", "text": "line tod di gayi, gussa aa gaya"}
+{"id": "toy-anger-hilatn-02", "lang": "hi-Latn", "label": "anger", "text": "shop wala zyada paisa maang raha hai, gussa"}
+{"id": "toy-anger-hilatn-03", "lang": "hi-Latn", "label": "anger", "text": "net baar baar jaata hai, sir dukh raha hai"}
+{"id": "toy-anger-bn-01", "lang": "bn", "label": "anger", "text": "দোকানদার বেশি টাকা নিল, খুব রাগ লাগছে"}
+{"id": "toy-anger-bn-02", "lang": "bn", "label": "anger", "text": "লাইনে কেউ মাঝখানে ঢুকে গেল, বিরক্ত লাগছে"}
+{"id": "toy-fear-en-01", "lang": "en", "label": "fear", "text": "the exam is tomorrow and I have not read the last chapter"}
+{"id": "toy-fear-en-02", "lang": "en", "label": "fear", "text": "the doctor asked me to come back for another test"}
+{"id": "toy-fear-en-03", "lang": "en", "label": "fear", "text": "I have to speak in front of the whole office next week"}
+{"id": "toy-fear-en-04", "lang": "en", "label": "fear", "text": "there was a strange noise outside and I could not settle"}
+{"id": "toy-fear-en-05", "lang": "en", "label": "fear", "text": "the results page is loading very slowly"}
+{"id": "toy-fear-hi-01", "lang": "hi", "label": "fear", "text": "कल परीक्षा है और आखिरी अध्याय नहीं पढ़ा"}
+{"id": "toy-fear-hi-02", "lang": "hi", "label": "fear", "text": "डॉक्टर ने दोबारा जाँच के लिए बुलाया है"}
+{"id": "toy-fear-hi-03", "lang": "hi", "label": "fear", "text": "अगले हफ्ते सबके सामने बोलना है, डर लग रहा है"}
+{"id": "toy-fear-hi-04", "lang": "hi", "label": "fear", "text": "रिपोर्ट का नतीजा अब तक नहीं आया"}
+{"id": "toy-fear-hilatn-01", "lang": "hi-Latn", "label": "fear", "text": "kal exam hai, thoda darr lag raha hai"}
+{"id": "toy-fear-hilatn-02", "lang": "hi-Latn", "label": "fear", "text": "office mein sabke saamne bolna hai, tension"}
+{"id": "toy-fear-hilatn-03", "lang": "hi-Latn", "label": "fear", "text": "report ka result abhi tak nahi aaya, chinta hai"}
+{"id": "toy-fear-bn-01", "lang": "bn", "label": "fear", "text": "কাল পরীক্ষা, একটু ভয় লাগছে"}
+{"id": "toy-fear-bn-02", "lang": "bn", "label": "fear", "text": "অফিসে সবার সামনে বলতে হবে, ভয় লাগছে"}
+{"id": "toy-calm-en-01", "lang": "en", "label": "calm", "text": "I sat by the window and watched the rain quietly"}
+{"id": "toy-calm-en-02", "lang": "en", "label": "calm", "text": "slow breathing for five minutes helped me settle"}
+{"id": "toy-calm-en-03", "lang": "en", "label": "calm", "text": "the evening walk was quiet and easy"}
+{"id": "toy-calm-en-04", "lang": "en", "label": "calm", "text": "I made tea and finished the crossword with no rush"}
+{"id": "toy-calm-en-05", "lang": "en", "label": "calm", "text": "the room is tidy and everything can wait until tomorrow"}
+{"id": "toy-calm-hi-01", "lang": "hi", "label": "calm", "text": "खिड़की के पास बैठकर बारिश देखी, मन शांत रहा"}
+{"id": "toy-calm-hi-02", "lang": "hi", "label": "calm", "text": "पाँच मिनट धीरे-धीरे साँस लेने से आराम मिला"}
+{"id": "toy-calm-hi-03", "lang": "hi", "label": "calm", "text": "शाम की सैर शांत और आसान रही"}
+{"id": "toy-calm-hi-04", "lang": "hi", "label": "calm", "text": "चाय बनाई और कोई जल्दी नहीं थी"}
+{"id": "toy-calm-hilatn-01", "lang": "hi-Latn", "label": "calm", "text": "dheere se saans liya, mann shaant ho gaya"}
+{"id": "toy-calm-hilatn-02", "lang": "hi-Latn", "label": "calm", "text": "shaam ki walk aaram se hui"}
+{"id": "toy-calm-hilatn-03", "lang": "hi-Latn", "label": "calm", "text": "chai pi kar shaant baitha raha"}
+{"id": "toy-calm-bn-01", "lang": "bn", "label": "calm", "text": "জানালার পাশে বসে বৃষ্টি দেখলাম, মন শান্ত"}
+{"id": "toy-calm-bn-02", "lang": "bn", "label": "calm", "text": "পাঁচ মিনিট ধীরে শ্বাস নিলাম, আরাম লাগল"}
+{"id": "toy-neutral-en-01", "lang": "en", "label": "neutral", "text": "I bought rice, dal and two lemons from the market"}
+{"id": "toy-neutral-en-02", "lang": "en", "label": "neutral", "text": "the bus reached the stop at ten past eight"}
+{"id": "toy-neutral-en-03", "lang": "en", "label": "neutral", "text": "the meeting moved to Thursday afternoon"}
+{"id": "toy-neutral-en-04", "lang": "en", "label": "neutral", "text": "I submitted the form and waited for the receipt"}
+{"id": "toy-neutral-en-05", "lang": "en", "label": "neutral", "text": "the library was quiet and the wifi worked"}
+{"id": "toy-neutral-hi-01", "lang": "hi", "label": "neutral", "text": "बाजार से चावल, दाल और दो नींबू लाया"}
+{"id": "toy-neutral-hi-02", "lang": "hi", "label": "neutral", "text": "बस आठ बजकर दस मिनट पर स्टॉप पहुँची"}
+{"id": "toy-neutral-hi-03", "lang": "hi", "label": "neutral", "text": "मीटिंग गुरुवार दोपहर को टल गई"}
+{"id": "toy-neutral-hi-04", "lang": "hi", "label": "neutral", "text": "फॉर्म जमा कर दिया और रसीद का इंतज़ार है"}
+{"id": "toy-neutral-hilatn-01", "lang": "hi-Latn", "label": "neutral", "text": "bazaar se chawal aur dal le aaya"}
+{"id": "toy-neutral-hilatn-02", "lang": "hi-Latn", "label": "neutral", "text": "meeting kal dopahar shift ho gayi"}
+{"id": "toy-neutral-hilatn-03", "lang": "hi-Latn", "label": "neutral", "text": "form jama kar diya, receipt ka wait hai"}
+{"id": "toy-neutral-bn-01", "lang": "bn", "label": "neutral", "text": "বাজার থেকে চাল আর ডাল নিয়ে এলাম"}
+{"id": "toy-neutral-bn-02", "lang": "bn", "label": "neutral", "text": "মিটিং কাল দুপুরে সরানো হয়েছে"}

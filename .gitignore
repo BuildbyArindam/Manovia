@@ -61,3 +61,8 @@ hf_cache/
 # Knowledge vector store (Day 13) — rebuildable from the corpus with make ingest
 backend/data/
 data/
+# Day 31 ML platform. The `data/` rule above would otherwise swallow ml/data/,
+# including the catalogue and the hand-written toy fixture that must be
+# committed, so the directory itself is re-included here and ml/.gitignore
+# drops the dataset bytes and run outputs inside it (DVC versions those).
+!ml/data/
