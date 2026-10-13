@@ -179,6 +179,26 @@ A third, smaller one: the full backend suite's six failures were a *fixture* bug
 transformers used to absorb by dropping `token_type_ids` and no longer does. The
 product code was never wrong; the fixture was, and the fix is in the fixture.
 
+### Day-32 checks — PASS / FAIL / NOT RUN HERE
+
+The brief's checklist, one verdict per line, with the evidence above it in this
+section. "NOT RUN HERE" is a statement about the sandbox, not a hedge: each one
+names what would have to exist for it to be run.
+
+| check (as asked) | verdict | where the evidence is |
+| --- | --- | --- |
+| MLflow run dump: params, data hash, seed, metrics | **PASS** | run `17e8e06c…`: config fingerprint, per-file data sha256s, seed 20261013 with `seed.torch_seeded=true`, git commit + `dirty=false`, library versions, per-step losses, per-epoch validation metrics, final evaluation |
+| three-way table with 95% CIs, and an explicit statement where the model is worse | **PARTIAL — honest** | fine-tuned (stand-in) 0.1374 [0.124, 0.150], keyword **0.1583** [0.103, 0.201], sentiment **0.0335** [0.017, 0.056], with the report printing *"This model is worse than a baseline on at least one language"* and naming `en`. The off-the-shelf row is **NOT RUN HERE**: its weights are a hub download, and the report says so in place of a number |
+| re-run the eval from the saved artefact, fresh process, no training code, identical numbers | **PASS after a real fix** | everything thresholded + both CI endpoints + per-label F1 + per-language block + thresholds identical; ECE differs by 1e-6. The first attempt *failed* and the cause (a different bootstrap seed in the CLI) is fixed in `evaluate.py` and pinned by a test |
+| `EMOTION_ANALYZER` trained / baseline / keyword, and the fallback with the weights deleted | **PASS** | trained → `anger` 0.514; baseline → `emotion_model_unavailable` then the lexicon; keyword → the lexicon; weights deleted → two warnings, the lexicon answers, no exception |
+| exact + near-duplicate train/validation overlap, with counts | **PASS** | clean: 0 exact / 0 near (60 vs 174 rows), exit 0. Planted exact copy: 1 / 0, exit 1. Planted paraphrase: 0 / 1 at 0.839, exit 1 |
+| CPU latency p50/p95, 40-token input | **PASS for the stand-in; NOT RUN HERE for the real model** | p50 1.54 ms, p95 1.70 ms, cold load 12 ms — measured on the 2-layer random stand-in, so it says nothing about a 278M encoder. The real number needs the real artefact and is in the Day-33 list |
+| model card with "domain shift from social-media text" in limitations | **PASS** | `## 5. Known limitations and biases` of the artefact's own `MODEL_CARD.md` (the check failed on its first run only because it searched lowercase against a capitalised heading) |
+| tests: label mapping, analyzer schema, fallback when weights are gone, offline tiny-model path | **PASS** | 221 `ml/` tests + 29 backend analyzer tests, all offline; three root causes found by these checks are listed above with their regression tests |
+| lint + tests, backend and frontend, on the final tree | **PASS** | ml 221 / backend 4208 / frontend 601; ruff, format, mypy (53 ml files; 148 + 149 backend) and eslint/tsc clean |
+| one pull request, not merged, from the day's branch | **PASS** | [#40](https://github.com/BuildbyArindam/Manovia/pull/40), 19 commits, all 7 checks green, `mergedAt: null` |
+| a real trained model with real numbers | **NOT RUN HERE** | no GPU and no hub access: the Colab notebook is the path, and its numbers are the owner's to bring back |
+
 ### Known issues (as of Day 32)
 
 - **No real training run has happened.** No GPU here and the hub is unreachable,
