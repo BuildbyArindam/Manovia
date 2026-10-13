@@ -58,7 +58,7 @@ a run cannot forget:
 | `data/planned/hi_bn_emotion/` | the dataset card for the Hindi/Bengali set that must be written and natively reviewed |
 | `configs/` | one YAML per experiment + `expected/` baselines |
 | `src/manovia_ml/` | the package: config, seeds, hashing, tracking, data, training, evaluation, serving, reporting |
-| `tests/` | 121 tests, offline, including the reproducibility contract |
+| `tests/` | 139 tests, offline, including the reproducibility contract |
 | `templates/` | dataset and model card templates |
 | `notebooks/` | exploration only (Colab notebook for the first real run) |
 | `scripts/fetch_goemotions.sh` | the one network step, as a script rather than a paragraph |
@@ -72,7 +72,8 @@ a run cannot forget:
 | --- | --- |
 | `make ml-install` | install the package and the ML stack |
 | `make ml-data` | `dvc repro`: rebuild the deterministic splits |
-| `make ml-status` | `dvc status`: is the data what the pipeline recorded? |
+| `make ml-status` | does `dvc.lock` match the code, and is the data what the pipeline recorded? |
+| `make ml-lock` | only the lock check (`manovia_ml.data.dvc_lock`) |
 | `make ml-catalogue` | check the catalogue (licences, verdict rules, generated table) |
 | `make ml-train CONFIG=configs/x.yaml` | train, log the run, check the baseline |
 | `make ml-record CONFIG=configs/x.yaml` | re-record that config's baseline (a deliberate act) |
@@ -92,6 +93,14 @@ through `manovia_ml.seeds.derive_seed` (sha256 of a label, never `hash()`).
 same bytes come out on any machine; `dvc.lock` records the md5 of each output and
 the training run records the sha256 of the files it read. A config may pin those
 hashes, and a mismatch stops the run with both values printed.
+
+`manovia_ml.data.dvc_lock` answers a narrower question that `dvc status` alone
+hides: *is the committed lock honest?* It runs before `dvc repro` (which rewrites
+the lock, erasing the evidence) and fails only on a **dependency** whose hash
+moved — the splits not being built on this machine is normal and passes. A lock
+that names a different version of the code than the commit contains means the
+recorded data was not produced by the pipeline in that commit; that is a bug, and
+it happened here.
 
 **Tracking** (`manovia_ml.tracking`) — MLflow, local file store by default. MLflow
 3.x refuses a filesystem store unless `MLFLOW_ALLOW_FILE_STORE=true`; the package
@@ -174,4 +183,5 @@ the rows, never `model.joblib` (AGENTS.md, ML ground rule 3).
 | `dvc repro` fails with `ModuleNotFoundError: manovia_ml` | DVC spawns stages with `python` from `PATH`; run it through `make ml-data`, or activate the venv |
 | `config error: … extra_forbidden` | a typo'd key in a config; the message names the key |
 | `sha256 mismatch` on a split | the data changed (or was rebuilt with a different seed): rebuild and update the pin deliberately |
+| `dvc.lock is out of date` (`make ml-lock`) | a file the pipeline depends on changed without re-running it: `make ml-data`, then commit `dvc.lock` |
 | tests all fail with a tracking error | `MLFLOW_TRACKING_URI` points somewhere unwritable; unset it to get the default file store |
