@@ -1,0 +1,16 @@
+{
+  "config": "toy_emotion_multiclass_logreg.yaml",
+  "metrics": {
+    "accuracy": 0.20833333333333334,
+    "log_loss": 1.7340534067003108,
+    "macro_f1": 0.21986531986531987,
+    "majority_accuracy": 0.16666666666666666,
+    "train_accuracy": 1.0,
+    "weighted_f1": 0.21986531986531987
+  },
+  "note": "Recorded by `make ml-record`. Every later run of this config with this seed must match within `tolerance`.",
+  "recorded": "2026-10-13",
+  "run_id": "8b58ce37fac74f3b9134ac1d4d832034",
+  "seed": 20261013,
+  "tolerance": 1e-06
+}

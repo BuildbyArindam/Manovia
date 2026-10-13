@@ -1,0 +1,85 @@
+# Day 31 smoke + reproducibility config (the one CI runs).
+#
+# Why a two-class slice: with 20 training rows a six-way fine-grained emotion
+# problem is at chance level for a bag-of-n-grams model — `accuracy` then says
+# nothing, and a smoke metric that cannot move cannot catch a regression. The
+# joy/anger slice makes the floor explicit (0.500, logged as `majority_accuracy`)
+# and still trains in about a second on one core, so the seed-sensitivity check
+# stays honest. It is NOT a quality claim: on this fixture the model lands below
+# that floor, and the numbers that matter here are that a fixed seed gives
+# bit-identical metrics and that in-sample accuracy stays at 1.000. Measured
+# numbers: ml/findings/2026-10-13-toy-slice-baselines.md.
+#
+# The six-class shape is not lost: ml/configs/toy_emotion_multiclass_logreg.yaml
+# trains on the full fixture, and `ml/tests/test_reproducibility.py` runs both.
+#
+# The sha256 values pin the exact split bytes. `make ml-data` regenerates them
+# from the fixture; if they ever differ, the run stops naming both hashes rather
+# than training on different data.
+name: toy_emotion_sgd
+
+# One integer reaches every stochastic step through manovia_ml.seeds. Change it
+# and the metrics must move — asserted in ml/tests/test_reproducibility.py.
+seed: 20261013
+
+notes: >
+  Smoke/reproducibility config: TF-IDF (word 1-2 grams + char 3-5 grams) into an
+  SGD logistic classifier on the joy/anger slice of the hand-written fixture.
+  Forty passes over twenty rows: deliberately unconverged, so "same seed →
+  same metrics, different seed → different metrics" is a property of the model
+  rather than a coincidence on a tiny eval set.
+
+data:
+  train:
+    path: data/processed/toy_smoke_train.jsonl
+    sha256: "aa4a9871bdee310674f99cdef39b2b6b93ef4d75f8719cbdb940455dd4695cbf"
+    rows: 20
+  eval:
+    path: data/processed/toy_smoke_eval.jsonl
+    sha256: "055a7a9f5de2d4722ee416d9d2577a0bfce36bf755055e2e222512aeb0740297"
+    rows: 8
+  text_field: text
+  label_field: label
+  lang_field: lang
+  # Explicit order: it decides the confusion-matrix axes, the probability
+  # columns and the label list carried inside the model bundle.
+  labels: [joy, anger]
+
+model:
+  kind: tfidf_sgd
+  tfidf:
+    word_ngram_range: [1, 2]
+    # Character n-grams are what make the romanised and Devanagari rows usable
+    # by the same model; without them the smoke run is close to chance.
+    char_ngram_range: [3, 5]
+    min_df: 1
+    max_features: 20000
+    sublinear_tf: true
+    lowercase: true
+  alpha: 0.0001
+  max_iter: 15
+  average: false
+  class_weight: balanced
+
+evaluation:
+  # Two runs of this config with this seed must agree to 1e-6. The committed
+  # baseline is ml/configs/expected/toy_emotion_sgd.json.
+  tolerance: 1.0e-6
+  # log_loss is included because it is continuous: on 8 eval rows accuracy moves
+  # in 12.5-point jumps, and two different seeds can land on the same accuracy.
+  metrics: [accuracy, macro_f1, weighted_f1, log_loss]
+  confusion_matrix: true
+
+tracking:
+  experiment: manovia-ml-smoke
+  # null → MLFLOW_TRACKING_URI → file:<ml root>/mlruns (ml/paths.py)
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: smoke
+    data: toy_emotion_joy_anger
+
+# Pin BLAS/OpenMP to one thread so the same seed gives the same floats on a
+# 2-core laptop and a 64-core CI runner.
+threads: 1

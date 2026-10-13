@@ -1,0 +1,35 @@
+# Optional MLflow service (Day 31). NOT required: the platform's default is a
+# local file store under ml/mlruns (see ../README.md for when this is worth it).
+#
+#   make mlflow-up      # then http://localhost:5000
+#   export MLFLOW_TRACKING_URI=http://localhost:5000
+#   make mlflow-down    # keeps the volume; `down -v` deletes the runs
+#
+# Pinned image tag: a mutable `latest` would silently change the store format
+# under a run record, which is the same class of problem as an unpinned
+# dependency in CI. Bump deliberately. The version matches the mlflow pin in
+# ml/pyproject.toml, because a client and a server from different majors is not
+# a supported pairing.
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.17.1
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  mlflow-data:

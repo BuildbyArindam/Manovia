@@ -1,0 +1,76 @@
+schema: '2.0'
+stages:
+  toy_split:
+    cmd: python -m manovia_ml.data.toy --out-dir data/processed --seed 20261013 
+      --train-fraction 0.7 --prefix toy
+    deps:
+    - path: data/toy/toy_emotion.jsonl
+      hash: md5
+      md5: fe1347fa22ed2140d42a143e81e06284
+      size: 11566
+    - path: src/manovia_ml/data/toy.py
+      hash: md5
+      md5: 3b335bcfbafbe8f07c3f1a054676f66d
+      size: 11022
+    - path: src/manovia_ml/hashing.py
+      hash: md5
+      md5: 5a39c2e354b4641dbe52a96f7c1a15a2
+      size: 6699
+    - path: src/manovia_ml/paths.py
+      hash: md5
+      md5: 86df4e75c8c25480c95d7640c96aa3fb
+      size: 3774
+    - path: src/manovia_ml/seeds.py
+      hash: md5
+      md5: e012f2e3be57c596a045c284d20648c4
+      size: 5075
+    outs:
+    - path: data/processed/toy.manifest.json
+      hash: md5
+      md5: c072f9e38b385acc976346c4c094414c
+      size: 1574
+    - path: data/processed/toy_eval.jsonl
+      hash: md5
+      md5: ae744a2efad7b557fe50e19a50fbea50
+      size: 3340
+    - path: data/processed/toy_train.jsonl
+      hash: md5
+      md5: 260e84e75858b6eda4bcb1720df42ac4
+      size: 8226
+  toy_smoke_split:
+    cmd: python -m manovia_ml.data.toy --out-dir data/processed --seed 20261013 
+      --train-fraction 0.7 --labels joy,anger --prefix toy_smoke
+    deps:
+    - path: data/toy/toy_emotion.jsonl
+      hash: md5
+      md5: fe1347fa22ed2140d42a143e81e06284
+      size: 11566
+    - path: src/manovia_ml/data/toy.py
+      hash: md5
+      md5: 3b335bcfbafbe8f07c3f1a054676f66d
+      size: 11022
+    - path: src/manovia_ml/hashing.py
+      hash: md5
+      md5: 5a39c2e354b4641dbe52a96f7c1a15a2
+      size: 6699
+    - path: src/manovia_ml/paths.py
+      hash: md5
+      md5: 86df4e75c8c25480c95d7640c96aa3fb
+      size: 3774
+    - path: src/manovia_ml/seeds.py
+      hash: md5
+      md5: e012f2e3be57c596a045c284d20648c4
+      size: 5075
+    outs:
+    - path: data/processed/toy_smoke.manifest.json
+      hash: md5
+      md5: a4584ca129d49701e3dd2128ae1a8394
+      size: 1349
+    - path: data/processed/toy_smoke_eval.jsonl
+      hash: md5
+      md5: aae8bc00d4f0b4a3e7f7ae7fc73542b4
+      size: 1025
+    - path: data/processed/toy_smoke_train.jsonl
+      hash: md5
+      md5: 96aa0e0c9936e61c0a4f486a02fcdebe
+      size: 2876

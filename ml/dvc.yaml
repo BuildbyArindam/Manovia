@@ -1,0 +1,55 @@
+# DVC pipeline for the ML platform (Day 31).
+#
+# Stages here produce *derived* files from committed inputs. The heavy corpora
+# (GoEmotions, a future hi/bn set) are not downloaded by any stage: they are
+# fetched by the documented steps in data/CATALOGUE.md and then versioned with
+# `dvc add`, because a network download inside a stage makes `dvc repro`
+# non-hermetic and `dvc status` meaningless offline (AGENTS.md, ML ground rule 10).
+#
+# Run from this directory (`make ml-data` does it with the right interpreter):
+#   python -m dvc repro     regenerate the splits, compare hashes to dvc.lock
+#   python -m dvc status    "Data and pipelines are up to date." or what changed
+#
+# The splits are a pure function of (fixture bytes, code, seed, train_fraction),
+# so `dvc repro` on a fresh clone either reproduces the md5 recorded in
+# dvc.lock or fails — which is the CI-level reproducibility check, independent of
+# the MLflow one in ml/tests/test_reproducibility.py.
+stages:
+  toy_split:
+    desc: >
+      Six-class splits from the hand-written fixture: the shape and
+      multilingual check (en, hi, hi-Latn, bn × six emotions).
+    cmd: >-
+      python -m manovia_ml.data.toy
+      --out-dir data/processed --seed 20261013 --train-fraction 0.7 --prefix toy
+    deps:
+      - data/toy/toy_emotion.jsonl
+      - src/manovia_ml/data/toy.py
+      - src/manovia_ml/seeds.py
+      - src/manovia_ml/hashing.py
+      - src/manovia_ml/paths.py
+    outs:
+      - data/processed/toy_train.jsonl
+      - data/processed/toy_eval.jsonl
+      - data/processed/toy.manifest.json
+
+  toy_smoke_split:
+    desc: >
+      Two-class (joy/anger) slice used by configs/toy_emotion_sgd.yaml — the
+      config CI and `make ml-smoke` run. A binary problem at 20 rows has a
+      signal a bag-of-n-grams model can actually find, which keeps the smoke
+      metrics readable as a canary.
+    cmd: >-
+      python -m manovia_ml.data.toy
+      --out-dir data/processed --seed 20261013 --train-fraction 0.7
+      --labels joy,anger --prefix toy_smoke
+    deps:
+      - data/toy/toy_emotion.jsonl
+      - src/manovia_ml/data/toy.py
+      - src/manovia_ml/seeds.py
+      - src/manovia_ml/hashing.py
+      - src/manovia_ml/paths.py
+    outs:
+      - data/processed/toy_smoke_train.jsonl
+      - data/processed/toy_smoke_eval.jsonl
+      - data/processed/toy_smoke.manifest.json

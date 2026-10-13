@@ -1,0 +1,70 @@
+# The first *real* run this platform is for: English emotion on GoEmotions.
+#
+# NOT run in this sandbox (no GPU, and the corpus is a network download). This
+# file is the input to ml/notebooks/colab_goemotions_tfidf.ipynb, whose exact
+# steps are in ml/README.md § "Real training runs (Colab/Kaggle)".
+#
+# Before the first run:
+#   1. Read ml/data/CATALOGUE.md § GoEmotions and accept the two conditions
+#      (no redistribution of rows; multi-label rows collapse to one label).
+#   2. Fetch + convert:  python -m manovia_ml.data.goemotions \
+#          --download train --split-name train --out data/raw/goemotions/train.jsonl
+#        (same for validation/test; see ml/scripts/fetch_goemotions.sh)
+#   3. `dvc add data/raw/goemotions` so the bytes are versioned, not committed.
+name: colab_goemotions_logreg
+
+seed: 20261013
+
+notes: >
+  GoEmotions (Apache-2.0) converted to Manovia's nine emotions. This is a
+  domain-shift experiment: Reddit comments are not what someone types into a
+  wellbeing companion, and GoEmotions has no loneliness class at all.
+
+data:
+  train:
+    path: data/raw/goemotions/train.jsonl
+    # Left unpinned on purpose: fill these in from `dvc status`/the stats file
+    # once the download is frozen, then never change them silently again.
+    sha256: null
+    rows: null
+  eval:
+    path: data/raw/goemotions/test.jsonl
+    sha256: null
+    rows: null
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [joy, sadness, anger, fear, anxiety, shame, calm, neutral]
+
+model:
+  kind: tfidf_logreg
+  tfidf:
+    word_ngram_range: [1, 2]
+    char_ngram_range: [3, 5]
+    min_df: 2
+    max_features: 200000
+    sublinear_tf: true
+    lowercase: true
+  C: 2.0
+  max_iter: 400
+  # lbfgs is deterministic: the same data gives the same coefficients whatever
+  # the seed, so a re-run at a new seed *must not* differ for this config.
+  solver: lbfgs
+  class_weight: balanced
+
+evaluation:
+  tolerance: 1.0e-6
+  metrics: [accuracy, macro_f1, weighted_f1]
+  confusion_matrix: true
+
+tracking:
+  experiment: manovia-ml-goemotions
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: research
+    data: goemotions
+    domain_transfer: "true"
+
+threads: 4

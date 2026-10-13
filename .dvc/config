@@ -1,0 +1,13 @@
+# DVC configuration (Day 31).
+#
+# No remote is configured: the corpora this platform would version are not
+# redistributable, so there is nowhere shared to push them. Versioning is local
+# (`.dvc/cache`) plus the committed hash files; a team that wants a shared cache
+# adds an S3/GCS remote here and pushes credentials via the environment only.
+#
+# Analytics are off: this repository's own privacy rules apply to its tooling
+# too, and CI should not make third-party network calls it does not need.
+# `core.checksum` is not a DVC 3 setting (it was removed); the cache checksums
+# are md5, which is what dvc.lock records.
+[core]
+    analytics = false

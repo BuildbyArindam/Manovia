@@ -61,3 +61,16 @@ hf_cache/
 # Knowledge vector store (Day 13) — rebuildable from the corpus with make ingest
 backend/data/
 data/
+# Day 31 ML platform. The bare `data/` rule above matches *any* directory named
+# data, so it would swallow both ml/data/ (the catalogue and the hand-written
+# toy fixture, which must be committed) and ml/src/manovia_ml/data/ (four
+# modules of the package itself). Both are re-included here; ml/.gitignore then
+# drops the dataset bytes, downloaded corpora and run outputs inside ml/data/.
+#
+# The second negation is not hypothetical: without it the package's data
+# subpackage was silently ignored, `git add ml/src` skipped it without a word,
+# and CI failed at `dvc repro` looking for a module that existed on the
+# author's disk and in no clone. The ml-smoke job now asserts that every .py
+# file under ml/ is tracked, so this cannot happen quietly again.
+!ml/data/
+!ml/src/manovia_ml/data/
