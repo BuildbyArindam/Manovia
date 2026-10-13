@@ -1,5 +1,187 @@
 # Manovia — Progress
 
+**Day 31 — ML foundation: data catalogue, experiment tracking, reproducibility
+— is built and verified (2026-10-13).** The brief asked for
+`day-31-ml-foundation-data-catalogue`; this session is pinned to its Arena
+branch (`arena/020f8dea-manovia`), as on Days 19–30, so the work is committed
+there and the PR comes from it. Nothing was pushed to `main`, and the PR is
+**not merged**.
+
+### Completed (Day 31)
+
+- **`ml/` is a separate installable project at the repository root**
+  (`manovia-ml`; extras `ml` = numpy/scikit-learn/joblib/pandas/mlflow/dvc,
+  `dev` = pytest/ruff/mypy). Install:
+  `pip install -e "./ml[ml,dev]"` (or `cd ml && pip install -e ".[ml]"`).
+  Nothing in `ml/` is imported by the backend: the product path and the crisis
+  gate are untouched (AGENTS.md, ML ground rule 1).
+- **Data catalogue** (`ml/data/CATALOGUE.md`): 14 datasets with source URL,
+  licence, licence evidence, allowed use, languages, size, label scheme, known
+  biases, personal-data flag, verdict and verification date. Machine-checked by
+  `manovia_ml.data.catalogue --check` (CI): non-commercial/research-only can
+  never read as commercial use, `personal_data: true` is never plain `USE`,
+  verification older than 180 days fails, a mirror's licence claim is not
+  evidence, and no `DO NOT USE` name may appear in `ml/configs/*.yaml`. Current
+  verdict: **10 of 14 restricted.** Usable: GoEmotions (Apache-2.0, en),
+  EmoNoBa (CC BY 4.0, bn) with conditions, Manovia's own fixture.
+- **Hindi/Bengali, answered honestly:** no natively authored, commercially
+  licensed hi/bn emotion corpus exists (candidates are non-commercial, review
+  text rather than feelings, or English translations). Plan + card:
+  `ml/data/planned/hi_bn_emotion/DATASET_CARD.md` — a small hand-written set
+  with native review before any row is used.
+- **DVC** at the repository root: `ml/dvc.yaml` defines splitting as a stage,
+  `dvc.lock` records the md5 of every output, no remote (the corpora are not
+  redistributable; the committed hash is the contract), analytics off. CI runs
+  `dvc repro && dvc status`, so a non-deterministic split fails a PR.
+- **MLflow tracking.** Default store `file:<ml root>/mlruns`; MLflow 3.x's
+  file-store gate is opened in exactly one module (`mlflow_api.py` — a
+  regression the smoke run found: training succeeded, the *report* step died in
+  a process that never imported `tracking`). Optional SQLite service in
+  `ml/docker/mlflow/docker-compose.mlflow.yml`. **Every run logs the seven
+  things:** git commit (+branch/dirty), data sha256 + row counts + label counts,
+  resolved config + fingerprint + the YAML itself, seed, library versions,
+  metrics, artefacts (`model.joblib` bundle + `metrics.json`, `data.json`,
+  `environment.json`).
+- **Config-driven, reproducible runs:** pydantic v2 configs (`extra="forbid"`,
+  frozen), one seed reaching every stochastic step via named sub-seeds, a
+  committed baseline per config that gates every run (a changed seed *skips* the
+  check with a printed note — an act, not drift), `--record-expected` as a
+  separate deliberate command, `make ml-train/ml-eval/ml-report/ml-smoke/
+  ml-data/ml-status/ml-catalogue` (root Makefile delegates to `ml/Makefile`).
+- **`make ml-eval RUN=<id>`** needs only the run id: it re-scores the run's
+  stored bundle on the split named in that run's own config and compares with
+  the metrics the training run logged. It earned its keep on its first real run
+  (below) and again as the check that caught a probability-column ordering bug
+  in `serving/artifacts.py` on the test suite's first run.
+- **Rejecting a claim I could not support.** The first draft of the smoke config
+  said the binary slice "has a real signal". Measurement disagreed: the model
+  fits its training rows perfectly (in-sample 1.000) and lands *below* the
+  majority-class floor on held-out rows. Fixed at the root by logging
+  `majority_accuracy` (the floor a constant classifier scores) and
+  `train_accuracy` on every run, documenting the measurements in
+  `ml/findings/2026-10-13-toy-slice-baselines.md`, and saying in every affected
+  file that the smoke gate is reproducibility, not quality.
+- **Regression fixed, not worked around:** a baseline used to be keyed off the
+  config *name*, so a run whose config lived anywhere else (a test, a Colab
+  copy, `/tmp`) wrote `ml/configs/expected/*.json` into the repository — two
+  files had already leaked. Baselines now live in `expected/` beside their
+  config, with two tests pinning both the temporary-config and the
+  `ml/configs/` conventions.
+- **Cards:** `ml/templates/DATASET_CARD.md` + `MODEL_CARD.md`; a dataset card
+  written for the planned hi/bn set; the catalogue carries the licence review.
+- **Reference serving path** (`manovia_ml.serving`): a run id is enough to load
+  the exact model later, the bundle carries its ordered labels and library
+  versions, and a scikit-learn version mismatch is a load-time error instead of
+  silent metric drift. Not wired into the API — that needs its own ADR.
+- **CI:** new `ml-smoke` job (`.github/workflows/ci.yml`) = install → `dvc repro`
+  + `dvc status` → catalogue check → `make smoke` (train → baseline → report) →
+  pytest → ruff/format/mypy → "no dataset or model file is tracked in Git"
+  grep; job summary carries the smoke report. Documented in
+  `.github/workflows/README.md`.
+- **Docs:** `ml/README.md` (install, layout, the seven things, troubleshooting),
+  `ml/configs/README.md`, `ml/data/README.md`,
+  `ml/data/toy/README.md`, `ml/notebooks/README.md`,
+  `ml/reports/README.md`, `ml/scripts/fetch_goemotions.sh`, and the
+  ready-to-run Colab notebook `notebooks/colab_goemotions_tfidf.ipynb`
+  (**not executed here** — no GPU, no corpus download).
+- **ADR:** [0031](docs/adr/0031-ml-platform.md) + index row. The brief asked for
+  `docs/adr/0010-ml-platform.md`; **0010 is taken** (the LLM provider layer), so
+  the record took the next free number and the docstring that pointed at 0010
+  was corrected.
+- **AGENTS.md:** the ML ground rules (no GPU here, never commit weights or
+  datasets, catalogue before use, seven logged things, configs not code,
+  notebooks are exploration, no personal data, cards before claims, `ml/`
+  stays offline).
+
+### Verification (Day 31, final tree, all run in the sandbox)
+
+| check | result |
+| --- | --- |
+| `cd ml && python -m pytest -q` | **134 passed** in ~9 s, offline (tmp file-store MLflow, splits built into tmp dirs, `-m 'not network'`) |
+| `make ml-smoke` | `dvc repro` up to date → catalogue `14 entries, table current, 10 restricted` → train `accuracy=0.375000 log_loss=1.738700 majority_accuracy=0.500000 train_accuracy=1.000000` → baseline `expected_problems: []` → report written |
+| same config + seed, twice (`4a614af4…`, `75653d2d…`) | metrics **identical** run to run |
+| same config, `--seed 7` | `accuracy=0.625000 log_loss=1.025380` — the metric moves; baseline check skipped with a printed note |
+| `python -m dvc status` | `Data and pipelines are up to date.` |
+| `python -m manovia_ml.evaluation.evaluate --run 4a614af4…` | re-scored the stored bundle: `consistency: this run's metrics match the training run's logged metrics`, exit 0 (first real `ml-eval`) |
+| `cd ml && pip install -e ".[ml]"` | `Successfully installed manovia-ml-0.1.0` |
+| `git ls-files \| grep -E "\.(bin\|pt\|safetensors\|csv\|parquet)$"` | **empty** |
+| `make ml-lint` | ruff clean, ruff-format clean, mypy clean (32 files) |
+| catalogue rules | `catalogue ok: 14 entries, table current, 10 restricted` |
+| CI `ml-smoke` job | not exercised by GitHub Actions (no push to `main`); its commands were run locally in order, and `act`/Docker are unavailable in the sandbox |
+
+### Known issues (as of Day 31)
+
+- **The `ml-smoke` CI job has never run on GitHub.** Its steps were executed
+  locally, in order, with the same interpreter; the first real run is on this
+  PR. Docker and `act` are unavailable in the sandbox, so it cannot be
+  rehearsed locally any other way.
+- **The Colab notebook is unexecuted.** No GPU, no corpus download here. The
+  first real GoEmotions run is an owner step; `configs/colab_goemotions_logreg.yaml`
+  deliberately leaves `sha256`/`rows` null until that run happens.
+- **The toy fixture cannot show quality** (model below the majority-class floor;
+  every row distinct). Documented in three places; the smoke gate is
+  reproducibility and `train_accuracy`.
+- **MLflow's filesystem store is in maintenance mode upstream** — fine for one
+  machine; a team needs SQLite or the compose service (one line, documented).
+- **DVC has no remote**: the corpus cache is local, so losing it costs a
+  re-download. Correctness is unaffected (hashes are committed).
+- **Nothing in `ml/` is wired into the product** (by design; needs its own ADR
+  and safety argument). The Day-27 scikit-learn version-skew warning in the
+  backend remains a Day-30 carried item.
+- **Catalogue freshness is a chore**: 180-day re-verification, enforced by CI,
+  with the entries naming who verified them.
+- Day 30's first two next steps were **not** done today (they are not Day 31
+  scope): publishing v1.0.0 (owner), and retraining `crisis_v1` on the red-team
+  hard negatives.
+- Carried from Day 30: `FIELD_ENCRYPTION_KEY` missing from the no-Docker quick
+  start; branch-coverage gate not in CI; per-process rate limiter/session store;
+  paraphrasable injection tripwire; dev-split rules-only recall 0.333 vs test
+  0.275; `npm audit` react-router moderates.
+
+### Parking lot (Day 31)
+
+- **DVC remote** (S3/R2/Drive) + a documented `dvc push`/`dvc pull` so a team
+  shares the cache; credentials from the environment only.
+- **A transformer config** for emotion (Hindi/Bengali especially) — needs a GPU,
+  a model card and its own ADR; behind the backend's existing `nlp` extra.
+- **Wire a model into the product** behind a feature flag with the safety
+  argument written first (rules still decide; the model only proposes).
+- **Write the hi/bn hand-written set** and get it natively reviewed.
+- **MLflow server deployment** (Fly.io) for shared runs, instead of the
+  optional local compose service.
+- **Generate `MODEL_CARD.md` from a run** (reporting already reads everything
+  the card needs) so the card cannot drift from the run.
+- **Scheduled catalogue re-verification** (a monthly job) instead of discovering
+  staleness when a PR happens to touch `ml/`.
+- **Bootstrap confidence intervals** on eval metrics for GoEmotions runs, reusing
+  the Day-24 harness approach rather than inventing a second one.
+- **`make ml-eval` in CI** on a committed real-run bundle once one exists.
+
+### Day 31 handoff status
+
+The brief asked for a `day-31-ml-foundation-data-catalogue` branch created from
+`main`; this session is pinned to its Arena branch (as on Days 19–30), so the
+thirty-first day of work is committed to `arena/020f8dea-manovia` and the PR is
+opened from it. Everything asked for is on disk and verified except the things
+the sandbox cannot do: a real GPU training run, a GPU/network Colab notebook
+execution, and a first GitHub Actions execution of the new `ml-smoke` job.
+
+### Next steps (Day 32 — first three)
+
+1. **Run the first real training run** (owner, Colab/Kaggle):
+   `ml/notebooks/colab_goemotions_tfidf.ipynb` → bring back the report, the
+   run's JSON artefacts and the recorded baseline; then pin `sha256`/`rows` in
+   `configs/colab_goemotions_logreg.yaml` and put the numbers in a model card.
+2. **Point the new platform at the product's own gap**: rebuild the `crisis_v1`
+   ML backstop on the Day-29 red-team hard negatives using the pinned
+   scikit-learn, tracked in `ml/` (config + run + baseline), still gated by
+   `make eval` and the red-team controls. This is the first time the ML platform
+   and the safety path meet.
+3. **Close the two cheap Day-30 gaps**: document `FIELD_ENCRYPTION_KEY` in the
+   no-Docker quick start, and add the branch-coverage gate to CI.
+
+---
+
 **Day 30 — launch, resume and interview prep — is built and verified
 (2026-10-13). Version is 1.0.0; the tag is the owner's one command away.**
 Work is on `arena/8b865965-manovia`. The brief asked for
