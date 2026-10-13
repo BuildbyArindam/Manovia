@@ -1,0 +1,43 @@
+name: Safety concern (content or behaviour)
+description: The companion said something unsafe, missed a risk, or a crisis resource is wrong or missing.
+labels: ["safety", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste a real person's words, and do not paste any message from a real crisis.** Describe the problem with a synthetic example, such as "a message that mentions X in Hindi got no crisis reply". If someone is in danger now, contact your local emergency number first.
+        Problems that could be exploited to bypass crisis handling are security issues: report them privately (see SECURITY.md).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of safety problem is it?
+      options:
+        - A crisis risk was not detected (possible false negative)
+        - Benign or everyday distress triggered a crisis response (over-escalation)
+        - The companion gave advice it should not (diagnosis, medication, promises)
+        - A helpline number, name, hours or language is wrong or missing
+        - Crisis or safety copy reads badly, is unclear or is not in the right language
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: locale
+    attributes:
+      label: Language and region
+      description: For example en, hi, bn, hi-Latn, and the region you were in.
+    validations:
+      required: false
+  - type: textarea
+    id: synthetic
+    attributes:
+      label: Synthetic example that reproduces it
+      description: Write a made-up message. Do not use anything a real person wrote.
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened, and why
+      description: Name the rule or source you are relying on, such as the helpline's own page.
+    validations:
+      required: true

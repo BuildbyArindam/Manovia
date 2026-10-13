@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a change. Features that touch safety, privacy or clinical content need extra review.
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Manovia is a self-help companion, not therapy, diagnosis or a crisis service. Check [AGENTS.md](https://github.com/BuildbyArindam/Manovia/blob/main/AGENTS.md) for the rules a feature must keep.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem this solves
+      description: Who is affected and how. Describe the need, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: checkboxes
+    id: touches
+    attributes:
+      label: Does this touch any of the following?
+      description: Tick all that apply. Any tick means the change needs a clinical or privacy review before it merges.
+      options:
+        - label: Crisis detection, safety rules, escalation or crisis copy
+        - label: Helpline data (`helplines.json`)
+        - label: Screening instruments or their scoring or band copy
+        - label: Data collection, storage, export, deletion or a new third party
+        - label: A new language or translated copy
+        - label: Exercise instructions or clinical content
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
