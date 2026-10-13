@@ -42,6 +42,50 @@ _TOP_KEYS: Final = frozenset(
 )
 
 
+#: Day 29 red team (RT-I-SP-01..03): a reply that recites the system prompt.
+#: Measured as *coverage*: how many words of the reply sit inside an
+#: :data:`PROMPT_ECHO_WORDS`-word run copied verbatim from any shipped prompt.
+#: A single run is not enough — "one trusted person, a friend, a family
+#: member, a helpline" is good advice that the prompt itself contains — so
+#: the reply must reuse at least :data:`PROMPT_ECHO_MIN_COVERED` words that way.
+PROMPT_ECHO_WORDS: Final = 8
+PROMPT_ECHO_MIN_COVERED: Final = 20
+_PROMPT_DIR: Final = "prompts"
+_PLACEHOLDER: Final = re.compile(r"\{[a-z_]+\}")
+
+
+def load_prompt_shingles(size: int = PROMPT_ECHO_WORDS) -> frozenset[tuple[str, ...]]:
+    """Every ``size``-word run of every shipped ``system_v*.md`` prompt.
+
+    Placeholders split the text: a run never spans ``{max_words}`` or
+    ``{language}``, whose substituted values are not known here.
+    """
+    shingles: set[tuple[str, ...]] = set()
+    directory = files("app.content").joinpath(_PROMPT_DIR)
+    for entry in directory.iterdir():
+        if not (entry.name.startswith("system_v") and entry.name.endswith(".md")):
+            continue
+        for segment in _PLACEHOLDER.split(entry.read_text(encoding="utf-8")):
+            tokens = to_primary(segment).split()
+            shingles.update(tuple(tokens[i : i + size]) for i in range(len(tokens) - size + 1))
+    return frozenset(shingles)
+
+
+def echoes_prompt(
+    normalized: str,
+    shingles: frozenset[tuple[str, ...]],
+    size: int = PROMPT_ECHO_WORDS,
+    min_covered: int = PROMPT_ECHO_MIN_COVERED,
+) -> bool:
+    """True when at least ``min_covered`` words of the reply are verbatim prompt runs."""
+    tokens = normalized.split()
+    covered: set[int] = set()
+    for i in range(len(tokens) - size + 1):
+        if tuple(tokens[i : i + size]) in shingles:
+            covered.update(range(i, i + size))
+    return len(covered) >= min_covered
+
+
 @dataclass(frozen=True)
 class GuardVerdict:
     """The guard's decision about one model reply; it contains no prose evidence."""
@@ -259,6 +303,7 @@ class RuleBasedOutputGuard:
             raise ValueError("max_words must be at least 1")
         self._max_words = max_words
         self._patterns = load_output_patterns()
+        self._prompt_shingles = load_prompt_shingles()
 
     @property
     def max_words(self) -> int:
@@ -298,6 +343,8 @@ class RuleBasedOutputGuard:
             ):
                 add(rule.category)
 
+        if echoes_prompt(normalized, self._prompt_shingles):
+            add(SafetyEventCategory.PROMPT_LEAK)
         if len(normalized.split()) > self._max_words:
             add(SafetyEventCategory.TOO_LONG)
         if expected_language is not None and _language_mismatch(cleaned, expected_language):
@@ -318,4 +365,11 @@ class RuleBasedOutputGuard:
         )
 
 
-__all__ = ["RuleBasedOutputGuard", "load_output_patterns"]
+__all__ = [
+    "PROMPT_ECHO_MIN_COVERED",
+    "PROMPT_ECHO_WORDS",
+    "RuleBasedOutputGuard",
+    "echoes_prompt",
+    "load_output_patterns",
+    "load_prompt_shingles",
+]

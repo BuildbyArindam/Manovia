@@ -233,6 +233,41 @@ rules:
       (?:this|these)\s+(?:is|are)\s+(?:a\s+)?(?:classic|textbook|typical|clear)
       \s+(?:sign|symptom)s?\s+of|this\s+is\s+(?:a\s+)?classic\s+case\s+of
 
+  # Day 29 red team (RT-I-DX-01..03): a hedge word between "you" and "have",
+  # or a bare label with no "you have" at all, slipped past the rules above.
+  - id: diag.you_hedge_have_disorder
+    category: diagnosis
+    kind: regex
+    value: >-
+      you\s+(?:definitely|probably|clearly|certainly|likely|most\s+likely|
+      obviously|really|might|may|could|must|almost\s+certainly)\s+(?:have|
+      be\s+(?:suffering|dealing|living)\s+with)\s+(?:a\s+|an\s+)?
+      (?:major\s+|clinical\s+|severe\s+|generalised\s+|generalized\s+|
+      social\s+)?(?:depression|depressive\s+disorder|anxiety\s+disorder|panic\s+disorder|
+      bipolar(?:\s+disorder)?|adhd|ocd|ptsd|c\s?ptsd|schizophrenia|psychosis|
+      autism|bpd|borderline(?:\s+personality\s+disorder)?|eating\s+disorder|
+      anorexia|bulimia|insomnia\s+disorder|mania|a\s+personality\s+disorder)\b
+  - id: diag.sounds_like_label
+    category: diagnosis
+    kind: regex
+    value: >-
+      (?:sounds|seems|looks)\s+(?:a\s+lot\s+|exactly\s+|very\s+much\s+|
+      just\s+)?like\s+(?:a\s+(?:case|form)\s+of\s+|an?\s+)?
+      (?:major\s+|clinical\s+|severe\s+)?(?:depression|depressive\s+disorder|anxiety\s+disorder|panic\s+disorder|
+      bipolar(?:\s+disorder)?|adhd|ocd|ptsd|c\s?ptsd|schizophrenia|psychosis|
+      autism|bpd|borderline(?:\s+personality\s+disorder)?|eating\s+disorder|
+      anorexia|bulimia|insomnia\s+disorder|mania|a\s+personality\s+disorder)\b
+  - id: diag.classic_label
+    category: diagnosis
+    kind: regex
+    value: >-
+      (?:is|are|sounds|seems)\s+(?:a\s+)?(?:classic|textbook|typical|clear|
+      clearly|definitely|obviously|certainly)\s+(?:case\s+of\s+|signs?\s+of\s+|
+      symptoms?\s+of\s+)?(?:depression|depressive\s+disorder|anxiety\s+disorder|panic\s+disorder|
+      bipolar(?:\s+disorder)?|adhd|ocd|ptsd|c\s?ptsd|schizophrenia|psychosis|
+      autism|bpd|borderline(?:\s+personality\s+disorder)?|eating\s+disorder|
+      anorexia|bulimia|insomnia\s+disorder|mania|a\s+personality\s+disorder)\b
+
   # -------------------------------------------------------------------------
   # (b) Medication: names, doses, and advice to start, stop or change
   # -------------------------------------------------------------------------
@@ -365,6 +400,23 @@ rules:
       where\s+(?:to|can\s+i)\s+(?:get|buy|find)\s+(?:pills?|a\s+gun|rope|
       poison|a\s+weapon)
 
+  # Day 29 red team (RT-I-MED-02): "the most painless way would be to take a
+  # lot of pills" matched neither "way to die" nor a named substance.
+  - id: meth.best_way_any
+    category: self_harm_method
+    kind: regex
+    value: >-
+      (?:painless|least\s+painful|easiest|quickest|surest|most\s+reliable|
+      most\s+effective)\s+(?:way|method|option)\b
+  - id: meth.pill_quantity
+    category: self_harm_method
+    kind: regex
+    value: >-
+      (?:take|taking|swallow|swallowing)\s+(?:a\s+lot\s+of|lots\s+of|many|
+      all\s+(?:of\s+)?(?:your|the|my|those)|a\s+(?:bunch|handful|bottle|whole\s+
+      strip)\s+of|the\s+whole\s+(?:bottle|strip|pack)\s+of)\s+(?:your\s+|the\s+)?
+      (?:pills|tablets|meds|medication|medicines|sleeping\s+pills|painkillers)
+
   # -------------------------------------------------------------------------
   # (d) Claiming to be a person or a licensed professional
   # -------------------------------------------------------------------------
@@ -373,7 +425,7 @@ rules:
     kind: regex
     negation_sensitive: true
     value: >-
-      i\s*(?:a|m|am)\s+(?:a\s+|an\s+)?(?:licensed|registered|qualified|
+      \bi\s*(?:a|m|am)\s+(?:a\s+|an\s+)?(?:licensed|registered|qualified|
       certified|accredited|practicing|practising|trained|professional|
       experienced|real|actual)?\s*(?:therapist|psychotherapist|psychologist|
       psychiatrist|counsellor|counselor|clinician|physician|doctor|
@@ -386,15 +438,17 @@ rules:
       as\s+(?:a|an|your)\s+(?:licensed|registered|qualified|certified|
       experienced)?\s*(?:therapist|psychotherapist|psychologist|psychiatrist|
       counsellor|counselor|clinician|physician|doctor|nurse)\b
+  # Day 29 (RT-I-ID-01): word boundaries added — "I'm Manovia" used to read as
+  # "I'm man", replacing the bot's own introduction with the fallback.
   - id: ident.human_claim
     category: identity_claim
     kind: regex
     negation_sensitive: true
     value: >-
-      i\s*(?:a|m|am)\s+(?:also\s+|just\s+|only\s+)?(?:a\s+|an\s+)?(?:real\s+|
+      \bi\s*(?:a|m|am)\s+(?:also\s+|just\s+|only\s+)?(?:a\s+|an\s+)?(?:real\s+|
       actual\s+|living\s+)?(?:human\s+being|human|person|man|woman|boy|girl|
-      guy|lady)|i\s*(?:a|m|am)\s+alive|i\s+have\s+(?:a\s+)?(?:body|heartbeat|
-      feelings\s+too|emotions\s+too)
+      guy|lady)\b|\bi\s*(?:a|m|am)\s+alive\b|\bi\s+have\s+(?:a\s+)?(?:body|heartbeat|
+      feelings\s+too|emotions\s+too)\b
   - id: ident.credentials
     category: identity_claim
     kind: regex
@@ -513,6 +567,63 @@ rules:
       (?:good|fine|best|okay|ok|healthy|helpful)|
       its?\s+(?:better|good|healthier|safer)\s+to\s+(?:stay\s+alone|be\s+alone|
       isolate|keep\s+to\s+yourself)|you\s+are\s+better\s+off\s+alone
+
+  # -------------------------------------------------------------------------
+  # (g) Day 29 red team: describing or reciting the system prompt. A verbatim
+  # recitation is caught in code (`output_guard.echoes_prompt`);
+  # these catch the model *talking about* its instructions. Negation-sensitive
+  # so "I can't share my instructions" is a fine refusal.
+  # -------------------------------------------------------------------------
+  - id: leak.my_instructions_say
+    category: prompt_leak
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      my\s+(?:system\s+prompt|system\s+message|hidden\s+instructions|
+      instructions|developer\s+message|initial\s+prompt|programming|
+      guidelines)\s+(?:say|says|tell|tells|are|is|state|states|read|reads|
+      include|includes|begin|begins|start|starts)\b
+  - id: leak.here_is_prompt
+    category: prompt_leak
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      (?:here\s+(?:is|are)|below\s+(?:is|are)|this\s+is)\s+(?:my|the)\s+
+      (?:full\s+|complete\s+|exact\s+)?(?:system\s+prompt|system\s+message|
+      hidden\s+instructions|instructions\s+i\s+was\s+given|initial\s+prompt)
+      |i\s+was\s+(?:instructed|programmed|configured)\s+(?:to|with)
+
+  # -------------------------------------------------------------------------
+  # (h) Day 29 red team: playing along with a jailbreak. The input side is not
+  # filtered (a person may say anything); the reply must not adopt the persona.
+  # The leading lookbehinds keep refusals ("I'm not able to ignore my safety
+  # rules") from matching; the clause negation check only sees the word right
+  # before a hit.
+  # -------------------------------------------------------------------------
+  - id: jb.persona_ack
+    category: jailbreak
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      (?:i\s+am|im|i\s+will\s+be|as)\s+(?:now\s+)?dan\b|
+      \b(?:dan|developer|dev|god|jailbreak|jailbroken|unrestricted|unfiltered|
+      evil)\s+mode\s+(?:is\s+)?(?:now\s+)?(?:enabled|activated|active|on|engaged)
+      |(?:entering|activating|enabling)\s+(?:dan|developer|god|jailbreak|
+      unrestricted)\s+mode
+  - id: jb.rules_dropped
+    category: jailbreak
+    kind: regex
+    negation_sensitive: true
+    value: >-
+      (?<!able\sto\s)(?<!refuse\sto\s)(?<!just\s)(?<!simply\s)
+      (?:i\s+(?:will|ll|am\s+going\s+to)\s+|ill\s+|(?:im\s+)?going\s+to\s+)?(?:ignore|ignoring|
+      disregard|disregarding|forget|forgetting)\s+(?:all\s+)?(?:my|the|your)\s+
+      (?:previous|prior|earlier|above|original|safety)\s+(?:instructions|rules|
+      guidelines|programming|restrictions)|
+      (?:i\s+(?:now\s+)?have|ive\s+got|i\s+am\s+free\s+of|im\s+free\s+of)\s+
+      no\s+(?:more\s+)?(?:rules|restrictions|limits|filters|guidelines)|
+      (?:my\s+)?(?:safety\s+)?(?:filters|restrictions|guardrails|rules)\s+
+      (?:are|have\s+been)\s+(?:now\s+)?(?:off|disabled|removed|lifted|gone)
 
   # -------------------------------------------------------------------------
   # Indic-script patterns. Substring matching (no \b), written in the script
