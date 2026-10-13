@@ -225,6 +225,11 @@ class Settings(BaseSettings):
     # Per-table ceiling for a data export. An export must finish and must not
     # become a memory bomb; when a table hits the ceiling, the manifest says so.
     privacy_export_max_rows: int = 5000
+    # Day 29 (RT-P-EX-02): data exports per user per hour. An export decrypts
+    # every row the person owns, so it is the most expensive request we serve;
+    # a stolen access token must not be able to loop it. Skipped when
+    # rate_limit_enabled is false.
+    privacy_export_per_hour: int = 10
     # Hard ceiling on a request body, enforced before the app parses anything.
     # The largest legitimate body is a journal entry (20,000 characters), so
     # 256 KiB leaves room for JSON escaping and multi-byte scripts.
@@ -413,6 +418,8 @@ class Settings(BaseSettings):
         """A ceiling of zero bytes or a zero-second budget would break everything."""
         if self.privacy_export_max_rows < 1:
             raise ValueError("privacy_export_max_rows must be at least 1")
+        if self.privacy_export_per_hour < 1:
+            raise ValueError("privacy_export_per_hour must be at least 1")
         if self.max_request_bytes < 1024:
             raise ValueError("max_request_bytes must be at least 1024")
         if self.request_timeout_seconds <= 0:

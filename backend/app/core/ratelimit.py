@@ -61,10 +61,14 @@ class InMemoryRateLimiter:
         self._window = window_seconds
         self._clock = clock
         self._hits: dict[str, deque[float]] = {}
+        self._last_sweep = clock()
 
     def hit(self, key: str) -> RateLimitResult:
         now = self._clock()
         window_start = now - self._window
+        if now - self._last_sweep >= self._window:
+            self._sweep(window_start)
+            self._last_sweep = now
         hits = self._hits.setdefault(key, deque())
         while hits and hits[0] <= window_start:
             hits.popleft()
@@ -73,6 +77,21 @@ class InMemoryRateLimiter:
             return RateLimitResult(allowed=False, retry_after=retry_after)
         hits.append(now)
         return RateLimitResult(allowed=True, retry_after=0)
+
+    def _sweep(self, window_start: float) -> None:
+        """Forget keys with no hit inside the window (Day 29, RT-D-15).
+
+        Without this, every caller that ever made one request kept a key
+        forever: spraying source addresses grew the dict without bound. Runs
+        at most once per window, so its O(keys) cost is amortised.
+        """
+        stale = [key for key, hits in self._hits.items() if not hits or hits[-1] <= window_start]
+        for key in stale:
+            del self._hits[key]
+
+    def __len__(self) -> int:
+        """Keys currently tracked (tests and diagnostics)."""
+        return len(self._hits)
 
     def reset(self) -> None:
         self._hits.clear()

@@ -237,6 +237,17 @@ async def export_user_data(
 ) -> Response:
     """Every row Manovia holds for the caller, decrypted, as a download."""
     settings: Any = request.app.state.settings
+    if settings.rate_limit_enabled:
+        # Day 29 (RT-P-EX-02): per *user*, so a shared network never throttles
+        # someone else's export and one token cannot loop it.
+        budget = request.app.state.rate_limit_export.hit(f"export:{user.id}")
+        if not budget.allowed:
+            raise ApiError(
+                429,
+                "export_rate_limited",
+                "You have downloaded your data several times this hour. Please try again later.",
+                headers={"Retry-After": str(budget.retry_after)},
+            )
     export = await build_user_export(
         session, user, max_rows_per_table=settings.privacy_export_max_rows
     )

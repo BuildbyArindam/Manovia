@@ -69,8 +69,9 @@ class RateLimitMiddleware:
 
     Paths under ``/api/v1/auth`` share the strict ``auth_limiter`` (credential
     stuffing is the threat); the rest of ``/api/`` shares the moderate
-    ``global_limiter``. Everything outside ``/api/`` (docs, OpenAPI schema) is
-    not limited. Rejections are the standard 429 envelope with ``Retry-After``.
+    ``global_limiter``. Everything outside ``/api/`` (docs, OpenAPI schema) and
+    the liveness probe ``/api/v1/health`` is not limited. Rejections are the
+    standard 429 envelope with ``Retry-After``.
 
     Mounted *inside* :class:`SecurityHeadersMiddleware` so even the 429 carries
     the security headers, and inside the request-ID middleware so the envelope
@@ -78,6 +79,10 @@ class RateLimitMiddleware:
     """
 
     AUTH_PREFIX = "/api/v1/auth"
+    #: Day 29 (RT-D-14): the static liveness probe is never limited — under a
+    #: flood, the orchestrator must still see the process as alive, and the
+    #: probe does no work (no DB). ``/ready`` touches the DB and stays limited.
+    UNLIMITED_PATHS = frozenset({"/api/v1/health"})
 
     def __init__(
         self,
@@ -98,6 +103,9 @@ class RateLimitMiddleware:
             return
 
         path = scope.get("path", "")
+        if path in self.UNLIMITED_PATHS:
+            await self.app(scope, receive, send)
+            return
         if path.startswith(self.AUTH_PREFIX):
             limiter, name = self.auth_limiter, "auth"
         elif path.startswith("/api/"):
