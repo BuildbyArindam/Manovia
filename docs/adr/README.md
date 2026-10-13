@@ -39,6 +39,7 @@ entry.
 | [0027](0027-generated-api-reference.md) | Generated API reference with a drift test | Accepted | 2026-10-13 |
 | [0028](0028-model-card-and-clinical-review-gate.md) | Model card and clinical-review checklist as documentation gates | Accepted | 2026-10-13 |
 | [0029](0029-branch-coverage-gates.md) | Per-group branch coverage gates | Accepted; met on Day 28 after two tests were added | 2026-10-13 |
+| [0030](0030-red-team-suite-and-session-risk.md) | Red-team suite, session risk accumulator, stored-channel injection tripwire, family-bound access tokens, export budget | Accepted (Day 29) | 2026-10-13 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number
