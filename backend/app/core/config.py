@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_ENV_FILES,
         extra="ignore",
+        # Day 30 (release checklist): `cp .env.example .env` is the documented
+        # quick start, and the example file ships every key *blank* so that no
+        # dev-only value looks like a recommendation. A blank value therefore
+        # means "unset, use the default" — without this, pydantic tries to
+        # parse "" as an int/bool (RAG_RETRIEVAL_LIMIT=) and the API refuses
+        # to boot on a fresh clone. Regression: tests/unit/test_config.py::
+        # test_a_fresh_clone_env_from_the_example_file_boots.
+        env_ignore_empty=True,
     )
 
     app_env: str = "development"

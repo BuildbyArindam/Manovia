@@ -24,6 +24,42 @@ def test_defaults_load_in_development_without_secret_key(
     assert settings.field_encryption_key is None
 
 
+def test_a_fresh_clone_env_from_the_example_file_boots(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`cp .env.example .env` must yield a bootable configuration (Day 30).
+
+    The example file ships every key blank. Found during the v1.0.0 release
+    checklist: blank values were parsed as empty *strings*, so typed fields
+    (RAG_RETRIEVAL_LIMIT=) failed validation and a fresh clone could not even
+    run `alembic upgrade head`. Blank now means "unset, use the default"
+    (env_ignore_empty).
+    """
+    example = Path(__file__).resolve().parents[3] / ".env.example"
+    assert example.is_file(), "the repository must ship .env.example"
+    # Nothing from the developer's real environment may mask a blank line.
+    for line in example.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            monkeypatch.delenv(stripped.split("=", 1)[0].strip(), raising=False)
+
+    settings = Settings(_env_file=example)
+
+    # The typed fields that broke on the fresh clone resolve to their defaults.
+    assert settings.rag_retrieval_limit == 3
+    assert settings.app_env == "development"
+    assert settings.database_url == "sqlite:///./manovia.db"
+
+
+def test_a_blank_env_value_means_unset_not_empty_string(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A blank environment value falls back to the default (Day 30)."""
+    monkeypatch.setenv("RAG_RETRIEVAL_LIMIT", "")
+    monkeypatch.setenv("LOG_LEVEL", "")
+    settings = Settings(_env_file=None)
+    assert settings.rag_retrieval_limit == 3
+    assert settings.log_level == "INFO"
+
+
 def test_production_without_secret_key_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.delenv("SECRET_KEY", raising=False)
@@ -176,11 +212,19 @@ def test_day_6_emotion_defaults() -> None:
 
 
 def test_a_lexicon_only_setup_does_not_need_a_model_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("EMOTION_ANALYZER", "keyword")
-    monkeypatch.setenv("EMOTION_MODEL_ID", "")
-    settings = Settings(_env_file=None)
+    # An explicitly empty model id is still accepted for lexicon-only setups…
+    settings = Settings(_env_file=None, emotion_analyzer="keyword", emotion_model_id="")
     assert settings.emotion_analyzer == "keyword"
     assert settings.emotion_model_id == ""
+
+    # …while a *blank environment value* means "unset" (Day 30,
+    # env_ignore_empty): the default model id applies, and a keyword setup
+    # still never loads it.
+    monkeypatch.setenv("EMOTION_ANALYZER", "keyword")
+    monkeypatch.setenv("EMOTION_MODEL_ID", "")
+    from_env = Settings(_env_file=None)
+    assert from_env.emotion_analyzer == "keyword"
+    assert from_env.emotion_model_id == "SamLowe/roberta-base-go_emotions"
 
 
 @pytest.mark.parametrize("choice", ["auto", "hf", "keyword", "sentiment", "fake"])
