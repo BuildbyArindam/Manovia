@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -497,7 +498,20 @@ def _main(argv: Sequence[str] | None = None) -> int:
         if reason:
             notes.append(f"baseline `{name}` was **not run here**: {reason}")
             continue
-        baseline = run_baseline(name, examples)
+        try:
+            baseline = run_baseline(name, examples)
+        except Exception as exc:
+            # A baseline that cannot run must not take the report with it: the
+            # numbers for the trained model are already computed and the reason
+            # belongs *in* the report, next to the rows it is missing from.
+            # Found the hard way — the off-the-shelf checkpoint's availability
+            # check passed on importability and the CLI died on the download.
+            print(
+                f"warning: baseline {name!r} could not run here: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            notes.append(f"baseline `{name}` was **not run here**: {type(exc).__name__}: {exc}")
+            continue
 
         def macro_f1_of(sample: Sequence[Row], labels: Sequence[str] = baseline.labels) -> float:
             return metric_fns.macro_f1(sample, labels)[0]

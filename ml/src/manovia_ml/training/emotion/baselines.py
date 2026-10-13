@@ -34,7 +34,13 @@ from manovia_ml.paths import ml_root
 from manovia_ml.training.emotion.data import EmotionExample
 from manovia_ml.training.emotion.taxonomy import EMOTIONS
 
-__all__ = ["BaselineResult", "available_baselines", "run_baseline"]
+__all__ = ["BASELINE_MODEL_ID", "BaselineResult", "available_baselines", "run_baseline"]
+
+#: The checkpoint the product points at today (``EMOTION_MODEL_ID`` in the
+#: backend settings). Named once here so the availability check and the runner
+#: cannot drift apart — they did: the check reported "runnable" from an
+#: importability test and the runner then died on a download.
+BASELINE_MODEL_ID = "SamLowe/roberta-base-go_emotions"
 
 #: Anything whose score reaches this is a positive for a baseline. The trained
 #: model's thresholds are tuned for *its* calibration; applying them to a
@@ -85,14 +91,43 @@ def available_baselines() -> dict[str, str]:
     try:
         import transformers  # noqa: F401
         from app.services.nlp.hf import HFEmotionAnalyzer  # noqa: F401
-
-        out["baseline"] = ""
     except Exception as exc:
         out["baseline"] = (
             f"off-the-shelf checkpoint needs the `nlp` extra and a model download "
             f"({type(exc).__name__})"
         )
+        return out
+
+    out["baseline"] = checkpoint_is_cached()
     return out
+
+
+def checkpoint_is_cached(model_id: str = BASELINE_MODEL_ID) -> str:
+    """``""`` when the off-the-shelf checkpoint is on this machine, else why not.
+
+    Being importable is not the same as being *runnable*: the weights are a
+    network download, and the whole `ml/` tree is built to work offline (CI,
+    the sandbox, a machine on a plane). Asking the Hugging Face cache first
+    turns "the report crashed halfway through" into one honest line in the
+    report — which is the difference between a limitation and a bug.
+    """
+
+    try:
+        from huggingface_hub import try_to_load_from_cache
+    except ImportError as exc:  # pragma: no cover - depends on the extra
+        return f"off-the-shelf checkpoint needs `huggingface_hub` ({type(exc).__name__})"
+
+    try:
+        cached = try_to_load_from_cache(model_id, "config.json")
+    except Exception as exc:  # pragma: no cover - depends on the cache layout
+        return f"off-the-shelf checkpoint {model_id}: cache lookup failed ({type(exc).__name__})"
+
+    if isinstance(cached, str):
+        return ""
+    return (
+        f"off-the-shelf checkpoint {model_id} is not in the local Hugging Face cache and "
+        "this machine has no hub access; run this comparison where the download is allowed"
+    )
 
 
 def _scores_to_rows(result: Any, labels: Sequence[str]) -> list[float]:
@@ -128,7 +163,7 @@ def run_baseline(
 
             from manovia_ml.training.emotion.model import read_manifest  # noqa: F401
 
-            resolved_id = model_id or "SamLowe/roberta-base-go_emotions"
+            resolved_id = model_id or BASELINE_MODEL_ID
             analyzer = HFEmotionAnalyzer(resolved_id)
             note = (
                 f"off-the-shelf checkpoint {resolved_id} via the product's own HFEmotionAnalyzer "

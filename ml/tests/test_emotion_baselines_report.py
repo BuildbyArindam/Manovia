@@ -8,6 +8,7 @@ importable (which it is in this repository, and not on PyPI).
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -16,9 +17,14 @@ from typing import Any
 import pytest
 
 from manovia_ml.paths import ml_root
+from manovia_ml.training.emotion import baselines as baselines_module
+from manovia_ml.training.emotion import evaluate as evaluate_module
+from manovia_ml.training.emotion import report as report_module
 from manovia_ml.training.emotion.baselines import (
+    BASELINE_MODEL_ID,
     BASELINE_THRESHOLD,
     available_baselines,
+    checkpoint_is_cached,
     run_baseline,
 )
 from manovia_ml.training.emotion.data import EmotionExample, summary
@@ -93,6 +99,121 @@ def test_available_baselines_reports_a_reason_rather_than_raising() -> None:
     # The off-the-shelf checkpoint cannot be measured in a sandbox without
     # Hugging Face access; whatever the verdict, it comes with a reason string.
     assert isinstance(availability["baseline"], str)
+
+
+def test_available_baselines_admits_a_checkpoint_it_cannot_reach(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Importable is not runnable: the checkpoint is a download.
+
+    Regression: `available_baselines()` used to call `baseline` runnable whenever
+    the `nlp` extra imported, so `python -m ...report --baselines baseline`
+    crashed with a traceback from inside the Hugging Face loader on any offline
+    machine — which is every machine this pipeline is built for.
+    """
+
+    def cached(*args: Any, **kwargs: Any) -> str:
+        return ""
+
+    def not_cached(*args: Any, **kwargs: Any) -> str:
+        return reason
+
+    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", cached)
+    assert available_baselines()["baseline"] == ""
+
+    reason = "not in the local Hugging Face cache"
+    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", not_cached)
+    assert available_baselines()["baseline"] == reason
+    # The lexicon chain is local by construction: no download, always runnable.
+    assert available_baselines()["keyword"] == ""
+
+
+def test_checkpoint_is_cached_names_the_checkpoint_and_the_cache() -> None:
+    reason = checkpoint_is_cached("Example/definitely-not-downloaded")
+    assert reason, "a checkpoint that was never downloaded cannot be runnable here"
+    assert "Example/definitely-not-downloaded" in reason
+    assert "cache" in reason
+    assert BASELINE_MODEL_ID == "SamLowe/roberta-base-go_emotions"
+
+
+def test_the_report_cli_survives_a_baseline_that_cannot_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tiny_run_stub: dict[str, Any]
+) -> None:
+    """One broken baseline must not cost the reader the whole report.
+
+    Regression for the same root cause as above, one level down: the CLI called
+    `run_baseline` outside any guard, so the trained model's numbers — already
+    computed by then — were thrown away with the traceback. The report now
+    carries a line saying which baseline is missing and why.
+
+    Only two things are stubbed: loading the artefact and scoring it (a real
+    training run is `test_emotion_train.py`'s job). Everything under test here is
+    real — the argument parsing, the baseline guard, the table, the file.
+    """
+
+    def stub_cached(*args: Any, **kwargs: Any) -> str:
+        return ""
+
+    def exploding(name: str, examples: Any, **kwargs: Any) -> Any:
+        if name == "baseline":
+            raise RuntimeError("checkpoint could not be downloaded")
+        return run_baseline(name, examples, **kwargs)
+
+    class _Artifact:
+        manifest = tiny_run_stub["manifest"]
+        base_model = "tiny://xlm-roberta"
+        labels = EMOTIONS
+        directory = tmp_path / "artifact"
+
+    # Pretend the checkpoint *is* cached, so the CLI actually reaches the runner
+    # and the guard is what is being tested (not the availability check above).
+    def stub_evaluate(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return dict(tiny_run_stub["payload"])
+
+    def stub_load(path: Any) -> Any:
+        return _Artifact()
+
+    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", stub_cached)
+    monkeypatch.setattr(report_module, "run_baseline", exploding)
+    monkeypatch.setattr(report_module, "load_artifact", stub_load)
+    # `evaluate_artifact` is imported *inside* `_main`, so the patch has to land
+    # on the module it is imported from, not on `report`'s namespace.
+    monkeypatch.setattr(evaluate_module, "evaluate_artifact", stub_evaluate)
+    data = tmp_path / "held_out.jsonl"
+    data.write_text(
+        "\n".join(
+            json.dumps(row)
+            for row in (
+                {"id": "a", "text": "rain on the window", "labels": ["calm"], "lang": "en"},
+                {"id": "b", "text": "the bus left without me", "labels": ["sadness"], "lang": "hi"},
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "report.md"
+    code = report_module._main(
+        [
+            "--artifact",
+            str(tmp_path / "artifact"),
+            "--data",
+            str(data),
+            "--baselines",
+            "keyword,baseline",
+            "--out",
+            str(out),
+            "--bootstrap",
+            "20",
+        ]
+    )
+
+    assert code == 0
+    text = out.read_text(encoding="utf-8")
+    assert "fine-tuned (this run)" in text
+    assert "keyword" in text
+    assert "baseline `baseline` was **not run here**" in text
+    assert "RuntimeError" in text
+    assert "could not be downloaded" in text
 
 
 @pytest.mark.skipif(
