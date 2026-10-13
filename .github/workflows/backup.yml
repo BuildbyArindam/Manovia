@@ -1,0 +1,79 @@
+# Nightly backup drill (Day 27).
+#
+# The production backup itself runs on the platform next to the managed
+# database (docs/backups.md — a scheduled machine calling scripts/backup_db.sh,
+# or the managed provider's own snapshots). What GitHub can and should prove
+# every night is that the drill still works: against a fresh Postgres service
+# container this workflow migrates the schema, writes rows, runs
+# scripts/verify_backup_drill.sh (backup_db.sh → restore_db.sh → row counts),
+# and fails the schedule if any part stops working. A backup that has never
+# been restored is a hope, not a backup.
+#
+# Requires psql/pg_dump/pg_restore for PostgreSQL 16 (preinstalled on the
+# runner at major version 16).
+name: Backup drill
+
+on:
+  # Nightly at 03:20 UTC (after the Fly backup machine at 03:00).
+  schedule:
+    - cron: "20 3 * * *"
+  workflow_dispatch:
+
+# Least privilege: nothing here needs any scope.
+permissions: {}
+
+jobs:
+  drill:
+    name: backup → restore → row counts
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: manovia
+          # Throwaway service-container password for a database that exists
+          # for the length of one job.
+          POSTGRES_PASSWORD: drill-only-password
+          POSTGRES_DB: manovia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manovia -d manovia"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install backend (for alembic)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://manovia:drill-only-password@localhost:5432/manovia
+
+      - name: Migrate the schema
+        run: alembic upgrade head
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://manovia:drill-only-password@localhost:5432/manovia
+
+      - name: Write rows the drill can count
+        run: |
+          psql "postgresql://manovia:drill-only-password@localhost:5432/manovia" \
+            --set ON_ERROR_STOP=1 \
+            --command "INSERT INTO users (id, is_anonymous, language) SELECT gen_random_uuid(), true, 'en' FROM generate_series(1, 25);"
+
+      - name: Run the drill
+        run: |
+          ./scripts/verify_backup_drill.sh \
+            --source-url "postgresql://manovia:drill-only-password@localhost:5432/manovia"
