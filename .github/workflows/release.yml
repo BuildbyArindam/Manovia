@@ -1,0 +1,131 @@
+# Tagged releases (Day 27).
+#
+# On a v* tag, in order:
+#   1. migrations job — `alembic upgrade head` against a fresh Postgres 16
+#      service container, then a downgrade/upgrade round-trip, proving the
+#      release's schema moves cleanly both ways before anything is published;
+#   2. release job — generates the changelog into a GitHub release, builds
+#      both container images and pushes them to GHCR tagged with the release
+#      and the commit SHA.
+#
+# Deploying is then `fly deploy --image ghcr.io/<owner>/manovia-api:<tag>`
+# (docs/deploy.md) — the release step (release_command) still runs the
+# migration against the production database before the new machines serve.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+
+permissions:
+  contents: write # create the GitHub release with generated notes
+  packages: write # push images to GHCR
+
+jobs:
+  migrations:
+    name: Migrations — upgrade, downgrade, upgrade on Postgres 16
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: manovia
+          # Throwaway service-container password for a database that exists
+          # for the length of one job.
+          POSTGRES_PASSWORD: migrate-only-password
+          POSTGRES_DB: manovia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manovia -d manovia"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql+asyncpg://manovia:migrate-only-password@localhost:5432/manovia
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: alembic upgrade head (fresh database)
+        run: alembic upgrade head
+
+      - name: alembic downgrade base (round-trip)
+        run: alembic downgrade base
+
+      - name: alembic upgrade head (again)
+        run: alembic upgrade head
+
+      # Schema-drift check runs on SQLite (fresh database, migrated, then
+      # compared against the models), where it is exact for this schema. On
+      # Postgres it currently reports three cosmetic modify_type diffs on
+      # generic JSON columns — a known, recorded issue
+      # (docs/verification/day27-*), not silently "fixed" here.
+      - name: Schema matches the models (SQLite drift check)
+        run: |
+          alembic upgrade head
+          alembic check
+        env:
+          DATABASE_URL: sqlite:///./drift-check.db
+
+  release:
+    name: Changelog + images to GHCR
+    needs: migrations
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build the API image
+        run: |
+          docker build -f backend/Dockerfile \
+            -t "ghcr.io/${{ github.repository }}-api:${{ github.ref_name }}" \
+            -t "ghcr.io/${{ github.repository }}-api:${{ github.sha }}" .
+
+      - name: Build the web image
+        run: |
+          docker build -f frontend/Dockerfile \
+            -t "ghcr.io/${{ github.repository }}-web:${{ github.ref_name }}" \
+            -t "ghcr.io/${{ github.repository }}-web:${{ github.sha }}" .
+
+      - name: Push both images
+        run: |
+          docker push "ghcr.io/${{ github.repository }}-api:${{ github.ref_name }}"
+          docker push "ghcr.io/${{ github.repository }}-api:${{ github.sha }}"
+          docker push "ghcr.io/${{ github.repository }}-web:${{ github.ref_name }}"
+          docker push "ghcr.io/${{ github.repository }}-web:${{ github.sha }}"
+
+      - name: Create the GitHub release (generated notes)
+        run: gh release create "$TAG" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}

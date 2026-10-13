@@ -1209,7 +1209,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     for check in gate_verdict.checks:
         if not check.passed:
             print(f"  [FAIL] {check.name}: observed {check.observed}, required {check.threshold} ({check.detail})")
-    print(f"report written: {out_path.relative_to(REPO_ROOT)}")
+    print(
+        f"report written: {out_path.relative_to(REPO_ROOT) if out_path.is_relative_to(REPO_ROOT) else out_path}"
+    )
 
     if not gate_verdict.passed and not args.no_gate:
         return 1

@@ -1,5 +1,42 @@
 # Manovia — Progress
 
+**Day 27 — DevOps, observability and deployment — is built and verified
+(2026-10-13).** Production process model (Gunicorn managing `UvicornWorker`
+processes via `gunicorn.conf.py`, access log off for privacy, graceful
+shutdown verified by SIGTERM with the log to prove it, `GUNICORN_WORKERS=1`
+until the ephemeral-session store is shared); a production compose overlay
+(`docker-compose.prod.yml`) that migrates as a one-shot release service the
+API waits on and refuses to boot without real secrets; Prometheus metrics at
+`/metrics` (`http_requests_total/_seconds/_in_progress`,
+`safety_events_total{level,source}`, `llm_requests_total`,
+`llm_fallbacks_total{reason}`, `output_guard_total{outcome}`) whose labels
+are route templates and closed-set enums only — a sentinel audit now sweeps
+the exposition too; Sentry with a `before_send` scrubber (body/query/cookies
+dropped, headers allowlisted, PII-redaction of free text, stacktrace frame
+locals stripped — where request bodies actually hid) that is opt-in by DSN
+and cannot be switched off; feature flags (`FEATURE_LLM_JUDGE` gates the
+evals judge behind exit code 2, `FEATURE_ML_THRESHOLDS_UNLOCKED` refuses
+production boot on changed safety thresholds); nightly backup tooling
+(`scripts/backup_db.sh`, `restore_db.sh`, `verify_backup_drill.sh`) with the
+drill verified against real Postgres 16.2 (**DRILL PASS: 16/16 tables**)
+and run nightly in CI; deployment chosen — Fly.io for API+Postgres, Netlify
+for the web ([ADR 0026](docs/adr/0026-deployment-platform.md)) with
+`fly.toml`/`netlify.toml`, exact steps in [docs/deploy.md](docs/deploy.md);
+tagged-release workflow (migrations upgrade/downgrade/upgrade on a Postgres
+16 service container before images publish to GHCR + changelog); the
+[runbook](docs/runbook.md) with an explicit safety-incident procedure.
+Verification ran against a **real PostgreSQL 16.2** (bundled via pgserver;
+Docker is unavailable in the sandbox — the compose files are pinned by
+tests and the exact release sequence was run directly). Full results,
+the live `/metrics` evidence, the ML over-escalation found in production
+posture, and the Postgres JSON `alembic check` finding:
+[Day 27 verification](docs/verification/day27-devops-observability-deployment.md).
+Final: **3906 backend passed / 3 skipped** (coverage gate PASS),
+**600 frontend passed / 3 skipped**, ruff/mypy/eslint/tsc/build clean.
+This Arena session is fixed to **`arena/36a7ca4e-manovia`**; the requested
+`day-27-devops-observability-deployment` branch cannot be created here.
+One PR, no merge.
+
 **Day 24 — Evaluation harness (your biggest differentiator) — is built and
 verified (2026-10-12).** A unified, reproducible, offline-first evaluation
 harness (`make eval` → `evals/run_all_evals.py`) that evaluates all three AI/NLP
@@ -2757,6 +2794,31 @@ other three jobs.
 
 ## Known issues
 
+### Day 27
+
+- **The shipped `crisis_v1.joblib` over-escalates worse than its eval numbers
+  under scikit-learn 1.9.1.** In the live production posture, both
+  "What is a good way to plan my study schedule?" and "hello there" were
+  triaged HIGH (crisis card, `llm_called=false`). The artifact was pickled
+  under 1.5.2 (suite warns `InconsistentVersionWarning`); the Day-24
+  precision of 0.543 is likely optimistic here. Interim posture:
+  `SAFETY_ML_ENABLED=false` (rules-only, the tested default) until the
+  retrain lands (Day-28 step 2). Never fix by weakening rules.
+- **Ephemeral chat sessions are per process**, so `GUNICORN_WORKERS` now
+  defaults to 1 (a 2-worker boot 404ed the second message of a not-saved
+  session live). Real fix: shared/persisted session store (parking lot).
+- **`alembic check` on Postgres** reports three cosmetic `modify_type` diffs
+  on generic `JSON` columns (`cbt_records.what_helped`,
+  `deletion_receipts.rows_deleted`, `user_settings.preferred_exercise_tags`)
+  even on a freshly migrated database; SQLite is clean, so the release
+  workflow's drift step runs there. Deliberate move to `JSONB` is a schema
+  decision for a future migration, not a silent mapping.
+- **Not deployed from the sandbox:** Fly/Netlify need interactive account
+  logins; docs/deploy.md lists the exact remaining commands (§6 of the
+  verification doc).
+
+### Day 24 (carried)
+
 ### Day 24 implementation notes
 
 - **Synthetic evaluation corpora:** all three evaluation datasets (`572` crisis
@@ -3610,7 +3672,22 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **Screenshots for the Privacy screen** in `docs/assets/README.md` (the
   Day-12 chat shots exist; Day-22 privacy shots do not).
 
-## Next steps (Day 25 — first three)
+## Next steps (Day 28 — first three)
+
+1. **Retrain `crisis_v1.joblib` on scikit-learn 1.9.1 with hard negatives**
+   (Day-27 live evidence: benign "study schedule"/"hello there" traffic lands
+   HIGH in production posture) and re-tune thresholds on the dev split; ship
+   the new artifact behind the existing flags and re-run `make eval` gates.
+2. **Deploy for real per docs/deploy.md** — `fly launch/postgres attach`,
+   secrets, `fly deploy`, Netlify link + the `/api/*` rewrite target, uptime
+   monitor on `/api/v1/ready`; then run one manual crisis-card walkthrough
+   and record it in docs/verification/.
+3. **Shared ephemeral-session store** (or DB-backed sessions) behind a
+   setting, so `GUNICORN_WORKERS > 1` and multi-machine deploys are safe;
+   add a cross-worker integration test that fails exactly like the live 404
+   did.
+
+
 
 1. **Clinician and native-speaker dataset review:** audit `evals/datasets/crisis_cases_*.jsonl`,
    `evals/datasets/emotion_cases.jsonl`, and `evals/datasets/chat_rubric.jsonl`
@@ -3629,7 +3706,21 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
    `loneliness` detector so indirect and somatic expressions do not collapse into
    `sadness`/`neutral`.
 
-## Parking lot (Day 24)
+## Parking lot (Day 27)
+
+- **Shared ephemeral-session store** (or sticky sessions) so
+  `GUNICORN_WORKERS > 1` is safe; then re-benchmark worker counts.
+- **Prometheus scrape stack in the deploy docs**: a scrape config snippet and
+  recommended alert rules (error rate > 2% 5-min, `llm_fallbacks_total` rate
+  > 20%, guard `blocked` or `error` on any crisis-level turn, p95 > 5 s).
+- **Backup off-site copy**: after the nightly dump, `rclone`/`fly s3` push
+  with checksum, so the dump survives losing the volume.
+- **`alembic check` on Postgres**: move the three JSON columns to `JSONB`
+  deliberately (with a migration) so the drift check runs on the real
+  production dialect.
+- **Image signing** (cosign) in the release workflow, and SBOM upload.
+- **Dashboards-as-code** (Grafana JSON committed alongside the metrics).
+
 
 - **Multi-judge agreement & human-vs-judge correlation:** calibrate the optional
   4-axis LLM-as-judge (`evals/prompts/response_judge_v1.md`) against human

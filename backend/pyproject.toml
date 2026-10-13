@@ -20,6 +20,12 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi==0.143.0",
     "uvicorn[standard]==0.54.0",
+    # Day 27: production process model. Gunicorn manages the worker processes
+    # (lifecycle, graceful restart, heartbeats); uvicorn-worker is the
+    # maintained UvicornWorker the config runs (uvicorn's own
+    # `uvicorn.workers` module is deprecated upstream).
+    "gunicorn==26.2.0",
+    "uvicorn-worker==0.4.0",
     "pydantic==2.14.1",
     "pydantic-settings==2.15.0",
     # [asyncio] pulls in greenlet, which SQLAlchemy's async sessions require.
@@ -54,6 +60,14 @@ dependencies = [
     # wheel, no torch; the *model* that embeds (sentence-transformers) stays
     # optional in the `rag` extra — the offline tfidf path needs only this.
     "faiss-cpu==1.15.1",
+    # Day 27 observability: Prometheus counters/histograms for request rate,
+    # latency, error rate, safety events by level, LLM fallback rate and
+    # output-guard block rate. Small, offline, no agent process.
+    "prometheus-client==0.26.0",
+    # Day 27 error reporting. Opt-in via SENTRY_DSN (no DSN = no network, so
+    # the offline suite and self-hosted deploys never contact Sentry). Every
+    # event passes the privacy scrubber in app/core/sentry.py.
+    "sentry-sdk==2.72.0",
 ]
 
 [project.optional-dependencies]
@@ -186,6 +200,12 @@ plugins = ["pydantic.mypy"]
 module = [
     "langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*",
     "faiss.*", "sentence_transformers.*", "sklearn.*", "joblib.*",
+    # Day 27: gunicorn config/worker and the observability stack below.
+    # "manovia_worker.*" is checked here (it subclasses the untyped worker).
+    "uvicorn_worker.*", "gunicorn.*", "prometheus_client.*", "sentry_sdk.*",
+    "manovia_worker.*", "gunicorn.conf",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"
+# AccessLogFreeUvicornWorker subclasses the (untyped) UvicornWorker.
+disallow_subclassing_any = false

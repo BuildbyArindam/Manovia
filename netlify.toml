@@ -1,0 +1,50 @@
+# Manovia web on Netlify (Day 27). Docs: docs/deploy.md, ADR 0026.
+#
+# The build produces the same static bundle the nginx container serves; the
+# security headers below are copied verbatim from docker/security-headers.conf
+# so the container path and the static host enforce one policy.
+#
+# The /api/* rewrite is a 200 (proxy) rewrite to the Fly origin: the browser
+# stays same-origin, so CORS never enters the picture and the strict CSP's
+# connect-src 'self' stays honest. Point the rewrite at the real Fly hostname
+# after the first deploy (docs/deploy.md §2).
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Same-origin API: the Netlify rewrite below forwards /api/* to Fly.
+  VITE_API_BASE_URL = "/api/v1"
+
+# SPA fallback: every unknown path serves the app shell (the router 404s).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# The API path is NOT the SPA: proxy it to the Fly app.
+[[redirects]]
+  from = "/api/*"
+  to = "https://manovia-api.fly.dev/api/:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    X-Permitted-Cross-Domain-Policies = "none"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+# Hashed assets never change: cache them forever (the HTML stays no-cache
+# short so a deploy is picked up immediately).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

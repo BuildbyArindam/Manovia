@@ -36,6 +36,7 @@ from typing import Final
 
 import structlog
 
+from app.core.metrics import get_metrics
 from app.services.llm.base import (
     AllProvidersFailed,
     LLMError,
@@ -192,6 +193,10 @@ class LLMChain(LLMProvider):
         """
         request = self._prepare(messages, system=system)
         last_error: LLMError | None = None
+        # Day 27 observability: the orchestrator's stream path reads this after
+        # the stream resolves, because a token iterator has no result object to
+        # carry the serving provider. ``None`` until the first chunk arrives.
+        self.last_stream_served_by: tuple[str, int] | None = None
 
         for index, provider in enumerate(self._providers):
             if not provider.is_configured:
@@ -205,8 +210,10 @@ class LLMChain(LLMProvider):
                     max_tokens=max_tokens,
                     temperature=temperature,
                 ):
-                    if index > 0 and not yielded:
-                        self.degraded_count += 1
+                    if not yielded:
+                        if index > 0:
+                            self.degraded_count += 1
+                        self.last_stream_served_by = (provider.name, index)
                     yielded = True
                     yield chunk
             except LLMError as exc:
@@ -293,6 +300,16 @@ class LLMChain(LLMProvider):
     def _note_failure(self, provider: str, reason: str) -> None:
         key = f"{provider}:{reason}"
         self.failure_counts[key] = self.failure_counts.get(key, 0) + 1
+        # Day 27 observability: one counter for "the chain moved past a
+        # provider". Reasons are collapsed to a closed set — the concrete
+        # exception class stays in the log line, never in a label.
+        if reason == "not_configured":
+            metric_reason = "not_configured"
+        elif reason.startswith("unexpected:"):
+            metric_reason = "provider_crashed"
+        else:
+            metric_reason = "provider_failed"
+        get_metrics().record_llm_fallback(metric_reason)
 
     def _finish(self, result: LLMResult, *, position: int, request: _PreparedRequest) -> LLMResult:
         raw = dict(result.raw or {})

@@ -54,6 +54,7 @@ from starlette.concurrency import run_in_threadpool
 from app.content.i18n import RenderedTemplate
 from app.core.config import Settings
 from app.core.errors import ApiError
+from app.core.metrics import get_metrics
 from app.core.ratelimit import InMemoryRateLimiter, RateLimiter
 from app.models.enums import SafetyEventSource
 from app.services.chat.conversation import Conversation
@@ -331,8 +332,17 @@ class ChatOrchestrator:
         text = "".join(pieces)
         if failed or not text.strip():
             text, template = CANNED_REPLY, True
+            get_metrics().record_llm_fallback("llm_error" if failed else "empty_reply")
         else:
             template = text == CANNED_REPLY  # the chain's terminal link answered
+            if template:
+                get_metrics().record_llm_fallback("canned_reply")
+            else:
+                # The chain records which of its links served (token iterators
+                # carry no result object); an injected provider reports unknown.
+                served = getattr(self._llm, "last_stream_served_by", None)
+                provider, position = served if isinstance(served, tuple) else ("unknown", 0)
+                get_metrics().record_llm_success(str(provider), int(position))
             if not template:
                 text, template = await self._guard_output(text, turn, conversation)
 
@@ -575,7 +585,9 @@ class ChatOrchestrator:
     async def _generate(self, turn: _Turn) -> tuple[str, bool]:
         """Call the model. Returns ``(text, is_template)``; never raises."""
         if turn.messages is None:
+            # The deterministic crisis/check-in path: by design, not a fallback.
             return CANNED_REPLY, True
+        metrics = get_metrics()
         try:
             result = await self._llm.complete(
                 turn.messages,
@@ -585,16 +597,29 @@ class ChatOrchestrator:
             )
         except Exception as exc:
             _log.warning("chat_llm_failed", error_type=type(exc).__name__)
+            metrics.record_llm_fallback("llm_error")
             return CANNED_REPLY, True
         text = result.text
         if not text.strip():
+            metrics.record_llm_fallback("empty_reply")
             return CANNED_REPLY, True
-        return text, result.provider == "canned"
+        if result.provider == "canned":
+            # The chain's terminal link answered: the person got the pre-written
+            # supportive template, and the runbook's fallback rate should say so.
+            metrics.record_llm_fallback("canned_reply")
+            return text, True
+        # Which link served and from where: the chain stamps ``chain_position``
+        # into ``raw``; an injected provider (tests, scripts) reports position 0.
+        raw_position = (result.raw or {}).get("chain_position")
+        position = raw_position if isinstance(raw_position, int) else 0
+        metrics.record_llm_success(result.provider, position)
+        return text, False
 
     async def _guard_output(
         self, text: str, turn: _Turn, conversation: Conversation
     ) -> tuple[str, bool]:
         """Check, regenerate once under a strict system instruction, then fail closed."""
+        metrics = get_metrics()
         try:
             first = await self._guard.check(
                 text,
@@ -605,12 +630,15 @@ class ChatOrchestrator:
             # A broken guard cannot certify any generated text. Unlike a normal
             # rejection, this is not a reason to ask another model to try again.
             _log.error("chat_output_guard_failed", error_type=type(exc).__name__)
+            metrics.record_guard_outcome("error")
             return self._safe_output(turn.expected_language), True
         if first.passed:
+            metrics.record_guard_outcome("passed")
             return first.text, False
 
         await self._record_output_categories(first, turn, conversation, attempt=1)
         if turn.messages is None:
+            metrics.record_guard_outcome("blocked")
             return self._safe_output(turn.expected_language), True
 
         strict_system = (
@@ -628,8 +656,10 @@ class ChatOrchestrator:
             retry_text = regenerated.text
         except Exception as exc:
             _log.warning("chat_output_regeneration_failed", error_type=type(exc).__name__)
+            metrics.record_guard_outcome("blocked")
             return self._safe_output(turn.expected_language), True
         if not retry_text.strip():
+            metrics.record_guard_outcome("blocked")
             return self._safe_output(turn.expected_language), True
 
         try:
@@ -640,10 +670,13 @@ class ChatOrchestrator:
             )
         except Exception as exc:
             _log.error("chat_output_guard_failed", error_type=type(exc).__name__)
+            metrics.record_guard_outcome("error")
             return self._safe_output(turn.expected_language), True
         if second.passed:
+            metrics.record_guard_outcome("passed_after_retry")
             return second.text, False
         await self._record_output_categories(second, turn, conversation, attempt=2)
+        metrics.record_guard_outcome("blocked")
         return self._safe_output(turn.expected_language), True
 
     async def _record_output_categories(

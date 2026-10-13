@@ -33,6 +33,15 @@ LLM_PROVIDER_CHOICES: tuple[str, ...] = ("anthropic", "ollama", "fake")
 # emotion choices above, so config imports no services module).
 RAG_EMBEDDER_CHOICES: tuple[str, ...] = ("auto", "sentence_transformers", "tfidf", "hashing")
 
+# The shipped safety-ML operating point (Day 9, dev-split tuned; see
+# docs/safety-design.md §12). The feature flag below makes deploying an
+# override in production an explicit decision.
+SHIPPED_SAFETY_ML_THRESHOLDS: dict[str, float] = {
+    "safety_ml_min_confidence": 0.70,
+    "safety_ml_crisis_mass_floor": 0.30,
+    "safety_ml_suspicion_floor": 0.25,
+}
+
 
 class Settings(BaseSettings):
     """Runtime settings. Every value comes from the environment (see .env.example)."""
@@ -55,6 +64,35 @@ class Settings(BaseSettings):
     field_encryption_previous_keys: str | None = None
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
     log_level: str = "INFO"
+
+    # --- Observability (Day 27) ---
+    # /metrics is the Prometheus scrape endpoint. Labels are route templates
+    # and closed-set categories only — never user text or identifiers. Turn it
+    # off only when a sidecar publishes metrics instead.
+    metrics_enabled: bool = True
+    # Sentry error reporting. Without a DSN nothing is initialised and no
+    # network call ever happens. Every event passes a before_send scrubber
+    # (app.core.sentry.scrub_sentry_event) that drops request bodies, query
+    # strings and cookies, and PII-redacts free text — there is no flag that
+    # turns the scrubbing off.
+    sentry_dsn: str | None = None
+    # Defaults to APP_ENV when unset (what most Sentry projects want anyway).
+    sentry_environment: str | None = None
+    # Performance tracing is off by default: traces add volume without adding
+    # safety. Enable deliberately (0.0-1.0 fraction of requests).
+    sentry_traces_sample_rate: float = 0.0
+
+    # --- Feature flags for risky features (Day 27) ---
+    # The evals' optional 4-axis LLM-as-judge (evals/prompts/response_judge_v1.md).
+    # Advisory-only and uncalibrated against human clinician ratings (ADR 0024),
+    # so a run that uses it must be a deliberate choice, not an accident of a
+    # copied command line.
+    feature_llm_judge: bool = False
+    # Deploying changed safety-ML thresholds is a safety decision, not a config
+    # edit: in production, overriding any SAFETY_ML_* threshold from the shipped
+    # operating point is refused unless this flag is set, forcing the change
+    # through review (and an ADR note) rather than through a one-character typo.
+    feature_ml_thresholds_unlocked: bool = False
 
     # --- Authentication and consent (Day 4) ---
     # Password policy: length only, no composition theatre (NIST SP 800-63B).
@@ -379,6 +417,34 @@ class Settings(BaseSettings):
             raise ValueError("max_request_bytes must be at least 1024")
         if self.request_timeout_seconds <= 0:
             raise ValueError("request_timeout_seconds must be positive")
+        if not 0.0 <= self.sentry_traces_sample_rate <= 1.0:
+            raise ValueError("sentry_traces_sample_rate must be within [0, 1]")
+        return self
+
+    @model_validator(mode="after")
+    def _check_risky_threshold_overrides(self) -> "Settings":
+        """Changed safety thresholds in production need the feature flag.
+
+        The SAFETY_ML_* thresholds are a recall/precision operating point chosen
+        on labelled data (Day 9). Flipping one in production changes who gets a
+        crisis card — it must be a reviewed decision (FEATURE_ML_THRESHOLDS_
+        UNLOCKED=true), never a side effect of an env var left over from an
+        experiment. Development and tests stay unrestricted: tuning is work
+        that happens there, and it must not require ceremony.
+        """
+        if not self.is_production or self.feature_ml_thresholds_unlocked:
+            return self
+        changed = [
+            name
+            for name, shipped in SHIPPED_SAFETY_ML_THRESHOLDS.items()
+            if getattr(self, name) != shipped
+        ]
+        if changed:
+            raise ValueError(
+                f"{', '.join(changed)} differ from the shipped safety operating "
+                "point; set FEATURE_ML_THRESHOLDS_UNLOCKED=true to accept the "
+                "change deliberately (and record it in PROGRESS.md)"
+            )
         return self
 
     @model_validator(mode="after")

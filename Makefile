@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
@@ -75,6 +75,25 @@ down:
 
 smoke:
 	./scripts/smoke.sh
+
+# Production-shaped stack (Day 27): same images, APP_ENV=production, and the
+# migration as a one-shot `migrate` service that the api container waits on.
+# Needs SECRET_KEY and FIELD_ENCRYPTION_KEY in ./.env (compose refuses to
+# start without them). Rehearses the Fly release sequence locally:
+#   prod-up        build + migrate + start (api only, no dev web container)
+#   prod-migrate   run the release migration again (idempotent, upgrade head)
+#   prod-down      stop the stack (keeps the volume)
+COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
+
+prod-up:
+	$(COMPOSE_PROD) up -d --build --exit-code-from migrate
+	$(COMPOSE_PROD) logs -f api
+
+prod-migrate:
+	$(COMPOSE_PROD) run --rm migrate
+
+prod-down:
+	$(COMPOSE_PROD) down
 
 eval:
 	$(MAKE) -C backend eval
