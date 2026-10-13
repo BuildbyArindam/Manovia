@@ -1,4 +1,4 @@
-.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
@@ -14,6 +14,17 @@
 #   make report       RUN=<run id>            write reports/<run id>.md
 #   make smoke        the CI path: toy split, tiny train, baseline check, report
 #   make test / lint  pytest / ruff + mypy
+#
+# Day 32 adds the emotion LoRA model (ADR 0032). `emotion-smoke` is the offline
+# one: a tiny random-init XLM-R, seconds on a CPU, no network — the same code path
+# as a real run. The real runs need a GPU and the corpus; see
+# notebooks/colab_emotion_lora.ipynb.
+#
+#   make emotion-smoke                                  tiny LoRA run, seconds, offline
+#   make emotion-train  CONFIG=configs/emotion_lora_xlmr.yaml
+#   make emotion-eval   ARTIFACT=artifacts/emotion/manovia-emotion-xlmr-v1
+#   make emotion-tune   CONFIG=... TRIALS=12            (optuna.enabled must be true)
+#   make emotion-data   SRC=... OUT=... SCHEME=goemotions LANG=en
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
 PYDIR := $(dir $(abspath $(PYTHON)))
@@ -29,10 +40,19 @@ export PYTHONPATH := src
 export PYTHONHASHSEED ?= 0
 
 CONFIG ?= configs/toy_emotion_sgd.yaml
+EMOTION_CONFIG ?= configs/emotion_lora_smoke.yaml
+ARTIFACT ?= artifacts/emotion/manovia-emotion-smoke
+DATA ?= data/validation/emotion_validation.jsonl
+TRIALS ?= 12
+SCHEME ?= goemotions
+LANG ?= en
+SRC ?=
+OUT ?=
 RUN ?=
 SMOKE_DATE := $(shell date -u +%Y-%m-%d)
 SMOKE_REPORT ?= reports/smoke/$(SMOKE_DATE)-smoke.md
 SMOKE_JSON ?= /tmp/manovia-ml-smoke-$(SMOKE_DATE).json
+EMOTION_JSON ?= /tmp/manovia-ml-emotion-$(SMOKE_DATE).json
 
 install:
 	$(PYTHON) -m pip install -e ".[ml,dev]"
@@ -82,6 +102,27 @@ smoke:
 	$(PYTHON) -m manovia_ml.reporting --run $$($(PYTHON) -c "import json;print(json.load(open('$(SMOKE_JSON)'))['run_id'])") --out $(SMOKE_REPORT) --config-path configs/toy_emotion_sgd.yaml
 	@echo "--- smoke json ---"
 	@cat $(SMOKE_JSON)
+
+emotion-smoke:
+	$(PYTHON) -m manovia_ml.training.emotion.train --config $(EMOTION_CONFIG) --json > $(EMOTION_JSON)
+	$(PYTHON) -c "import json; d=json.load(open('$(EMOTION_JSON)')); print('EMOTION RUN_ID=' + d['run_id']); print('artifact=' + d['artifact_dir'])"
+	$(PYTHON) -m manovia_ml.training.emotion.evaluate --artifact $$($(PYTHON) -c "import json;print(json.load(open('$(EMOTION_JSON)'))['artifact_dir'])") --data $(DATA) --bootstrap 200 --json > /tmp/manovia-ml-emotion-eval.json
+	@echo "--- emotion smoke ---"
+	@cat $(EMOTION_JSON)
+
+emotion-train:
+	$(PYTHON) -m manovia_ml.training.emotion.train --config $(CONFIG)
+
+emotion-eval:
+	$(PYTHON) -m manovia_ml.training.emotion.evaluate --artifact $(ARTIFACT) --data $(DATA) --bootstrap 2000 --json
+
+emotion-tune:
+	$(PYTHON) -m manovia_ml.training.emotion.tune --config $(CONFIG) --trials $(TRIALS) --json
+
+# Convert a source corpus into the nine-emotion shape (the mapping table).
+emotion-data:
+	@test -n "$(SRC)" || { echo "usage: make emotion-data SRC=<raw jsonl> OUT=<out jsonl> [SCHEME=goemotions] [LANG=en]"; exit 2; }
+	$(PYTHON) -m manovia_ml.training.emotion.data convert $(SRC) --scheme $(SCHEME) --lang $(LANG) --out $(OUT)
 
 test:
 	$(PYTHON) -m pytest

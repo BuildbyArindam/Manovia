@@ -1,15 +1,18 @@
 # Manovia ML platform (`ml/`)
 
-Day 31. This directory is the foundation for every model Manovia might ever put
-near a user: a **data catalogue** with licences and verdicts, **experiment
+Days 31–32. This directory is the foundation for every model Manovia might ever
+put near a user: a **data catalogue** with licences and verdicts, **experiment
 tracking** where every run records enough to be reproduced, **configs** that are
 validated rather than convention, and **cards** that have to exist before a
-number is quoted.
+number is quoted. Day 32 added the first real model: a **LoRA fine-tune of
+`xlm-roberta-base` into Manovia's nine emotions** (ADR 0032), packaged as an
+artefact the backend can load with `EMOTION_ANALYZER=trained`.
 
-It does not add a model to the product. Nothing here is wired into the API, and
-the crisis gate is untouched (AGENTS.md, ML ground rule 1). What it adds is the
-ability to answer, months later, *"where did that number come from, and can we
-get it back?"*
+Nothing here is wired into the API's *safety* path, and the crisis gate is
+untouched (AGENTS.md, ML ground rule 1): the emotion model is a tone hint, it
+cannot lower a risk level, and a missing artefact falls back to the lexicon.
+What the directory adds is the ability to answer, months later, *"where did that
+number come from, and can we get it back?"*
 
 ## Install
 
@@ -17,11 +20,18 @@ get it back?"*
 python -m venv .venv
 .venv/bin/pip install -e "./backend[dev]"      # backend pins first (shared deps)
 .venv/bin/pip install -e "./ml[ml,dev]"        # this package + mlflow/dvc/sklearn
+# Day 32 only: the deep-learning stack (~2 GB). CI installs the CPU-only torch
+# wheel first so a pull request never downloads CUDA kernels:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/pip install -e "./ml[training]"     # torch/transformers/peft/optuna
 ```
 
 or, from the repository root, `make ml-install`. The package is `manovia-ml`
 (module `manovia_ml`); `[ml]` is the ML stack (numpy, scikit-learn, joblib,
-pandas, mlflow, dvc) and `[dev]` is pytest/ruff/mypy.
+pandas, mlflow, dvc), `[dev]` is pytest/ruff/mypy, and `[training]` (Day 32) is
+torch/transformers/peft/optuna/accelerate. The emotion tests skip themselves with
+a message when `[training]` is absent, so a checkout that only wants the linear
+path, the catalogue checker or the docs still has a green suite.
 
 ## Try it in one command
 
@@ -58,7 +68,9 @@ a run cannot forget:
 | `data/planned/hi_bn_emotion/` | the dataset card for the Hindi/Bengali set that must be written and natively reviewed |
 | `configs/` | one YAML per experiment + `expected/` baselines |
 | `src/manovia_ml/` | the package: config, seeds, hashing, tracking, data, training, evaluation, serving, reporting |
-| `tests/` | 139 tests, offline, including the reproducibility contract |
+| `tests/` | 212 tests, offline, including the reproducibility contract and the LoRA path on a tiny random-init model |
+| `src/manovia_ml/training/emotion/` | Day 32: the label-mapping table, data conversion and overlap checks, the LoRA trainer, threshold tuning, the Optuna sweep, evaluation and the report/card writer |
+| `data/validation/emotion_validation.jsonl` | the hand-written 174-row en/hi/bn held-out set (never trained on, never tuned on) + its dataset card |
 | `templates/` | dataset and model card templates |
 | `notebooks/` | exploration only (Colab notebook for the first real run) |
 | `scripts/fetch_goemotions.sh` | the one network step, as a script rather than a paragraph |
@@ -81,6 +93,11 @@ a run cannot forget:
 | `make ml-report RUN=<run id>` | write `reports/<run id>.md` |
 | `make ml-smoke` | the CI path end to end |
 | `make ml-lint`, `make ml-test` | ruff + ruff-format + mypy; pytest |
+| `make ml-emotion-smoke` | the Day-32 path, offline: tiny random-init XLM-R, 12 steps, seconds |
+| `make ml-emotion-train CONFIG=configs/emotion_lora_xlmr.yaml` | the real run (GPU; see the notebook) |
+| `make ml-emotion-eval ARTIFACT=artifacts/emotion/<name>` | score a packaged artefact in a fresh process |
+| `make ml-emotion-tune CONFIG=... TRIALS=12` | the Optuna sweep (needs `optuna.enabled: true`) |
+| `make ml-emotion-data SRC=... OUT=... SCHEME=goemotions LANG=en` | convert a corpus through the mapping table |
 | `ml/scripts/fetch_goemotions.sh` | download + convert GoEmotions (network; needs `datasets`) |
 
 ## How the pieces fit together
@@ -150,12 +167,44 @@ python -m manovia_ml.evaluation.evaluate --run <RUN_ID>
 Bring back the report, the recorded baseline and the run's JSON artefacts. Never
 the rows, never `model.joblib` (AGENTS.md, ML ground rule 3).
 
+## The emotion model (Day 32)
+
+`manovia_ml.training.emotion` is one pipeline with five entry points:
+
+| module | what it does |
+| --- | --- |
+| `taxonomy` | the single documented label-mapping table (GoEmotions/EmoNoBa → Manovia's nine), with a weight per row and a rationale per weight; `neutral` is derived, and GoEmotions' inability to express `loneliness` is a *tested* property, not a footnote |
+| `data` | load/convert/check: a conversion reports what it dropped, and the train/held-out check is exact **and** near-duplicate (char-shingle Jaccard, plus a reworded-paraphrase rule behind a word-overlap prefilter) |
+| `model` + `tiny` | the LoRA builder and the offline `tiny://xlm-roberta` stand-in (a 2-layer random encoder) that lets the whole path run in seconds on a CPU, with no network |
+| `train` | soft targets + `BCEWithLogitsLoss` with per-label `pos_weight`, label smoothing, cosine schedule with warmup, gradient clipping, early stopping with best-adapter restore, AMP only on CUDA, thresholds tuned on the *validation* split, then the artefact + MLflow record + a report and a card |
+| `evaluate` | inference only — it **refuses to run in a process that imported the trainer**, so a number can only have come from the saved artefact. Per-label/per-language F1, subset accuracy, ECE, the argmax confusion matrix, row-seeded bootstrap CIs, and a top-20 error analysis grouped by cause |
+| `tune` | the ≤12-trial Optuna sweep over LoRA rank and learning rate; each trial is a full run under a nested MLflow run, scored on validation macro-F1 at default thresholds |
+
+```bash
+make ml-emotion-smoke                     # tiny, offline, seconds — the CI path
+make ml-emotion-train CONFIG=configs/emotion_lora_xlmr.yaml     # GPU
+make ml-emotion-eval ARTIFACT=artifacts/emotion/manovia-emotion-xlmr-v1
+```
+
+The packaged artefact is a directory (never committed):
+
+```
+model/  tokenizer/  thresholds.json  manifest.json  MODEL_CARD.md
+```
+
+`thresholds.json` records the split the thresholds were tuned on; `manifest.json`
+records the base model, the labels, the data hashes, the seed, the library
+versions and the run id; the card is written from
+[`templates/MODEL_CARD.md`](templates/MODEL_CARD.md) and always contains the
+domain-shift limitation.
+
 ## Deliberately not here (yet)
 
-- **No GPU training** and no deep-learning dependency: the first real run is a
-  TF-IDF linear model because it is the honest baseline for six classes on a
-  small corpus. Transformers belong behind the existing `nlp` extra in the
-  backend, with their own ADR.
+- **No GPU in this sandbox, and the hub is unreachable**, so the real
+  `xlm-roberta-base` run happens on Colab/Kaggle
+  ([`notebooks/colab_emotion_lora.ipynb`](notebooks/colab_emotion_lora.ipynb)).
+  The tiny smoke run is the honest substitute for *plumbing*; it is never a
+  quality number, and every report it writes says so.
 - **No deployment path.** `manovia_ml.serving` proves a logged model can be
   loaded later; wiring a model into the API is a separate decision with a safety
   argument attached.
@@ -169,6 +218,9 @@ the rows, never `model.joblib` (AGENTS.md, ML ground rule 3).
   smoke config uses a two-class slice.
 - GoEmotions has no `loneliness` class, is Reddit register, and its multi-label
   rows are collapsed by priority. The catalogue and the notebook both say so.
+  Day 32's converter (`manovia_ml.training.emotion.data convert`) keeps the raw
+  source labels and maps through the weighted table instead; `unreachable_labels`
+  in every run manifest names what the corpus cannot teach.
 - The Hindi/Bengali side has **no usable dataset today**; the answer is a small
   hand-written, natively reviewed set (plan in the catalogue § "Hindi and Bengali
   emotion data").

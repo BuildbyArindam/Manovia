@@ -234,9 +234,13 @@ jobs:
           cache-dependency-path: ml/pyproject.toml
 
       - name: Install
+        # Day 32: the CPU-only torch wheel first (the default PyPI wheel drags in
+        # ~2 GB of CUDA kernels nobody here can use), then the project with the
+        # `training` extra so the LoRA tests *run* instead of skipping.
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[ml,dev]"
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[ml,dev,training]"
 
       - name: DVC lock matches the code (before repro rewrites it)
         # `dvc repro` regenerates dvc.lock, so a *committed* lock that names a
@@ -258,6 +262,15 @@ jobs:
         run: make smoke PYTHON=python
         env:
           # The file store is this project's default (ml/README.md § Tracking).
+          MLFLOW_ALLOW_FILE_STORE: "true"
+
+      - name: Emotion smoke run (Day 32, tiny random-init XLM-R)
+        # The same code path as a real run — trainer, thresholds, artefact,
+        # fresh-process evaluation, report — on a 2-layer stand-in, in seconds.
+        # It is a *plumbing* gate; every metric it produces is noise, and the
+        # report says so.
+        run: make emotion-smoke PYTHON=python
+        env:
           MLFLOW_ALLOW_FILE_STORE: "true"
 
       - name: Tests (offline)

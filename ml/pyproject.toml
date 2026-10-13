@@ -39,6 +39,19 @@ ml = [
     # Data versioning (`dvc repro`, `dvc status`).
     "dvc==3.67.1",
 ]
+# The deep-learning stack, Day 32 (ADR 0032). Deliberately a third extra: the
+# linear runs, the catalogue check and the docs keep working without 2 GB of
+# torch, and CI installs the CPU-only torch wheel before this extra so a pull
+# request never downloads CUDA kernels. Versions are what the sandbox ran
+# against on 2026-10-13; `tiny://` models let the suite exercise LoRA with no
+# network and no checkpoint.
+training = [
+    "torch==2.9.1",
+    "transformers==4.57.3",
+    "peft==0.18.1",
+    "optuna==4.7.0",
+    "accelerate==1.15.0",
+]
 dev = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
@@ -86,7 +99,7 @@ known-first-party = ["manovia_ml"]
 # non-strict zip are normal there, and the notebook exists to be read by a human
 # running cells one at a time. Ruff still parses the cells (so a syntax error is
 # caught), it just does not impose the package's style on them.
-"notebooks/*" = ["B007", "B905", "PTH123", "SIM115"]
+"notebooks/*" = ["B007", "B905", "E501", "PTH123", "SIM115"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -118,4 +131,38 @@ disallow_untyped_calls = false
 # Optional, network-only imports used by the Colab notebook path (Hugging Face
 # `datasets` is not installed in this repository, by design — see ground rule 10).
 module = ["datasets.*", "datasets"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The training stack, installed only through the optional extras (torch,
+# transformers, peft, optuna, accelerate). They ship partial annotations whose
+# stubs disagree with the runtime objects (`no-untyped-call` on
+# `AutoTokenizer.from_pretrained`, for instance), which is the same situation as
+# scikit-learn above: skipped at the boundary, covered by the tests that run
+# them for real.
+module = [
+    "torch.*",
+    "torch",
+    "transformers.*",
+    "transformers",
+    "tokenizers.*",
+    "tokenizers",
+    "peft.*",
+    "peft",
+    "optuna.*",
+    "optuna",
+    "accelerate.*",
+    "accelerate",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+# The backend, imported lazily and *inside a function* by the baseline harness
+# (`manovia_ml.training.emotion.baselines`). `ml/` is a separate project and must
+# stay installable without the backend checkout, so mypy cannot follow these
+# imports; the test suite exercises them where the backend is present.
+module = ["app.*", "app"]
 ignore_missing_imports = true
