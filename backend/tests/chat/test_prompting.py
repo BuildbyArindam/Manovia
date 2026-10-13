@@ -121,3 +121,12 @@ async def test_the_null_retriever_returns_nothing_and_satisfies_the_protocol() -
     retriever = NullRetriever()
     assert isinstance(retriever, Retriever)
     assert await retriever.retrieve("anything", limit=5) == []
+
+
+def test_rt_u_02_the_recent_crisis_hint_does_not_ask_for_repetition() -> None:
+    """Day 29: after a crisis card, later replies must not nag with resources."""
+    lowered = HINT_RECENT_CRISIS.casefold()
+    assert "do not repeat helpline" in lowered
+    assert "unless the person raises risk again or asks for help" in lowered
+    assert "one tap away" in lowered
+    assert "in view" not in lowered
