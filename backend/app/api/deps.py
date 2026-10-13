@@ -22,7 +22,7 @@ from app.content import ConsentDocuments, HelplineContent, load_consent_document
 from app.core.errors import ApiError
 from app.core.lockout import LoginLockout
 from app.core.tokens import ACCESS_TOKEN_TYPE, TokenError, TokenExpiredError, TokenService
-from app.db.repos import ConsentRepository, UserRepository
+from app.db.repos import ConsentRepository, RefreshTokenRepository, UserRepository
 from app.db.session import Database
 from app.models.enums import ConsentKind
 from app.models.user import User
@@ -147,7 +147,7 @@ async def get_current_user(
     normally — that is the point of guest mode — but a soft-deleted account can
     never sign in again. Failure codes distinguish the cases for the client
     (``token_missing`` / ``token_expired`` / ``token_invalid`` /
-    ``account_deleted``) without leaking whether an account exists.
+    ``token_revoked`` / ``account_deleted``) without leaking whether an account exists.
     """
     raw = _bearer_token(request)
     try:
@@ -175,6 +175,17 @@ async def get_current_user(
             "This account no longer exists.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # Day 29 (RT-P-TK-02/03): an access token bound to a refresh family dies
+    # with it. Tokens minted before Day 29 carry no family and simply expire.
+    family = claims.family_id
+    if family is not None and not await RefreshTokenRepository(session).family_is_active(family):
+        raise ApiError(
+            401,
+            "token_revoked",
+            "You have been signed out. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
 
 

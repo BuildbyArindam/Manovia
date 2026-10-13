@@ -170,3 +170,12 @@ def test_refresh_token_without_a_family_is_invalid(service: TokenService) -> Non
     token = pyjwt.encode(payload, SECRET, algorithm="HS256")
     with pytest.raises(TokenInvalidError, match="family"):
         service.verify(token, expected_type=REFRESH_TOKEN_TYPE)
+
+
+def test_access_tokens_can_carry_a_family() -> None:
+    """Day 29 (RT-P-TK-02/03): the family lets an access token die with its session."""
+    service = TokenService("x" * 32)
+    family = uuid.uuid4()
+    token, claims = service.issue_access(uuid.uuid4(), family_id=family)
+    assert claims.family_id == family
+    assert service.verify(token, expected_type=ACCESS_TOKEN_TYPE).family_id == family
