@@ -1,7 +1,8 @@
 # Day 31 verification — ML foundation (2026-10-13)
 
 Every command below was really run in the Day 31 sandbox, on the final Day 31
-tree, with the repository's own virtualenv (`.venv`, Python 3.11.2). The sandbox
+tree, with the repository's own virtualenv (`.venv`, Python 3.11.2). The work is
+in [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38) (not merged). The sandbox
 has no GPU, no Docker, and can reach only github.com / PyPI / npm, so three
 checks are adapted or performed by the owner; each is stated where it happens.
 

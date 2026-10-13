@@ -5,7 +5,7 @@
 `day-31-ml-foundation-data-catalogue`; this session is pinned to its Arena
 branch (`arena/020f8dea-manovia`), as on Days 19–30, so the work is committed
 there and the PR comes from it. Nothing was pushed to `main`, and the PR is
-**not merged**.
+**not merged**: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38).
 
 ### Completed (Day 31)
 
@@ -162,7 +162,8 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 The brief asked for a `day-31-ml-foundation-data-catalogue` branch created from
 `main`; this session is pinned to its Arena branch (as on Days 19–30), so the
 thirty-first day of work is committed to `arena/020f8dea-manovia` and the PR is
-opened from it. Everything asked for is on disk and verified except the things
+opened from it: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38)
+(seven commits, not merged). Everything asked for is on disk and verified except the things
 the sandbox cannot do: a real GPU training run, a GPU/network Colab notebook
 execution, and a first GitHub Actions execution of the new `ml-smoke` job.
 
