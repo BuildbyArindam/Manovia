@@ -68,6 +68,112 @@ flowchart TD
 | 9 | Persist | Reply still returned | Assistant text is encrypted at rest; `persisted=false` if storage fails. |
 | 10 | Memory update | Skip memory | Only if saved and `store_chat` is active; extractive, redacted user snippets, about 300 tokens max. |
 
+## Sequence diagrams
+
+These two diagrams follow the code path by path. The first is an ordinary turn;
+the second is the crisis turn, which is the one that has to be right. Both read
+from the same orchestrator (`backend/app/services/chat/orchestrator.py`).
+
+### A chat turn (JSON endpoint)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Person
+    participant UI as Web client
+    participant API as Chat route
+    participant O as ChatOrchestrator
+    participant S as Rules and ML ensemble
+    participant R as Redaction and retrieval
+    participant LLM as LLM provider chain
+    participant G as Output guard
+    participant DB as Store (encrypted when saved)
+
+    P->>UI: writes a message
+    UI->>API: POST message (Bearer token)
+    API->>API: auth, consent, owner-only session lookup
+    API->>O: admit (length check, per-user rate limit)
+    O->>S: triage the message text
+    alt the safety stage fails
+        S-->>O: error
+        O-->>API: 503 safety_unavailable, no model call
+    else risk is HIGH or IMMINENT
+        S-->>O: crisis plan
+        Note over O,LLM: the LLM is never called
+        O->>DB: store user turn with safety event, store crisis reply
+        O-->>API: crisis reply, resources, emergency flag
+    else risk is NONE, LOW or MEDIUM
+        S-->>O: plan with the LLM allowed
+        O->>R: redact text, history and saved memory
+        R-->>O: redacted prompt parts (no user id)
+        O->>LLM: complete the prompt
+        LLM-->>O: draft (or the canned local reply)
+        O->>G: check the whole reply
+        alt rejected once
+            G-->>O: rejected, categories recorded
+            O->>LLM: one strict regeneration
+            LLM-->>O: second draft
+            O->>G: check again
+            alt rejected again or the guard fails
+                O-->>O: pre-written safe reply
+            end
+        end
+        O->>DB: persist the accepted reply, add the MEDIUM check-in if needed
+        O-->>API: reply and metadata
+    end
+    API-->>UI: JSON reply (the SSE variant streams tokens first)
+    UI-->>P: shows the reply
+```
+
+### A crisis turn, including the "Need help now" path
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Person
+    participant UI as Web client (CrisisCard)
+    participant SW as Service worker
+    participant API as FastAPI
+    participant O as ChatOrchestrator
+    participant S as Rules and ML ensemble
+    participant H as helplines.json (validated at load)
+    participant DB as Store
+
+    P->>UI: writes something that signals risk
+    UI->>API: POST message
+    API->>O: respond
+    O->>S: rules first; the ML model may raise the level, never lower it
+    S-->>O: HIGH or IMMINENT, with evidence codes only
+    O->>O: choose the localised template for the language (no LLM)
+    O->>H: resources for the region, emergency number first
+    H-->>O: numbers, hours, instructions, source dates
+    O->>DB: store the user turn and a metadata safety event
+    alt storing fails
+        O->>O: log the error type only, still reply
+    end
+    O-->>API: reply, risk level, resources, emergency flag, persisted flag
+    API-->>UI: JSON
+    UI-->>P: CrisisCard with call links and the emergency instruction
+
+    Note over P,UI: Later, the person may be offline
+    P->>UI: taps Need help now
+    UI->>SW: GET /api/v1/crisis/resources
+    alt the network answers within 3 seconds
+        SW->>API: fetch the resources
+        API-->>SW: current resources
+        SW-->>UI: resources
+    else offline or slow
+        SW-->>UI: the copy saved on this device at the last online visit (none yet: the dialog says so)
+        UI-->>P: dialog with an offline note
+    end
+```
+
+Two properties hold in both diagrams. The model is never called at HIGH or
+IMMINENT. The reply does not wait for storage: if the database write fails, the
+person still gets the crisis reply, with `persisted=false`. The offline copy is a
+snapshot: the dialog says these are the helplines saved on this device the last time
+it was online.
+
 ## Where a conversation lives
 
 | | Ephemeral (default) | Saved (`save_history = true`) |
