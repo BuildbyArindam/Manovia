@@ -170,8 +170,8 @@ enough to perform two operations before encryption:
      nothing is written to the database.
    - If the entry triggers `HIGH` or `IMMINENT` risk, the entry is still
      encrypted and saved, a text-free `SafetyEvent` row is recorded, and
-     verified crisis helplines from `backend/app/content/helplines.json` are
-     returned in `metadata.resources` and `crisis`.
+     crisis helplines from `backend/app/content/helplines.json` (schema-checked,
+     not call-verified; see ethics-and-limitations) are returned in `metadata.resources` and `crisis`.
 2. **Optional numeric sentiment & emotion scoring (`store_emotions`)**:
    - When `store_emotions=true` (default), `EmotionAnalyzer.analyze` computes
      numeric `sentiment` (`[-1.0, 1.0]`) and `emotion_scores`
@@ -210,7 +210,7 @@ enough to perform two operations before encryption:
    encryption (E2EE). A server operator who controls the running backend process
    could inspect plaintext in memory during `POST`/`PUT`/`GET` requests.
    *Why not client-held-key E2EE?* `AGENTS.md` safety rule 1 requires server-side
-   crisis detection on user text so we can surface verified helplines reliably,
+   crisis detection on user text so we can surface helplines reliably,
    and client-held passphrases mean a forgotten passphrase permanently locks a
    distressed user out of their journal.
 3. **Metadata inference.**

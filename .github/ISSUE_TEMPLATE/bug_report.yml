@@ -1,0 +1,73 @@
+name: Bug report
+description: Something in Manovia does not work as documented.
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste personal content.** Use synthetic messages, journal text and accounts only. Never include real messages, health details, passwords, tokens or keys.
+        If you are in danger right now, contact your local emergency number. This tracker cannot help you.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Use a fresh guest account and synthetic input.
+      placeholder: |
+        1. Open ...
+        2. Type ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Chat
+        - Crisis / helplines
+        - Mood check-ins
+        - Journal
+        - CBT thought record
+        - Screenings (PHQ-9 / GAD-7)
+        - Daily plan
+        - Exercises
+        - Privacy, export or deletion
+        - Settings / accessibility
+        - Offline / PWA
+        - Deployment or Docker
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or branch
+      description: The output of `git rev-parse --short HEAD`.
+    validations:
+      required: false
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Docker compose (local)
+        - Local toolchain (make dev / npm run dev)
+        - Hosted deployment
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or error text
+      description: Redact anything personal. Manovia's logs should not contain message text, but check before pasting.
+    validations:
+      required: false

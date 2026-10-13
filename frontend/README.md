@@ -24,21 +24,21 @@ origin.
 
 ## Commands
 
-| Command                | What it does                                             |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run dev`          | Vite dev server with HMR                                 |
-| `npm run build`        | Type-check, then a production build into `dist/`         |
-| `npm run preview`      | Serve the production build                               |
-| `npm run typecheck`    | `tsc --noEmit` (strict, plus `noUncheckedIndexedAccess`) |
-| `npm run lint`         | ESLint (flat config, typescript-eslint, react-hooks)     |
-| `npm test`             | Vitest in watch mode                                     |
-| `npm run test:run`     | Vitest, once                                             |
-| `npm run format`       | Prettier, write                                          |
-| `npm run format:check` | Prettier, check                                          |
+| Command                 | What it does                                                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`           | Vite dev server with HMR                                                                                          |
+| `npm run build`         | Type-check, then a production build into `dist/`                                                                  |
+| `npm run preview`       | Serve the production build                                                                                        |
+| `npm run typecheck`     | `tsc --noEmit` (strict, plus `noUncheckedIndexedAccess`)                                                          |
+| `npm run lint`          | ESLint (flat config, typescript-eslint, react-hooks)                                                              |
+| `npm test`              | Vitest in watch mode                                                                                              |
+| `npm run test:run`      | Vitest, once                                                                                                      |
+| `npm run format`        | Prettier, write                                                                                                   |
+| `npm run format:check`  | Prettier, check                                                                                                   |
 | `npm run test:e2e:prod` | Day 25: Playwright against the **production build** (axe, keyboard, zoom, offline, installability); needs the API |
-| `npm run budget`       | Day 25: bundle budgets from `dist/.vite/manifest.json` (run after `build`) |
-| `npm run lighthouse`   | Day 25: Lighthouse 13, mobile, signed-in pages; asserts `lighthouserc.json` (needs `vite preview` + API) |
-| `npm run icons`        | Day 25: regenerate the PWA icons from the leaf mark |
+| `npm run budget`        | Day 25: bundle budgets from `dist/.vite/manifest.json` (run after `build`)                                        |
+| `npm run lighthouse`    | Day 25: Lighthouse 13, mobile, signed-in pages; asserts `lighthouserc.json` (needs `vite preview` + API)          |
+| `npm run icons`         | Day 25: regenerate the PWA icons from the leaf mark                                                               |
 
 ### Day 25 — offline, accessibility and performance checks
 

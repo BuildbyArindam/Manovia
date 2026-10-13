@@ -51,11 +51,23 @@ interface Step {
 /** Re-evaluated per render so the labels follow the chosen language. */
 function steps(): readonly Step[] {
   return [
-    { id: "welcome", label: t("onboarding.steps.welcomeLabel"), heading: t("onboarding.welcomeHeading") },
+    {
+      id: "welcome",
+      label: t("onboarding.steps.welcomeLabel"),
+      heading: t("onboarding.welcomeHeading"),
+    },
     { id: "scope", label: t("onboarding.steps.scopeLabel"), heading: t("onboarding.scopeHeading") },
     { id: "ai", label: t("onboarding.steps.aiLabel"), heading: t("onboarding.aiHeading") },
-    { id: "consent", label: t("onboarding.steps.consentLabel"), heading: t("onboarding.steps.consentHeading") },
-    { id: "account", label: t("onboarding.steps.accountLabel"), heading: t("onboarding.steps.accountHeading") },
+    {
+      id: "consent",
+      label: t("onboarding.steps.consentLabel"),
+      heading: t("onboarding.steps.consentHeading"),
+    },
+    {
+      id: "account",
+      label: t("onboarding.steps.accountLabel"),
+      heading: t("onboarding.steps.accountHeading"),
+    },
   ];
 }
 
@@ -177,7 +189,9 @@ export function OnboardingFlow(): ReactElement {
                       : "rounded-full border border-border px-3 py-1 text-ink-muted"
                   }
                 >
-                  <span className="sr-only">{state === "done" ? t("onboarding.completedPrefix") : ""}</span>
+                  <span className="sr-only">
+                    {state === "done" ? t("onboarding.completedPrefix") : ""}
+                  </span>
                   {entry.label}
                 </li>
               );
@@ -243,9 +257,7 @@ export function OnboardingFlow(): ReactElement {
                 {aiDisclosureText(requirements.data)}
               </blockquote>
               {requirements.isError ? (
-                <p className="text-sm text-ink-muted">
-                  {t("onboarding.aiFallbackNote")}
-                </p>
+                <p className="text-sm text-ink-muted">{t("onboarding.aiFallbackNote")}</p>
               ) : null}
             </div>
           ) : null}
@@ -284,7 +296,9 @@ export function OnboardingFlow(): ReactElement {
                             consentCopy()[kind].summary}
                         </span>
                         <span className="mt-2 inline-block rounded-full border border-border-strong px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
-                          {consentCopy()[kind].required ? t("onboarding.requiredBadge") : t("onboarding.optionalBadge")}
+                          {consentCopy()[kind].required
+                            ? t("onboarding.requiredBadge")
+                            : t("onboarding.optionalBadge")}
                         </span>
                       </span>
                     </label>
@@ -296,9 +310,7 @@ export function OnboardingFlow(): ReactElement {
 
           {step.id === "account" ? (
             <div className="mt-6 space-y-5">
-              <p className="text-ink-muted">
-                {t("onboarding.accountIntro")}
-              </p>
+              <p className="text-ink-muted">{t("onboarding.accountIntro")}</p>
               <button
                 type="button"
                 className="w-full rounded-xl bg-accent-bg px-5 py-3 text-lg font-semibold text-accent-fg disabled:opacity-60 sm:w-auto"
@@ -359,9 +371,7 @@ export function OnboardingFlow(): ReactElement {
                         }}
                         className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-4 py-2"
                       />
-                      <p className="mt-1 text-sm text-ink-muted">
-                        {t("onboarding.passwordHelp")}
-                      </p>
+                      <p className="mt-1 text-sm text-ink-muted">{t("onboarding.passwordHelp")}</p>
                     </div>
                     <button
                       type="submit"
@@ -428,9 +438,7 @@ export function OnboardingFlow(): ReactElement {
           ) : null}
         </section>
 
-        <p className="mt-8 text-sm text-ink-muted">
-          {t("onboarding.footer")}
-        </p>
+        <p className="mt-8 text-sm text-ink-muted">{t("onboarding.footer")}</p>
       </main>
 
       <div role="status" aria-live="polite" className="sr-only">

@@ -74,11 +74,7 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
       await queryClient.invalidateQueries({ queryKey: planKeys.today });
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError
-          ? t("plan.saveError")
-          : t("plan.saveError"),
-      );
+      setErrorMessage(error instanceof ApiError ? t("plan.saveError") : t("plan.saveError"));
     },
   });
 
@@ -109,9 +105,7 @@ export function PlanCard({ client = defaultClient }: PlanCardProps): ReactElemen
         <h2 id="plan-heading" className="text-lg">
           {t("plan.cardHeading")}
         </h2>
-        <p className="mt-3 text-sm text-ink-muted">
-          {t("plan.loadError")}
-        </p>
+        <p className="mt-3 text-sm text-ink-muted">{t("plan.loadError")}</p>
       </section>
     );
   }

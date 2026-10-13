@@ -69,11 +69,7 @@ export function PlanSettingsSection({
       await queryClient.invalidateQueries({ queryKey: planSettingsKeys.current });
     },
     onError: (error) => {
-      setMessage(
-        isApiError(error)
-          ? t("plan.settingsErrorApi")
-          : t("plan.settingsErrorGeneric"),
-      );
+      setMessage(isApiError(error) ? t("plan.settingsErrorApi") : t("plan.settingsErrorGeneric"));
     },
   });
 
@@ -134,15 +130,11 @@ export function PlanSettingsSection({
       <h2 id="plan-settings-heading" className="text-lg">
         {t("plan.settingsHeading")}
       </h2>
-      <p className="mt-2 text-sm text-ink-muted">
-        {t("plan.settingsIntro")}
-      </p>
+      <p className="mt-2 text-sm text-ink-muted">{t("plan.settingsIntro")}</p>
 
       <fieldset className="mt-4">
         <legend className="font-semibold">{t("plan.settingsTagsLegend")}</legend>
-        <p className="mt-1 text-sm text-ink-muted">
-          {t("plan.settingsTagsHelp")}
-        </p>
+        <p className="mt-1 text-sm text-ink-muted">{t("plan.settingsTagsHelp")}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {knownTags.map((tag) => {
             const checked = draft.preferred_exercise_tags.includes(tag);
@@ -179,9 +171,7 @@ export function PlanSettingsSection({
           />
           <span>
             <span className="block font-semibold">{t("plan.settingsQuietToggle")}</span>
-            <span className="block text-sm text-ink-muted">
-              {t("plan.settingsQuietHelp")}
-            </span>
+            <span className="block text-sm text-ink-muted">{t("plan.settingsQuietHelp")}</span>
           </span>
         </label>
         <div className="mt-3 flex flex-wrap items-end gap-4">
@@ -208,9 +198,7 @@ export function PlanSettingsSection({
             />
           </label>
         </div>
-        <p className="mt-2 text-sm text-ink-muted">
-          {t("plan.settingsMidnight")}
-        </p>
+        <p className="mt-2 text-sm text-ink-muted">{t("plan.settingsMidnight")}</p>
       </fieldset>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">

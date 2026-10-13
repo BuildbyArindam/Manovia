@@ -60,7 +60,16 @@ const fields: Partial<Record<number, TextKey>> = {
   4: "evidence_against",
   5: "balanced_thought",
 };
-const emotions = ["anxiety", "sadness", "anger", "fear", "shame", "guilt", "frustration", "other"] as const;
+const emotions = [
+  "anxiety",
+  "sadness",
+  "anger",
+  "fear",
+  "shame",
+  "guilt",
+  "frustration",
+  "other",
+] as const;
 
 function emotionLabel(id: string): string {
   return t(`cbt.emotions.${id}`, { defaultValue: id });
@@ -161,9 +170,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
     <section className="mx-auto max-w-2xl space-y-6" aria-label={t("cbt.ariaLabel")}>
       <header>
         <h1 className="text-3xl font-semibold">{t("cbt.heading")}</h1>
-        <p className="text-ink-muted">
-          {t("cbt.lede")}
-        </p>
+        <p className="text-ink-muted">{t("cbt.lede")}</p>
       </header>
       {error && (
         <p role="alert" className="text-red-700">
@@ -197,7 +204,9 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
               </p>
               <p>
                 {t("cbt.whatHelpedPrefix")}{" "}
-                {record.what_helped.length ? record.what_helped.map(tagLabel).join(", ") : t("cbt.notNoted")}
+                {record.what_helped.length
+                  ? record.what_helped.map(tagLabel).join(", ")
+                  : t("cbt.notNoted")}
               </p>
               <button
                 type="button"
@@ -239,9 +248,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
           >
             {t("cbt.editThisStep")}
           </button>
-          <p className="text-sm text-ink-muted">
-            {t("cbt.crisisNote")}
-          </p>
+          <p className="text-sm text-ink-muted">{t("cbt.crisisNote")}</p>
         </div>
       )}
       {active && !crisis && (
@@ -252,7 +259,9 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
             void next();
           }}
         >
-          <p className="text-sm text-ink-muted">{t("cbt.stepCounter", { current: step + 1, total: 7 })}</p>
+          <p className="text-sm text-ink-muted">
+            {t("cbt.stepCounter", { current: step + 1, total: 7 })}
+          </p>
           <h2 className="text-xl font-semibold">{stepLabel(step)}</h2>
           {field && (
             <label className="block space-y-2" htmlFor="cbt-text">
@@ -271,10 +280,7 @@ export function CBTPage({ client = api }: { client?: ApiClient }): ReactElement 
           {step === 2 && (
             <>
               {traps && (
-                <aside
-                  aria-label={t("cbt.trapsLabel")}
-                  className="rounded-lg bg-accent-soft p-4"
-                >
+                <aside aria-label={t("cbt.trapsLabel")} className="rounded-lg bg-accent-soft p-4">
                   <h3 className="font-semibold">{t("cbt.trapsLabel")}</h3>
                   <p>{t("cbt.trapsIntro")}</p>
                   <ul>

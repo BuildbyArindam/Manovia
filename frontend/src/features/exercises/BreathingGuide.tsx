@@ -63,7 +63,12 @@ export function BreathingGuide({
           </svg>
         )}
         <div className="relative rounded-full bg-surface px-4 py-2">
-          <span role="timer" aria-live="off" aria-label={t("exercises.timeRemainingLabel")} className="block">
+          <span
+            role="timer"
+            aria-live="off"
+            aria-label={t("exercises.timeRemainingLabel")}
+            className="block"
+          >
             <span
               className="block text-4xl font-semibold tabular-nums"
               data-testid="step-countdown"

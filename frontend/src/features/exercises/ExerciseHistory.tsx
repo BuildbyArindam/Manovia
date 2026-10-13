@@ -55,8 +55,8 @@ export function ExerciseHistory({ client, offset, onPage }: ExerciseHistoryProps
           >
             <h3 className="font-semibold">{entry.title}</h3>
             <p className="text-sm text-ink-muted">
-              <time dateTime={entry.created_at}>{formatDateTime(entry.created_at)}</time>{" "}
-              · {formatDuration(entry.duration_seconds)}
+              <time dateTime={entry.created_at}>{formatDateTime(entry.created_at)}</time> ·{" "}
+              {formatDuration(entry.duration_seconds)}
             </p>
             <p className="text-sm">
               Before: {entry.pre_rating === null ? "not rated" : `${entry.pre_rating} of 5`} ·

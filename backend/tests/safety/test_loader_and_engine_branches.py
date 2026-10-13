@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -349,6 +350,44 @@ def _prediction(high_mass: float, *, level: RiskLevel, confidence: float) -> MLP
     probabilities["high"] = high_mass
     probabilities[level.label] = max(probabilities[level.label], confidence)
     return MLPrediction(probabilities=probabilities, level=level, confidence=confidence)
+
+
+def test_ensemble_with_a_disabled_classifier_is_rules_only(engine: RuleEngine) -> None:
+    """A disabled classifier is "no opinion": the decision is exactly the rules' decision.
+
+    ``decide`` must not call ``predict`` on a classifier that is switched off, and
+    the result must carry no ML fields.
+    """
+    text = "i want to die"
+    assessment = engine.assess(text)
+    decision = decide(
+        assessment,
+        NullClassifier(reason="disabled"),
+        text=text,
+        min_confidence=0.5,
+        crisis_mass_floor=0.5,
+        suspicion_floor=0.3,
+    )
+    assert decision.level == assessment.level
+    assert decision.source == SOURCE_RULES
+    assert decision.ml_used is False
+    assert decision.ml_level is None
+
+
+def test_a_pattern_file_whose_top_level_is_a_list_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A YAML list at the top of a pattern file is a broken file, not an empty one."""
+    broken = tmp_path / "broken.yaml"
+    broken.write_text("- just\n- a list\n", encoding="utf-8")
+
+    class _PackageRoot:
+        def joinpath(self, _relative: str) -> Path:
+            return broken
+
+    monkeypatch.setattr("app.services.safety.patterns.files", lambda _package: _PackageRoot())
+    with pytest.raises(ValueError, match="expected a mapping at the top level"):
+        _load_yaml("broken.yaml")
 
 
 def test_ensemble_degrades_to_rules_when_the_classifier_raises(engine: RuleEngine) -> None:

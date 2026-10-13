@@ -474,7 +474,6 @@ async def test_user_a_cannot_read_user_bs_session(
         await client.get(f"{base}/messages", headers=mallory.headers),
         await say(client, mallory, session["id"], "let me in"),
         await client.post(f"{base}/stream", headers=mallory.headers, json={"message": "hi"}),
-        await client.get(f"{base}/stream", headers=mallory.headers, params={"message": "hi"}),
     ]
 
     for response in attempts:
@@ -737,7 +736,12 @@ async def test_a_post_stream_is_token_events_then_a_final_event_with_metadata(
     assert final["metadata"]["resources"] == []
 
 
-async def test_a_get_stream_is_the_same_stream(client: httpx.AsyncClient) -> None:
+async def test_there_is_no_get_stream_route(client: httpx.AsyncClient) -> None:
+    """A GET would carry the message in the URL, where proxies and logs record it.
+
+    The route was removed on Day 28, so GET on the stream path is not allowed. The
+    message is not echoed back either.
+    """
     who = await person(client)
     session = await open_session(client, who)
 
@@ -747,11 +751,8 @@ async def test_a_get_stream_is_the_same_stream(client: httpx.AsyncClient) -> Non
         params={"message": SAD_MESSAGE, "region": "IN"},
     )
 
-    assert response.status_code == 200
-    events = parse_sse(response.text)
-    assert events[-1][0] == "final"
-    assert "".join(d["text"] for k, d in events if k == "token") == events[-1][1]["reply"]
-    assert events[-1][1]["metadata"]["region"] == "IN"
+    assert response.status_code == 405
+    assert SAD_MESSAGE not in response.text
 
 
 async def test_a_crisis_stream_has_a_token_a_final_and_no_model_call(
