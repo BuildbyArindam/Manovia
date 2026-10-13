@@ -638,10 +638,10 @@ def _main(argv: Sequence[str] | None = None) -> int:
         train = load_examples(args.train)
         held_out = load_examples(args.held_out)
         report = overlap_report(train, held_out, threshold=args.threshold)
-        if args.json:
-            print(json.dumps(report.as_dict(), indent=2, sort_keys=True))
-        else:
-            print(json.dumps(report.as_dict(), indent=2, sort_keys=True))
+        # Printed either way: this JSON *is* the human-readable answer (which rows
+        # collided, and how closely). `--json` exists for symmetry with the other
+        # subcommands and for scripts that pipe the output.
+        print(json.dumps(report.as_dict(), indent=2, sort_keys=True))
         if not report.clean:
             print(report.fail_message(), file=sys.stderr)
             return 1
