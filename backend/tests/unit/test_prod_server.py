@@ -42,7 +42,7 @@ def conf(clean_env: None) -> Any:
 def test_workers_run_uvicorn_via_gunicorn(conf: Any) -> None:
     """The process model is Gunicorn managing Uvicorn workers."""
     assert conf.worker_class == "manovia_worker.AccessLogFreeUvicornWorker"
-    assert int(conf.workers) >= 1
+    assert int(conf.workers) == 1  # see docstring: ephemeral sessions are per process
     assert conf.bind.startswith("0.0.0.0:")
 
 

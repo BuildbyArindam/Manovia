@@ -20,12 +20,16 @@ Privacy notes carried over from the single-process setup:
 * gunicorn's error log (stderr) carries lifecycle messages and tracebacks of
   infrastructure failures only; request data never enters it.
 
-Sizing: ``GUNICORN_WORKERS`` defaults to 2 because the reference deployment
-(one small Fly shared-CPU VM next to a managed Postgres) is concurrency-,
-not CPU-bound: each worker spends its time waiting on the database and the
-LLM. Scale vertically first (Fly vm sizes), then horizontally; the in-memory
-rate limiter and ephemeral chat store are per process, so more workers also
-means more independent budgets — see the runbook before going past a handful.
+Sizing: ``GUNICORN_WORKERS`` defaults to **1** on purpose. Ephemeral (not
+saved) chat sessions live in per-process memory (Day 11), and the ephemeral
+store is not shared across processes yet — a second request that lands on a
+different worker would 404 mid-conversation (a correctness and a safety
+concern, not a throughput nicety). Until the store is shared or sticky
+sessions exist, scale by running more *machines behind one that keeps
+affinity* is equally wrong, so: one worker per machine, scale machines, and
+tell users chats are ephemeral-per-connection — or persist sessions. See the
+runbook and PROGRESS.md parking lot. Raise the number only when the store is
+shared; the knob exists for that day.
 """
 
 from __future__ import annotations
@@ -39,7 +43,7 @@ bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
 
 # --- Workers -----------------------------------------------------------------
 worker_class = "manovia_worker.AccessLogFreeUvicornWorker"
-workers = int(os.getenv("GUNICORN_WORKERS", "2"))
+workers = int(os.getenv("GUNICORN_WORKERS", "1"))
 # Preload must stay OFF: create_app() builds the async SQLAlchemy engine and
 # the per-process caches at import time. Forking after that would share one
 # connection pool across processes — the classic fork-safety bug — and would

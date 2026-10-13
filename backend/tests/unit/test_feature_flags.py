@@ -62,9 +62,7 @@ def test_production_refuses_a_changed_mass_floor_without_the_flag() -> None:
 
 
 def test_production_allows_a_changed_threshold_with_the_flag() -> None:
-    settings = _production(
-        safety_ml_min_confidence=0.55, feature_ml_thresholds_unlocked=True
-    )
+    settings = _production(safety_ml_min_confidence=0.55, feature_ml_thresholds_unlocked=True)
     assert settings.safety_ml_min_confidence == 0.55
 
 
@@ -98,9 +96,7 @@ def test_judge_gate_blocks_the_judge_without_the_flag() -> None:
 
 def test_judge_gate_allows_the_judge_with_the_flag() -> None:
     assert run_response_eval.judge_gate_error("fake", env={"FEATURE_LLM_JUDGE": "1"}) is None
-    assert (
-        run_response_eval.judge_gate_error("llm", env={"FEATURE_LLM_JUDGE": "true"}) is None
-    )
+    assert run_response_eval.judge_gate_error("llm", env={"FEATURE_LLM_JUDGE": "true"}) is None
 
 
 def test_the_cli_refuses_with_judge_without_the_flag(
