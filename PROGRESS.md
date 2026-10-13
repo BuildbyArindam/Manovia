@@ -12,7 +12,7 @@ inference-only evaluation, report and model card), two real-run configs
 (XLM-R default, MuRIL comparison), a hand-written 174-row en/hi/bn held-out set
 with its own dataset card, a Colab/Kaggle notebook for the GPU run, the
 `EMOTION_ANALYZER=trained` path in the backend with a never-fatal fallback, ADR
-0032, an updated model card, and **110 new tests** (**ml 220**, up from 139;
+0032, an updated model card, and **111 new tests** (**ml 221**, up from 139;
 the backend's `tests/unit/test_nlp_trained.py` adds 29).
 
 **What does not exist, and why:** a trained model with real numbers. This
@@ -112,7 +112,7 @@ exists to prove the *pipeline*; every report it writes says its numbers are nois
 
 | check | result |
 | --- | --- |
-| `cd ml && pytest -q` | **220 passed** in 28.0 s, offline (tmp file-store MLflow, tiny random-init model) |
+| `cd ml && pytest -q` | **221 passed** in 27.8 s, offline (tmp file-store MLflow, tiny random-init model) |
 | `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 69 files formatted; **53 source files** typed — the tests are type-checked, not just the package |
 | `make ml-emotion-smoke` — the whole Day-32 path on a CPU, offline | run **`17e8e06c…`** FINISHED; validation macro-F1 0.285714, test 0.137393 (95% CI 0.125405–0.150131), ECE 0.159948, `mixed_precision=off`, device `cpu`. **Plumbing numbers on a random stand-in — not quality**, and the artefact's own card says so in its first paragraph |
 | the config is data — nothing about the run is in the code | config fingerprint `4872b102…`, seed 20261013 (`PYTHONHASHSEED=0`, BLAS/torch threads 1, `seed.torch_seeded=true`), git commit + `dirty=false`, per-file data sha256s, library versions (torch 2.9.1, transformers 4.57.3, peft 0.18.1, optuna 4.7.0, numpy 2.4.6) — all in the run's params and `environment.json` |
@@ -126,6 +126,7 @@ exists to prove the *pipeline*; every report it writes says its numbers are nois
 | backend: `pytest tests/unit/test_nlp_trained.py tests/unit/test_config.py tests/unit/test_nlp_factory.py -q` | **102 passed** (29 of them the analyzer's own) |
 | backend: `pytest tests/integration/test_nlp_hf_pipeline.py -q` | **7 passed**, after fixing the root cause below |
 | backend: full `pytest -q` (the final tree) | **4208 passed, 1 skipped, 5 deselected** in 1043.20 s (17:23). The first full run on this branch had reported 6 failed / 4202 passed / 1 skipped / 5 deselected in 1058.71 s, all six in `test_nlp_hf_pipeline.py`; the fixture bug behind them is fixed, 4202 + 6 = 4208, and nothing was skipped to get there |
+| **GitHub Actions on the pull request** | all **7 checks green** (`Backend`, `Frontend`, `ML — smoke, reproducibility, catalogue`, `Evaluation Harness`, `Accessibility & Lighthouse`, `Secrets scan`, `Dependency audit`) on commit `951e6d8`. The ML job ran the new emotion smoke step, the emotion tests (with the `[training]` extra installed) and `mypy src tests` on a **Python 3.12** runner — the first time any of that has executed outside this sandbox. CI also found two real problems this file lists under the root causes, which is the point of it |
 | the make targets, each one actually run | `emotion-smoke` (writes run + artefact + report), `emotion-eval` against that artefact (2000 resamples), `emotion-tune` refusing a config with `optuna.enabled: false` ("a sweep is a deliberate act"), `emotion-data` without `SRC` printing usage and exiting 2, `emotion-data` on a real 5-row GoEmotions file (4 rows out, drops reported). The two targets that used to inherit the Day-31 linear `CONFIG` default — and therefore could never succeed — now say so instead of throwing a traceback |
 | frontend: `npm run typecheck` / `npm run lint` / `npm run test:run` | clean; clean; **601 passed, 3 skipped** in 73 files (1 file skipped) — 81 s |
 | `git status` at the end | nothing Day-32 left uncommitted; the artefact directory and `ml/mlruns/` are git-ignored, and no weights or datasets are tracked (`ci.yml`'s "No datasets or model weights tracked in Git" step covers it) |
@@ -151,6 +152,27 @@ exists to prove the *pipeline*; every report it writes says its numbers are nois
    artefact (`bootstrap_seed_for()`, `--seed` to override) and the equality is
    asserted by a test that runs the CLI in a subprocess and compares its payload
    with the run's MLflow artefacts.
+
+Two more were found by **CI on the pull request**, which is the next-best thing to
+the user's machine:
+
+3. *The committed `dvc.lock` was stale.* `ml/src/manovia_ml/seeds.py` is a
+   recorded dependency of the toy-split stages and Day 32 edited it (torch
+   seeding), so the lock named a pipeline the commit no longer contained. The
+   Day-31 check (`python -m manovia_ml.data.dvc_lock`) failed in CI within
+   minutes and for exactly that reason. Refreshed with `make data`; the data
+   itself did not move (the splits are byte-identical, same sha256s).
+4. *Two of the new tests assumed the machine they were written on.* They patched
+   the Hugging Face cache probe, but on CI the **backend checkout is not
+   importable** (the `ml` job installs `ml/`, not the backend), so
+   `available_baselines()` failed earlier and the probe was never consulted — and
+   the CLI test never reached the guard it was testing. A test that only passes
+   where the backend happens to be on `sys.path` is a test of the author's
+   environment. Both now branch on the precondition, a new deterministic test
+   forces the no-backend branch via `sys.modules`, and the availability *reason
+   strings* were split three ways, because "the `nlp` extra is missing" is
+   unhelpful when it is the checkout that is missing. Verified both ways: with
+   `backend/` present, 15 passed; with it moved aside, 14 passed + 1 skipped.
 
 A third, smaller one: the full backend suite's six failures were a *fixture* bug
 — a `BertTokenizerFast` next to a `DistilBertForSequenceClassification` — which
@@ -186,10 +208,10 @@ product code was never wrong; the fixture was, and the fix is in the fixture.
   accepts them, and transformers no longer drops them silently — so a *Bert*
   tokenizer next to a *DistilBert* model now raises. The product code was never
   wrong; the fixture was. No test was weakened, skipped or deleted.
-- **CI's emotion smoke step has never run on GitHub Actions** (the workflow is
-  validated as YAML and the same commands run here; `act`/Docker remain
-  unavailable in the sandbox). It is the first thing to watch on the pull
-  request.
+- ~~CI's emotion smoke step has never run on GitHub Actions~~ — **it has now, and
+  it passed**, along with the emotion tests and `mypy src tests` on a Python 3.12
+  runner (all seven checks green). What CI has *not* done is run the GPU path or
+  anything needing the hub; both remain owner work.
 - **`ml/` still adds nothing to the product's safety path** (by design), and the
   artefact directory is never committed — a deployment must place it.
 
@@ -221,18 +243,21 @@ The brief asked for a `day-32-fine-tune-multilingual-emotion` branch created
 from `main`; this session is pinned to its Arena branch
 (`arena/7faf4c1a-manovia`), so the thirty-second day of work is committed there.
 Everything asked for is on disk and verified **except the things the sandbox
-cannot do**: a real GPU training run, a Hugging Face download, a Colab notebook
-execution, and a first GitHub Actions execution of the new CI step. The pull
-request opens from this branch and is not merged.
+cannot do**: a real GPU training run, a Hugging Face download, and a Colab
+notebook execution. The pull request is open
+([#40](https://github.com/BuildbyArindam/Manovia/pull/40)) and **not merged**;
+all seven of its checks are green, and the commit log is small steps, one topic
+each, in the shape `CONTRIBUTING.md` asks for.
 
 ### Next steps (Day 33 — first three)
 
-1. **Run the suite from a fresh clone, not from this working tree.** A clone is
-   what caught the stale `dvc.lock` and the four `ml/` modules that `.gitignore`
-   was swallowing on Day 31; the 4208-passed run above still came from a tree
-   that had months of sandbox state in it. `git clone` → `make data` →
-   `cd ml && pytest` → the backend suite. Anything that only works here shows up
-   in that run, and nothing else will find it.
+1. **Run the suite from a fresh clone, not from this working tree.** CI already
+   checks a clean checkout and is green, but locally the 4208-passed backend run
+   and the 221-passed `ml/` run still came from a tree with months of sandbox
+   state in it (a `.venv` with extra plugins, a warm Hugging Face cache, DVC
+   outputs already on disk). `git clone` → `make data` → `cd ml && pytest` → the
+   backend suite; anything that only works here shows up in that run, and the
+   pull request's CI log is the other half of the answer.
 2. **Do the first real training run** (owner): `ml/notebooks/colab_emotion_lora.ipynb`
    → XLM-R on GoEmotions → the three-way table on the 174-row held-out set →
    paste the numbers, the pins, the report and the card back into the repository.
