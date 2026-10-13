@@ -1,0 +1,140 @@
+# The real English run: xlm-roberta-base + LoRA into Manovia's nine emotions.
+#
+# NOT run in this sandbox. Reasons, in order: no GPU (LoRA on a 278M-parameter
+# encoder is hours on CPU, and mixed precision needs CUDA), and Hugging Face is
+# unreachable here so the weights cannot be downloaded at all. This file is the
+# input to ml/notebooks/colab_emotion_lora.ipynb; the exact steps are in
+# ml/notebooks/README.md.
+#
+# Verified on the Hub (2026-10-13, via the API):
+#   id          FacebookAI/xlm-roberta-base (xlm-roberta-base redirects here)
+#   licence     MIT
+#   parameters  278,885,778 (F32, safetensors available)
+#   languages   100, including en, hi and bn; checkpoint works out of the box
+#   sha         e73636d4f797dec63c3081bb6ed5c7b0bb3f2089
+#   why         MIT is the permissive licence; the tokenizer covers Hindi and
+#               Bengali natively, which is what makes a per-language number from
+#               a single model possible at all (see ADR 0032 for the MuRIL
+#               comparison and configs/emotion_lora_muril.yaml).
+#
+# Before the first run:
+#   1. Read ml/data/CATALOGUE.md § GoEmotions and accept the two conditions
+#      (no redistribution of rows; it is Reddit text, so it is a domain shift).
+#   2. Fetch and convert to the multi-label taxonomy mapping:
+#        python -m manovia_ml.data.goemotions --download train --split-name train \
+#            --out data/raw/goemotions/train.jsonl
+#        python -m manovia_ml.training.emotion.data convert \
+#            data/raw/goemotions/train.jsonl --scheme goemotions --lang en \
+#            --out data/raw/goemotions_multi/train.jsonl
+#      (same for validation; the converter reads GoEmotions' original 27 labels,
+#      which the Day-31 single-label converter keeps in `source_labels`.)
+#   3. `dvc add data/raw/goemotions_multi` so the bytes are versioned, not committed.
+#   4. Fill in the sha256/rows pins below from the converter's report, then never
+#      change them silently again.
+name: emotion_lora_xlmr
+
+seed: 20261013
+
+notes: >
+  xlm-roberta-base (MIT) with LoRA rank 16, fine-tuned on GoEmotions converted to
+  Manovia's nine emotions with soft label weights, evaluated on the hand-written
+  174-row en/hi/bn set that is never trained on. English supervision only: the
+  Hindi and Bengali numbers measure transfer, not supervision.
+
+data:
+  train:
+    path: data/raw/goemotions_multi/train.jsonl
+    sha256: null
+    rows: null
+  eval:
+    path: data/raw/goemotions_multi/validation.jsonl
+    sha256: null
+    rows: null
+  validation:
+    path: data/raw/goemotions_multi/validation.jsonl
+    sha256: null
+    rows: null
+  test:
+    path: data/validation/emotion_validation.jsonl
+    sha256: "fb116c7cf6c7f43f0571451b18a6a1e4d898ba5ce4e5f93663d4bb7aae41b08c"
+    rows: 174
+  text_field: text
+  label_field: labels
+  lang_field: lang
+  labels: [joy, sadness, anger, fear, anxiety, shame, loneliness, calm, neutral]
+
+model:
+  kind: emotion_lora
+  base_model: FacebookAI/xlm-roberta-base
+  tokenizer_max_length: 128
+  lora:
+    rank: 16
+    alpha: 32
+    dropout: 0.1
+    target_modules: [query, value]
+    bias: none
+    freeze_base: false
+  training:
+    epochs: 3
+    batch_size: 32
+    eval_batch_size: 64
+    learning_rate: 3.0e-4
+    weight_decay: 0.01
+    warmup_ratio: 0.06
+    max_grad_norm: 1.0
+    label_smoothing: 0.02
+    class_weighting: balanced
+    scheduler: cosine
+    # fp16 on a T4/V100; "auto" resolves to fp32 if the machine has no GPU.
+    mixed_precision: auto
+    gradient_accumulation_steps: 1
+    early_stopping_patience: 2
+    early_stopping_min_delta: 0.001
+    max_steps: null
+    log_every_steps: 50
+
+evaluation:
+  tolerance: 2.0e-2
+  metrics: [macro_f1, weighted_f1]
+  confusion_matrix: true
+
+emotion:
+  thresholds:
+    enabled: true
+    search_min: 0.05
+    search_max: 0.95
+    search_steps: 19
+    metric: f1
+    # A label with fewer than five positives on the GoEmotions validation split
+    # keeps the default rather than fitting a threshold to three rows.
+    min_support: 5
+    default: 0.5
+  optuna:
+    enabled: false          # turn on deliberately; `ml-emotion-tune` runs it
+    n_trials: 12            # the brief's cap
+    rank_choices: [4, 8, 16, 32]
+    learning_rate_low: 1.0e-4
+    learning_rate_high: 3.0e-3
+    metric: macro_f1
+    seed: null
+  report:
+    bootstrap_resamples: 2000
+    confidence_level: 0.95
+    calibration_bins: 10
+    error_cases: 20
+    baselines: [keyword, baseline]
+  artifact_dir: artifacts/emotion
+  artifact_name: manovia-emotion-xlmr-v1
+
+tracking:
+  experiment: manovia-ml-emotion
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: research
+    model: xlm-roberta-base
+    data: goemotions_multi + handwritten_val_v1
+    gpu: required
+
+threads: null
