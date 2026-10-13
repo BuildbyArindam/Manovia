@@ -88,13 +88,28 @@ def available_baselines() -> dict[str, str]:
         out["keyword"] = f"backend not importable: {type(exc).__name__}"
         out["sentiment"] = out["keyword"]
 
+    # Three separate things can be missing here, and they have three different
+    # fixes — so the check names the one it found rather than blaming the extra
+    # for a checkout that is not there. CI found this: the `ml` job installs
+    # `ml/`, so the backend import fails first, and the message used to say the
+    # `nlp` extra was missing, which is both true-ish and unhelpful.
     try:
         import transformers  # noqa: F401
-        from app.services.nlp.hf import HFEmotionAnalyzer  # noqa: F401
     except Exception as exc:
         out["baseline"] = (
-            f"off-the-shelf checkpoint needs the `nlp` extra and a model download "
-            f"({type(exc).__name__})"
+            f"off-the-shelf checkpoint needs the `nlp` extra (transformers: {type(exc).__name__})"
+        )
+        return out
+
+    try:
+        _backend_on_path()
+        from app.services.nlp.hf import HFEmotionAnalyzer
+
+        del HFEmotionAnalyzer  # imported for the check only
+    except Exception as exc:
+        out["baseline"] = (
+            f"the backend checkout is not importable here ({type(exc).__name__}), and the "
+            "off-the-shelf baseline scores through the product's own analyzer"
         )
         return out
 

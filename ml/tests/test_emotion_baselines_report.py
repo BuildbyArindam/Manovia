@@ -110,22 +110,58 @@ def test_available_baselines_admits_a_checkpoint_it_cannot_reach(
     the `nlp` extra imported, so `python -m ...report --baselines baseline`
     crashed with a traceback from inside the Hugging Face loader on any offline
     machine — which is every machine this pipeline is built for.
+
+    Written in two branches because the first version failed on CI: the `ml` job
+    installs `ml/`, not the backend, so the backend import fails *first* and the
+    cache probe is never reached. Whichever machine this runs on, one of the two
+    branches is the truth, and where the backend *is* importable the probe is
+    what decides.
     """
 
     def cached(*args: Any, **kwargs: Any) -> str:
         return ""
 
     def not_cached(*args: Any, **kwargs: Any) -> str:
-        return reason
+        return "off-the-shelf checkpoint X is not in the local Hugging Face cache"
 
-    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", cached)
-    assert available_baselines()["baseline"] == ""
+    availability = available_baselines()
+    assert set(availability) == {"keyword", "sentiment", "baseline"}
+    if availability["keyword"] == "":
+        # Backend importable: the lexicon chain is local by construction, so it
+        # is runnable, and the checkpoint's verdict is the cache probe's alone.
+        monkeypatch.setattr(baselines_module, "checkpoint_is_cached", cached)
+        assert available_baselines()["baseline"] == ""
+        monkeypatch.setattr(baselines_module, "checkpoint_is_cached", not_cached)
+        assert available_baselines()["baseline"].endswith("Hugging Face cache")
+    else:
+        # No backend on this machine — CI's `ml` job installs `ml/`, not the
+        # backend, so the import fails before the probe is ever consulted. Then
+        # every verdict has to name what is missing instead of going blank.
+        assert "backend" in availability["baseline"]
 
-    reason = "not in the local Hugging Face cache"
-    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", not_cached)
-    assert available_baselines()["baseline"] == reason
-    # The lexicon chain is local by construction: no download, always runnable.
-    assert available_baselines()["keyword"] == ""
+
+def test_available_baselines_explains_a_backend_it_cannot_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A machine without the backend gets a reason, not a traceback or a blank.
+
+    Forced deterministically: a `None` entry in `sys.modules` makes the import
+    raise wherever this runs, which gives the branch CI takes every time a test
+    on a machine that normally takes the other one.
+    """
+
+    monkeypatch.setitem(sys.modules, "app.services.nlp.keyword", None)
+    monkeypatch.setitem(sys.modules, "app.services.nlp.sentiment", None)
+
+    availability = available_baselines()
+
+    assert availability["keyword"].startswith("backend not importable:")
+    # `None` in sys.modules raises ModuleNotFoundError; a missing dependency
+    # raises ImportError. Both mean "the backend could not be imported", and the
+    # reason has to name which, because the two have different fixes.
+    assert any(name in availability["keyword"] for name in ("ImportError", "ModuleNotFoundError"))
+    assert availability["sentiment"] == availability["keyword"]
+    assert availability["baseline"], "the checkpoint verdict must not be blank"
 
 
 def test_checkpoint_is_cached_names_the_checkpoint_and_the_cache() -> None:
@@ -165,15 +201,19 @@ def test_the_report_cli_survives_a_baseline_that_cannot_run(
         labels = EMOTIONS
         directory = tmp_path / "artifact"
 
-    # Pretend the checkpoint *is* cached, so the CLI actually reaches the runner
-    # and the guard is what is being tested (not the availability check above).
     def stub_evaluate(*args: Any, **kwargs: Any) -> dict[str, Any]:
         return dict(tiny_run_stub["payload"])
 
     def stub_load(path: Any) -> Any:
         return _Artifact()
 
-    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", stub_cached)
+    # Declare every baseline runnable so the CLI reaches the runner and the
+    # *guard* is what is under test. Patch the gate itself rather than the cache
+    # probe behind it: on CI's `ml` job there is no backend, so the probe is never
+    # consulted and the first version of this test never reached the guard at all.
+    monkeypatch.setattr(
+        report_module, "available_baselines", lambda: {"keyword": "", "baseline": ""}
+    )
     monkeypatch.setattr(report_module, "run_baseline", exploding)
     monkeypatch.setattr(report_module, "load_artifact", stub_load)
     # `evaluate_artifact` is imported *inside* `_main`, so the patch has to land
