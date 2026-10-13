@@ -48,7 +48,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute(
-        "UPDATE safety_events SET category = NULL "
-        "WHERE category IN ('prompt_leak', 'jailbreak')"
+        "UPDATE safety_events SET category = NULL WHERE category IN ('prompt_leak', 'jailbreak')"
     )
     _recreate(BEFORE)
