@@ -36,6 +36,8 @@ from typing import Any
 
 import yaml
 
+from app.services.safety.injection import looks_like_injection
+
 #: The package directory that holds the markdown corpus.
 KNOWLEDGE_PACKAGE_DIR = "knowledge"
 
@@ -142,6 +144,13 @@ def parse_knowledge_doc(path_name: str, raw: str) -> KnowledgeDoc:
         raise KnowledgeContentError(f"{path_name}: reviewed must be true or false")
 
     body = body.strip()
+    # Day 29 (RT-I-KB-01): reference material is read by the model, so a
+    # document that addresses the model is an authoring error, not content.
+    if looks_like_injection(f"{title}\n{body}"):
+        raise KnowledgeContentError(
+            f"{path_name}: contains instruction-shaped text aimed at the model "
+            "(e.g. 'ignore previous instructions'); rewrite it as guidance for the reader"
+        )
     if not MIN_BODY_CHARS <= len(body) <= MAX_BODY_CHARS:
         raise KnowledgeContentError(
             f"{path_name}: body must be {MIN_BODY_CHARS}-{MAX_BODY_CHARS} characters "

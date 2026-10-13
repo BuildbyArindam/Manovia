@@ -160,7 +160,7 @@ class Settings(BaseSettings):
     llm_window_turns: int = 12
     llm_window_tokens: int = 3000
     # Which versioned prompt file under app/content/prompts/ to load.
-    llm_prompt_version: str = "system_v2"
+    llm_prompt_version: str = "system_v3"
     # Only used when LLM_PROVIDER=fake: a deliberate pause before the first
     # token. Zero (the default) answers instantly, which is right for unit
     # tests. End-to-end runs set it to a few hundred milliseconds so the
@@ -225,6 +225,11 @@ class Settings(BaseSettings):
     # Per-table ceiling for a data export. An export must finish and must not
     # become a memory bomb; when a table hits the ceiling, the manifest says so.
     privacy_export_max_rows: int = 5000
+    # Day 29 (RT-P-EX-02): data exports per user per hour. An export decrypts
+    # every row the person owns, so it is the most expensive request we serve;
+    # a stolen access token must not be able to loop it. Skipped when
+    # rate_limit_enabled is false.
+    privacy_export_per_hour: int = 10
     # Hard ceiling on a request body, enforced before the app parses anything.
     # The largest legitimate body is a journal entry (20,000 characters), so
     # 256 KiB leaves room for JSON escaping and multi-byte scripts.
@@ -413,6 +418,8 @@ class Settings(BaseSettings):
         """A ceiling of zero bytes or a zero-second budget would break everything."""
         if self.privacy_export_max_rows < 1:
             raise ValueError("privacy_export_max_rows must be at least 1")
+        if self.privacy_export_per_hour < 1:
+            raise ValueError("privacy_export_per_hour must be at least 1")
         if self.max_request_bytes < 1024:
             raise ValueError("max_request_bytes must be at least 1024")
         if self.request_timeout_seconds <= 0:

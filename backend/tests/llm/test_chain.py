@@ -29,13 +29,18 @@ from app.services.nlp.redaction import Redactor
 
 from .conftest import ScriptedProvider, collect, last_call, messages, raw
 
+#: Token budget for the test chain. It was 800 when the rendered system_v2
+#: prompt was 752 estimated tokens; Day 29's system_v3 is 904, so the budget
+#: keeps the same 48-token headroom the windowing tests were written against.
+WINDOW_TOKENS = 952
+
 
 def chain(*providers: object, **kwargs: object) -> LLMChain:
     """A chain with a canned terminal link, redaction on, prompt rendering on."""
     links = [*providers, CannedProvider()]
     return LLMChain(
         links,  # type: ignore[arg-type]
-        guard=TokenGuard(max_input_chars=400, window_turns=8, window_tokens=800),
+        guard=TokenGuard(max_input_chars=400, window_turns=8, window_tokens=WINDOW_TOKENS),
         redactor=Redactor(),
         redact=True,
         **kwargs,  # type: ignore[arg-type]
@@ -236,14 +241,14 @@ async def test_long_conversations_are_windowed_to_the_budget() -> None:
     # rendered system prompt (whose length is versioned product surface, so
     # the exact count is not pinned) -- but the newest turn always survives,
     # the oldest are dropped, and the kept slice stays inside the budget.
-    guard = TokenGuard(max_input_chars=400, window_turns=8, window_tokens=800)
+    guard = TokenGuard(max_input_chars=400, window_turns=8, window_tokens=WINDOW_TOKENS)
     call = last_call(primary)
     kept = call.messages
     assert 0 < len(kept) <= 8, "bounded by the turn cap"
     assert len(kept) < 40, "a long conversation is actually cut"
     assert kept[-1].content.endswith("turn number 39 with some words in it")
     assert "turn number 0 with" not in kept[0].content, "oldest turns dropped"
-    budget = 800 - guard.estimate_tokens(call.system or "")
+    budget = WINDOW_TOKENS - guard.estimate_tokens(call.system or "")
     assert sum(guard.estimate_tokens(m.content) for m in kept) <= budget
     # messages() alternates user/assistant, so the newest *user* turn is 38.
     assert "turn number 38" in last_call(primary).user_text

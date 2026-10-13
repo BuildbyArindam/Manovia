@@ -36,12 +36,17 @@ async def test_the_global_limit_is_moderate(
     client_factory: Callable[..., httpx.AsyncClient],
 ) -> None:
     client = client_factory(rate_limit_global_per_minute=2, rate_limit_auth_per_minute=50)
-    assert (await client.get("/api/v1/health")).status_code == 200
-    assert (await client.get("/api/v1/health")).status_code == 200
+    # Day 29 (RT-D-14): /api/v1/health is exempt, so the global budget is
+    # exercised on /api/v1/ready, an ordinary limited /api/ path.
+    assert (await client.get("/api/v1/ready")).status_code == 200
+    assert (await client.get("/api/v1/ready")).status_code == 200
 
-    limited = await client.get("/api/v1/health")
+    limited = await client.get("/api/v1/ready")
     assert limited.status_code == 429
     assert limited.json()["error"]["code"] == "rate_limited"
+
+    # The liveness probe still answers with the global budget exhausted.
+    assert (await client.get("/api/v1/health")).status_code == 200
 
     # A different bucket: the auth endpoints still have their own budget.
     assert (await client.post("/api/v1/auth/guest")).status_code == 201

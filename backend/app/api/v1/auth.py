@@ -139,7 +139,7 @@ async def _issue_session(
     """
     family = family_id or uuid.uuid4()
     refresh_token, refresh_claims = tokens.issue_refresh(user.id, family_id=family)
-    access_token, _ = tokens.issue_access(user.id)
+    access_token, _ = tokens.issue_access(user.id, family_id=family)
     await RefreshTokenRepository(session).create(
         token_id=refresh_claims.token_id,
         user_id=user.id,

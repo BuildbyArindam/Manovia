@@ -45,6 +45,21 @@ class RefreshTokenRepository:
         stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
         return (await self._session.execute(stmt)).scalars().one_or_none()
 
+    async def family_is_active(self, family_id: uuid.UUID) -> bool:
+        """True while the family still has an unrevoked token.
+
+        Day 29: an access token carries its family and is refused once the
+        family is revoked (logout, reuse burn, sign-out-everywhere). Expiry is
+        not consulted: the newest refresh token of a family always outlives the
+        access token minted with it. Uses ``ix_refresh_tokens_family_id``.
+        """
+        stmt = (
+            select(RefreshToken.id)
+            .where(RefreshToken.family_id == family_id, RefreshToken.revoked_at.is_(None))
+            .limit(1)
+        )
+        return (await self._session.execute(stmt)).first() is not None
+
     async def revoke_family(self, family_id: uuid.UUID, *, revoked_at: datetime) -> int:
         """Revoke every token in one rotation family. Returns rows touched."""
         stmt = (

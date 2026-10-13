@@ -55,7 +55,10 @@ def validate_message(text: str, *, max_chars: int) -> str:
                 "That message contains characters I can't read. Please try typing it again.",
             )
 
-    if not normalised.strip():
+    # Day 29 (RT-D-05): zero-width and bidi-control characters (category Cf)
+    # render as nothing, so a message made only of them is empty too — it used
+    # to reach the model as an invisible "message".
+    if all(char.isspace() or unicodedata.category(char) == "Cf" for char in normalised):
         raise ApiError(422, "message_empty", "Write a few words and send again.")
 
     if len(normalised) > max_chars:

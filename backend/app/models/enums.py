@@ -60,6 +60,10 @@ class SafetyEventCategory(StrEnum):
     TOO_LONG = "too_long"
     WRONG_LANGUAGE = "wrong_language"
     MISSING_CHECK_IN = "missing_check_in"
+    #: Day 29 (red team): the reply repeats or describes the system prompt.
+    PROMPT_LEAK = "prompt_leak"
+    #: Day 29 (red team): the reply plays along with a jailbreak ("DAN mode on").
+    JAILBREAK = "jailbreak"
 
 
 class AssessmentInstrument(StrEnum):

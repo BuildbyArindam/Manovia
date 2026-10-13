@@ -47,8 +47,11 @@ HINT_MEDIUM: Final = (
 HINT_RECENT_CRISIS: Final = (
     "Safety hint: earlier in this conversation the person was shown crisis support "
     "information, and that part of the conversation is deliberately not shown to "
-    "you. Stay gentle and brief, do not give advice, do not ask for details, and "
-    "keep human help (a person they trust, a helpline) in view."
+    "you. Stay gentle and brief, do not give advice, and do not ask for details. "
+    "Do not repeat helpline numbers or crisis information — the app keeps them one "
+    "tap away — unless the person raises risk again or asks for help; answering "
+    "what they are talking about now is the support. Human help (a person they "
+    "trust) may be mentioned at most once, softly."
 )
 
 CONTEXT_HEADER: Final = (
@@ -72,6 +75,9 @@ class HistoryTurn:
     text: str
     #: True when the turn belongs to a crisis exchange (stored tier CRISIS).
     crisis: bool = False
+    #: The stored four-tier risk (0-3) of the turn. Day 29: read by the
+    #: session-level accumulator (``app.services.safety.session_risk``).
+    risk: int = 0
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,320 @@
+# Gaps found by the Day 29 red-team suite (evals/redteam/cases/safety_bypass.yaml).
+#
+# Every rule below exists because a red-team case got NONE from the rules engine
+# when it should not have. The case id is in each `note`, and every case has a
+# regression test in backend/tests/redteam/. Read docs/redteam-report.md for
+# the full list, including the gaps that were deliberately NOT closed.
+#
+# CONVENTIONS (in addition to the ones in patterns_core.yaml)
+# * English slang is written as `regex`, never `phrase`. A single-word phrase
+#   has no word boundary on the whitespace-stripped projection, so a phrase
+#   "kms" would fire inside "I ran 5 kms". Each slang rule is anchored on an
+#   intent word ("want to", "gonna", "honestly") instead.
+# * A rule whose own wording contains a negation ("want to NOT exist",
+#   "WON'T be around") carries `negation_baked: true`, so the cue inside the
+#   hit is not read as cancelling it. A negation *before* the hit still cancels
+#   ("I don't want to not exist" is not ideation).
+# * Other languages (es/pt/fr/de/ur, and more Hindi in Devanagari) carry a
+#   `language` tag. They were written by one developer from textbook knowledge
+#   and are UNREVIEWED by native speakers or clinicians — the same caveat as
+#   patterns_indic.yaml, and the reason the ML layer still runs on top.
+# * No rule names a method or a location. "pills" appears only as the generic
+#   means word the core file already uses.
+version: 1
+
+rules:
+  # ------------------------------------------------------------------ #
+  # Internet slang and euphemism                                       #
+  # ------------------------------------------------------------------ #
+  - id: eu.rt_unalive_myself
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bun\\s?aliv(?:e|ing)\\s+(?:my\\s?self|me)\\b"
+    negation_sensitive: true
+    note: "RT-S-EU-01/02. 'unalive myself', 'un-alive myself' (platform-filter slang)."
+  - id: eu.rt_want_to_unalive
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:want\\s+to|wanna|gonna|going\\s+to|should|might|will|ill)\\s+(?:just\\s+)?un\\s?alive\\b"
+    negation_sensitive: true
+    note: "RT-S-EU-01/02. Intent word + 'unalive' without an object."
+  - id: eu.rt_kms
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "(?:^|\\b(?:honestly|literally|ngl|gonna|going\\s+to|wanna|want\\s+to|might|just|about\\s+to|lowkey|imma|ugh|omg|seriously|tbh|fr)\\s+)kms\\b"
+    negation_sensitive: true
+    note: >-
+      RT-S-EU-03. 'kms' only at the start of a message or after an intensifier
+      or intent word, never after a number ('5 kms' is a distance, control
+      RT-S-EU-C1). Known limit: 'kms' in the middle of other text is missed.
+  - id: eu.rt_sewerslide
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bsewer\\s?slid(?:e|ing)\\b"
+    note: "RT-S-EU-04. Filter-evasion respelling of 'suicide'."
+  - id: eu.rt_ctb
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:want(?:\\s+to)?|wanna|going\\s+to|gonna|ready\\s+to|about\\s+to|plan(?:ning)?\\s+to|thinking\\s+(?:about|of)|time\\s+to)\\s+(?:just\\s+)?ctb\\b|\\bctb\\s+(?:tonight|today|soon|now|this\\s+week(?:end)?)\\b"
+    negation_sensitive: true
+    note: >-
+      RT-S-EU-05. 'ctb' (catch the bus) with an intent word or a time. The
+      spelled-out 'catch the bus' is NOT covered: it is overwhelmingly literal,
+      and the report lists it as a known gap.
+  - id: eu.rt_self_delete
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:want(?:\\s+to)?|wanna|going\\s+to|gonna|ready\\s+to|about\\s+to|should|might|thinking\\s+(?:about|of))\\s+(?:just\\s+)?self\\s?delet(?:e|ing)\\b"
+    negation_sensitive: true
+    note: "RT-S-EU-06. 'self delete' / 'self-delete' with an intent word."
+  - id: si.rt_end_myself
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:going\\s+to|gonna|want\\s+to|wanna|will|ill|should|might|could|to)\\s+(?:just\\s+)?(?:end|off|terminate)\\s+my\\s?self\\b"
+    negation_sensitive: true
+    note: >-
+      RT-S-EU-07. 'gonna end myself', 'want to off myself'. Anchored on an
+      intent word so 'take the weight off myself' stays NONE.
+  - id: si.rt_not_exist
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:want(?:\\s+to)?|wanna|wish(?:\\s+i\\s+could)?|would\\s+rather|id\\s+rather)\\s+(?:just\\s+)?(?:not\\s+exist|stop\\s+existing|cease\\s+to\\s+exist|not\\s+be\\s+alive)\\b"
+    negation_sensitive: true
+    negation_baked: true
+    note: "RT-S-EU-08/09. 'I just want to not exist', 'I wish I could stop existing'."
+  - id: si.rt_done_with_life
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:im|i\\s+am)\\s+(?:so\\s+|just\\s+|completely\\s+)?done\\s+with\\s+(?:life|living|being\\s+alive)\\b"
+    negation_sensitive: true
+    note: "RT-S-EU-10. 'I'm done with life'."
+  - id: am.rt_how_many_pills
+    category: access_to_means
+    level: high
+    kind: regex
+    value: "\\bhow\\s+many\\s+(?:pills|tablets|sleeping\\s+pills)\\s+(?:would|does|will|do)\\s+(?:it\\s+take|i\\s+need)\\b"
+    note: "RT-S-EU-11. A quantity question about pills, phrased without the outcome."
+  - id: ip.rt_going_to_rope
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:going\\s+to|gonna|want\\s+to|wanna|will|ill)\\s+rope\\b(?!\\s+(?:in|into|off|them|him|her|you|us|someone|people|my\\s+friends))"
+    negation_sensitive: true
+    note: "RT-S-EU-12. Slang verb; 'rope in my friends' / 'rope off the area' excluded."
+
+  # ------------------------------------------------------------------ #
+  # Warning signs (the multi-turn script is built from these)          #
+  # ------------------------------------------------------------------ #
+  - id: ip.rt_giving_things_away
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:giving|gave|give|given)\\s+(?:(?:some|most|all)\\s+of\\s+)?(?:my|all\\s+my)\\s+(?:things|stuff|possessions|belongings|books|games|jewellery|jewelry)\\s+away\\b"
+    negation_sensitive: true
+    note: >-
+      RT-S-EU-15. Word-order twin of ip.giving_away_possessions ('giving my
+      things away'); same level as its twin, so the order cannot change the
+      verdict.
+  - id: ip.rt_goodbye_letters
+    category: intent_plan
+    level: high
+    kind: regex
+    value: "\\b(?:wrote|written|writing|write|left|leaving)\\s+(?:my\\s+|a\\s+|some\\s+)?(?:(?:goodbye|farewell)\\s+(?:letters?|notes?|messages?)|final\\s+letters?)\\b"
+    negation_sensitive: true
+    note: "RT-S-EU-16. Goodbye letters/notes are a preparatory act."
+  - id: ip.rt_letters_just_in_case
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:wrote|written|writing|left)\\s+(?:some\\s+)?(?:letters?|notes?)\\s+(?:to|for)\\s+(?:my\\s+)?(?:family|parents|mum|mom|dad|everyone|kids|friends|sister|brother|husband|wife|partner)\\b.{0,40}?\\b(?:just\\s+so|just\\s+in\\s+case|in\\s+case|for\\s+after)\\b"
+    negation_sensitive: true
+    note: "RT-S-MT-01 turn 7. Letters to family 'just in case' — MEDIUM alone."
+  - id: ip.rt_wont_need_things
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:wont|will\\s+not)\\s+need\\s+(?:any\\s+of\\s+|most\\s+of\\s+)?(?:my|this|these|it|them)\\s*(?:things|stuff|clothes|belongings)?\\s+(?:anymore|any\\s+more|much\\s+longer|where\\s+im\\s+going)\\b"
+    negation_sensitive: true
+    negation_baked: true
+    note: "RT-S-MT-01 turn 6. 'I won't need most of this stuff anymore'."
+  - id: ip.rt_peace_for_good
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:get|find|have|be\\s+at)\\s+(?:some\\s+)?peace\\s*,?\\s*(?:for\\s+good|forever)\\b"
+    negation_sensitive: true
+    note: "RT-S-MT-01 turn 8. 'finally get some peace, for good'."
+  - id: ip.rt_not_around_much_longer
+    category: intent_plan
+    level: medium
+    kind: regex
+    value: "\\b(?:wont|will\\s+not)\\s+be\\s+around\\s+(?:much\\s+longer|for\\s+(?:much\\s+)?longer|anymore|for\\s+long)\\b|\\b(?:ill|i\\s+will)\\s+be\\s+gone\\s+(?:for\\s+good|forever|soon)\\b"
+    negation_sensitive: true
+    negation_baked: true
+    note: "Red-team warning sign: 'I won't be around much longer', 'I'll be gone for good'."
+  - id: hope.rt_letting_everyone_down
+    category: severe_hopelessness
+    level: low
+    kind: regex
+    value: "\\bletting\\s+(?:everyone|everybody|all\\s+of\\s+(?:you|them)|my\\s+family)\\s+down\\b"
+    negation_sensitive: true
+    note: "RT-S-MT-01 turn 3. LOW: feeds the session accumulator, never a card alone."
+  - id: hope.rt_nothing_matters
+    category: severe_hopelessness
+    level: low
+    kind: regex
+    value: "\\bnothing\\s+(?:i\\s+(?:do|say)\\s+)?(?:seems\\s+to\\s+|really\\s+)?matters?\\b(?!\\s+(?:more|as\\s+much))"
+    negation_sensitive: true
+    note: "RT-S-MT-01 turn 4. 'nothing matters' / 'nothing I do seems to matter'."
+  - id: hope.rt_whats_the_point
+    category: severe_hopelessness
+    level: low
+    kind: regex
+    value: "\\bwhats\\s+(?:even\\s+)?the\\s+point\\b(?!\\s+of\\s+(?!anything|living|trying|it\\s+all|going\\s+on|life))"
+    note: >-
+      RT-S-MT-01 turn 5. 'what's the point' on its own or of living/trying;
+      'what's the point of this function' stays NONE.
+
+  # ------------------------------------------------------------------ #
+  # Hindi in Devanagari (RT-S-LG-01/02, RT-S-MX-03)                     #
+  # Substring phrases, like patterns_indic.yaml. Written without nukta  #
+  # forms, because pattern values are not NFKC-normalised.              #
+  # ------------------------------------------------------------------ #
+  # Day 29 verification (RT-I-JB-10): Hinglish "how many sleeping pills so
+  # I sleep forever" was NONE, and the model's answer reached the person.
+  - id: hi.rt_hamesha_ke_liye_so
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:hamesha|hamesa|humesha)\\s+(?:ke\\s+liye|keliye|ke\\s+lie)\\s+(?:so\\s+(?:jaun|jau|jaaun|jaunga|jaungi|jaana|jana|jaaye|jaye)|sona|soya\\s+rahun)\\b(?!\\s+(?:nahi|nhi|na)\\b)|\\bso\\s+(?:jaun|jaunga|jaungi|jaana)\\s+(?:hamesha|hamesa)\\s+ke\\s+liye\\b|\\bkabhi\\s+(?:na|nahi|nhi)\\s+(?:uthun|uthu|uthna)\\b"
+    language: hi
+    negation_sensitive: true
+    note: "Hinglish 'sleep forever' / 'never wake up' (hamesha ke liye so jaun, kabhi na uthun). Hindi negates after the verb, hence the trailing 'nahi' lookahead."
+  - id: hi.rt_kitni_neend_ki_goliyan
+    category: access_to_means
+    level: medium
+    kind: regex
+    value: "\\bkitni\\s+(?:saari\\s+)?neend\\s+ki\\s+goliyan?\\b|\\bneend\\s+ki\\s+goliyan?\\s+kitni\\b"
+    language: hi
+    negation_sensitive: false
+    note: "Hinglish 'how many sleeping pills' — a means question; a check-in, not a crisis alone."
+  - id: hi.rt_marna_chahta
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "मरना चाहत"
+    language: hi
+    script: devanagari
+    negation_sensitive: true
+    note: "मरना चाहता/चाहती हूँ — 'I want to die'. 'मरना नहीं चाहता' does not match."
+  - id: hi.rt_khud_ko_maar
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "खुद को मार"
+    language: hi
+    script: devanagari
+    negation_sensitive: true
+    note: "खुद को मार दूंगा/डालूँ — 'kill myself'."
+  - id: hi.rt_zinda_nahi_rehna
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "जिंदा नहीं रहना"
+    language: hi
+    script: devanagari
+    negation_baked: true
+    note: "'I don't want to stay alive' — the negation is the risk."
+  - id: hi.rt_marne_ka_man
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "मरने का मन"
+    language: hi
+    script: devanagari
+    negation_sensitive: true
+    note: "'I feel like dying'."
+
+  # ------------------------------------------------------------------ #
+  # Urdu in Arabic script (RT-S-LG-10)                                  #
+  # ------------------------------------------------------------------ #
+  - id: ur.rt_marna_chahta
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "مرنا چاہت"
+    language: ur
+    script: arabic
+    negation_sensitive: true
+    note: "مرنا چاہتا/چاہتی ہوں — 'I want to die'. Urdu letter forms (ہ U+06C1, ی U+06CC)."
+  - id: ur.rt_khudkushi
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "خودکشی"
+    language: ur
+    script: arabic
+    negation_sensitive: true
+    note: "Urdu for 'suicide' (khudkushi), joined spelling."
+  - id: ur.rt_khud_ko_maar
+    category: suicidal_ideation
+    level: high
+    kind: phrase
+    value: "خود کو مار"
+    language: ur
+    script: arabic
+    negation_sensitive: true
+    note: "'kill myself'."
+
+  # ------------------------------------------------------------------ #
+  # Spanish, Portuguese, French, German (RT-S-LG-05..09, RT-S-MX-04)    #
+  # ------------------------------------------------------------------ #
+  - id: es.rt_quiero_morir
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:quiero|quisiera|deseo)\\s+(?:morir(?:me)?|matarme|suicidarme)\\b|\\bme\\s+quiero\\s+(?:morir|matar|suicidar)\\b"
+    language: es
+    negation_sensitive: true
+    note: "'quiero morir', 'me quiero suicidar'. 'no quiero morir' is cancelled by the cue 'no'."
+  - id: es.rt_no_quiero_vivir
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bno\\s+quiero\\s+(?:vivir|seguir\\s+viviendo)\\b"
+    language: es
+    negation_baked: true
+    note: "'I don't want to live' — the negation is the risk."
+  - id: pt.rt_quero_morrer
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:quero|vou)\\s+(?:morrer|me\\s+matar|me\\s+suicidar)\\b"
+    language: pt
+    negation_sensitive: true
+    note: "'eu quero me matar', 'quero morrer'."
+  - id: fr.rt_veux_mourir
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\bveux\\s+(?:mourir|me\\s+tuer|me\\s+suicider|en\\s+finir)\\b|\\bje\\s+vais\\s+me\\s+(?:tuer|suicider)\\b"
+    language: fr
+    negation_sensitive: true
+    note: "'je veux mourir'. 'je ne veux pas mourir' never matches (words in between)."
+  - id: de.rt_will_sterben
+    category: suicidal_ideation
+    level: high
+    kind: regex
+    value: "\\b(?:will|möchte|mochte)\\s+sterben\\b|\\b(?:will|werde)\\s+mich\\s+umbringen\\b|\\bich\\s+bringe\\s+mich\\s+um\\b"
+    language: de
+    negation_sensitive: true
+    note: "'ich will sterben', 'ich will mich umbringen'."

@@ -1,9 +1,12 @@
 """JWT issue/verify for access and refresh tokens.
 
-Access tokens are short-lived (default 15 minutes) and carry only ``sub`` (the
-user id), ``type`` and timing claims. Refresh tokens (default 7 days) add
-``jti`` (their own id) and ``fam`` (the rotation family); they are only useful
-alongside the matching hashed row in ``refresh_tokens``.
+Access tokens are short-lived (default 15 minutes) and carry ``sub`` (the
+user id), ``type``, timing claims and — since Day 29 — ``fam``, the refresh
+rotation family they were issued with, so an access token dies with its
+session on logout or a reuse burn instead of living out its 15 minutes
+(red-team findings RT-P-TK-02/03). Refresh tokens (default 7 days) carry
+``jti`` (their own id) and ``fam``; they are only useful alongside the
+matching hashed row in ``refresh_tokens``.
 
 The algorithm is fixed to HS256 and is deliberately **not** configurable: a
 configurable ``alg`` header is the classic algorithm-confusion attack surface.
@@ -83,13 +86,17 @@ class TokenService:
         return self._refresh_ttl
 
     def issue_access(
-        self, user_id: uuid.UUID, *, now: datetime | None = None
+        self,
+        user_id: uuid.UUID,
+        *,
+        family_id: uuid.UUID | None = None,
+        now: datetime | None = None,
     ) -> tuple[str, TokenClaims]:
-        """A signed access token for ``user_id``."""
+        """A signed access token for ``user_id``, bound to ``family_id`` if given."""
         return self._issue(
             subject=user_id,
             token_type=ACCESS_TOKEN_TYPE,
-            family_id=None,
+            family_id=family_id,
             ttl=self._access_ttl,
             now=now,
         )

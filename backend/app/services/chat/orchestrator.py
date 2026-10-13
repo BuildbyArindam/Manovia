@@ -61,6 +61,7 @@ from app.services.chat.conversation import Conversation
 from app.services.chat.memory import MEMORY_MAX_TOKENS, build_rolling_summary
 from app.services.chat.output_guard import GuardVerdict, OutputGuard
 from app.services.chat.prompting import (
+    HistoryTurn,
     build_window,
     compose_system,
     emotion_hint,
@@ -88,10 +89,12 @@ from app.services.nlp.redaction import Redactor
 from app.services.safety.base import RiskLevel, text_fingerprint
 from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision
 from app.services.safety.escalation import EscalationPlan, Escalator
+from app.services.safety.injection import CODE_INJECTION_DROPPED, looks_like_injection
 from app.services.safety.ml_classifier import SafetyClassifier
 from app.services.safety.output_guard import RuleBasedOutputGuard
 from app.services.safety.pipeline import run_ensemble
 from app.services.safety.rules import RuleEngine
+from app.services.safety.session_risk import accumulate
 
 #: Shown only if an escalation plan somehow has no message at HIGH/IMMINENT. The
 #: helpline loader validates every template at startup, so this is a last resort
@@ -267,13 +270,14 @@ class ChatOrchestrator:
     async def respond(self, message: AdmittedMessage, conversation: Conversation) -> ChatReply:
         """Run the pipeline and return the whole reply (the JSON endpoint)."""
         started = time.perf_counter()
-        plan, decision = await self._triage(message)
+        history = await self._history(conversation)
+        plan, decision = await self._triage(message, history)
         if not plan.allow_llm:
             reply = await self._crisis_reply(message, conversation, plan, decision)
             self._log_turn(message, plan, reply, started, streamed=False)
             return reply
 
-        turn = await self._prepare(message, conversation, plan, decision, started)
+        turn = await self._prepare(message, conversation, plan, decision, started, history)
         text, template = await self._generate(turn)
         if not template:
             text, template = await self._guard_output(text, turn, conversation)
@@ -296,7 +300,8 @@ class ChatOrchestrator:
         true and the client must swap its text for it.
         """
         started = time.perf_counter()
-        plan, decision = await self._triage(message)
+        history = await self._history(conversation)
+        plan, decision = await self._triage(message, history)
         if not plan.allow_llm:
             reply = await self._crisis_reply(message, conversation, plan, decision)
             self._log_turn(message, plan, reply, started, streamed=True)
@@ -304,7 +309,7 @@ class ChatOrchestrator:
             yield FinalEvent(reply=reply, replaced=False)
             return
 
-        turn = await self._prepare(message, conversation, plan, decision, started)
+        turn = await self._prepare(message, conversation, plan, decision, started, history)
         buffered = self._guard.requires_full_text
         sent: list[str] = []  # tokens the client has actually been given
         pieces: list[str] = []  # everything the model produced
@@ -372,8 +377,23 @@ class ChatOrchestrator:
     # Step 2 — input safety                                                #
     # ------------------------------------------------------------------ #
 
-    async def _triage(self, message: AdmittedMessage) -> tuple[EscalationPlan, EnsembleDecision]:
-        """Rules + ML ensemble, then the escalation plan. Fails closed."""
+    async def _history(self, conversation: Conversation) -> list[HistoryTurn]:
+        """Prior turns, read once per message for triage *and* the prompt window.
+
+        A failed read is not a reason to refuse a reply: the message is still
+        assessed on its own (the per-message engine is the safety floor), only
+        the session-level accumulator loses its evidence — and that is logged.
+        """
+        try:
+            return await conversation.history(self._config.history_turns)
+        except Exception as exc:
+            _log.warning("chat_history_unavailable", error_type=type(exc).__name__)
+            return []
+
+    async def _triage(
+        self, message: AdmittedMessage, history: Sequence[HistoryTurn] = ()
+    ) -> tuple[EscalationPlan, EnsembleDecision]:
+        """Rules + ML ensemble, the session accumulator, then the plan. Fails closed."""
         try:
             assessment, decision = await run_ensemble(
                 message.text,
@@ -384,6 +404,8 @@ class ChatOrchestrator:
                 crisis_mass_floor=self._config.ml_crisis_mass_floor,
                 suspicion_floor=self._config.ml_suspicion_floor,
             )
+            # Day 29 (RT-S-MT-01): risk disclosed gradually across the session.
+            assessment = accumulate(assessment, history)
             plan = self._escalator.plan(assessment, region=message.region, locale=message.locale)
         except Exception as exc:
             # No verdict means no reply: answering without the safety check is
@@ -455,10 +477,11 @@ class ChatOrchestrator:
         plan: EscalationPlan,
         decision: EnsembleDecision,
         started: float,
+        history: Sequence[HistoryTurn],
     ) -> _Turn:
         # Prior turns and the rolling note are read *before* the current user
         # message is stored, so neither one is echoed into this turn's context.
-        window = build_window(await conversation.history(self._config.history_turns))
+        window = build_window(history)
         saved_memory: str | None = None
         if conversation.persistent and conversation.stores_turns:
             try:
@@ -571,12 +594,22 @@ class ChatOrchestrator:
 
     async def _retrieve(self, query: str, *, language: str | None) -> list[RetrievedChunk]:
         try:
-            return await self._retriever.retrieve(
+            chunks = await self._retriever.retrieve(
                 query, limit=self._config.retrieval_limit, language=language
             )
         except Exception as exc:  # reference material is optional
             _log.warning("chat_retrieval_failed", error_type=type(exc).__name__)
             return []
+        # Day 29 (RT-I-RAG-01): a passage carrying an instruction is dropped
+        # whole — never shown to the model, never offered as a Learn-more card.
+        clean = [c for c in chunks if not looks_like_injection(f"{c.title}\n{c.text}")]
+        if len(clean) != len(chunks):
+            _log.warning(
+                "chat_retrieval_injection_dropped",
+                code=CODE_INJECTION_DROPPED,
+                dropped=len(chunks) - len(clean),
+            )
+        return clean
 
     # ------------------------------------------------------------------ #
     # Steps 7-9 — LLM, output guard, persist                               #

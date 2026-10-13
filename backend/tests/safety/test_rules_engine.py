@@ -25,6 +25,8 @@ from app.services.safety.rules import (
     CODE_THIRD_PERSON,
     CODE_TIMEFRAME,
     CODE_TRUNCATED,
+    CODE_WINDOWED,
+    MAX_WINDOWED_CHARS,
     RuleEngine,
 )
 from tests.safety.conftest import SafetyCase, load_cases
@@ -174,17 +176,35 @@ def test_whitespace_only_is_reported_as_empty(engine: RuleEngine) -> None:
     assert CODE_EMPTY_INPUT in assessment.rationale_codes
 
 
-def test_a_message_longer_than_the_window_is_truncated_and_still_assessed(
+def test_a_message_longer_than_one_window_is_read_in_windows_not_truncated(
     engine: RuleEngine,
 ) -> None:
+    """Day 29 (RT-S-LN): this test used to assert ``truncated is True`` here.
+
+    That assertion pinned the bug the red team found: everything after
+    ``max_chars`` was silently unread. A 9k message is now read in full, in
+    overlapping windows, and says so with ``input.windowed`` instead.
+    """
     text = "I want to die " + ("and nothing helps " * 500)
-    assert len(text) > engine.max_chars
+    assert engine.max_chars < len(text) <= MAX_WINDOWED_CHARS
+
+    assessment = engine.assess(text)
+
+    assert assessment.context.truncated is False
+    assert CODE_TRUNCATED not in assessment.rationale_codes
+    assert CODE_WINDOWED in assessment.rationale_codes
+    # The risk is in the first window, so it must still be found.
+    assert assessment.level is RiskLevel.HIGH
+
+
+def test_only_text_beyond_the_hard_cap_is_truncated(engine: RuleEngine) -> None:
+    text = "I want to die " + ("and nothing helps " * 4000)
+    assert len(text) > MAX_WINDOWED_CHARS
 
     assessment = engine.assess(text)
 
     assert assessment.context.truncated is True
     assert CODE_TRUNCATED in assessment.rationale_codes
-    # The risk is in the first window, so it must still be found.
     assert assessment.level is RiskLevel.HIGH
 
 

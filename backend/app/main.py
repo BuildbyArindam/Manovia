@@ -114,6 +114,10 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     )
     app.state.rate_limit_auth = InMemoryRateLimiter(app_settings.rate_limit_auth_per_minute)
     app.state.rate_limit_global = InMemoryRateLimiter(app_settings.rate_limit_global_per_minute)
+    # Day 29: per-user budget for the data export (RT-P-EX-02).
+    app.state.rate_limit_export = InMemoryRateLimiter(
+        app_settings.privacy_export_per_hour, window_seconds=3600
+    )
 
     # Emotion analysis (Day 6). Built here so one chain (and one model load,
     # and one result cache) is shared by every request. Nothing is loaded
