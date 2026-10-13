@@ -14,6 +14,8 @@ import math
 import re
 from typing import Final
 
+from app.services.safety.injection import looks_like_injection
+
 MEMORY_MAX_TOKENS: Final[int] = 300
 _SENTENCE_SPLIT: Final = re.compile(r"(?<=[.!?।॥؟؛])\s+|[\r\n]+")
 _WHITESPACE: Final = re.compile(r"\s+")
@@ -84,7 +86,11 @@ def build_rolling_summary(
         for line in (previous_summary or "").splitlines()
         if line.startswith("- ") and line[2:].strip()
     ]
-    additions = _sentences(redacted_user_text)
+    # Day 29 (RT-I-MEM-01): a sentence addressed to the model ("ignore all
+    # previous instructions…") must not become standing context for every
+    # later turn. It still reached the model once, as the user turn it was.
+    prior_lines = [line for line in prior_lines if not looks_like_injection(line)]
+    additions = [s for s in _sentences(redacted_user_text) if not looks_like_injection(s)]
     lines = prior_lines + [sentence for sentence in additions if sentence not in prior_lines]
     return "\n".join(f"- {line}" for line in _fit_latest(lines, max_tokens=max_tokens))
 

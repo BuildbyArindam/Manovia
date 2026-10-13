@@ -89,6 +89,7 @@ from app.services.nlp.redaction import Redactor
 from app.services.safety.base import RiskLevel, text_fingerprint
 from app.services.safety.ensemble import SOURCE_RULES, EnsembleDecision
 from app.services.safety.escalation import EscalationPlan, Escalator
+from app.services.safety.injection import CODE_INJECTION_DROPPED, looks_like_injection
 from app.services.safety.ml_classifier import SafetyClassifier
 from app.services.safety.output_guard import RuleBasedOutputGuard
 from app.services.safety.pipeline import run_ensemble
@@ -593,12 +594,22 @@ class ChatOrchestrator:
 
     async def _retrieve(self, query: str, *, language: str | None) -> list[RetrievedChunk]:
         try:
-            return await self._retriever.retrieve(
+            chunks = await self._retriever.retrieve(
                 query, limit=self._config.retrieval_limit, language=language
             )
         except Exception as exc:  # reference material is optional
             _log.warning("chat_retrieval_failed", error_type=type(exc).__name__)
             return []
+        # Day 29 (RT-I-RAG-01): a passage carrying an instruction is dropped
+        # whole — never shown to the model, never offered as a Learn-more card.
+        clean = [c for c in chunks if not looks_like_injection(f"{c.title}\n{c.text}")]
+        if len(clean) != len(chunks):
+            _log.warning(
+                "chat_retrieval_injection_dropped",
+                code=CODE_INJECTION_DROPPED,
+                dropped=len(chunks) - len(clean),
+            )
+        return clean
 
     # ------------------------------------------------------------------ #
     # Steps 7-9 — LLM, output guard, persist                               #

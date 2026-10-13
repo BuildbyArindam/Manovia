@@ -29,7 +29,6 @@ from app.services.nlp.redaction import Redactor
 
 from .conftest import ScriptedProvider, collect, last_call, messages, raw
 
-
 #: Token budget for the test chain. It was 800 when the rendered system_v2
 #: prompt was 752 estimated tokens; Day 29's system_v3 is 904, so the budget
 #: keeps the same 48-token headroom the windowing tests were written against.
