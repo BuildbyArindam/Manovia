@@ -1,11 +1,32 @@
 # Manovia — Progress
 
 **Day 31 — ML foundation: data catalogue, experiment tracking, reproducibility
-— is built and verified (2026-10-13).** The brief asked for
+— is built, verified and merged (2026-10-13).** The brief asked for
 `day-31-ml-foundation-data-catalogue`; this session is pinned to its Arena
 branch (`arena/020f8dea-manovia`), as on Days 19–30, so the work is committed
-there and the PR comes from it. Nothing was pushed to `main`, and the PR is
-**not merged**: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38).
+there and the PR came from it. Nothing was pushed to `main`:
+[PR #38](https://github.com/BuildbyArindam/Manovia/pull/38) was **merged by the
+owner** as `0332904` (second parent `ba9649c`).
+
+**Two follow-ups are open in [PR #39](https://github.com/BuildbyArindam/Manovia/pull/39)**
+(six commits, from the same branch), because they were written after the merge
+point:
+
+1. **`main`'s committed `ml/dvc.lock` is stale.** It names
+   `src/manovia_ml/data/toy.py` as `3b335bcf…` while the file in `main` hashes to
+   `3f703fb9…` — the lint fix in `cd20772` changed the file after the lock was
+   written. The pipeline is deterministic (the split outputs are byte-identical
+   when rebuilt), but the lock in `main` describes a pipeline `main` does not
+   contain. The fix regenerates it **and** adds `manovia_ml.data.dvc_lock` as a CI
+   step *before* `dvc repro` — the existing job cannot catch this by
+   construction, because repro rewrites the lock before anything reads it.
+2. **The Day-31 numbers and the fresh-clone rehearsal**, including the results of
+   re-verifying the whole tree from a clone: ml **139** tests, backend **4160**
+   passed, frontend **601** passed, coverage gate satisfied.
+
+Until #39 merges, the ML job on `main` will keep printing "Data and pipelines are
+up to date" while the committed lock disagrees with the code — which is exactly
+the kind of green-but-wrong the follow-up step exists to eliminate.
 
 ### Completed (Day 31)
 
@@ -73,8 +94,8 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
   the exact model later, the bundle carries its ordered labels and library
   versions, and a scikit-learn version mismatch is a load-time error instead of
   silent metric drift. Not wired into the API — that needs its own ADR.
-- **CI:** new `ml-smoke` job (`.github/workflows/ci.yml`) = install → `dvc repro`
-  + `dvc status` → catalogue check → `make smoke` (train → baseline → report) →
+- **CI:** new `ml-smoke` job (`.github/workflows/ci.yml`) = install → **lock
+  check before repro** → `dvc repro` + `dvc status` → catalogue check → `make smoke` (train → baseline → report) →
   pytest → ruff/format/mypy → "every `.py` file under `ml/` is tracked in Git" →
   "no dataset or model file is tracked in Git"; job summary carries the smoke
   report. Documented in `.github/workflows/README.md`. **Green on GitHub
@@ -98,7 +119,7 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 
 | check | result |
 | --- | --- |
-| `cd ml && python -m pytest -q` | **134 passed** in ~9 s, offline (tmp file-store MLflow, splits built into tmp dirs, `-m 'not network'`) |
+| `cd ml && python -m pytest -q` | **139 passed** in 10.0 s, offline (tmp file-store MLflow, splits built into tmp dirs, `-m 'not network'`) |
 | `make ml-smoke` | `dvc repro` up to date → catalogue `14 entries, table current, 10 restricted` → train `accuracy=0.375000 log_loss=1.738700 majority_accuracy=0.500000 train_accuracy=1.000000` → baseline `expected_problems: []` → report written |
 | same config + seed, twice (`4a614af4…`, `75653d2d…`) | metrics **identical** run to run |
 | same config, `--seed 7` | `accuracy=0.625000 log_loss=1.025380` — the metric moves; baseline check skipped with a printed note |
@@ -108,6 +129,7 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 | `git ls-files \| grep -E "\.(bin\|pt\|safetensors\|csv\|parquet)$"` | **empty** |
 | `make ml-lint` | ruff clean, ruff-format clean, mypy clean (32 files) |
 | catalogue rules | `catalogue ok: 14 entries, table current, 10 restricted` |
+| fresh clone + fresh venv (the whole job, from nothing) | install → `ml-lock` → `dvc repro` → `dvc status` → catalogue → `make smoke` → 139 tests → ruff/format/mypy → both Git guards: **all green**, and it is what exposed the stale lock |
 | CI `ml-smoke` job | **green on GitHub Actions** ([run 38383897480](https://github.com/BuildbyArindam/Manovia/actions/runs/38383897480), `ML — smoke, reproducibility, catalogue: success` in 1m34s, alongside backend/frontend/gitleaks/audit). Its **first** execution failed and found two real bugs (below); every step was also rehearsed in a fresh clone + fresh venv, since `act`/Docker are unavailable here |
 
 ### Known issues (as of Day 31)
@@ -121,9 +143,22 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
   `!ml/src/manovia_ml/data/` plus a CI step that fails if any `.py` file under
   `ml/` is untracked — a file that is not in Git is not linted, not type-checked
   and not shipped.
+- **The committed `dvc.lock` was stale, and no CI step could have caught it.**
+  Rebuilt from a fresh clone, `dvc repro` reported that `src/manovia_ml/data/toy.py`
+  no longer hashed to what the lock recorded — the lint fix changed the file after
+  the lock was written. The split outputs were byte-identical (the pipeline is
+  deterministic), but the repository was describing a pipeline it did not contain.
+  `ml-smoke` structurally cannot see this because it runs `dvc repro` first, and
+  repro rewrites the lock. Fixed by committing the regenerated lock and adding
+  `manovia_ml.data.dvc_lock` as a CI step **before** `dvc repro`: it fails on
+  `changed deps` and tolerates missing outputs. Both states exercised by hand
+  (stale → exit 1 naming the file; fixed → exit 0); five unit tests cover the
+  parsing, including the exact shape of the real failure.
 - `act`/Docker are unavailable in the sandbox, so the CI job can only be
   rehearsed by cloning the repository and installing into a fresh virtualenv —
-  which is now the documented procedure, and is what caught the second bug.
+  which is now the documented procedure, and is what caught the second bug. The
+  same procedure caught the stale lock above and the four missing modules before
+  it: **rehearse from a clone, never from the working tree**.
 - **The Colab notebook is unexecuted.** No GPU, no corpus download here. The
   first real GoEmotions run is an owner step; `configs/colab_goemotions_logreg.yaml`
   deliberately leaves `sha256`/`rows` null until that run happens.
@@ -142,17 +177,17 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 - Day 30's first two next steps were **not** done today (they are not Day 31
   scope): publishing v1.0.0 (owner), and retraining `crisis_v1` on the red-team
   hard negatives.
-- **The `Accessibility & Lighthouse` job failed on this PR** (runs 38382218185
-  and 38385043567, step *Playwright — axe, targets, keyboard, zoom, offline,
-  installability*), while `main`'s run at 09:16 the same day passed and the
-  previous Day-30 PR's run passed. `frontend/` and `backend/` are **byte-identical
-  to `main`'s green commit** in this diff (`git diff origin/main...HEAD --
-  frontend/ backend/` is empty), so the code under test cannot be the cause; the
-  logs could not be read from this sandbox (the log/artifact hosts are outside
-  its network allowlist, and `workflow_dispatch` needs `actions: write`).
-  **Owner action: press Re-run jobs on that job** and, if it fails again, read
-  the `day25-a11y-lighthouse-reports` artifact — the failure is unexplained, not
-  dismissed.
+- **The `Accessibility & Lighthouse` job failed twice on this PR and passed on
+  the re-run** (failures: 38382218185, 38385043567 at the Playwright step;
+  pass: 38386668544 on `ba9649c`, 9m33s). This diff touches no `frontend/` or
+  `backend/` file (`git diff origin/main...HEAD -- frontend/ backend/` is empty)
+  and `ba9649c` is a docs-only commit, so the two failures were **transient
+  runner/network behaviour, not a code regression** — but they were not
+  diagnosable from here either: the job's logs and the
+  `day25-a11y-lighthouse-reports` artifact live on hosts outside the sandbox's
+  network allowlist, and re-dispatching the workflow needs `actions: write`
+  (HTTP 403). Recorded because a red check that goes green on retry is a known
+  issue about CI stability, not a thing to forget.
 - Carried from Day 30: `FIELD_ENCRYPTION_KEY` missing from the no-Docker quick
   start; branch-coverage gate not in CI; per-process rate limiter/session store;
   paraphrasable injection tripwire; dev-split rules-only recall 0.333 vs test
@@ -181,13 +216,20 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 
 The brief asked for a `day-31-ml-foundation-data-catalogue` branch created from
 `main`; this session is pinned to its Arena branch (as on Days 19–30), so the
-thirty-first day of work is committed to `arena/020f8dea-manovia` and the PR is
-opened from it: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38)
-(seven commits, not merged). Everything asked for is on disk and verified except the things
+thirty-first day of work is committed to `arena/020f8dea-manovia` and the PR came
+from it: [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38), merged by
+the owner as `0332904`. The six commits written after that merge point are in
+[PR #39](https://github.com/BuildbyArindam/Manovia/pull/39) — see the note at the
+top of this block for what they fix and why they exist. Everything asked for is on disk and verified except the things
 the sandbox cannot do: a real GPU training run, a GPU/network Colab notebook
 execution, and a first GitHub Actions execution of the new `ml-smoke` job.
 
-### Next steps (Day 32 — first three)
+### Next steps (Day 32 — first three, revised after the merge)
+
+0. **Merge [PR #39](https://github.com/BuildbyArindam/Manovia/pull/39)** first
+   (owner): it regenerates `main`'s stale `ml/dvc.lock` and adds the CI step that
+   would have caught it. Until then `main`'s ML job is green for the wrong reason.
+
 
 1. **Run the first real training run** (owner, Colab/Kaggle):
    `ml/notebooks/colab_goemotions_tfidf.ipynb` → bring back the report, the

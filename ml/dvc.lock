@@ -10,8 +10,8 @@ stages:
       size: 11566
     - path: src/manovia_ml/data/toy.py
       hash: md5
-      md5: 3b335bcfbafbe8f07c3f1a054676f66d
-      size: 11022
+      md5: 3f703fb9f32c4c989d29cfe11cde451f
+      size: 11058
     - path: src/manovia_ml/hashing.py
       hash: md5
       md5: 5a39c2e354b4641dbe52a96f7c1a15a2
@@ -47,8 +47,8 @@ stages:
       size: 11566
     - path: src/manovia_ml/data/toy.py
       hash: md5
-      md5: 3b335bcfbafbe8f07c3f1a054676f66d
-      size: 11022
+      md5: 3f703fb9f32c4c989d29cfe11cde451f
+      size: 11058
     - path: src/manovia_ml/hashing.py
       hash: md5
       md5: 5a39c2e354b4641dbe52a96f7c1a15a2

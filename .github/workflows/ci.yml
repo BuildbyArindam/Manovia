@@ -238,6 +238,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[ml,dev]"
 
+      - name: DVC lock matches the code (before repro rewrites it)
+        # `dvc repro` regenerates dvc.lock, so a *committed* lock that names a
+        # different version of the code than the commit contains is invisible
+        # afterwards — which is precisely how a stale lock survived on Day 31
+        # until a fresh clone was checked by hand. This runs first, and fails on
+        # "changed deps" only (missing outputs are the normal state of a clone).
+        run: python -m manovia_ml.data.dvc_lock
+
       - name: Data pipeline (dvc)
         run: |
           python -m dvc repro
@@ -260,6 +268,26 @@ jobs:
           python -m ruff check .
           python -m ruff format --check .
           python -m mypy src tests
+
+      - name: The ml/ tree is complete in Git
+        # A file that exists on the author's disk and in no clone is the failure
+        # this job was written to catch: ml/src/manovia_ml/data/ was silently
+        # ignored by the repository's bare `data/` rule, so `git add` skipped it
+        # and CI died at `dvc repro` looking for a module that only existed
+        # locally. This step makes that class of mistake loud and immediate.
+        run: |
+          set -euo pipefail
+          missing=$(comm -23 \
+            <(find . -type f -name '*.py' -not -path './.venv/*' -not -path './mlruns/*' \
+              | sed 's|^\./||' | sort) \
+            <(git ls-files --full-name '*.py' | sed 's|^ml/||' | sort))
+          if [ -n "$missing" ]; then
+            echo "::error::Python files exist on disk but are not tracked by Git:"
+            printf '%s\n' "$missing"
+            echo "::error::Is a .gitignore rule swallowing them? (see the root .gitignore)"
+            exit 1
+          fi
+          echo "all $(find . -type f -name '*.py' | wc -l) Python files under ml/ are tracked"
 
       - name: No datasets or model weights tracked in Git
         run: |

@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
@@ -107,7 +107,7 @@ ingest:
 #   make ml-smoke                                  the full CI path, seconds, offline
 #   make ml-train CONFIG=configs/toy_emotion_sgd.yaml
 #   make ml-eval  RUN=<run id>       make ml-report RUN=<run id>
-#   make ml-data  (= dvc repro)      make ml-status (= dvc status)
+#   make ml-data  (= dvc repro)      make ml-status (= lock check + dvc status)
 #   make ml-catalogue                                 licence + verdict check
 #   make ml-install                                   pip install -e "./ml[ml,dev]"
 #   make ml-test  /  make ml-lint                     pytest / ruff + mypy
@@ -119,6 +119,9 @@ ml-data:
 
 ml-status:
 	$(MAKE) -C ml status
+
+ml-lock:
+	$(MAKE) -C ml lock
 
 ml-catalogue:
 	$(MAKE) -C ml catalogue

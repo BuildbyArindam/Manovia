@@ -1,11 +1,12 @@
-.PHONY: install data status catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
 #
 #   make install      install the ml package + the ML stack (mlflow, dvc, ...)
 #   make data         dvc repro: rebuild the deterministic toy splits
-#   make status       dvc status: is the data what the pipeline recorded?
+#   make status       is the data what the pipeline recorded? (lock check + dvc status)
+#   make lock         only the lock check: does dvc.lock match the code?
 #   make catalogue    check ml/data/CATALOGUE.md (licences, verdicts, table)
 #   make train        CONFIG=configs/x.yaml   train and log to MLflow
 #   make record       CONFIG=configs/x.yaml   re-record the baseline for a config
@@ -39,7 +40,14 @@ install:
 data:
 	$(PYTHON) -m dvc repro
 
+# Before `dvc repro` rewrites the lock, ask whether the committed lock is honest:
+# a dependency whose hash moved means the recorded data was not produced by the
+# pipeline in this commit. Missing outputs are fine here — a fresh clone has none.
+lock:
+	$(PYTHON) -m manovia_ml.data.dvc_lock
+
 status:
+	$(PYTHON) -m manovia_ml.data.dvc_lock
 	$(PYTHON) -m dvc status
 
 catalogue:

@@ -179,9 +179,9 @@ is a place to do ML work; the product's serving path is untouched by this ADR
 
 ## Verification
 
-- `cd ml && python -m pytest -q` → **134 passed** (offline, ~9 s), including the
+- `cd ml && python -m pytest -q` → **139 passed** (offline, ~10 s), including the
   reproducibility contract, the tracker's seven logged things, the catalogue
-  rules and the serving round trip.
+  rules, the `dvc.lock` consistency check and the serving round trip.
 - `make ml-smoke` → `dvc repro` up to date, catalogue `14 entries, table
   current, 10 restricted`, train `accuracy=0.375000 log_loss=1.738700
   majority_accuracy=0.500000 train_accuracy=1.000000`, baseline check
@@ -189,7 +189,10 @@ is a place to do ML work; the product's serving path is untouched by this ADR
 - Same config twice: metrics identical run to run (`4a614af4…` and `75653d2d…`).
   `--seed 7`: `accuracy=0.625000 log_loss=1.025380` — the metric moves, and the
   baseline check is skipped with a note.
-- `python -m dvc status` → `Data and pipelines are up to date.`
+- `python -m dvc status` → `Data and pipelines are up to date.`; the lock check
+  (`python -m manovia_ml.data.dvc_lock`) is run separately, *before* `dvc repro`
+  rewrites the lock, and fails on a dependency whose hash moved — the stale
+  committed lock it found is recorded in the Day-31 verification note.
 - `python -m manovia_ml.evaluation.evaluate --run <smoke run>` → re-scored the
   stored bundle and reported "this run's metrics match the training run's logged
   metrics".
