@@ -56,7 +56,7 @@ from app.services.exercises.engine import get_catalog
 from app.services.nlp import build_analyzer
 
 API_TITLE = "Manovia API"
-API_VERSION = "0.1.0"
+API_VERSION = "1.0.0"
 
 
 def create_app(settings: Settings | None = None, *, database: Database | None = None) -> FastAPI:

@@ -1,13 +1,63 @@
 # Changelog
 
 All notable changes to Manovia are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Manovia has **no tagged
-release yet**, so entries are grouped by build day (the sequence in
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Entries before the
+first release are grouped by build day (the sequence in
 [PROGRESS.md](PROGRESS.md)) and link to the decision record and verification
-note for each. When a release is tagged, the release workflow
-(`.github/workflows/release.yml`) will be the place to cut a version.
+note for each. Releases are cut by pushing a `v*` tag, which runs
+`.github/workflows/release.yml` (migration round-trip on Postgres 16, images
+to GHCR, GitHub release).
 
-## [Unreleased] — Day 28: documentation, model card and portfolio polish
+## [1.0.0] — 2026-10-13
+
+The first release: everything from Days 1–30 below. `v1.0.0` is tagged on
+`main` after the Day 30 pull request merges (the launch steps are in
+[docs/releases/v1.0.0.md](docs/releases/v1.0.0.md), which is also the release
+notes: features, safety statement, evaluation numbers, limitations).
+
+### Added — Day 30: launch, positioning and career material
+
+- A visible **Beta** badge in the app header and a **"Portfolio demo — not a
+  clinical service"** line in the app footer (en/hi/bn) and at the top of the
+  README. Both stay until the [clinical review](docs/clinical-review.md) is
+  complete.
+- [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md): the v1.0.0 release notes,
+  and [docs/release-checklist-v1.0.0.md](docs/release-checklist-v1.0.0.md): the
+  launch checklist with the real command results.
+- [docs/roadmap.md](docs/roadmap.md): v2.0 (Days 31–49: deep-learning and
+  futuristic tracks) and the post-v2.0 commitments (clinician review, validated
+  translations, user research with ethics approval, push reminders, an
+  accessibility audit by real users, a native mobile wrapper).
+- Career material under `docs/career/` (not linked from the README).
+- A social-preview image at `docs/assets/social-preview.png` (original design).
+- The release workflow prefers curated notes from `docs/releases/<tag>.md`
+  when that file exists, and falls back to generated notes.
+
+### Changed — Day 30
+
+- Version bumped to **1.0.0** in `backend/pyproject.toml`,
+  `frontend/package.json`, the FastAPI `API_VERSION` and the Sentry release
+  string; `docs/openapi.json` and `docs/api.md` regenerated.
+
+### Added — Day 29: red-team and bug bash
+
+- A scripted red-team suite (`evals/redteam/`): 150 YAML cases run against the
+  real app offline, a two-user IDOR sweep (18 routes) and a 10-prompt
+  full-pipeline jailbreak run. Baseline 82/140 → final **150/150**. Every fix
+  carries a regression test; the full report is in
+  [docs/redteam-report.md](docs/redteam-report.md) and the decisions in
+  [ADR 0030](docs/adr/0030-red-team-suite-and-session-risk.md).
+
+### Fixed — Day 29
+
+- The rules engine stopped reading at 4,000 characters (windowed assessment
+  now covers long texts); ~36 euphemism/slang/other-language rules; a session
+  risk accumulator (slow multi-turn escalation); output-guard gaps (method and
+  pill quantities, jailbreak and prompt-leak categories); an injection tripwire
+  on memory, retrieval and the knowledge loader; access tokens now die with
+  their refresh family; a per-user export budget.
+
+## Day 28 — documentation, model card and portfolio polish
 
 ### Added
 
