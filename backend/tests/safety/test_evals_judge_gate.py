@@ -49,9 +49,7 @@ def test_unflagged_judge_refusal_propagates_cleanly(
     gate's explanation and never raises (the pre-fix behaviour was a
     FileNotFoundError traceback on the report that was never written)."""
     monkeypatch.delenv("FEATURE_LLM_JUDGE", raising=False)
-    exit_code = run_all_evals.main(
-        ["--provider", "fake", "--with-judge", "--date", "2026-10-13"]
-    )
+    exit_code = run_all_evals.main(["--provider", "fake", "--with-judge", "--date", "2026-10-13"])
     assert exit_code == 2
     captured = capsys.readouterr()
     assert "FEATURE_LLM_JUDGE" in captured.err
@@ -67,9 +65,7 @@ def test_flagged_judge_runs_and_the_deterministic_gates_hold(
 ) -> None:
     """With the flag set, the curated run includes the judge and passes."""
     monkeypatch.setenv("FEATURE_LLM_JUDGE", "1")
-    exit_code = run_all_evals.main(
-        ["--provider", "fake", "--with-judge", "--date", "2026-10-13"]
-    )
+    exit_code = run_all_evals.main(["--provider", "fake", "--with-judge", "--date", "2026-10-13"])
     assert exit_code == 0
     summary = (reports_dir / "2026-10-13" / "summary.json").read_text(encoding="utf-8")
     assert "overall_gate_passed" in summary
