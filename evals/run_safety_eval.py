@@ -53,8 +53,12 @@ sys.path.insert(0, str(REPO_ROOT / "backend"))
 
 from app.core.config import Settings  # noqa: E402
 from app.services.safety.ensemble import combine  # noqa: E402
-from app.services.safety.ml_classifier import build_ml_classifier  # noqa: E402
+from app.services.safety.ml_classifier import SafetyClassifier, build_ml_classifier  # noqa: E402
 from app.services.safety.rules import RuleEngine, build_engine  # noqa: E402
+
+#: Which ML classifier an evaluation run consumes. ``baseline`` is the default so
+#: every report written before Day 33 keeps meaning what it says.
+MODEL_CHOICES = ("baseline", "trained")
 
 DATASET_DIR = REPO_ROOT / "evals" / "datasets"
 REPORTS_DIR = REPO_ROOT / "evals" / "reports"
@@ -165,16 +169,60 @@ def load_split(name: str) -> list[dict[str, str]]:
     return cases
 
 
+def build_classifier(model: str, settings: Settings | None = None) -> SafetyClassifier | None:
+    """The ML classifier one evaluation run consumes.
+
+    ``model`` is ``baseline`` (the Day-9 TF-IDF model, the default, so every
+    historical report means what it says) or ``trained`` (the Day-33 packaged
+    LoRA model). ``trained`` goes through the production selector
+    ``build_safety_classifier`` rather than constructing the trained classifier
+    directly: that way an evaluation cannot use a construction path the product
+    does not, and the fallback behaviour — missing artefact -> baseline, never
+    rules-only — is what gets measured.
+    """
+
+    active = settings if settings is not None else Settings(_env_file=None)
+    if model not in MODEL_CHOICES:
+        # Refused rather than defaulted: the CLI's `choices=` guards the command
+        # line, but a caller passing a string is otherwise routed to the baseline
+        # silently — which is how a report ends up labelled "trained" and scored
+        # on the Day-9 model.
+        raise ValueError(f"unknown model {model!r}; expected one of {MODEL_CHOICES}")
+    if model == "trained":
+        from app.services.safety.ml_classifier import build_safety_classifier
+
+        # The flag has to reach the selector, which reads it from settings rather
+        # than an argument. Forcing both fields rather than inheriting the
+        # ambient environment is deliberate: an evaluation is a measurement of a
+        # named configuration, and "the machine had SAFETY_ML=baseline exported"
+        # must not silently turn a trained run into a baseline run.
+        return build_safety_classifier(
+            active.model_copy(update={"safety_ml": "trained", "safety_ml_enabled": True})
+        )
+    return build_ml_classifier()
+
+
 def assess_all(
     cases: list[dict[str, str]],
     *,
     ml_enabled: bool,
     engine: RuleEngine | None = None,
+    model: str = "baseline",
+    settings: Settings | None = None,
 ) -> list[dict[str, object]]:
-    """Run every case through the rules engine and (optionally) the ensemble."""
+    """Run every case through the rules engine and (optionally) the ensemble.
+
+    ``model`` selects which ML classifier the ensemble consumes (see
+    :func:`build_classifier`). Each result row also carries what the classifier
+    itself reported — its version, its confidence, and, for the trained model,
+    the abstention policy's level and the conformal prediction set — so the
+    report can separate "the model said HIGH" from "the model could not rule out
+    HIGH". Those are different claims and a safety report that merges them is
+    not measuring what it appears to measure.
+    """
     active_engine = engine if engine is not None else build_engine()
-    classifier = build_ml_classifier() if ml_enabled else None
-    settings = Settings(_env_file=None)
+    active_settings = settings if settings is not None else Settings(_env_file=None)
+    classifier = build_classifier(model, active_settings) if ml_enabled else None
 
     results: list[dict[str, object]] = []
     for case in cases:
@@ -187,24 +235,81 @@ def assess_all(
             decision = combine(
                 assessment,
                 prediction,
-                min_confidence=settings.safety_ml_min_confidence,
-                crisis_mass_floor=settings.safety_ml_crisis_mass_floor,
-                suspicion_floor=settings.safety_ml_suspicion_floor,
+                min_confidence=active_settings.safety_ml_min_confidence,
+                crisis_mass_floor=active_settings.safety_ml_crisis_mass_floor,
+                suspicion_floor=active_settings.safety_ml_suspicion_floor,
             )
         final_label = decision.level.name if decision is not None else rules_label
-        results.append(
-            {
-                "id": case["id"],
-                "lang": case["lang"],
-                "true": case["label"],
-                "rules": rules_label,
-                "final": final_label,
-                "source": decision.source if decision is not None else "rules",
-                "notes": case["notes"],
-                "category": case.get("category", "unknown"),
-            }
-        )
+        row: dict[str, object] = {
+            "id": case["id"],
+            "lang": case["lang"],
+            "true": case["label"],
+            "rules": rules_label,
+            "final": final_label,
+            "source": decision.source if decision is not None else "rules",
+            "notes": case["notes"],
+            "category": case.get("category", "unknown"),
+            "ml_version": classifier.version if classifier is not None else "",
+            "ml_confidence": (
+                prediction.confidence if prediction is not None else None
+            ),
+            "ml_abstained_level": (
+                getattr(prediction, "abstained_level", None) if prediction is not None else None
+            ),
+            "ml_prediction_set": (
+                sorted(getattr(prediction, "prediction_set", ()) or ())
+                if prediction is not None
+                else []
+            ),
+        }
+        results.append(row)
     return results
+
+
+def abstention_metrics(results: list[dict[str, object]]) -> dict[str, object]:
+    """The abstention policy, measured on its own terms.
+
+    The point prediction and the abstention level answer different questions, and
+    only the trained classifier exposes the second one. When it does not (the
+    Day-9 baseline), every field is ``None`` rather than 0.0 — a missing
+    measurement is not a measurement of zero.
+    """
+
+    scored = [
+        row
+        for row in results
+        if row.get("ml_abstained_level") and row.get("ml_prediction_set")
+    ]
+    if not scored:
+        return {
+            "available": False,
+            "cases": 0,
+            "abstention_rate": None,
+            "policy_recall": None,
+            "policy_precision": None,
+            "policy_recall_ci": (None, None),
+            "point_recall": None,
+            "raised": 0,
+        }
+
+    policy_pairs = [(str(r["true"]), str(r["ml_abstained_level"])) for r in scored]
+    point_pairs = [(str(r["true"]), str(r["final"])) for r in scored]
+    raised = sum(
+        1 for row in scored if str(row["ml_abstained_level"]) != str(row["final"])
+    )
+    return {
+        "available": True,
+        "cases": len(scored),
+        "abstention_rate": sum(1 for row in scored if len(row["ml_prediction_set"]) > 1)  # type: ignore[arg-type]
+        / len(scored),
+        "policy_recall": crisis_metrics(policy_pairs)[1],
+        "policy_precision": crisis_metrics(policy_pairs)[0],
+        "policy_recall_ci": bootstrap_ci(
+            policy_pairs, lambda sample: crisis_metrics(sample)[1]
+        ),
+        "point_recall": crisis_metrics(point_pairs)[1],
+        "raised": raised,
+    }
 
 
 def _precision_recall(
@@ -793,6 +898,53 @@ def gate_table(verdict: GateVerdict) -> list[str]:
     return lines
 
 
+def abstention_section(
+    results: list[dict[str, object]],
+    *,
+    boot: BootstrapConfig | None = None,
+) -> list[str]:
+    """The abstention policy's own table: how often it fires and what it costs.
+
+    Three numbers, and one sentence about what they do not mean. The point
+    prediction and the abstention level are different claims — "the model says
+    HIGH" versus "the model could not rule out HIGH" — and a report that merges
+    them cannot show that a cautious policy is buying recall with precision.
+    """
+
+    active_boot = boot or BootstrapConfig()
+    stats = abstention_metrics(results)
+    if not stats["available"]:
+        return [
+            "Not applicable: this run's ML classifier does not expose a prediction",
+            "set, so there is no abstention to measure. (The Day-9 TF-IDF baseline",
+            "returns a point level only.)",
+            "",
+        ]
+
+    return [
+        "| measure | value |",
+        "| --- | --- |",
+        f"| cases with a prediction set | {stats['cases']} |",
+        f"| abstention rate (set larger than one level) | {_fmt(stats['abstention_rate'])} |",
+        f"| HIGH+IMMINENT recall, point prediction | {_fmt(stats['point_recall'])} |",
+        f"| HIGH+IMMINENT recall, abstention policy | "
+        f"{_fmt(stats['policy_recall'])} {_fmt_ci(stats['policy_recall_ci'])} |",
+        f"| HIGH+IMMINENT precision, abstention policy | {_fmt(stats['policy_precision'])} |",
+        f"| rows the policy raised above the point level | {stats['raised']} |",
+        "",
+        "The policy is the MEDIUM floor: if the conformal set contains any level at",
+        "or above MEDIUM, the message is treated as MEDIUM or above. It never",
+        "promotes to the most severe level the set contains, because that would turn",
+        "every uncertain row into a crisis card.",
+        "",
+        "What these numbers do **not** show: whether the model's uncertainty is",
+        "*correct*. A high abstention rate with a wide conformal set can mean a",
+        "careful model or a badly calibrated one; separating those needs the",
+        "coverage measurement on a held-out calibration split, not this table.",
+        "",
+    ]
+
+
 def build_report(
     split: str,
     cases: list[dict[str, str]],
@@ -804,6 +956,7 @@ def build_report(
     previous_path: Path | None = None,
     diff_rows: list[dict[str, object]] | None = None,
     gate_verdict: GateVerdict | None = None,
+    model: str = "baseline",
 ) -> str:
     settings = Settings(_env_file=None)
     today = date.today().isoformat()
@@ -848,15 +1001,25 @@ def build_report(
 
     fns = sorted(false_negatives(results, "final"), key=lambda r: str(r["id"]))
 
+    ml_versions = sorted({str(r["ml_version"]) for r in results if r.get("ml_version")})
+    fell_back = bool(ml_versions) and all(
+        name.endswith("+trained-unavailable") for name in ml_versions
+    )
     pipeline = (
-        "rules engine + ML ensemble (TF-IDF + calibrated logistic regression)"
-        if ml_enabled
-        else "rules engine only (ML disabled with --no-ml)"
+        "rules engine only (ML disabled with --no-ml)"
+        if not ml_enabled
+        else (
+            "rules engine + ML ensemble (Day-9 TF-IDF + calibrated logistic regression)"
+            if model == "baseline" or fell_back
+            else "rules engine + ML ensemble (Day-33 cost-sensitive LoRA)"
+        )
     )
     lines: list[str] = [
         f"# Safety evaluation — {today} (split: {split})",
         "",
         f"- Pipeline: {pipeline}.",
+        f"- ML model: `--model {model}`"
+        + (f", loaded as {', '.join(ml_versions)}" if ml_versions else " (ML not loaded)"),
         f"- Thresholds: min_confidence={settings.safety_ml_min_confidence}, "
         f"crisis_mass_floor={settings.safety_ml_crisis_mass_floor}, "
         f"suspicion_floor={settings.safety_ml_suspicion_floor} "
@@ -865,6 +1028,18 @@ def build_report(
         f"{int(active_boot.confidence_level * 100)}% percentile CIs (seed={active_boot.seed}).",
         f"- Cases: {len(cases)} from `crisis_cases_{split}.jsonl`.",
         "",
+    ]
+    if ml_enabled and model == "trained" and fell_back:
+        lines += [
+            "> **The trained model was not loaded.** `--model trained` asked for the",
+            "> packaged Day-33 model, the artefact was missing or unloadable, and the",
+            "> production selector fell back to the Day-9 baseline. Every number below",
+            "> is therefore a **baseline** number. It is not a trained-model result and",
+            "> must not be quoted as one; see `docs/safety-design.md` §12 for what the",
+            "> fallback guarantees and what it does not.",
+            "",
+        ]
+    lines += [
         "## Headline: HIGH+IMMINENT (the crisis tiers)",
         "",
         "| pipeline | precision | recall | crisis cases | precision 95% CI | recall 95% CI |",
@@ -941,6 +1116,11 @@ def build_report(
         "",
         *lowest_category_per_language(results, "final"),
         "",
+        "## Abstention policy (the trained model's own uncertainty)",
+        "",
+    ]
+    lines += abstention_section(results, boot=active_boot)
+    lines += [
         "## Cost of the recall target: benign escalations",
         "",
     ]
@@ -991,6 +1171,7 @@ def build_json_summary(
     previous_path: Path | None,
     diff_rows: list[dict[str, object]],
     gate_verdict: GateVerdict,
+    model: str = "baseline",
 ) -> dict[str, object]:
     """Structured summary for `make eval` HTML/Markdown aggregation."""
     ensemble_pairs = [(str(r["true"]), str(r["final"])) for r in results]
@@ -1028,6 +1209,8 @@ def build_json_summary(
         "date": date.today().isoformat(),
         "split": split,
         "ml_enabled": ml_enabled,
+        "model": model,
+        "abstention": abstention_metrics(results),
         "cases": len(cases),
         "crisis_cases": e_n,
         "ensemble": {
@@ -1079,6 +1262,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--split", choices=("train", "dev", "test"), default="dev")
     parser.add_argument("--no-ml", action="store_true", help="score rules only (no ensemble)")
     parser.add_argument(
+        "--model",
+        choices=MODEL_CHOICES,
+        default="baseline",
+        help=(
+            "which ML classifier the ensemble consumes: the Day-9 TF-IDF baseline "
+            "(default) or the Day-33 trained LoRA model. 'trained' goes through the "
+            "production selector, so a missing artefact falls back to the baseline "
+            "and says so in the report rather than scoring rules only."
+        ),
+    )
+    parser.add_argument(
         "--thresholds",
         type=Path,
         default=THRESHOLDS_PATH,
@@ -1112,7 +1306,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     thresholds, boot = load_thresholds(args.thresholds)
     cases = load_split(args.split)
     ml_enabled = not args.no_ml
-    results = assess_all(cases, ml_enabled=ml_enabled)
+    settings = Settings(_env_file=None)
+    results = assess_all(cases, ml_enabled=ml_enabled, model=args.model, settings=settings)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     stem = f"safety_{date.today().isoformat()}"
@@ -1120,6 +1315,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         stem += f"_{args.split}"
     if args.no_ml:
         stem += "_rules_only"
+    elif args.model == "trained":
+        stem += "_trained"
     default_out_path = REPORTS_DIR / f"{stem}.md"
     out_path = args.out or default_out_path
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1150,6 +1347,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         previous_path=prev_path,
         diff_rows=diff_rows,
         gate_verdict=gate_verdict,
+        model=args.model,
     )
     out_path.write_text(report, encoding="utf-8")
 
@@ -1165,6 +1363,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             previous_path=prev_path,
             diff_rows=diff_rows,
             gate_verdict=gate_verdict,
+            model=args.model,
         )
         args.json_out.write_text(
             json.dumps(summary_payload, indent=2, ensure_ascii=False) + "\n",
@@ -1182,6 +1381,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     fns = false_negatives(results, "final")
     benign = [r for r in results if r["true"] in ("NONE", "LOW")]
     crisis_fa = sum(1 for r in benign if r["final"] in CRISIS_LEVELS)
+
+    ml_versions = sorted({str(r["ml_version"]) for r in results if r.get("ml_version")})
+    abst = abstention_metrics(results)
+    print(f"ml model: --model {args.model}" + (f" -> {', '.join(ml_versions)}" if ml_versions else " (off)"))
+    if abst["available"]:
+        print(
+            f"abstention: rate={_fmt(abst['abstention_rate'])}  "
+            f"recall(point)={_fmt(abst['point_recall'])}  "
+            f"recall(policy)={_fmt(abst['policy_recall'])} {_fmt_ci(abst['policy_recall_ci'])}  "
+            f"precision(policy)={_fmt(abst['policy_precision'])}  raised={abst['raised']}"
+        )
+    else:
+        print("abstention: not applicable (this classifier reports a point level only)")
 
     print(f"split={args.split} cases={len(cases)} (bootstrap B={boot.resamples}, seed={boot.seed})")
     print(

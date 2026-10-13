@@ -75,17 +75,27 @@ def test_the_artifact_layout_matches_the_ml_package() -> None:
 #: ``ml/tests/test_safety_conformal.py::test_the_backend_golden_vectors_match``.
 SET_CASES: tuple[tuple[dict[str, float], float, frozenset[str]], ...] = (
     # A confident prediction is a singleton.
-    ({"none": 0.01, "low": 0.02, "medium": 0.03, "high": 0.10, "imminent": 0.84}, 0.20, {"imminent"}),
+    (
+        {"none": 0.01, "low": 0.02, "medium": 0.03, "high": 0.10, "imminent": 0.84},
+        0.20,
+        {"imminent"},
+    ),
     # A torn one keeps every level the model could not rule out: at q=0.75 the
     # membership rule is p >= 0.25, so medium (0.20) is ruled out and the two
     # crisis levels are not.
-    ({"none": 0.10, "low": 0.15, "medium": 0.20, "high": 0.30, "imminent": 0.25}, 0.75,
-     {"high", "imminent"}),
+    (
+        {"none": 0.10, "low": 0.15, "medium": 0.20, "high": 0.30, "imminent": 0.25},
+        0.75,
+        {"high", "imminent"},
+    ),
     # The argmax is always in the set, even when nothing clears the quantile.
     ({"none": 0.90, "low": 0.04, "medium": 0.03, "high": 0.02, "imminent": 0.01}, 0.05, {"none"}),
     # A near-tie between two crisis levels: both, never one.
-    ({"none": 0.02, "low": 0.03, "medium": 0.05, "high": 0.45, "imminent": 0.45}, 0.60,
-     {"high", "imminent"}),
+    (
+        {"none": 0.02, "low": 0.03, "medium": 0.05, "high": 0.45, "imminent": 0.45},
+        0.60,
+        {"high", "imminent"},
+    ),
 )
 
 
@@ -203,13 +213,25 @@ def _write_artifact(
         encoding="utf-8",
     )
     (directory / "thresholds.json").write_text(
-        json.dumps({"temperature": temperature, "conformal_quantile": quantile,
-                    "decision_rule": decision_rule, "labels": list(LEVEL_LABELS)}),
+        json.dumps(
+            {
+                "temperature": temperature,
+                "conformal_quantile": quantile,
+                "decision_rule": decision_rule,
+                "labels": list(LEVEL_LABELS),
+            }
+        ),
         encoding="utf-8",
     )
     (directory / "manifest.json").write_text(
-        json.dumps({"run_id": run_id, "base_model": "xlm-roberta-base",
-                    "labels": list(LEVEL_LABELS), "written": "2026-10-13"}),
+        json.dumps(
+            {
+                "run_id": run_id,
+                "base_model": "xlm-roberta-base",
+                "labels": list(LEVEL_LABELS),
+                "written": "2026-10-13",
+            }
+        ),
         encoding="utf-8",
     )
     (directory / "MODEL_CARD.md").write_text("# card\n", encoding="utf-8")
@@ -223,9 +245,7 @@ def _write_artifact(
 
 def test_a_confident_prediction_is_a_singleton_and_the_argmax(tmp_path: Path) -> None:
     directory = _write_artifact(tmp_path, temperature=1.0, quantile=0.20)
-    classifier = TrainedSafetyClassifier(
-        directory, loader=_loader([[0.1, 0.2, 0.3, 1.0, 4.0]])
-    )
+    classifier = TrainedSafetyClassifier(directory, loader=_loader([[0.1, 0.2, 0.3, 1.0, 4.0]]))
 
     prediction = classifier.predict("i have written the letters")
 
