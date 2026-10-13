@@ -1,0 +1,62 @@
+# The full six-class fixture: all four language codes, the real shape of the
+# label scheme, and the deterministic-logreg path.
+#
+# This is a *shape and plumbing* config, not a quality benchmark. At 60 training
+# rows for six fine-grained emotions the model is at chance on held-out rows —
+# which is exactly the finding that motivates the whole platform: numbers like
+# these are only meaningful next to the config, the row counts and the data hash
+# that produced them (see ml/findings/2026-10-13-toy-slice-baselines.md).
+#
+# It trains in a couple of seconds, so the test suite runs it end to end.
+name: toy_emotion_multiclass_logreg
+
+seed: 20261013
+
+notes: >
+  Six classes × four language codes (en, hi, hi-Latn, bn) on 60/24 rows. Exists
+  to exercise the multiclass path, the confusion matrix and the logreg kind; its
+  accuracy is not a claim about emotion recognition.
+
+data:
+  train:
+    path: data/processed/toy_train.jsonl
+    sha256: "06953a704a7a92b979d5f8203096abb88939788a10be9937cef766dd74e694f9"
+    rows: 60
+  eval:
+    path: data/processed/toy_eval.jsonl
+    sha256: "0d3af2f0dbbc9b66d89bae86ebfe4fca0604332a392981a55099ca5da82919f1"
+    rows: 24
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [joy, sadness, anger, fear, calm, neutral]
+
+model:
+  kind: tfidf_logreg
+  tfidf:
+    word_ngram_range: [1, 2]
+    char_ngram_range: [3, 5]
+    min_df: 1
+    max_features: 20000
+    sublinear_tf: true
+    lowercase: true
+  C: 2.0
+  max_iter: 400
+  solver: lbfgs
+  class_weight: balanced
+
+evaluation:
+  tolerance: 1.0e-6
+  metrics: [accuracy, macro_f1, weighted_f1, log_loss]
+  confusion_matrix: true
+
+tracking:
+  experiment: manovia-ml-smoke
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: shape-check
+    data: toy_emotion_multiclass
+
+threads: 1

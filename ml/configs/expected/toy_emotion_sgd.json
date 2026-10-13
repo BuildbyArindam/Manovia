@@ -1,0 +1,16 @@
+{
+  "config": "toy_emotion_sgd.yaml",
+  "metrics": {
+    "accuracy": 0.375,
+    "log_loss": 1.7387001782034837,
+    "macro_f1": 0.2727272727272727,
+    "majority_accuracy": 0.5,
+    "train_accuracy": 1.0,
+    "weighted_f1": 0.2727272727272727
+  },
+  "note": "Recorded by `make ml-record`. Every later run of this config with this seed must match within `tolerance`.",
+  "recorded": "2026-10-13",
+  "run_id": "5514274ec3894b5599b39b73269f7e49",
+  "seed": 20261013,
+  "tolerance": 1e-06
+}

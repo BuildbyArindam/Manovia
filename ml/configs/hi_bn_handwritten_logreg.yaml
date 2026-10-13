@@ -1,0 +1,71 @@
+# PLANNED CONFIG — the data this names does not exist yet.
+#
+# Why it is committed anyway: the hand-written Hindi/Bengali set is the answer to
+# a real finding (`ml/data/CATALOGUE.md` § "Hindi and Bengali emotion data"), the
+# shape of the run should be reviewable before the sentences are written, and a
+# config that names a missing file fails with a clear message rather than
+# silently training on the toy fixture instead.
+#
+# What must happen first (Day 32+):
+#   1. Write the sentences (ml/data/planned/hi_bn_emotion/DATASET_CARD.md, plan
+#      section 3) — 8 emotions × 3 registers × {hi, hi-Latn, bn} × >= 25 rows.
+#   2. Two native speakers per language review every row independently; a row
+#      only enters the set when both agree on the label.
+#   3. `dvc add` the result, then replace the nulls below with the real hashes.
+name: hi_bn_handwritten_logreg
+
+seed: 20261013
+
+notes: >
+  Placeholder for the first Manovia-owned Hindi/Bengali emotion run. Do not run
+  it until the dataset card exists and says `status: reviewed`.
+
+data:
+  train:
+    path: data/raw/hi_bn_emotion/train.jsonl
+    sha256: null
+    rows: null
+  eval:
+    path: data/raw/hi_bn_emotion/eval.jsonl
+    sha256: null
+    rows: null
+  text_field: text
+  label_field: label
+  lang_field: lang
+  # Manovia's nine emotions, unchanged — the point of this set is that it uses
+  # the same label scheme the product already speaks.
+  labels: [joy, sadness, anger, fear, anxiety, shame, loneliness, calm, neutral]
+
+model:
+  kind: tfidf_logreg
+  tfidf:
+    # Character n-grams carry the load for Indic scripts: word boundaries and
+    # inflections differ enough that a word model is brittle, and romanised
+    # Hinglish needs the character view anyway.
+    word_ngram_range: [1, 2]
+    char_ngram_range: [2, 5]
+    min_df: 1
+    max_features: 100000
+    sublinear_tf: true
+    lowercase: true
+  C: 1.0
+  max_iter: 500
+  solver: lbfgs
+  class_weight: balanced
+
+evaluation:
+  tolerance: 1.0e-6
+  metrics: [accuracy, macro_f1, weighted_f1]
+  confusion_matrix: true
+
+tracking:
+  experiment: manovia-ml-hi-bn
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: research
+    data: hi_bn_handwritten
+    native_review: required
+
+threads: 1
