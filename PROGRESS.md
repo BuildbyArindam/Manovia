@@ -75,9 +75,10 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
   silent metric drift. Not wired into the API — that needs its own ADR.
 - **CI:** new `ml-smoke` job (`.github/workflows/ci.yml`) = install → `dvc repro`
   + `dvc status` → catalogue check → `make smoke` (train → baseline → report) →
-  pytest → ruff/format/mypy → "no dataset or model file is tracked in Git"
-  grep; job summary carries the smoke report. Documented in
-  `.github/workflows/README.md`.
+  pytest → ruff/format/mypy → "every `.py` file under `ml/` is tracked in Git" →
+  "no dataset or model file is tracked in Git"; job summary carries the smoke
+  report. Documented in `.github/workflows/README.md`. **Green on GitHub
+  Actions**, after its first run found the two bugs recorded under Known issues.
 - **Docs:** `ml/README.md` (install, layout, the seven things, troubleshooting),
   `ml/configs/README.md`, `ml/data/README.md`,
   `ml/data/toy/README.md`, `ml/notebooks/README.md`,
@@ -107,14 +108,22 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 | `git ls-files \| grep -E "\.(bin\|pt\|safetensors\|csv\|parquet)$"` | **empty** |
 | `make ml-lint` | ruff clean, ruff-format clean, mypy clean (32 files) |
 | catalogue rules | `catalogue ok: 14 entries, table current, 10 restricted` |
-| CI `ml-smoke` job | not exercised by GitHub Actions (no push to `main`); its commands were run locally in order, and `act`/Docker are unavailable in the sandbox |
+| CI `ml-smoke` job | **green on GitHub Actions** ([run 38383897480](https://github.com/BuildbyArindam/Manovia/actions/runs/38383897480), `ML — smoke, reproducibility, catalogue: success` in 1m34s, alongside backend/frontend/gitleaks/audit). Its **first** execution failed and found two real bugs (below); every step was also rehearsed in a fresh clone + fresh venv, since `act`/Docker are unavailable here |
 
 ### Known issues (as of Day 31)
 
-- **The `ml-smoke` CI job has never run on GitHub.** Its steps were executed
-  locally, in order, with the same interpreter; the first real run is on this
-  PR. Docker and `act` are unavailable in the sandbox, so it cannot be
-  rehearsed locally any other way.
+- **Two bugs were found only by CI, and both were kept** (the failures taught
+  more than the passes): `ml/src/manovia_ml/data/` — four modules of the package
+  — was silently gitignored by the repository's bare `data/` rule and never
+  reached the clone (`dvc repro` failed on a missing dep); and because ruff
+  respects `.gitignore`, the same rule meant the lint gate had never read those
+  files, which had four real lint errors. Fixed at the root: the negation
+  `!ml/src/manovia_ml/data/` plus a CI step that fails if any `.py` file under
+  `ml/` is untracked — a file that is not in Git is not linted, not type-checked
+  and not shipped.
+- `act`/Docker are unavailable in the sandbox, so the CI job can only be
+  rehearsed by cloning the repository and installing into a fresh virtualenv —
+  which is now the documented procedure, and is what caught the second bug.
 - **The Colab notebook is unexecuted.** No GPU, no corpus download here. The
   first real GoEmotions run is an owner step; `configs/colab_goemotions_logreg.yaml`
   deliberately leaves `sha256`/`rows` null until that run happens.

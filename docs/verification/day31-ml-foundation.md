@@ -17,7 +17,7 @@ checks are adapted or performed by the owner; each is stated where it happens.
 | 4a | `dvc status` clean | **PASS** | `cd ml && python -m dvc status` → `Data and pipelines are up to date.` |
 | 4b | Dataset hash visible in a run | **PASS** | Each run logs `data.train.sha256`, `data.train.rows`, `data.eval.sha256`, `data.eval.rows` as params and writes `data.json`; the smoke run's report carries `aa4a9871…` (20 rows) and `055a7a9f…` (8 rows) in its Data table. `dvc.lock` holds the md5 of the same files (stage `toy_split` / `toy_smoke_split`). |
 | 5 | `git ls-files \| grep -E "\.(bin\|pt\|safetensors\|csv\|parquet)$"` empty | **PASS** | Empty (exit 1 from grep, no output). CI generalises it to `*.bin,*.pt,*.pth,*.safetensors,*.csv,*.parquet,*.joblib,*.pkl,*.h5,*.onnx,*.ckpt`, and the ML `.gitignore` adds the same belt for anything untracked. `dvc.lock` + the fixture are the only data-shaped commits. |
-| 6 | CI `ml-smoke` job passes locally with `act` or by running its commands | **PASS (adapted: no Docker/`act`)** | `act` needs Docker, which the sandbox does not have. The job's steps were run in order, locally, on the final tree: install → `dvc repro` + `dvc status` → `catalogue --check` → `make smoke` → `pytest -q` (134 passed) → `ruff check` + `ruff format --check` + `mypy` (clean) → the tracked-artefact grep (empty). **The job has never run on GitHub Actions** — its first execution is on this PR (owner-visible). |
+| 6 | CI `ml-smoke` job passes locally with `act` or by running its commands | **PASS, and green on GitHub Actions** | `act` needs Docker, which the sandbox does not have, so the job's steps were first run in order against a **fresh clone with a fresh virtualenv** — install → `dvc repro` + `dvc status` → `catalogue --check` → `make smoke` → `pytest -q` (134 passed) → `ruff`/`ruff format`/`mypy` → the two Git guards. Then the real thing: [run 38383897480](https://github.com/BuildbyArindam/Manovia/actions/runs/38383897480) on commit `cd20772` — **`ML — smoke, reproducibility, catalogue: success` in 1m34s**, alongside backend (9m17s), frontend, gitleaks and the dependency audit, all green. The first execution (run 38382218135) **failed**, and finding out why was the most useful thing that happened all day (fixes 5 and 6 below). |
 | 7 | Print CATALOGUE.md highlighting licence concerns | **PASS** | `python -m manovia_ml.data.catalogue --check` → `catalogue ok: 14 entries, table current, 10 restricted (emoHind-58K, IndicSentiment / IndicGLUE sentiment, EmoInHindi, SentiMix Hinglish, Bengali & Banglish, EmpatheticDialogues, ESConv, MentalChat16K, eRisk/DepreSym, Dreaddit/SMHD)`. Highlights: GoEmotions is Apache-2.0 (**USE**); emoHind-58K and EmoNoBa are CC BY 4.0 web text (**USE WITH CONDITIONS**); IndicGLUE/IndicSentiment (CC BY-NC 4.0) and EmoInHindi (CC BY-NC-ND 4.0) are **RESEARCH ONLY**; EmpatheticDialogues (CC BY-NC), ESConv (academic-only), eRisk (user agreement), MentalChat16K (real clinical transcripts) and Dreaddit/SMHD are **DO NOT USE**. No usable natively authored, commercially licensed Hindi/Bengali emotion corpus exists; the plan is a hand-written set with native review. |
 | 8 | ML test suite and linters | **PASS** | `cd ml && python -m pytest -q` → **134 passed in 8.6 s**, fully offline (temporary `file:` MLflow store per test, splits built into tmp dirs, `-m 'not network'`). `ruff check .` "All checks passed!", `ruff format --check .` "41 files already formatted", `mypy src tests` "no issues found in 32 source files". |
 | 9 | Full repository lint and tests (wrap-up requirement) | **PASS** | `make lint` (backend + frontend): ruff clean, `355 files already formatted`, mypy clean in 295 files, eslint clean. `make test`: backend **4159 passed, 3 skipped** (skips = uninstalled optional `nlp`/`llm` extras), coverage 96%; frontend **601 passed, 3 skipped** (74 files). |
@@ -52,6 +52,25 @@ checks are adapted or performed by the owner; each is stated where it happens.
    guard (rightly) only allows vendor model ids in `.env.example`. The entry now
    describes the generator and points at the source paper — the guard was not
    widened.
+5. **The repository was missing four modules of its own package, and only CI
+   noticed.** The first `ml-smoke` execution died at `dvc repro` with
+   `[Errno 2] No such file or directory: .../ml/src/manovia_ml/data/toy.py`. The
+   root `.gitignore` has a bare `data/` rule (Day 13's vector store) which matches
+   *any* directory named data, so it ignored `ml/src/manovia_ml/data/` — four
+   modules of `manovia-ml`. `git add ml/src` skipped them silently; they existed
+   on this machine and in no clone. The Day-31 re-inclusion covered `ml/data/`
+   (catalogue, fixture) and that was all. Fixed with `!ml/src/manovia_ml/data/`
+   and a new CI step that fails if any `.py` file under `ml/` is untracked.
+6. **The same rule was hiding those files from the lint gate.** Ruff respects
+   `.gitignore`, so `ruff check .` had been reporting "All checks passed!" about
+   a module it never read. Re-checked in a fresh clone, the four files had four
+   errors (two long lines, a `noqa` naming a rule this project does not enable,
+   an ambiguous `×` in a docstring); all four are fixed. "It is not in Git" and
+   "it is not linted" turn out to be the same sentence.
+
+The lesson is recorded where it will be needed again: the CI job asserts Git
+completeness before it asserts anything else, because a check that skips a file
+is indistinguishable from a check that passes.
 
 ## Reproduce any of this
 
@@ -59,6 +78,9 @@ checks are adapted or performed by the owner; each is stated where it happens.
 python -m venv .venv
 .venv/bin/pip install -e "./backend[dev]" -e "./ml[ml,dev]"
 make ml-smoke                      # the CI path, seconds, offline
+git clone --branch arena/020f8dea-manovia <repo> /tmp/fresh && cd /tmp/fresh/ml && \
+  python -m venv /tmp/fresh-venv && /tmp/fresh-venv/bin/pip install -e ".[ml,dev]" && \
+  /tmp/fresh-venv/bin/python -m dvc repro   # what CI actually does, from nothing
 cd ml && python -m pytest -q       # 134 tests
 cd ml && python -m dvc status      # Data and pipelines are up to date.
 make ml-train CONFIG=configs/toy_emotion_multiclass_logreg.yaml
