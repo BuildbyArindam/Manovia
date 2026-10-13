@@ -105,6 +105,22 @@ explicitly the first v2.0 item in [docs/roadmap.md](docs/roadmap.md). The
 30-day build is complete; v1.0.0 ships when the owner merges the PR and
 pushes the tag.
 
+### Next steps (Day 31 — first three)
+
+1. **Publish v1.0.0** (owner): merge the Day 30 PR, run the owner steps in
+   [docs/release-checklist-v1.0.0.md](docs/release-checklist-v1.0.0.md) §2–3
+   (tag push → release workflow; repo description/topics/Discussions/pin/
+   social preview), and re-run the Docker quick start + `make smoke` on a
+   Docker machine.
+2. **Retrain `crisis_v1`** on the red-team hard negatives against the
+   pinned scikit-learn 1.9.1 — the opening of the v2.0 deep-learning track —
+   with the goal of raising dev precision above 0.543 at unchanged ensemble
+   recall, gated by `make eval` and the red-team controls.
+3. **Close the two cheap gaps found on Day 30:** document
+   `FIELD_ENCRYPTION_KEY` in the no-Docker quick start, and add the
+   branch-coverage gate to CI so "gate PASS" never again depends on a local
+   run.
+
 ---
 
 **Day 29 — red-team and bug bash — is built and verified, with open
