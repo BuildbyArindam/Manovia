@@ -19,6 +19,8 @@ from typing import Any
 
 import pytest
 
+from manovia_ml.mlflow_api import mlflow
+
 # The training stack is an optional extra (`pip install -e ".[training]"`), so a
 # checkout that only wants the linear path, the catalogue checker or the docs
 # still gets a green suite — but CI installs it, and then these tests *run*
@@ -254,6 +256,67 @@ def test_the_manifest_points_back_at_its_run(tiny_run: dict[str, Any]) -> None:
     assert manifest["data"]["test"]["rows"] == 7
     assert manifest["data"]["train"]["rows"] > 0
     assert manifest["unreachable_labels"] == ["loneliness"]
+
+
+def test_a_fresh_process_reproduces_the_runs_interval_endpoints(
+    tiny_run: dict[str, Any], tmp_path: Path
+) -> None:
+    """Message-2's check 3, as a test: the artefact alone reproduces the numbers.
+
+    The CLI is run in a *new interpreter* that never imports the trainer (the
+    module raises if it is imported in the same process), and its payload is
+    compared with the payload the training run logged to MLflow. Everything
+    thresholded, and the bootstrap interval endpoints, must match exactly.
+
+    Found while doing this by hand: they did not. The trainer derives its
+    bootstrap seed from the config seed for the split; the CLI used seed 0, so
+    the interval endpoints moved in the third decimal — a published interval
+    that no reader can reproduce. `bootstrap_seed_for()` reads the recorded seed
+    from the manifest and derives the same stream.
+    """
+
+    result = tiny_run["result"]
+    config = tiny_run["config"]
+    client = mlflow.tracking.MlflowClient()
+    logged = json.loads(
+        Path(
+            client.download_artifacts(result.run_id, "evaluation/test.json", str(tmp_path))
+        ).read_text(encoding="utf-8")
+    )
+
+    out = tmp_path / "fresh-evaluation.json"
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "manovia_ml.training.emotion.evaluate",
+            "--artifact",
+            str(result.artifact_dir),
+            "--data",
+            str(config.data.test.path),
+            "--split",
+            "test",
+            "--bootstrap",
+            str(config.emotion.report.bootstrap_resamples),
+            "--out",
+            str(out),
+            "--json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=str(Path(__file__).resolve().parents[1]),
+    )
+    fresh = json.loads(out.read_text(encoding="utf-8"))
+
+    for key in ("macro_f1", "macro_f1_ci", "micro_f1", "micro_f1_ci", "subset_accuracy"):
+        assert fresh[key] == logged[key], key
+    assert fresh["per_label_f1"] == logged["per_label_f1"]
+    assert fresh["per_language"] == logged["per_language"]
+    assert fresh["thresholds"] == logged["thresholds"]
+    # ECE is the one continuous metric, and it is allowed the documented CPU
+    # float noise (see test_two_identical_runs_agree_on_the_thresholded_metrics).
+    assert abs(fresh["ece"] - logged["ece"]) <= config.evaluation.tolerance
 
 
 def test_thresholds_cover_every_label(tiny_run: dict[str, Any]) -> None:

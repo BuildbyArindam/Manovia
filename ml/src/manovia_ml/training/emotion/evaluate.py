@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from manovia_ml.seeds import derive_seed
 from manovia_ml.training.emotion import metrics as metric_fns
 from manovia_ml.training.emotion.data import (
     DEFAULT_VALIDATION_PATH,
@@ -374,6 +375,28 @@ def error_analysis(
     return [case for _, case in cases[:limit]]
 
 
+def bootstrap_seed_for(artifact: EmotionArtifact, split: str) -> int:
+    """The seed the *training run* used for this split's bootstrap interval.
+
+    The trainer derives it as ``derive_seed(config.seed, "emotion-bootstrap",
+    split)`` and records the config seed in the manifest, so a fresh process
+    scoring the saved artefact can reproduce the run's interval endpoints
+    exactly rather than approximately. Found by doing exactly that comparison:
+    the point metrics matched to the last digit and the interval endpoints did
+    not, because the CLI was bootstrapping with seed 0. An artefact whose
+    published interval nobody can reproduce is not reproducible, and the whole
+    point of the manifest is that it can be.
+    """
+
+    recorded = artifact.manifest.get("seed")
+    if recorded is None:
+        return 0
+    try:
+        return derive_seed(int(recorded), "emotion-bootstrap", split)
+    except (TypeError, ValueError):  # pragma: no cover - a manifest written by hand
+        return 0
+
+
 def evaluate_artifact(
     artifact: EmotionArtifact,
     *,
@@ -443,11 +466,21 @@ def _main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--bins", type=int, default=10)
     parser.add_argument("--errors", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help=(
+            "bootstrap seed; by default the seed the training run used for this "
+            "split (so the interval endpoints reproduce exactly)"
+        ),
+    )
     parser.add_argument("--out", default=None)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
     artifact = load_artifact(args.artifact)
+    seed = args.seed if args.seed is not None else bootstrap_seed_for(artifact, args.split)
     payload = evaluate_artifact(
         artifact,
         data=args.data,
@@ -456,6 +489,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
         calibration_bins=args.bins,
         error_limit=args.errors,
         batch_size=args.batch_size,
+        seed=seed,
     )
     text = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
     if args.out:
@@ -466,7 +500,8 @@ def _main(argv: Sequence[str] | None = None) -> int:
         print(f"wrote {args.out}")
         print(
             f"macro_f1={payload['macro_f1']:.4f} "
-            f"ci={payload['macro_f1_ci']} ece={payload['ece']:.4f} rows={payload['rows']}"
+            f"ci={payload['macro_f1_ci']} ece={payload['ece']:.4f} rows={payload['rows']} "
+            f"bootstrap_seed={seed}"
         )
     return 0
 
