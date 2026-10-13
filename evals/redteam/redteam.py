@@ -34,6 +34,7 @@ import json
 import sys
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -149,7 +150,7 @@ def _ml_levels() -> Callable[[str], str]:
     engine = build_engine()
     classifier = build_ml_classifier(artifact_dir=settings.safety_ml_artifact_dir)
 
-    def level(text: str) -> str:
+    def _assess(text: str) -> str:
         assessment, _ = asyncio.run(
             run_ensemble(
                 text,
@@ -162,6 +163,12 @@ def _ml_levels() -> Callable[[str], str]:
             )
         )
         return str(assessment.level.name.casefold())
+
+    def level(text: str) -> str:
+        # run_all() is itself inside an event loop, so the ensemble gets its own
+        # loop on a worker thread instead of a nested asyncio.run().
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(_assess, text).result()
 
     return level
 
