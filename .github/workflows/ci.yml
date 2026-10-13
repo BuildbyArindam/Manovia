@@ -234,9 +234,13 @@ jobs:
           cache-dependency-path: ml/pyproject.toml
 
       - name: Install
+        # Day 32: the CPU-only torch wheel first (the default PyPI wheel drags in
+        # ~2 GB of CUDA kernels nobody here can use), then the project with the
+        # `training` extra so the LoRA tests *run* instead of skipping.
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[ml,dev]"
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[ml,dev,training]"
 
       - name: DVC lock matches the code (before repro rewrites it)
         # `dvc repro` regenerates dvc.lock, so a *committed* lock that names a
@@ -260,8 +264,32 @@ jobs:
           # The file store is this project's default (ml/README.md § Tracking).
           MLFLOW_ALLOW_FILE_STORE: "true"
 
+      - name: Emotion smoke run (Day 32, tiny random-init XLM-R)
+        # The same code path as a real run — trainer, thresholds, artefact,
+        # fresh-process evaluation, report — on a 2-layer stand-in, in seconds.
+        # It is a *plumbing* gate; every metric it produces is noise, and the
+        # report says so.
+        run: make emotion-smoke PYTHON=python
+        env:
+          MLFLOW_ALLOW_FILE_STORE: "true"
+
       - name: Tests (offline)
-        run: python -m pytest -q
+        # The log of a failed step is not always readable from a sandboxed
+        # environment (the signed log URLs live on a host that may be blocked);
+        # annotations are readable through the API. So when pytest fails, its
+        # failing test ids are *also* emitted as error annotations, which is what
+        # makes a red CI here diagnosable without the raw log.
+        run: |
+          set +e
+          python -m pytest -q > /tmp/pytest.log 2>&1
+          status=$?
+          tail -n 40 /tmp/pytest.log
+          if [ "$status" -ne 0 ]; then
+            grep -E "^(FAILED|ERROR)" /tmp/pytest.log | head -30 | while read -r line; do
+              echo "::error::$line"
+            done
+          fi
+          exit "$status"
 
       - name: Lint and types
         run: |

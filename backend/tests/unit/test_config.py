@@ -227,10 +227,31 @@ def test_a_lexicon_only_setup_does_not_need_a_model_id(monkeypatch: pytest.Monke
     assert from_env.emotion_model_id == "SamLowe/roberta-base-go_emotions"
 
 
-@pytest.mark.parametrize("choice", ["auto", "hf", "keyword", "sentiment", "fake"])
+@pytest.mark.parametrize("choice", ["auto", "hf", "baseline", "keyword", "sentiment", "fake"])
 def test_every_documented_analyzer_choice_is_accepted(choice: str) -> None:
     settings = Settings(_env_file=None, emotion_analyzer=choice)
     assert settings.emotion_analyzer == choice
+
+
+def test_the_trained_choice_needs_its_own_directory() -> None:
+    """``trained`` is not a synonym for the hub model: it needs an artefact."""
+
+    with pytest.raises(ValidationError, match="EMOTION_TRAINED_DIR"):
+        Settings(_env_file=None, emotion_analyzer="trained")
+    configured = Settings(
+        _env_file=None, emotion_analyzer="trained", emotion_trained_dir="ml/artifacts/emotion/v1"
+    )
+    assert configured.emotion_trained_path.name == "v1"
+    assert configured.emotion_trained_max_length == 128
+
+
+def test_an_absurd_trained_token_budget_is_refused() -> None:
+    with pytest.raises(ValidationError, match="emotion_trained_max_length"):
+        Settings(
+            _env_file=None,
+            emotion_analyzer="keyword",
+            emotion_trained_max_length=2,
+        )
 
 
 def test_an_unknown_analyzer_choice_is_refused_at_startup() -> None:

@@ -79,6 +79,43 @@ def test_seeded_rng_streams_are_reproducible_and_independent() -> None:
     assert first != other
 
 
+def test_torch_is_seeded_when_it_is_installed() -> None:
+    """The emotion runs initialise their head and LoRA matrices from torch's RNG.
+
+    Day 32 found this by measuring: without this, two processes that built the
+    same model could start from different weights, which turns a seed in a config
+    into decoration. Torch is optional here (the `training` extra), so the test
+    skips rather than imports it for everyone.
+    """
+
+    torch = pytest.importorskip("torch", reason="install the `training` extra")
+
+    state = seed_everything(99, pin_blas_threads=None)
+    assert state.torch_seeded is True
+    assert state.as_params()["seed.torch_seeded"] == "true"
+    first = torch.rand(4).tolist()
+    seed_everything(99, pin_blas_threads=None)
+
+    assert torch.rand(4).tolist() == first
+
+
+def test_torch_seeding_is_stable_across_processes() -> None:
+    """A fresh interpreter, the same seed, the same first draw — not process luck."""
+
+    pytest.importorskip("torch", reason="install the `training` extra")
+    code = (
+        "import torch;from manovia_ml.seeds import seed_everything;"
+        "seed_everything(5, pin_blas_threads=None);print(torch.rand(3).tolist())"
+    )
+    draws = {
+        subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        for _ in range(2)
+    }
+    assert len(draws) == 1
+
+
 def test_global_random_state_is_seeded() -> None:
     seed_everything(1234, pin_blas_threads=None)
     first = random.random()

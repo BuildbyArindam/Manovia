@@ -43,12 +43,26 @@ from app.services.nlp.language import (
     hinglish_score,
 )
 from app.services.nlp.sentiment import SentimentAnalyzer, polarity
+from app.services.nlp.trained import TrainedEmotionAnalyzer
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, avoids an import cycle
     from app.core.config import Settings
 
 #: Values accepted by ``EMOTION_ANALYZER``.
-ANALYZER_CHOICES: tuple[str, ...] = ("auto", "hf", "keyword", "sentiment", "fake")
+#:
+#: ``auto``/``hf``/``baseline`` all lead with the off-the-shelf checkpoint in
+#: ``EMOTION_MODEL_ID``; ``baseline`` is the name a report uses for it when
+#: comparing against a fine-tuned model. ``trained`` leads with the packaged
+#: Day-32 model in ``EMOTION_TRAINED_DIR`` (ADR 0032).
+ANALYZER_CHOICES: tuple[str, ...] = (
+    "auto",
+    "hf",
+    "baseline",
+    "trained",
+    "keyword",
+    "sentiment",
+    "fake",
+)
 
 #: Deterministic fallbacks, in the order they are tried.
 #:
@@ -80,13 +94,29 @@ def build_analyzer(settings: Settings, *, cache: AnalysisCache | None = None) ->
         return FakeEmotionAnalyzer()
 
     primary: EmotionAnalyzer
-    if choice in {"auto", "hf"}:
+    if choice in {"auto", "hf", "baseline"}:
         primary = HFEmotionAnalyzer(
             settings.emotion_model_id,
             max_length=settings.emotion_max_length,
             batch_size=settings.emotion_batch_size,
             device=settings.emotion_device,
         )
+    elif choice == "trained":
+        primary = TrainedEmotionAnalyzer(
+            settings.emotion_trained_path,
+            max_length=settings.emotion_trained_max_length,
+            batch_size=settings.emotion_batch_size,
+            device=settings.emotion_device,
+        )
+        if not primary.artifact_exists():
+            # Not a startup failure: the chain falls back on first use. Saying it
+            # at build time as well means an operator sees the reason in the boot
+            # logs rather than in a request log line an hour later.
+            structlog.get_logger().warning(
+                "trained_emotion_artifact_missing",
+                directory=str(primary.directory),
+                fallback="lexicon",
+            )
     else:
         primary = _lexicon_analyzer(choice)
 
@@ -132,6 +162,7 @@ __all__ = [
     "ModelHealth",
     "ModelUnavailableError",
     "SentimentAnalyzer",
+    "TrainedEmotionAnalyzer",
     "build_analyzer",
     "build_result",
     "detect_language",

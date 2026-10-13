@@ -7,8 +7,12 @@ with sha256 of a stable label, not by adding 1 to the parent.
 
 Determinism has three separate parts, and only the first one is the seed:
 
-1. **Seeds** — Python's ``random``, NumPy's generators, and everything sklearn
-   (which takes ``random_state``) are seeded from the config.
+1. **Seeds** — Python's ``random``, NumPy's generators, everything sklearn
+   (which takes ``random_state``) and, when torch is installed, torch's global
+   RNG are seeded from the config. Torch matters for the Day-32 emotion runs:
+   the classification head and the LoRA matrices are *initialised* from that RNG,
+   so leaving it unseeded made two identical-config runs disagree on ECE while
+   agreeing on every thresholded metric — the worst kind of flake.
 2. **Thread counts** — BLAS reductions are not associative, so the *same* seed
    with a different number of OpenMP threads can produce last-bit differences.
    ``seed_everything`` pins the pools to 1 thread by default.
@@ -44,6 +48,7 @@ class SeedState:
     pythonhashseed: str | None
     blas_threads: int | None
     numpy_seeded: bool
+    torch_seeded: bool = False
 
     def as_params(self) -> dict[str, str]:
         return {
@@ -51,6 +56,7 @@ class SeedState:
             "seed.pythonhashseed": self.pythonhashseed or "unset",
             "seed.blas_threads": "unset" if self.blas_threads is None else str(self.blas_threads),
             "seed.numpy_seeded": str(self.numpy_seeded).lower(),
+            "seed.torch_seeded": str(self.torch_seeded).lower(),
         }
 
 
@@ -89,6 +95,17 @@ def seed_everything(seed: int, *, pin_blas_threads: int | None = 1) -> SeedState
     except ImportError:  # pragma: no cover - exercised by the no-numpy test
         pass
 
+    torch_seeded = False
+    try:  # torch is in the `training` extra; the linear path must not need it.
+        import torch
+
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+        torch_seeded = True
+    except ImportError:  # pragma: no cover - exercised by the no-torch test
+        pass
+
     applied_threads: int | None = None
     if pin_blas_threads is not None:
         applied_threads = _pin_threads(pin_blas_threads)
@@ -98,6 +115,7 @@ def seed_everything(seed: int, *, pin_blas_threads: int | None = 1) -> SeedState
         pythonhashseed=os.environ.get(ENV_PYTHONHASHSEED),
         blas_threads=applied_threads,
         numpy_seeded=numpy_seeded,
+        torch_seeded=torch_seeded,
     )
 
 

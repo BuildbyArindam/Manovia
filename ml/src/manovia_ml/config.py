@@ -24,7 +24,14 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from manovia_ml.hashing import sha256_text
 from manovia_ml.paths import config_dir
@@ -32,13 +39,20 @@ from manovia_ml.paths import config_dir
 __all__ = [
     "ConfigError",
     "DataConfig",
+    "EmotionLoraConfig",
+    "EmotionReportConfig",
+    "EmotionRunConfig",
     "EvaluationConfig",
     "ExpectedMetrics",
     "LogRegConfig",
+    "LoraAdapterConfig",
+    "LoraTrainingConfig",
     "ModelConfig",
+    "OptunaConfig",
     "SgdConfig",
     "SplitSpec",
     "TfidfConfig",
+    "ThresholdConfig",
     "TrackingConfig",
     "TrainConfig",
     "compare_metrics",
@@ -86,6 +100,13 @@ class SplitSpec(StrictModel):
 class DataConfig(StrictModel):
     train: SplitSpec
     eval: SplitSpec
+    #: Day 32: a real training run has three splits, not two. ``eval`` is the
+    #: model-selection split (early stopping); ``validation`` is where per-label
+    #: thresholds are tuned; ``test`` is the held-out set the number is quoted
+    #: from. The linear configs use ``eval`` for both, which is why they leave
+    #: these two unset — and that is stated rather than implied.
+    validation: SplitSpec | None = None
+    test: SplitSpec | None = None
     text_field: str = "text"
     label_field: str = "label"
     lang_field: str | None = "lang"
@@ -151,7 +172,145 @@ class LogRegConfig(StrictModel):
     class_weight: Literal["balanced"] | None = None
 
 
-ModelConfig = Annotated[SgdConfig | LogRegConfig, Field(discriminator="kind")]
+class LoraAdapterConfig(StrictModel):
+    """LoRA adapter shape (Day 32). Every number here is swept or chosen, never defaulted blindly.
+
+    ``target_modules`` defaults to the query and value projections: that is what
+    the LoRA paper attaches to for encoder models, and it keeps the adapter small
+    relative to the classification head. ``bias="none"`` and
+    ``freeze_base=False`` are the PEFT defaults for a reason — the base weights
+    are already frozen by LoRA itself, and the head must stay trainable.
+    """
+
+    rank: int = Field(default=8, ge=1, le=256)
+    alpha: int = Field(default=16, ge=1, le=512)
+    dropout: float = Field(default=0.1, ge=0.0, lt=1.0)
+    target_modules: tuple[str, ...] = ("query", "value")
+    bias: Literal["none", "all", "lora_only"] = "none"
+    freeze_base: bool = False
+
+
+class LoraTrainingConfig(StrictModel):
+    """The optimisation loop's settings, all of them config-resident."""
+
+    epochs: int = Field(default=3, ge=1, le=100)
+    batch_size: int = Field(default=16, ge=1, le=1024)
+    eval_batch_size: int = Field(default=32, ge=1, le=2048)
+    learning_rate: float = Field(default=3e-4, gt=0.0, lt=1.0)
+    weight_decay: float = Field(default=0.01, ge=0.0, lt=1.0)
+    warmup_ratio: float = Field(default=0.06, ge=0.0, lt=1.0)
+    #: Gradient clipping. Required, not optional: a 3e-4 LoRA run on a small
+    #: batch spikes without it, and "it trained on my machine" is not a result.
+    max_grad_norm: float = Field(default=1.0, gt=0.0)
+    #: Label smoothing for a sigmoid loss: 0.05 means a positive target becomes
+    #: 0.95 and a negative one 0.05. Soft targets already in the data (the
+    #: mapping's weights) are smoothed toward this same floor.
+    label_smoothing: float = Field(default=0.02, ge=0.0, lt=0.5)
+    class_weighting: Literal["balanced", "none"] = "balanced"
+    scheduler: Literal["cosine", "linear", "constant"] = "cosine"
+    mixed_precision: Literal["auto", "fp16", "bf16", "off"] = "auto"
+    gradient_accumulation_steps: int = Field(default=1, ge=1, le=64)
+    #: Early stopping on the validation split. ``patience=0`` disables it, which
+    #: a smoke run wants (there are not enough steps to have a trend).
+    early_stopping_patience: int = Field(default=2, ge=0, le=20)
+    early_stopping_min_delta: float = Field(default=0.001, ge=0.0)
+    #: Hard cap on optimiser steps. The smoke run uses it to mean "a few steps on
+    #: toy data"; a real run leaves it null so ``epochs`` is the whole story.
+    max_steps: int | None = Field(default=None, gt=0)
+    log_every_steps: int = Field(default=25, ge=1)
+
+
+class ThresholdConfig(StrictModel):
+    """Per-label decision thresholds, tuned on the validation split.
+
+    Tuned on validation, **never** on the test set: a threshold fitted on the
+    rows you then report measures the fitting, not the model.
+    """
+
+    enabled: bool = True
+    search_min: float = Field(default=0.05, gt=0.0, lt=1.0)
+    search_max: float = Field(default=0.95, gt=0.0, lt=1.0)
+    search_steps: int = Field(default=19, ge=3, le=201)
+    metric: Literal["f1", "balanced_accuracy"] = "f1"
+    #: A label with fewer than this many positives in the validation split keeps
+    #: the default threshold: one positive cannot support a fitted threshold.
+    min_support: int = Field(default=3, ge=1)
+    default: float = Field(default=0.5, gt=0.0, lt=1.0)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> ThresholdConfig:
+        if self.search_min >= self.search_max:
+            raise ValueError("thresholds.search_min must be below search_max")
+        return self
+
+
+class OptunaConfig(StrictModel):
+    """The small sweep the brief allows: LoRA rank x learning rate, <= 12 trials."""
+
+    enabled: bool = False
+    n_trials: int = Field(default=8, ge=1, le=12)
+    rank_choices: tuple[int, ...] = (4, 8, 16, 32)
+    learning_rate_low: float = Field(default=1e-4, gt=0.0, lt=1.0)
+    learning_rate_high: float = Field(default=3e-3, gt=0.0, lt=1.0)
+    #: Which split the sweep scores. Always the validation split.
+    metric: Literal["macro_f1", "loss"] = "macro_f1"
+    seed: int | None = Field(default=None, ge=0, lt=2**32)
+    timeout_seconds: int | None = Field(default=None, gt=0)
+
+    @field_validator("rank_choices")
+    @classmethod
+    def _ranks_are_sane(cls, value: tuple[int, ...]) -> tuple[int, ...]:
+        if not value:
+            raise ValueError("optuna.rank_choices must not be empty")
+        if any(rank < 1 or rank > 256 for rank in value):
+            raise ValueError(f"optuna.rank_choices must be within [1, 256], got {value}")
+        return tuple(dict.fromkeys(value))
+
+    @model_validator(mode="after")
+    def _rates_are_ordered(self) -> OptunaConfig:
+        if self.learning_rate_low >= self.learning_rate_high:
+            raise ValueError("optuna.learning_rate_low must be below learning_rate_high")
+        return self
+
+
+class EmotionReportConfig(StrictModel):
+    """What the evaluation writes: intervals, calibration bins, error analysis."""
+
+    bootstrap_resamples: int = Field(default=2000, ge=100, le=50000)
+    confidence_level: float = Field(default=0.95, gt=0.0, lt=1.0)
+    calibration_bins: int = Field(default=10, ge=2, le=50)
+    error_cases: int = Field(default=20, ge=1, le=200)
+    #: Baselines to compare against, in report order. ``keyword`` is always
+    #: computed offline; ``baseline`` is the Day-6 off-the-shelf checkpoint and
+    #: needs the `nlp` extra plus a network download.
+    baselines: tuple[Literal["keyword", "sentiment", "baseline"], ...] = ("keyword", "baseline")
+
+
+class EmotionRunConfig(StrictModel):
+    """Everything emotion-specific that is not the model or the data."""
+
+    thresholds: ThresholdConfig = ThresholdConfig()
+    optuna: OptunaConfig = OptunaConfig()
+    report: EmotionReportConfig = EmotionReportConfig()
+    #: Where a packaged artefact is written, relative to the ML root.
+    artifact_dir: str = "artifacts/emotion"
+    #: Name of the packaged model directory (a version, not a date).
+    artifact_name: str = "manovia-emotion-v1"
+
+
+class EmotionLoraConfig(StrictModel):
+    """A LoRA fine-tune of a multilingual encoder into Manovia's taxonomy."""
+
+    kind: Literal["emotion_lora"] = "emotion_lora"
+    #: Hub id, or a local directory, or ``tiny://xlm-roberta`` for the offline
+    #: stand-in (``training/emotion/tiny.py``). Never a hard-coded path.
+    base_model: str = Field(min_length=1)
+    tokenizer_max_length: int = Field(default=128, ge=8, le=512)
+    lora: LoraAdapterConfig = LoraAdapterConfig()
+    training: LoraTrainingConfig = LoraTrainingConfig()
+
+
+ModelConfig = Annotated[SgdConfig | LogRegConfig | EmotionLoraConfig, Field(discriminator="kind")]
 
 
 class EvaluationConfig(StrictModel):
@@ -184,9 +343,28 @@ class TrainConfig(StrictModel):
     model: ModelConfig
     evaluation: EvaluationConfig = EvaluationConfig()
     tracking: TrackingConfig = TrackingConfig()
+    #: Day 32: thresholds, the Optuna sweep and the report's shape. Only a
+    #: `emotion_lora` run has any use for it, and the validator below enforces
+    #: exactly that pairing — a config that tunes thresholds for a TF-IDF model
+    #: is a mistake, not a feature.
+    emotion: EmotionRunConfig | None = None
     #: BLAS/OpenMP thread pinning. 1 = reproducible everywhere; None = leave the
     #: pools alone (faster, and the tolerance covers the difference).
     threads: int | None = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def _emotion_pairing(self) -> TrainConfig:
+        needs_emotion = isinstance(self.model, EmotionLoraConfig)
+        if needs_emotion and self.emotion is None:
+            raise ValueError("model.kind 'emotion_lora' requires the `emotion:` section")
+        if not needs_emotion and self.emotion is not None:
+            raise ValueError("the `emotion:` section only applies to model.kind 'emotion_lora'")
+        if needs_emotion and self.data.validation is None:
+            raise ValueError(
+                "model.kind 'emotion_lora' requires data.validation: thresholds are tuned on "
+                "the validation split, never on the test split"
+            )
+        return self
 
 
 def _canonical(payload: Any) -> str:

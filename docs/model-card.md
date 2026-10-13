@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Card version | 1.0 (Day 28, 2026-10-13) |
+| Card version | 1.1 (Day 32, 2026-10-13) — adds the fine-tuned emotion model (C4 alternate) and its limitations |
 | Product | Manovia, a privacy-first mental wellbeing **self-help** companion |
 | Status | Pre-launch. **Not clinically reviewed.** Clinical review is a precondition of public launch ([docs/clinical-review.md](clinical-review.md)). |
 | Not | A medical device, a diagnostic tool, therapy, or a crisis service. It cannot send help to anyone. |
@@ -26,7 +26,7 @@ Architecture context: [docs/architecture.md](architecture.md). Safety design:
 | C1 | **Crisis rules engine** | Deterministic, pattern-based rules in YAML (`backend/app/content/safety/*.yaml`), with normalisation and pragmatics checks | Primary crisis detection. Runs **before any model call** | n/a (it is the floor) | In process, offline | On, always |
 | C2 | **Safety ML classifier `crisis_v1`** | TF-IDF (character 2–4 and word 1–2 n-grams) into multinomial logistic regression, sigmoid-calibrated (cv = 3). Trained 2026-10-10 on the 340-case training split | A backstop for what the rules miss | **No.** It can only raise a level | In process, no network at load or predict time | On (`SAFETY_ML_ENABLED`) |
 | C3 | **Ensemble** | Final level = max(rules level, ML level when confident), with a pragmatics gate. Code: `backend/app/services/safety/ensemble.py` | Combines C1 and C2 | **No** (by construction; partly tested; the safety branch gate for this module was closed on Day 28 after two tests were added, see [ADR 0029](adr/0029-branch-coverage-gates.md)) | In process | On |
-| C4 | **Emotion analyser** | Primary: `SamLowe/roberta-base-go_emotions` through Hugging Face, **only when the `nlp` extra is installed**. Otherwise the lexicon chain (keyword, then sentiment) | A tone hint and an optional mood tag. It never decides risk | No | In process (`hf` loads a model on first use) | `EMOTION_ANALYZER=auto`; the Compose stack sets `keyword` |
+| C4 | **Emotion analyser** | Primary by default: `SamLowe/roberta-base-go_emotions` through Hugging Face, **only when the `nlp` extra is installed**. Otherwise the lexicon chain (keyword, then sentiment). **Optional alternate (`EMOTION_ANALYZER=trained`, Day 32):** a locally fine-tuned XLM-R + LoRA model packaged as an artefact directory ([ADR 0032](adr/0032-emotion-lora-finetune.md)); never committed, and a missing directory falls back to the lexicon | A tone hint and an optional mood tag. It never decides risk | No | In process (`hf`/`trained` load a model on first use) | `EMOTION_ANALYZER=auto`; Compose sets `keyword`; `trained` only where a run artefact has been placed |
 | C5 | **Lexicon fallbacks** | Keyword lexicon and a polarity sentiment scorer, `backend/app/services/nlp/` | Fallback for C4, and the path measured by the emotion evaluation | No | In process | Always attached |
 | C6 | **Language-model provider** | One of: `anthropic` (hosted, `anthropic` extra), `ollama` (local), `fake` (scripted, for tests and development), plus the canned local reply as the last link of the chain | Writes replies for NONE, LOW and MEDIUM turns. **Never called at HIGH or IMMINENT** | No. Its output must pass C7 | Anthropic: provider's cloud. Ollama: your own host | `LLM_PROVIDER` must be set; config default is `fake` |
 | C7 | **Output guard** | Deterministic checks on the whole reply: YAML categories in `backend/app/content/safety/output_patterns.yaml` (diagnosis, medication, identity claims, isolation or dependence, outcome promises, self-harm method language), plus length, language and question-count checks in `backend/app/services/safety/output_guard.py`. One strict regeneration, then a safe local reply | Blocks the categories above and replies in the wrong language or too long | It is a filter, so it can only block | In process | On |
@@ -155,6 +155,51 @@ analyser is wrong in 37 of 39 cases. In the report's listed examples, 11 of the 
 Its accuracy on our data is unknown. The gap is listed as item 3 in
 `docs/evaluation-report.md` §4 and in PROGRESS.md.
 
+### 5.3b The fine-tuned model (C4 alternate, Day 32)
+
+`EMOTION_ANALYZER=trained` runs a model that *is* this repository's: LoRA on
+`FacebookAI/xlm-roberta-base` (MIT), fine-tuned into Manovia's nine emotions
+through a documented mapping table, with per-label thresholds tuned on the
+validation split ([ADR 0032](adr/0032-emotion-lora-finetune.md);
+[`ml/`](../ml/README.md)).
+
+**No quality number is claimed here yet**, and that is deliberate. The sandbox
+that built it has no GPU and cannot reach the Hugging Face hub, so the real run
+(the model, GoEmotions, the hand-written 174-row en/hi/bn held-out set) is an
+owner step: `ml/notebooks/colab_emotion_lora.ipynb`. What was verified here is
+the machinery — the same code path ran end to end on a tiny random-initialised
+model (`configs/emotion_lora_smoke.yaml`), producing a packaged artefact, an
+MLflow run, per-language metrics with bootstrap intervals, and a lexicon
+fallback when the artefact is deleted. **A smoke run's metrics are noise by
+construction and are not quoted as performance.**
+
+What the card will have to say when the real numbers exist is already decided,
+because the pipeline prints it rather than requiring anyone to remember:
+
+- the comparison is three-way and per language (lexicon chain, Day-6
+  off-the-shelf checkpoint, fine-tuned), with 95% bootstrap intervals, and the
+  report emits an explicit sentence for every language where a baseline wins;
+- **Hindi and Bengali are transfer, not supervision** — GoEmotions is English,
+  so a hi/bn number from this run measures how the multilingual encoder carries
+  English supervision, not a Hindi-trained model;
+- **`loneliness` has no GoEmotions supervision at all**, and the run's manifest
+  records it (`labels_unreachable_from_training_data`);
+- the tuned thresholds live in the artefact's `thresholds.json` with the split
+  they were tuned on, and the evaluation never tunes on the held-out set;
+- the run's own `MODEL_CARD.md` — written from
+  [`ml/templates/MODEL_CARD.md`](../ml/templates/MODEL_CARD.md) — always carries
+  the next limitation, the **domain shift from social-media text**, quoted
+  verbatim below, before any number is quoted from it.
+
+> **Domain shift from social-media text.** GoEmotions is Reddit comments written
+> by self-selected, mostly English-speaking internet users. The wording people
+> bring to a wellbeing companion is not Reddit's wording: it is shorter, often
+> about ordinary days, and frequently in Hindi or Bengali. Every number in this
+> card comes from a dataset drawn from that social-media distribution, so a
+> model can look strong here and still be wrong on the text it actually
+> receives — the Day-27 `domain_shift` slice (macro-F1 0.011 for the lexicon
+> chain) is the same failure at a different scale.
+
 ### 5.4 Response pipeline (C6, C7, orchestrator), with the fake provider
 
 60 of 60 scenarios pass all six deterministic checks: no diagnosis or medication
@@ -229,7 +274,7 @@ Each failure below is measured or traced to a file. None is hidden by a headline
 | F1 | **Over-escalation.** Benign or past-tense distress is labelled HIGH: recovery stories, third-person worry, media and news that share crisis vocabulary, everyday exam stress | Dev: 31 of 51 non-crisis cases escalated. Precision 0.543. Test: precision 0.567 | A person who is struggling but safe receives a crisis card instead of a conversation. The safety design accepts this cost on purpose; the cost is real | Pragmatics gate (negation and figurative frames cannot be re-raised by the model); hard-negative families in the dataset | Yes. A retrain with more everyday hard negatives is parked (PROGRESS.md) |
 | F2 | **Missed crisis without the usual words.** A crisis written with none of the obvious terms | Test split: recall 1.000 with the ensemble, but 0.255 with rules alone, so the classifier carries the indirect cases. Standalone classifier recall 0.804 | A person whose wording is unusual may get no crisis reply, and then a normal LLM reply | ML backstop; output guard; the design never claims a guarantee | Yes. Only 51 dev and 51 test crisis cases, all synthetic |
 | F3 | **Tier confusion inside crisis.** HIGH and IMMINENT are often mixed | Dev: exact IMMINENT recall 0.100. Test: 0.150 | The tier label and the card wording differ, but the policy is the same, so the user outcome is largely the same | Both tiers block the LLM, show the same helplines and the emergency number | Yes |
-| F4 | **Emotion domain shift.** Somatic, idiomatic, sarcastic or behavioural wording is missed | `domain_shift` macro-F1 0.011 (37 of 39 wrong) | Tone and mood-tag suggestions are wrong. A check-in tag can be the wrong one | Emotion is a tone hint, never a risk input | Yes. The RoBERTa checkpoint is unmeasured here |
+| F4 | **Emotion domain shift.** Somatic, idiomatic, sarcastic or behavioural wording is missed | `domain_shift` macro-F1 0.011 (37 of 39 wrong) | Tone and mood-tag suggestions are wrong. A check-in tag can be the wrong one | Emotion is a tone hint, never a risk input | Yes. The RoBERTa checkpoint is unmeasured here, and fine-tuning changes the label space, not the domain (F13) |
 | F5 | **`loneliness` is not produced by the checkpoint.** No GoEmotions label maps to it | Evaluation report §4 item 3 | Loneliness is under-detected by the model path | The lexicon path can produce it, but only for explicit words | Yes |
 | F6 | **Languages.** The Hindi and Bengali crisis copy is AI-drafted and **not reviewed** by native speakers. Romanised Bengali is only partly covered: the emotion set's `bn` slice includes romanised Banglish, but there is no `bn-Latn` tag | `translations/STATUS.md` (every `hi` and `bn` key is marked as an unreviewed draft); `evals/datasets/README.md` | Users of these languages may get wording that is wrong or unnatural in a crisis | Crisis copy is pre-written, not generated at run time, so the risk is wording, not improvisation | Yes. A launch blocker (clinical review, items A-1 and A-2) |
 | F7 | **Helpline entries that could not be fully confirmed.** Four entries carry `needs_verification: true`: iCall, KIRAN and Aasra (IN), and Kids Helpline (AU) | `backend/app/content/helplines.json`, `last_verified 2026-10-09` | A person may be given a number that is out of service, the wrong hours, or the wrong language | Every entry has a `source_url`; unverified entries say why | Yes. A launch blocker (clinical review, item H-1) |
@@ -237,6 +282,7 @@ Each failure below is measured or traced to a file. None is hidden by a headline
 | F9 | **Output guard coverage.** The guard is rules-based, so it catches the categories it knows and nothing else | `output_patterns.yaml`; the six checks in §5.4 | A subtle harmful reply that matches no pattern gets through | One strict regeneration; a safe fallback; the response evaluation | Yes |
 | F10 | **Single-message view.** Risk is judged per message. Saved chats carry a bounded summary, and ephemeral chats carry no memory | `docs/architecture.md`, "Where a conversation lives" | A risk that builds slowly over many turns can be judged low at each step | Memory summaries are in the prompt as untrusted context; the crisis check runs on every message | Yes. Long-horizon evaluation is parked |
 | F11 | **Model library drift.** The classifier was trained on scikit-learn 1.9.1 but the environment has warned on version mismatch | PROGRESS.md "Known issues" | A retrain or a library change could move thresholds silently | Metadata records the hashes and the training split; thresholds are gated by `make eval` | Yes |
+| F13 | **Domain shift from social-media text.** The fine-tuned model (C4 alternate) is trained on GoEmotions, i.e. Reddit comments | [ADR 0032](adr/0032-emotion-lora-finetune.md) §2; `ml/data/CATALOGUE.md` § GoEmotions; the card the run writes always contains this sentence | Every number for the fine-tuned model comes from that distribution. Ordinary, short, everyday text — and Hindi/Bengali text — is out of distribution, so a good score here does not transfer by itself | Domain-shift items are separate in the Day-6 evaluation set; the held-out hi/bn rows are hand-written, not scraped, and the report names the languages where a baseline wins | Yes. Waiting on the natively reviewed hi/bn corpus (`ml/data/planned/hi_bn_emotion/`) |
 | F12 | **Code-mixed language.** Hinglish and Banglish mix scripts and spellings, and the emotion lexicon was not measured on them separately | `evals/datasets/README.md` (emotion `hi` and `bn` slices include romanised text); `evals/reports/2026-10-13/emotion.md` reports per-language F1 only | Emotion tags on code-mixed text may be wrong | Crisis recall is gated per language, including `hi-Latn`, at 0.950 or above (`evals/thresholds.yaml`). Emotion is a tone hint, not a risk input | Yes. Each emotion-language cell has only 5–8 items (27 cells), too few for per-cell error rates |
 
 ## 8. Ethical considerations
@@ -297,6 +343,11 @@ blockers in [docs/clinical-review.md](clinical-review.md).
    clinically reviewed.
 9. **Is the update policy enforced or only written down?** See §10. Parts are enforced by
    tests. Others depend on people following the process.
+10. **Does the fine-tuned model (C4 alternate) beat the lexicon on the languages
+    people actually write in?** The three-way comparison is code, but the run
+    needs a GPU and the GoEmotions download, so the answer is still open —
+    and "it beats the keyword chain on the held-out set" would still not answer
+    the Hindi question, which needs native-reviewed rows.
 
 ## 10. Update policy
 

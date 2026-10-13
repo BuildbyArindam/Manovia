@@ -79,7 +79,10 @@ class TrainResult:
 
 
 def _features(config: TrainConfig) -> Pipeline:
-    tfidf = config.model.tfidf
+    model = config.model
+    if not isinstance(model, (SgdConfig, LogRegConfig)):
+        raise ConfigError("_features() is for the linear model kinds")
+    tfidf = model.tfidf
     word = TfidfVectorizer(
         analyzer="word",
         ngram_range=tfidf.word_ngram_range,
@@ -133,11 +136,18 @@ def build_pipeline(config: TrainConfig, *, seed: int) -> Pipeline:
 
 
 def model_params(config: TrainConfig) -> dict[str, Any]:
-    """The hyperparameters, flattened for MLflow params (one nesting level)."""
+    """The hyperparameters, flattened for MLflow params (one nesting level).
 
-    tfidf = config.model.tfidf
+    Only the linear kinds reach here; an emotion run logs its own parameters in
+    ``training/emotion/train.py``.
+    """
+
+    model = config.model
+    if not isinstance(model, (SgdConfig, LogRegConfig)):
+        raise ConfigError("model_params() is for the linear model kinds")
+    tfidf = model.tfidf
     params: dict[str, Any] = {
-        "model.kind": config.model.kind,
+        "model.kind": model.kind,
         "tfidf.word_ngram_range": list(tfidf.word_ngram_range),
         "tfidf.char_ngram_range": list(tfidf.char_ngram_range)
         if tfidf.char_ngram_range
@@ -148,19 +158,19 @@ def model_params(config: TrainConfig) -> dict[str, Any]:
         "tfidf.lowercase": tfidf.lowercase,
         "evaluation.tolerance": config.evaluation.tolerance,
     }
-    if isinstance(config.model, SgdConfig):
+    if isinstance(model, SgdConfig):
         params |= {
-            "model.alpha": config.model.alpha,
-            "model.max_iter": config.model.max_iter,
-            "model.average": config.model.average,
+            "model.alpha": model.alpha,
+            "model.max_iter": model.max_iter,
+            "model.average": model.average,
         }
     else:
         params |= {
-            "model.C": config.model.C,
-            "model.max_iter": config.model.max_iter,
-            "model.solver": config.model.solver,
+            "model.C": model.C,
+            "model.max_iter": model.max_iter,
+            "model.solver": model.solver,
         }
-    params["model.class_weight"] = config.model.class_weight or "none"
+    params["model.class_weight"] = model.class_weight or "none"
     return params
 
 

@@ -8,6 +8,7 @@ from a run of the scripts in `ml/src/`.
 | notebook | runs where | data | status |
 | --- | --- | --- | --- |
 | [`colab_goemotions_tfidf.ipynb`](colab_goemotions_tfidf.ipynb) | Google Colab or Kaggle (free CPU is enough) | GoEmotions (Apache-2.0, see the catalogue § 1) | not run in this sandbox — no GPU and a network download; it is the ready-to-run path for the first real training run |
+| [`colab_emotion_lora.ipynb`](colab_emotion_lora.ipynb) | Google Colab or Kaggle (a free T4 is enough; CPU works but is slow) | GoEmotions converted to Manovia's nine emotions + the committed 174-row hi/bn/en set | not run in this sandbox — no GPU, and the hub is unreachable; the same code path ran on CPU against a tiny random-init model (`configs/emotion_lora_smoke.yaml`), so what is untested here is the data and the scale, not the loop |
 
 ## Why the notebook exists at all
 
@@ -20,6 +21,34 @@ prints the run id — the same code path, on data this sandbox cannot reach.
 
 That is the property that makes it trustworthy: if the notebook and the smoke run
 disagree, they disagree about *data*, not about training logic.
+
+## The LoRA notebook (Day 32)
+
+`colab_emotion_lora.ipynb` fine-tunes `FacebookAI/xlm-roberta-base` (MIT; the
+MuRIL alternative and why XLM-R is the default are in
+[ADR 0032](../../docs/adr/0032-emotion-lora-finetune.md)) with LoRA into the nine
+emotions, tunes per-label thresholds on the *validation* split, evaluates on the
+hand-written en/hi/bn set that is never trained on, and packages the artefact.
+
+It is deliberately thin in the same way: it calls
+`manovia_ml.training.emotion.data convert`,
+`manovia_ml.training.emotion.train`, `.evaluate` and `.tune` — the modules the
+test suite covers — rather than reimplementing anything. The one piece of glue
+that only exists in the notebook is pinning the fresh corpus hashes into a
+run-local **copy** of the config; the committed config stays a template with
+`sha256: null` until the owner pastes the measured numbers in.
+
+```bash
+cd ml
+python -m manovia_ml.training.emotion.train   --config configs/emotion_lora_xlmr.yaml
+python -m manovia_ml.training.emotion.evaluate --artifact artifacts/emotion/manovia-emotion-xlmr-v1 \
+    --data data/validation/emotion_validation.jsonl --bootstrap 2000 --json
+python -m manovia_ml.training.emotion.tune    --config configs/emotion_lora_xlmr.yaml --trials 12   # optuna.enabled first
+```
+
+Run the smoke config first on any new machine: it is the same pipeline in
+seconds, and it is what tells you whether a failure is your environment or the
+real run (`docs/adr/0032-emotion-lora-finetune.md` § verification).
 
 ## Colab / Kaggle steps (exact)
 

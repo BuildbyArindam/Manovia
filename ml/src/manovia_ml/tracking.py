@@ -54,6 +54,12 @@ _TRACKED_LIBRARIES = (
     "pyyaml",
     "mlflow",
     "dvc",
+    # Day 32: a LoRA run's numbers depend on these three, and "absent" is a
+    # useful value — it says the run used the tiny stand-in or the fallback path.
+    "torch",
+    "transformers",
+    "peft",
+    "optuna",
 )
 
 

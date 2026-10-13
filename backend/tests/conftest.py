@@ -71,6 +71,9 @@ _ENV_KEYS = (
     # must never reach the network because a developer's .env named a model.
     "EMOTION_ANALYZER",
     "EMOTION_MODEL_ID",
+    # Day 32: the fine-tuned artefact path must not leak in from a .env either.
+    "EMOTION_TRAINED_DIR",
+    "EMOTION_TRAINED_MAX_LENGTH",
     "EMOTION_DEVICE",
     "EMOTION_MAX_LENGTH",
     "EMOTION_BATCH_SIZE",

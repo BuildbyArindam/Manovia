@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
@@ -111,6 +111,13 @@ ingest:
 #   make ml-catalogue                                 licence + verdict check
 #   make ml-install                                   pip install -e "./ml[ml,dev]"
 #   make ml-test  /  make ml-lint                     pytest / ruff + mypy
+#
+# Day 32 (emotion LoRA). `ml-emotion-smoke` is the offline one: tiny random-init
+# XLM-R, seconds, no network. Real runs need a GPU (ml/notebooks/README.md).
+#   make ml-emotion-smoke
+#   make ml-emotion-train CONFIG=configs/emotion_lora_xlmr.yaml
+#   make ml-emotion-eval  ARTIFACT=artifacts/emotion/manovia-emotion-xlmr-v1
+#   make ml-emotion-tune  CONFIG=... TRIALS=12
 ml-install:
 	$(MAKE) -C ml install
 
@@ -149,6 +156,21 @@ ml-test:
 
 ml-lint:
 	$(MAKE) -C ml lint
+
+ml-emotion-smoke:
+	$(MAKE) -C ml emotion-smoke
+
+ml-emotion-train:
+	$(MAKE) -C ml emotion-train CONFIG=$(CONFIG)
+
+ml-emotion-eval:
+	$(MAKE) -C ml emotion-eval ARTIFACT=$(ARTIFACT) DATA=$(DATA)
+
+ml-emotion-tune:
+	$(MAKE) -C ml emotion-tune CONFIG=$(CONFIG) TRIALS=$(TRIALS)
+
+ml-emotion-data:
+	$(MAKE) -C ml emotion-data SRC=$(SRC) OUT=$(OUT) SCHEME=$(SCHEME) LANG=$(LANG)
 
 # Network: downloads GoEmotions (Apache-2.0; see ml/data/CATALOGUE.md).
 ml-fetch-goemotions:

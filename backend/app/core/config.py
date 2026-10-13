@@ -18,10 +18,22 @@ _ENV_FILES = (_BACKEND_DIR / ".env", _REPO_ROOT / ".env")
 SUPPORTED_DB_BACKENDS: tuple[str, ...] = ("sqlite", "postgresql", "postgres")
 
 # Which emotion analyzer leads the chain (Day 6). "auto" and "hf" both put the
-# Hugging Face model first and differ only in intent; the lexicon fallbacks are
-# attached either way. "fake" is for tests. See
-# docs/adr/0006-emotion-model.md for why the model is a setting, not a constant.
-EMOTION_ANALYZER_CHOICES: tuple[str, ...] = ("auto", "hf", "keyword", "sentiment", "fake")
+# Hugging Face model first and differ only in intent; "baseline" names that same
+# off-the-shelf checkpoint explicitly, because the Day-32 report compares a
+# fine-tuned model against it by that name. "trained" leads with the packaged
+# LoRA model from EMOTION_TRAINED_DIR instead. The lexicon fallbacks are
+# attached either way, and "fake" is for tests. See
+# docs/adr/0006-emotion-model.md for why the model is a setting, not a constant,
+# and docs/adr/0032-emotion-lora-finetune.md for the trained path.
+EMOTION_ANALYZER_CHOICES: tuple[str, ...] = (
+    "auto",
+    "hf",
+    "baseline",
+    "trained",
+    "keyword",
+    "sentiment",
+    "fake",
+)
 
 # Providers the LLM chain can lead with (Day 10). "fake" is the offline
 # double the test suite uses; the chain always ends at a canned reply, so any
@@ -127,11 +139,21 @@ class Settings(BaseSettings):
     # Model id only — never a hard-coded path or a local checkpoint (AGENTS.md:
     # never hard-code model names). See docs/adr/0006-emotion-model.md.
     emotion_model_id: str = "SamLowe/roberta-base-go_emotions"
+    # Day 32: the packaged fine-tuned model ("trained" only). A directory, not a
+    # repository id, because the artefact is produced by ml/ and never committed
+    # (AGENTS.md ML ground rule 3). A relative path resolves against the
+    # repository root. Missing at run time is a fallback, not an error.
+    emotion_trained_dir: str = ""
     # CPU-only by default: this service must run on a small container, and a
     # GPU is a deployment decision, not a default.
     emotion_device: str = "cpu"
     # Token budget per text. Longer input is truncated, not rejected.
     emotion_max_length: int = 256
+    # Day 32: the fine-tuned model's own budget. Defaults to
+    # EMOTION_MAX_LENGTH when unset, so an operator has one knob per deployment
+    # and not two that disagree. The trained artefact's config records what its
+    # training used; the effective value is logged at load.
+    emotion_trained_max_length: int = 128
     # Small batches: CPU inference does not benefit from large ones, and a big
     # batch would hold the worker thread for too long.
     emotion_batch_size: int = 8
@@ -343,10 +365,14 @@ class Settings(BaseSettings):
                 "EMOTION_ANALYZER must be one of "
                 f"{', '.join(EMOTION_ANALYZER_CHOICES)} (got {self.emotion_analyzer!r})"
             )
-        if choice in {"auto", "hf"} and not self.emotion_model_id.strip():
+        if choice in {"auto", "hf", "baseline"} and not self.emotion_model_id.strip():
             raise ValueError("EMOTION_MODEL_ID must be set when EMOTION_ANALYZER uses the model")
+        if choice == "trained" and not self.emotion_trained_dir.strip():
+            raise ValueError("EMOTION_TRAINED_DIR must be set when EMOTION_ANALYZER=trained")
         if self.emotion_max_length < 8:
             raise ValueError("emotion_max_length must be at least 8 tokens")
+        if self.emotion_trained_max_length < 8:
+            raise ValueError("emotion_trained_max_length must be at least 8 tokens")
         if self.emotion_batch_size < 1:
             raise ValueError("emotion_batch_size must be at least 1")
         if self.emotion_cache_size < 0:
@@ -496,6 +522,22 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """True when running as a deployed service (checks are stricter there)."""
         return self.app_env.strip().lower() == "production"
+
+    @property
+    def emotion_trained_path(self) -> Path:
+        """``EMOTION_TRAINED_DIR`` as a path, relative paths against the repository root.
+
+        Deliberately a *path*, not a model id: the Day-32 artefact is a directory
+        (`model/`, `tokenizer/`, `thresholds.json`, `manifest.json`,
+        `MODEL_CARD.md`) produced by `ml/` and never committed. It may not exist —
+        the analyzer treats that as "fall back to the lexicon", so the property
+        does not check or raise.
+        """
+
+        raw = Path(self.emotion_trained_dir.strip()).expanduser()
+        if raw.is_absolute():
+            return raw
+        return (_REPO_ROOT / raw).resolve()
 
 
 @lru_cache(maxsize=1)
