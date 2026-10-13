@@ -614,6 +614,7 @@ def train(
         config_path=Path(config_path) if config_path else None,
         parent_run_id=parent_run_id,
     ) as run:
+        _stamp_run_id(Path(artifact_dir), run.run_id)
         for entry in history:
             run.log_metrics(entry, step=int(entry["steps"]))
         run.log_metrics(metrics)
@@ -745,6 +746,25 @@ def _flat_metrics(validation: dict[str, Any], test: dict[str, Any] | None) -> di
             "test.ece": float(test["ece"]),
         }
     return metrics
+
+
+def _stamp_run_id(artifact_dir: Path, run_id: str) -> None:
+    """Put the MLflow run id into the artefact's manifest, after the run exists.
+
+    The artefact is written *before* the run is opened (the run logs the artefact's
+    path, not the other way round), so this second write is what makes a directory
+    of weights traceable back to its run without a search. It only ever adds the
+    key; the manifest write before it is the one that must not fail a run.
+    """
+
+    manifest_path = artifact_dir / MANIFEST_FILENAME
+    if not manifest_path.is_file():
+        return
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("run_id") == run_id:
+        return
+    payload["run_id"] = run_id
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _save_artifacts(

@@ -234,6 +234,28 @@ def test_the_card_states_the_limitations_the_brief_asks_for(tiny_run: dict[str, 
     assert "Never a safety decision" in card
 
 
+def test_the_manifest_points_back_at_its_run(tiny_run: dict[str, Any]) -> None:
+    """A directory of weights has to say which run produced it.
+
+    The artefact is written before the run is opened, so the id is stamped in
+    afterwards; without this, tracing a model back to its MLflow record means
+    searching every run for a matching artefact path.
+    """
+
+    manifest = json.loads(
+        (Path(tiny_run["result"].artifact_dir) / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["run_id"] == tiny_run["result"].run_id
+    # The provenance that makes the weights usable later, not just findable.
+    assert manifest["labels"] == list(tiny_run["config"].data.labels)
+    # The summaries describe the splits this run actually read (the fixture's
+    # own 7-row held-out file, not the 174-row committed set that the real
+    # configs use — that set is covered by test_emotion_data.py).
+    assert manifest["data"]["test"]["rows"] == 7
+    assert manifest["data"]["train"]["rows"] > 0
+    assert manifest["unreachable_labels"] == ["loneliness"]
+
+
 def test_thresholds_cover_every_label(tiny_run: dict[str, Any]) -> None:
     payload = json.loads(
         (tiny_run["result"].artifact_dir / "thresholds.json").read_text(encoding="utf-8")
