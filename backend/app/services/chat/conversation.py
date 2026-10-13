@@ -152,6 +152,7 @@ class PersistentConversation:
                     role=row.role.value,
                     text=repo.message_text(row),
                     crisis=int(row.risk_level) >= int(RiskLevel.CRISIS),
+                    risk=int(row.risk_level),
                 )
                 for row in rows
             ]
@@ -278,7 +279,7 @@ class EphemeralConversation:
         if limit <= 0:
             return []
         return [
-            HistoryTurn(role=turn.role, text=turn.text, crisis=turn.crisis)
+            HistoryTurn(role=turn.role, text=turn.text, crisis=turn.crisis, risk=turn.risk)
             for turn in self._session.turns[-limit:]
         ]
 

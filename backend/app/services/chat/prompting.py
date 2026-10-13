@@ -72,6 +72,9 @@ class HistoryTurn:
     text: str
     #: True when the turn belongs to a crisis exchange (stored tier CRISIS).
     crisis: bool = False
+    #: The stored four-tier risk (0-3) of the turn. Day 29: read by the
+    #: session-level accumulator (``app.services.safety.session_risk``).
+    risk: int = 0
 
 
 @dataclass(frozen=True)
