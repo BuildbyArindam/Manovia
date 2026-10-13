@@ -97,13 +97,16 @@ exists to prove the *pipeline*; every report it writes says its numbers are nois
 - **Safety is untouched.** The emotion model is a tone hint: it cannot lower a
   risk level and is never called at HIGH or IMMINENT risk (ADR 0009). No rule,
   threshold or gate in the safety path changed today.
-- **Docs**: ADR 0032 (the decision, the XLM-R-vs-MuRIL evidence, the held-out
+- **Docs**: [ADR 0032](docs/adr/0032-emotion-lora-finetune.md) (the decision, the
+  XLM-R-vs-MuRIL evidence, the held-out
   set's exception, why thresholds are validation-only, why evaluation is
   inference-only, why the fallback is not a failure), `docs/model-card.md` v1.1
   (C4's alternate path, the fine-tuned section with *no* quality claim and why,
   and **F13 — domain shift from social-media text** as a numbered limitation),
   `ml/notebooks/colab_emotion_lora.ipynb` + its README section, `ml/README.md`
   for Days 31–32, and the make targets `ml-emotion-{smoke,train,eval,tune,data}`.
+  The ADR is indexed in [docs/adr/README.md](docs/adr/README.md), and
+  `docs/model-card.md` (the product-level card) links the new failure mode.
 
 ### Verification (Day 32, final tree, every command run in the sandbox)
 
