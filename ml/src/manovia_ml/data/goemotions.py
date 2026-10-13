@@ -128,9 +128,7 @@ def _labels_of(record: dict[str, Any]) -> list[str]:
     if isinstance(raw, str):
         return [raw]
     if isinstance(raw, list):
-        return [
-            GOEMOTIONS_LABELS[item] if isinstance(item, int) else str(item) for item in raw
-        ]
+        return [GOEMOTIONS_LABELS[item] if isinstance(item, int) else str(item) for item in raw]
     raise ValueError(f"record {record.get('id', '<no id>')}: unsupported labels {type(raw)}")
 
 
@@ -207,7 +205,10 @@ def _download(split: str) -> Iterable[dict[str, Any]]:
     """Fetch the raw split from Hugging Face. Network; never called by tests/CI."""
 
     try:
-        from datasets import load_dataset  # noqa: PLC0415 - optional, network-only path
+        # Imported here, not at module scope: this is the optional, network-only
+        # path, and importing it at the top would make the whole module require
+        # the extra for the sake of two commands (`--download`).
+        from datasets import load_dataset
     except ImportError as exc:  # pragma: no cover - Colab/Kaggle only
         raise SystemExit(
             "the `datasets` package is not installed; on Colab run: pip install datasets"

@@ -206,7 +206,9 @@ def restricted_names(entries: list[CatalogueEntry]) -> list[str]:
     return [entry.name for entry in entries if entry.is_restricted]
 
 
-def entries_named_in_configs(names: list[str], *, directory: Path | None = None) -> dict[str, list[str]]:
+def entries_named_in_configs(
+    names: list[str], *, directory: Path | None = None
+) -> dict[str, list[str]]:
     """Which restricted dataset names appear in ``ml/configs/*.yaml`` (must be none)."""
 
     hits: dict[str, list[str]] = {}
@@ -229,9 +231,7 @@ def validate_entries(entries: list[CatalogueEntry], *, today: date | None = None
                 f"{entry.name}: verdict {entry.verdict!r} but allowed_use={entry.allowed_use!r}"
             )
         if entry.verdict in {"RESEARCH ONLY", "DO NOT USE"} and entry.allowed_use == "commercial":
-            problems.append(
-                f"{entry.name}: verdict {entry.verdict!r} cannot be commercial use"
-            )
+            problems.append(f"{entry.name}: verdict {entry.verdict!r} cannot be commercial use")
         if entry.personal_data and entry.verdict == "USE":
             problems.append(
                 f"{entry.name}: contains personal data and is marked plain USE "
@@ -240,7 +240,8 @@ def validate_entries(entries: list[CatalogueEntry], *, today: date | None = None
         age = (now - entry.verified_on).days
         if age > LICENCE_FRESHNESS_DAYS:
             problems.append(
-                f"{entry.name}: licence last verified {entry.verified_on} ({age} days ago) — re-verify"
+                f"{entry.name}: licence last verified {entry.verified_on} "
+                f"({age} days ago) — re-verify"
             )
     return problems
 

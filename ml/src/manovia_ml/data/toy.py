@@ -6,8 +6,9 @@ licence question attached (see ``ml/data/CATALOGUE.md``), and a random fixture
 generated from templates would make "the same seed reproduces the same metrics"
 a statement about the generator rather than about training.
 
-So: 84 short everyday sentences, {en, hi, hi-Latn, bn} × {joy, sadness, anger,
-fear, calm, neutral}, written by the same person who wrote this file. No
+So: 84 short everyday sentences, four language variants (en, hi, hi-Latn, bn) by
+six emotions (joy, sadness, anger, fear, calm, neutral), written by the same
+person who wrote this file. No
 personal data, no crisis content, no method or means anywhere in it (the
 Manovia anxiety is about an exam, not about self-harm — a fixture that drifts
 into crisis language would end up in a smoke run that mocks the safety path).
