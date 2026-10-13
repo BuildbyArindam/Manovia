@@ -1,10 +1,13 @@
 # Day 31 verification — ML foundation (2026-10-13)
 
 Every command below was really run in the Day 31 sandbox, on the final Day 31
-tree, with the repository's own virtualenv (`.venv`, Python 3.11.2). The work is
-in [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38) (not merged). The sandbox
-has no GPU, no Docker, and can reach only github.com / PyPI / npm, so three
-checks are adapted or performed by the owner; each is stated where it happens.
+tree, with the repository's own virtualenv (`.venv`, Python 3.11.2). The work
+shipped in [PR #38](https://github.com/BuildbyArindam/Manovia/pull/38), merged by
+the owner as `0332904`; the commits written after that merge point — the stale
+`dvc.lock` fix (finding 7 below) and these results — are in
+[PR #39](https://github.com/BuildbyArindam/Manovia/pull/39). The sandbox has no
+GPU, no Docker, and can reach only github.com / PyPI / npm, so a few checks are
+adapted or performed by the owner; each is stated where it happens.
 
 ## PASS/FAIL table
 
@@ -17,10 +20,10 @@ checks are adapted or performed by the owner; each is stated where it happens.
 | 4a | `dvc status` clean | **PASS** | `cd ml && python -m dvc status` → `Data and pipelines are up to date.` |
 | 4b | Dataset hash visible in a run | **PASS** | Each run logs `data.train.sha256`, `data.train.rows`, `data.eval.sha256`, `data.eval.rows` as params and writes `data.json`; the smoke run's report carries `aa4a9871…` (20 rows) and `055a7a9f…` (8 rows) in its Data table. `dvc.lock` holds the md5 of the same files (stage `toy_split` / `toy_smoke_split`). |
 | 5 | `git ls-files \| grep -E "\.(bin\|pt\|safetensors\|csv\|parquet)$"` empty | **PASS** | Empty (exit 1 from grep, no output). CI generalises it to `*.bin,*.pt,*.pth,*.safetensors,*.csv,*.parquet,*.joblib,*.pkl,*.h5,*.onnx,*.ckpt`, and the ML `.gitignore` adds the same belt for anything untracked. `dvc.lock` + the fixture are the only data-shaped commits. |
-| 6 | CI `ml-smoke` job passes locally with `act` or by running its commands | **PASS, and green on GitHub Actions** | `act` needs Docker, which the sandbox does not have, so the job's steps were first run in order against a **fresh clone with a fresh virtualenv** — install → `dvc repro` + `dvc status` → `catalogue --check` → `make smoke` → `pytest -q` (139 passed) → `ruff`/`ruff format`/`mypy` → the two Git guards. Then the real thing: [run 38383897480](https://github.com/BuildbyArindam/Manovia/actions/runs/38383897480) on commit `cd20772` — **`ML — smoke, reproducibility, catalogue: success` in 1m34s**, alongside backend (9m17s), frontend, gitleaks and the dependency audit, all green. The first execution (run 38382218135) **failed**, and finding out why was the most useful thing that happened all day (fixes 5 and 6 below). |
+| 6 | CI `ml-smoke` job passes locally with `act` or by running its commands | **PASS, and green on GitHub Actions** | `act` needs Docker, which the sandbox does not have, so the job's steps were first run in order against a **fresh clone with a fresh virtualenv** — install → `dvc repro` + `dvc status` → `catalogue --check` → `make smoke` → `pytest -q` (139 passed) → `ruff`/`ruff format`/`mypy` → the lock check before repro and the two Git guards. Then the real thing: [run 38383897480](https://github.com/BuildbyArindam/Manovia/actions/runs/38383897480) on commit `cd20772` — **`ML — smoke, reproducibility, catalogue: success` in 1m34s**, alongside backend (9m17s), frontend, gitleaks and the dependency audit, all green. The first execution (run 38382218135) **failed**, and finding out why was the most useful thing that happened all day (fixes 5 and 6 below). |
 | 7 | Print CATALOGUE.md highlighting licence concerns | **PASS** | `python -m manovia_ml.data.catalogue --check` → `catalogue ok: 14 entries, table current, 10 restricted (emoHind-58K, IndicSentiment / IndicGLUE sentiment, EmoInHindi, SentiMix Hinglish, Bengali & Banglish, EmpatheticDialogues, ESConv, MentalChat16K, eRisk/DepreSym, Dreaddit/SMHD)`. Highlights: GoEmotions is Apache-2.0 (**USE**); emoHind-58K and EmoNoBa are CC BY 4.0 web text (**USE WITH CONDITIONS**); IndicGLUE/IndicSentiment (CC BY-NC 4.0) and EmoInHindi (CC BY-NC-ND 4.0) are **RESEARCH ONLY**; EmpatheticDialogues (CC BY-NC), ESConv (academic-only), eRisk (user agreement), MentalChat16K (real clinical transcripts) and Dreaddit/SMHD are **DO NOT USE**. No usable natively authored, commercially licensed Hindi/Bengali emotion corpus exists; the plan is a hand-written set with native review. |
 | 8 | ML test suite and linters | **PASS** | `cd ml && python -m pytest -q` → **139 passed in 10.0 s**, fully offline (temporary `file:` MLflow store per test, splits built into tmp dirs, `-m 'not network'`). `ruff check .` "All checks passed!", `ruff format --check .` "47 files already formatted", `mypy src tests` "no issues found in 34 source files". |
-| 9 | Full repository lint and tests (wrap-up requirement) | **PASS** | `make lint` (backend + frontend): ruff clean, `355 files already formatted`, mypy clean in 295 files, eslint clean. `make test`: backend **4159 passed, 3 skipped** (skips = uninstalled optional `nlp`/`llm` extras), coverage 96%; frontend **601 passed, 3 skipped** (74 files). |
+| 9 | Full repository lint and tests (wrap-up requirement) | **PASS** | `make lint` (backend + frontend): ruff clean, `355 files already formatted`, mypy clean in 295 files, eslint clean, `tsc --noEmit` clean. Backend suite: **4160 passed, 3 skipped** (8m00s; skips = uninstalled optional `nlp`/`llm` extras), coverage gate "all rules satisfied". Frontend suite: **601 passed, 3 skipped** (74 files). Re-run in full after the environment was rebuilt from a clone. |
 | 10 | Real `make ml-eval RUN=<id>` (added scope, never run before Day 31) | **PASS** | `python -m manovia_ml.evaluation.evaluate --run 4a614af45cb041959d14b306a1ec49be` → `EVAL_RUN_ID=36af3ca90fa64daeaf7adbcf631ac697`, `scored run=4a614af4… config=toy_emotion_sgd`, `split: data/processed/toy_smoke_eval.jsonl rows=8 sha256=055a7a9f5de2…`, metrics matching the training run, and `consistency: this run's metrics match the training run's logged metrics` (exit 0). |
 | 11 | Owner-only steps (cannot be done here) | **N/A — listed** | (a) the first real GoEmotions run on Colab/Kaggle (`ml/notebooks/README.md` steps 4–8); (b) the first GitHub Actions execution of `ml-smoke` (needs push/PR); (c) Docker-based checks: `make ml-mlflow-up` and the Docker quick start; (d) a browser check of `mlflow ui` against a run. |
 
@@ -47,7 +50,7 @@ rather than forgotten once the board turned green.
 | --- | --- | --- |
 | CI | Backend — ruff, mypy, pytest | **pass** (7m28s) |
 | CI | Frontend — lint, typecheck, vitest, build | **pass** (1m07s) |
-| CI | **ML — smoke, reproducibility, catalogue** | **pass** (1m34s) |
+| CI | **ML — smoke, reproducibility, catalogue** | **pass** (1m34s); and again on [PR #39](https://github.com/BuildbyArindam/Manovia/pull/39) with the lock check in place — **1m15s** |
 | CI | Secrets scan — gitleaks | **pass** (7s) |
 | CI | Dependency audit — fail on high | **pass** (43s) |
 | Accessibility & Lighthouse | axe + keyboard + zoom + offline + Lighthouse | **pass** (9m33s) |
@@ -55,6 +58,18 @@ rather than forgotten once the board turned green.
 
 Seven of seven green — the new `ml-smoke` job included, on its second real
 execution.
+
+## Final CI state after the merge
+
+| run | commit | result |
+| --- | --- | --- |
+| CI on `main`, merge of #38 | `0332904` | **success** (all five jobs) |
+| CI on this branch, follow-up | `43bcd10` | **success** (all five jobs) |
+| Accessibility & Lighthouse | `43bcd10` | **pass** (9m42s) |
+| Evaluation Harness | `43bcd10` | **pass** (54s) |
+
+Seven of seven again, with one more step in the ML job than the run above: the
+lock check that found finding 7 runs *before* `dvc repro` rewrites the lock.
 
 ## Fixes made during verification (root causes, not symptoms)
 
