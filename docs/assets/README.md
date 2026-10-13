@@ -105,3 +105,10 @@ Only synthetic content appears: a fresh guest account, the made-up note
 content file serves for the `DEFAULT` region. No real person's words, ever.
 `day25-offline-checkin-mobile-360x640.png` was re-captured during Day 25
 verification after its copy was corrected (see PROGRESS.md).
+
+## Social preview (Day 30)
+
+`social-preview.png` (1280 × 640) is the GitHub social preview image, an
+original flat design generated for the launch and resized to GitHub's
+recommended dimensions. Upload it by hand: repository **Settings → General →
+Social preview → Edit** (the API does not expose this setting).
