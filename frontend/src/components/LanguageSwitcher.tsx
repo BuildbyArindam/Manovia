@@ -61,9 +61,7 @@ export function LanguageSwitcher(): ReactElement {
             {option.native}
           </option>
         ))}
-        {showPseudo ? (
-          <option value={PSEUDO_LANGUAGE}>{t("language.pseudo")}</option>
-        ) : null}
+        {showPseudo ? <option value={PSEUDO_LANGUAGE}>{t("language.pseudo")}</option> : null}
       </select>
     </label>
   );

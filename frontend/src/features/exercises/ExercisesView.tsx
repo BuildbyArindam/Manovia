@@ -112,9 +112,7 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
               <p role="status">{t("exercises.loadingSuggestions")}</p>
             ) : null}
             {emotion !== "" && recommendations.isError ? (
-              <p>
-                {t("exercises.suggestionsUnavailable")}
-              </p>
+              <p>{t("exercises.suggestionsUnavailable")}</p>
             ) : null}
           </section>
 
@@ -145,7 +143,9 @@ export function ExercisesView({ client }: { client?: ApiClient }): ReactElement 
                 data-testid={`exercise-card-${exercise.id}`}
               >
                 {why.has(exercise.id) ? (
-                  <p className="text-sm font-semibold text-accent">{t("exercises.suggestedHeading")}</p>
+                  <p className="text-sm font-semibold text-accent">
+                    {t("exercises.suggestedHeading")}
+                  </p>
                 ) : null}
                 <h2 className="text-xl">{exercise.title.en}</h2>
                 <p className="text-sm text-ink-muted">

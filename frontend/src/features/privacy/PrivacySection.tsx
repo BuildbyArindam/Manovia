@@ -182,9 +182,7 @@ export function PrivacySection({
       <h2 id="privacy-heading" className="text-lg">
         {t("privacy.heading")}
       </h2>
-      <p className="mt-2 text-sm text-ink-muted">
-        {t("privacy.lede")}
-      </p>
+      <p className="mt-2 text-sm text-ink-muted">{t("privacy.lede")}</p>
 
       <div className="mt-4 space-y-3">
         {storageFacts().map((fact) => (
@@ -218,9 +216,7 @@ export function PrivacySection({
             />
             <span>
               <span className="block font-semibold">{t("privacy.storeChatLabel")}</span>
-              <span className="block text-sm text-ink-muted">
-                {t("privacy.storeChatHelp")}
-              </span>
+              <span className="block text-sm text-ink-muted">{t("privacy.storeChatHelp")}</span>
             </span>
           </label>
 
@@ -269,9 +265,7 @@ export function PrivacySection({
 
       <div className="mt-6 border-t border-border pt-5">
         <h3 className="font-semibold">{t("privacy.exportHeading")}</h3>
-        <p className="mt-1 text-sm text-ink-muted">
-          {t("privacy.exportHelp")}
-        </p>
+        <p className="mt-1 text-sm text-ink-muted">{t("privacy.exportHelp")}</p>
         <button
           type="button"
           data-testid="export-button"
@@ -312,9 +306,7 @@ export function PrivacySection({
             ))}
           </ul>
         )}
-        <p className="mt-2 text-sm text-ink-muted">
-          {t("privacy.consentsNote")}
-        </p>
+        <p className="mt-2 text-sm text-ink-muted">{t("privacy.consentsNote")}</p>
       </div>
 
       <div className="mt-6 border-t border-border pt-5">
@@ -326,16 +318,12 @@ export function PrivacySection({
               ? t("privacy.anonymousActive")
               : t("privacy.anonymousEmail")}
         </p>
-        <p className="mt-2 text-sm text-ink-muted">
-          {t("privacy.anonymousCaveat")}
-        </p>
+        <p className="mt-2 text-sm text-ink-muted">{t("privacy.anonymousCaveat")}</p>
       </div>
 
       <div className="mt-6 border-t border-border pt-5">
         <h3 className="font-semibold">{t("privacy.deleteHeading")}</h3>
-        <p className="mt-2 text-sm text-ink-muted">
-          {t("privacy.deleteHelp")}
-        </p>
+        <p className="mt-2 text-sm text-ink-muted">{t("privacy.deleteHelp")}</p>
         {receipt !== null ? (
           <div
             role="status"
@@ -351,19 +339,17 @@ export function PrivacySection({
               {Object.entries(receipt.rows_deleted)
                 .filter(([, count]) => count > 0)
                 .map(([table, count]) => (
-                  <li key={table}>
-                    {t("privacy.receiptCountLine", { count, table })}
-                  </li>
+                  <li key={table}>{t("privacy.receiptCountLine", { count, table })}</li>
                 ))}
             </ul>
-            <p className="mt-2 text-sm text-ink-muted">
-              {t("privacy.receiptNote")}
-            </p>
+            <p className="mt-2 text-sm text-ink-muted">{t("privacy.receiptNote")}</p>
           </div>
         ) : (
           <>
             <label className="mt-3 block">
-              <span className="text-sm font-semibold">{t("privacy.typeToConfirm", { word: DELETE_CONFIRMATION })}</span>
+              <span className="text-sm font-semibold">
+                {t("privacy.typeToConfirm", { word: DELETE_CONFIRMATION })}
+              </span>
               <input
                 type="text"
                 data-testid="delete-confirmation-input"

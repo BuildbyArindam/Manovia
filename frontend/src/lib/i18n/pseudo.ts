@@ -98,7 +98,8 @@ export const pseudoPostProcessor: PostProcessorModule = {
   type: "postProcessor",
   name: "manoviaPseudo",
   process(value: string, _key: unknown, options: { lng?: string | string[] }): string {
-    const languages = options.lng === undefined ? [] : Array.isArray(options.lng) ? options.lng : [options.lng];
+    const languages =
+      options.lng === undefined ? [] : Array.isArray(options.lng) ? options.lng : [options.lng];
     if (!languages.includes("pseudo")) {
       return value;
     }

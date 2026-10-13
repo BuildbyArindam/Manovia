@@ -86,9 +86,7 @@ describe("the shipped policy", () => {
     // Relaxation two (Day 23): the two Google Fonts origins, so Hindi and
     // Bengali get Noto Sans Devanagari / Bengali. Each is pinned to its exact
     // origin — the stylesheet host in style-src, the file host in font-src.
-    expect(directives.get("style-src")).toBe(
-      "'self' 'unsafe-inline' https://fonts.googleapis.com",
-    );
+    expect(directives.get("style-src")).toBe("'self' 'unsafe-inline' https://fonts.googleapis.com");
     expect(directives.get("font-src")).toBe("'self' https://fonts.gstatic.com");
     for (const name of ["script-src", "default-src", "connect-src", "img-src"]) {
       expect(directives.get(name)).not.toContain("unsafe-inline");

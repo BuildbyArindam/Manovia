@@ -12,7 +12,14 @@
 
 import { useState, type ReactElement } from "react";
 
-import { emotionLabel, energyPoint, factorLabel, localisedEnergyLabel, localisedValenceLabel, valencePoint } from "../taxonomy";
+import {
+  emotionLabel,
+  energyPoint,
+  factorLabel,
+  localisedEnergyLabel,
+  localisedValenceLabel,
+  valencePoint,
+} from "../taxonomy";
 import { MOOD_COPY } from "../copy";
 import { intlLocale, t } from "@/lib/i18n/i18n";
 import type { MoodEntry } from "../types";
@@ -88,8 +95,8 @@ export function MoodHistory({ client }: MoodHistoryProps): ReactElement {
                   <MoodFace shape={valence.face} />
                 </span>
                 <p className="text-base">
-                  <time dateTime={entry.local_date}>{day}</time> · {localisedValenceLabel(valence)} ·{" "}
-                  {t("mood.energyWord")} {localisedEnergyLabel(energy)}
+                  <time dateTime={entry.local_date}>{day}</time> · {localisedValenceLabel(valence)}{" "}
+                  · {t("mood.energyWord")} {localisedEnergyLabel(energy)}
                 </p>
               </div>
 

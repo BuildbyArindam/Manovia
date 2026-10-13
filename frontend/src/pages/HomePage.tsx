@@ -104,9 +104,7 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
               >
                 {checkIn.isPending ? t("home.saving") : t("home.save")}
               </button>
-              {valence === null && (
-                <p className="text-sm text-ink-muted">{t("home.pickFace")}</p>
-              )}
+              {valence === null && <p className="text-sm text-ink-muted">{t("home.pickFace")}</p>}
               {checkIn.isError && (
                 <p role="alert" className="text-sm text-danger">
                   {t("home.checkInError")}

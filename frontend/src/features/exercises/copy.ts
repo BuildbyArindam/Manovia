@@ -140,7 +140,9 @@ export const EXERCISE_COPY = {
 };
 
 /** Breathing-guide cues, one i18n key per cue id. */
-export const CUE_LABELS: Readonly<Record<"instruction" | "inhale" | "hold-in" | "exhale" | "hold-out", string>> = {
+export const CUE_LABELS: Readonly<
+  Record<"instruction" | "inhale" | "hold-in" | "exhale" | "hold-out", string>
+> = {
   get instruction() {
     return t("exercises.cues.instruction");
   },
