@@ -33,3 +33,13 @@ make ml-smoke                          # trains the smoke model, checks the base
 The report is rendered from the run's own MLflow record (`params`, `metrics`,
 `data.json`, `environment.json`, `expected.json`), so it cannot disagree with the
 run it names — if it did, the fix is to re-generate it, not to edit it.
+
+**A committed report names the commit it ran on, so it is committed one commit
+later** (`git commit` the report, then run the smoke target again so the new
+report sees a clean tree, then commit that). The header always says which commit
+produced it and whether the tree was dirty, which is why the file in `smoke/`
+names an earlier commit than the one that added it. Editing a report to match a
+later commit would make the header a lie; regenerating it from the run is the
+only honest way to change it. CI writes its own report (`ml/reports/smoke/`) into
+the runner and puts it in the job summary — it never commits one, because a
+machine should not be the authority on what a number means.
