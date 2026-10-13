@@ -24,6 +24,20 @@ checks are adapted or performed by the owner; each is stated where it happens.
 | 10 | Real `make ml-eval RUN=<id>` (added scope, never run before Day 31) | **PASS** | `python -m manovia_ml.evaluation.evaluate --run 4a614af45cb041959d14b306a1ec49be` → `EVAL_RUN_ID=36af3ca90fa64daeaf7adbcf631ac697`, `scored run=4a614af4… config=toy_emotion_sgd`, `split: data/processed/toy_smoke_eval.jsonl rows=8 sha256=055a7a9f5de2…`, metrics matching the training run, and `consistency: this run's metrics match the training run's logged metrics` (exit 0). |
 | 11 | Owner-only steps (cannot be done here) | **N/A — listed** | (a) the first real GoEmotions run on Colab/Kaggle (`ml/notebooks/README.md` steps 4–8); (b) the first GitHub Actions execution of `ml-smoke` (needs push/PR); (c) Docker-based checks: `make ml-mlflow-up` and the Docker quick start; (d) a browser check of `mlflow ui` against a run. |
 
+## One check that failed and could not be explained from here
+
+The `Accessibility & Lighthouse` job failed on this PR's runs 38382218185 and
+38385043567 (step: Playwright — axe, targets, keyboard, zoom, offline,
+installability), exit 1. `main`'s run at 09:16 the same day was green, and so was
+the Day-30 PR's. This diff does not touch `frontend/` or `backend/` at all
+(`git diff origin/main...HEAD -- frontend/ backend/` is empty), so the code that
+job builds and drives is identical to a commit where it passed; the sandbox
+cannot read the job's logs (the log and artifact hosts are outside its network
+allowlist) and cannot re-dispatch the workflow (needs `actions: write`).
+Recorded in PROGRESS.md § Known issues with the owner action: press **Re-run
+jobs** on that job, and if it fails again read the
+`day25-a11y-lighthouse-reports` artifact.
+
 ## Fixes made during verification (root causes, not symptoms)
 
 1. **Baselines were written into the repository.** `expected_metrics_path()`

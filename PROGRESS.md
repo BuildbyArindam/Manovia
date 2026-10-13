@@ -142,6 +142,17 @@ there and the PR comes from it. Nothing was pushed to `main`, and the PR is
 - Day 30's first two next steps were **not** done today (they are not Day 31
   scope): publishing v1.0.0 (owner), and retraining `crisis_v1` on the red-team
   hard negatives.
+- **The `Accessibility & Lighthouse` job failed on this PR** (runs 38382218185
+  and 38385043567, step *Playwright — axe, targets, keyboard, zoom, offline,
+  installability*), while `main`'s run at 09:16 the same day passed and the
+  previous Day-30 PR's run passed. `frontend/` and `backend/` are **byte-identical
+  to `main`'s green commit** in this diff (`git diff origin/main...HEAD --
+  frontend/ backend/` is empty), so the code under test cannot be the cause; the
+  logs could not be read from this sandbox (the log/artifact hosts are outside
+  its network allowlist, and `workflow_dispatch` needs `actions: write`).
+  **Owner action: press Re-run jobs on that job** and, if it fails again, read
+  the `day25-a11y-lighthouse-reports` artifact — the failure is unexplained, not
+  dismissed.
 - Carried from Day 30: `FIELD_ENCRYPTION_KEY` missing from the no-Docker quick
   start; branch-coverage gate not in CI; per-process rate limiter/session store;
   paraphrasable injection tripwire; dev-split rules-only recall 0.333 vs test
