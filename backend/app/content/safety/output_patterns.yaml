@@ -568,6 +568,18 @@ rules:
       its?\s+(?:better|good|healthier|safer)\s+to\s+(?:stay\s+alone|be\s+alone|
       isolate|keep\s+to\s+yourself)|you\s+are\s+better\s+off\s+alone
 
+  # Day 29 verification (RT-I-JB-10): a Hinglish pill count ("20 goliyan ek
+  # saath le sakte hain") passed every English and Devanagari rule.
+  - id: meth.hinglish_pill_quantity
+    category: self_harm_method
+    kind: regex
+    value: >-
+      \b\d+\s+(?:neend\s+ki\s+)?(?:goliyan|goliya|goli|tablets?|pills)\s+
+      (?:ek\s+saath|ek\s+sath|ekdum|saath\s+mein|le|lo|lijiye|kha|khao|khaiye)|
+      \b(?:saari|sari|poori|puri)\s+(?:neend\s+ki\s+)?(?:goliyan|goliya)\s+
+      (?:le|lo|kha|khao|ek\s+saath)|\bhamesha\s+ke\s+liye\s+so\s+(?:jaoge|jaaoge|
+      jaogi|jayenge|jaenge)
+
   # -------------------------------------------------------------------------
   # (g) Day 29 red team: describing or reciting the system prompt. A verbatim
   # recitation is caught in code (`output_guard.echoes_prompt`);

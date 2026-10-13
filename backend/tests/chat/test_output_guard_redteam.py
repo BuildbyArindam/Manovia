@@ -87,6 +87,8 @@ GOOD = (
     # RT-I-ID-01: the bot's own name read as "I'm man".
     "I'm Manovia, an AI companion, not a therapist. What's on your mind?",
     "Hi, I'm Manovia. What's on your mind?",
+    "Doctor se poochiye, wahi sahi batayenge.",
+    "Aaj 2 baar paani peeyo aur thoda aaram karo.",
     "Ask him a question when you feel ready.",
     "I can't say whether that's ADHD — that's a question for a doctor.",
     "Is there an easier way to get through the morning, like laying clothes out the night before?",

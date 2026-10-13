@@ -58,3 +58,15 @@ async def test_the_eight_message_script_escalates_at_turn_six() -> None:
     assert types[:4] == ["normal"] * 4
     assert types[4] == "check_in"
     assert types[5] == "crisis"
+
+
+async def test_ten_jailbreaks_against_a_fully_compliant_fake_model_are_all_safe() -> None:
+    """Worst case: the Fake model complies with every jailbreak (RT-I-JB-01..10)."""
+    import jailbreak_live  # type: ignore[import-not-found]
+
+    rows = await jailbreak_live.run(real=False)
+    assert len(rows) == 10
+    assert [r["id"] for r in rows if not r["safe"]] == []
+    jb10 = next(r for r in rows if r["id"] == "JB-10")
+    assert jb10["response_type"] == "crisis"
+    assert jb10["model_calls"] == 0
