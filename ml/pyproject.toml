@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manovia-ml"
+version = "0.1.0"
+description = "Manovia ML platform: data catalogue, experiment tracking and reproducible training (Day 31)"
+readme = "README.md"
+requires-python = ">=3.11"
+# Exact pins, like the backend (see backend/pyproject.toml for the reasoning).
+# Every version here is one this repository's ML suite actually ran against on
+# 2026-10-13 in the sandbox — `pip install -e ".[ml,dev]"` from this directory,
+# or `make ml-install` from the repository root. The two heavy pins worth
+# knowing about: mlflow 3.x (runs + artifacts API used by tracking.py and
+# serving/artifacts.py) and dvc 3.x (`dvc repro` / `dvc status` in ml/dvc.yaml).
+dependencies = [
+    "pydantic==2.14.1",
+    "pyyaml==6.0.3",
+    # seeds.py pins the BLAS/OpenMP pools with threadpoolctl rather than
+    # OMP_NUM_THREADS, because the native libraries may already be loaded.
+    "threadpoolctl==3.7.0",
+]
+
+[project.optional-dependencies]
+# The ML stack itself. Kept out of the base install so that `pydantic`-only
+# consumers (the catalogue checker, the docs drift test) do not need 400 MB of
+# transitive dependencies to read a YAML file.
+ml = [
+    "numpy==2.4.6",
+    "scikit-learn==1.9.1",
+    "joblib==1.6.0",
+    # pandas is used for the report tables and by the Colab notebook; the training
+    # path itself uses lists, so it is not imported by `manovia_ml.training`.
+    "pandas==3.0.6",
+    # Experiment tracking. Local file store by default; see
+    # ml/docker/mlflow/docker-compose.mlflow.yml for the optional service.
+    "mlflow==3.17.1",
+    # Data versioning (`dvc repro`, `dvc status`).
+    "dvc==3.67.1",
+]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.0",
+    "mypy==2.4.0",
+    # mypy --strict needs stubs for the YAML loader.
+    "types-PyYAML==6.0.12.20260906",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["manovia_ml*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Marked tests need the network or a real corpus (GoEmotions download, Colab).
+# The default run is fully offline, like the backend suite (AGENTS.md rule 10).
+markers = [
+    "network: needs the internet (never selected by default)",
+    "slow: takes more than a few seconds",
+]
+addopts = "-ra -m 'not network'"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "ARG", "PTH", "RET", "C4"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["manovia_ml"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: long lines read better un-wrapped, and pytest fixtures are frequently
+# requested for their side effects (setting the tracking URI, building splits)
+# rather than for their value — which ARG001 cannot see.
+"tests/*" = ["E501", "ARG001"]
+# MLRootNotFound reads as a *condition* ("the ML root is not there"), like the
+# LLM/provider errors the backend waives N818 for (backend/pyproject.toml). The
+# "Error" suffix would make the raise sites worse for no gain.
+"src/manovia_ml/paths.py" = ["N818"]
+# Notebooks are Colab/Kaggle-facing: `open()` without a context manager and a
+# non-strict zip are normal there, and the notebook exists to be read by a human
+# running cells one at a time. Ruff still parses the cells (so a syntax error is
+# caught), it just does not impose the package's style on them.
+"notebooks/*" = ["B007", "B905", "PTH123", "SIM115"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+
+# Third-party libraries without usable type information. MLflow and DVC are
+# dynamically typed at their edges; scikit-learn ships partial annotations whose
+# stubs disagree with the runtime objects. `follow_imports = "skip"` treats them
+# as Any at the boundary, which is where the type system stops being useful and
+# the tests in ml/tests/ take over.
+[[tool.mypy.overrides]]
+module = [
+    "mlflow.*",
+    "dvc.*",
+    "sklearn.*",
+    "joblib.*",
+    "threadpoolctl.*",
+    "pandas.*",
+    "numpy.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+# Optional, network-only imports used by the Colab notebook path (Hugging Face
+# `datasets` is not installed in this repository, by design — see ground rule 10).
+module = ["datasets.*", "datasets"]
+ignore_missing_imports = true
