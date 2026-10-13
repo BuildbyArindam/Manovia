@@ -110,13 +110,24 @@ emotion-smoke:
 	@echo "--- emotion smoke ---"
 	@cat $(EMOTION_JSON)
 
+# The real run: a 278M-parameter encoder on a corpus, so no default config.
+# `CONFIG=` used to inherit the Day-31 linear default (`toy_emotion_sgd.yaml`),
+# and `EmotionLoraConfig` rejects a config with no `emotion:` section — a make
+# target whose default cannot work is a trap, so it asks instead of guessing.
 emotion-train:
+	@case "$(CONFIG)" in configs/toy_emotion_sgd.yaml|configs/toy_emotion_multiclass_logreg.yaml) \
+		echo "usage: make emotion-train CONFIG=configs/emotion_lora_xlmr.yaml  (needs a GPU; use make emotion-smoke offline)"; exit 2;; \
+	esac
 	$(PYTHON) -m manovia_ml.training.emotion.train --config $(CONFIG)
 
 emotion-eval:
+	@test -d "$(ARTIFACT)" || { echo "no artefact at $(ARTIFACT) — run \`make emotion-smoke\` first, or pass ARTIFACT=<dir>"; exit 2; }
 	$(PYTHON) -m manovia_ml.training.emotion.evaluate --artifact $(ARTIFACT) --data $(DATA) --bootstrap 2000 --json
 
 emotion-tune:
+	@case "$(CONFIG)" in configs/toy_emotion_sgd.yaml|configs/toy_emotion_multiclass_logreg.yaml) \
+		echo "usage: make emotion-tune CONFIG=configs/emotion_lora_xlmr.yaml TRIALS=12  (needs optuna.enabled: true in the config)"; exit 2;; \
+	esac
 	$(PYTHON) -m manovia_ml.training.emotion.tune --config $(CONFIG) --trials $(TRIALS) --json
 
 # Convert a source corpus into the nine-emotion shape (the mapping table).
