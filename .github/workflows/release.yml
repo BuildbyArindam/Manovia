@@ -124,8 +124,17 @@ jobs:
           docker push "ghcr.io/${{ github.repository }}-web:${{ github.ref_name }}"
           docker push "ghcr.io/${{ github.repository }}-web:${{ github.sha }}"
 
-      - name: Create the GitHub release (generated notes)
-        run: gh release create "$TAG" --generate-notes --verify-tag
+      # Day 30: a tag with curated notes in docs/releases/<tag>.md (features,
+      # safety statement, evaluation numbers, limitations) releases with those;
+      # any other tag falls back to the generated notes.
+      - name: Create the GitHub release
+        run: |
+          if [ -f "docs/releases/${TAG}.md" ]; then
+            gh release create "$TAG" --title "Manovia $TAG" \
+              --notes-file "docs/releases/${TAG}.md" --verify-tag
+          else
+            gh release create "$TAG" --generate-notes --verify-tag
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}

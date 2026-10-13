@@ -209,7 +209,7 @@ def init_sentry(settings: Any) -> bool:
     sentry_sdk.init(
         dsn=dsn,
         environment=str(environment),
-        release="manovia-api@0.1.0",
+        release="manovia-api@1.0.0",
         before_send=scrub_sentry_event,
         # Privacy hard defaults: the SDK must not invent identity context.
         send_default_pii=False,

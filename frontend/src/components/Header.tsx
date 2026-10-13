@@ -18,12 +18,19 @@ export function Header(): ReactElement {
       className="app-header sticky top-0 z-30 border-b border-border bg-surface"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <Link
-          to="/"
-          className="inline-flex min-h-11 items-center rounded-lg font-serif text-lg font-semibold tracking-tight text-ink"
-        >
-          {t("app.name")}
-        </Link>
+        <span className="flex min-w-0 items-center gap-2">
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center rounded-lg font-serif text-lg font-semibold tracking-tight text-ink"
+          >
+            {t("app.name")}
+          </Link>
+          {/* Day 30 positioning: the demo is visibly pre-release until the
+              clinical review in docs/clinical-review.md is signed off. */}
+          <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            {t("app.betaLabel")}
+          </span>
+        </span>
         <div className="flex items-center gap-3 sm:gap-4">
           <LanguageSwitcher />
           <CrisisHelpButton openFromUrl />

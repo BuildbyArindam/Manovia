@@ -1,5 +1,7 @@
 # Manovia
 
+**Beta — portfolio demo, not a clinical service.** Manovia is a portfolio project. It has not completed the [clinical review](docs/clinical-review.md), and any live demo is labelled the same way in the app footer. Do not rely on it for care.
+
 A privacy-first, safety-first self-help companion for mental wellbeing. It is not therapy, not a diagnosis, and not a crisis service.
 
 > **If you are in danger or in crisis, call your local emergency number now.** The list below is a starting point, not a substitute. See [Crisis and emergency help](#crisis-and-emergency-help).
@@ -150,4 +152,6 @@ The complete list is in [PROGRESS.md](PROGRESS.md).
 
 - **Weeks 1 to 3 (Days 1 to 21):** scaffolding, backend and frontend skeletons, the data layer, auth with consent, the crisis rules engine and safety ML backstop, the LLM provider layer, the chat orchestrator and UI, the knowledge base and retrieval, the output guard, check-ins, the journal, exercises, the CBT thought record, screenings and the daily plan.
 - **Week 4 (Days 22 to 28):** privacy controls, English, Hindi and Bengali, the evaluation harness, offline and accessibility work, deployment and observability, and documentation.
-- **Next:** clinician and native-speaker review of the crisis content and safe replies; retraining the safety classifier on the current scikit-learn release with hard negatives; running the branch gate in CI; a first real deployment; and a shared session store so that more than one worker can run. The full list is in the parking lot in [PROGRESS.md](PROGRESS.md).
+- **Day 29:** a scripted red-team suite (150 cases, final run 150/150), an IDOR sweep and full-pipeline jailbreak runs, with every fix regression-tested.
+- **Day 30 (v1.0.0):** launch — release checklist, versioning, release notes, the "Beta — portfolio demo" positioning, and the roadmap.
+- **v2.0:** Days 31 to 49 of the plan (the deep-learning and futuristic tracks). Beyond that: clinician review, validated translations, user research with consenting students under ethics approval, push reminders, an accessibility audit by real users, and a native mobile wrapper. Details in [docs/roadmap.md](docs/roadmap.md); the running list stays in the parking lot in [PROGRESS.md](PROGRESS.md).

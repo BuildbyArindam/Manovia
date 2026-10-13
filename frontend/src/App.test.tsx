@@ -78,6 +78,26 @@ describe("App", () => {
     expect(results).toHaveNoViolations();
   });
 
+  it("labels the demo as a beta portfolio demo, not a clinical service (Day 30)", () => {
+    completeOnboarding();
+    renderApp("/chat");
+
+    // The header carries a visible Beta badge next to the product name.
+    expect(within(screen.getByRole("banner")).getByText("Beta")).toBeInTheDocument();
+
+    // The footer states the positioning on every page, above the existing
+    // self-help disclaimer. Both stay until clinical review is complete.
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(
+      footer.getByText("Portfolio demo — not a clinical service. Clinical review is not complete."),
+    ).toBeInTheDocument();
+    expect(
+      footer.getByText(
+        "Manovia is a self-help companion — not therapy, not a diagnosis, and not a crisis service.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("puts the help button on every route", () => {
     completeOnboarding();
 

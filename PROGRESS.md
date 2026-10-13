@@ -1,5 +1,128 @@
 # Manovia — Progress
 
+**Day 30 — launch, resume and interview prep — is built and verified
+(2026-10-13). Version is 1.0.0; the tag is the owner's one command away.**
+Work is on `arena/8b865965-manovia`. The brief asked for
+`day-30-launch-resume-interview-prep`, but this session is pinned to its
+Arena branch, as on Days 19–29. Nothing was pushed to `main`, no tag was
+pushed, and the PR is not merged.
+
+### Completed (Day 30)
+
+- **Positioning:** a visible **Beta** badge in the header and a
+  **"Portfolio demo — not a clinical service. Clinical review is not
+  complete."** line in the footer, in en/hi/bn (new i18n keys; the `app` key
+  group remains AI-produced pending native review), plus the same statement
+  at the top of the README. Regression test in `frontend/src/App.test.tsx`.
+- **Release checklist executed with real commands**
+  ([docs/release-checklist-v1.0.0.md](docs/release-checklist-v1.0.0.md)):
+  CI green on `main` (all five jobs across both workflows); `make eval`
+  gates PASS; `pip-audit` clean; `npm audit --omit=dev --audit-level=high`
+  exit 0 (2 known react-router moderates); secrets scan triaged clean (42
+  `generic-api-key` prose false positives, high-signal grep empty, CI
+  gitleaks green); fresh-clone quick start **PASS after a real fix** (below);
+  CHANGELOG `[1.0.0]` written; version bumped everywhere
+  (pyproject/package.json/`API_VERSION`/Sentry release; OpenAPI artifacts
+  regenerated).
+- **Found and fixed during the checklist:** `cp .env.example .env` made a
+  fresh clone unbootable — blank values parsed as empty strings and typed
+  settings (`RAG_RETRIEVAL_LIMIT=`) failed validation before even
+  `alembic upgrade head`. Fixed with `env_ignore_empty=True` (blank = unset,
+  which is the `.env.example` contract) and two regression tests; one
+  existing test extended, none weakened.
+- **Release prepared, not published:** notes in
+  [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) (features, safety
+  statement, eval numbers, limitations); the release workflow now prefers
+  `docs/releases/<tag>.md` when it exists. The sandbox cannot push tags
+  (session is branch-pinned) and a pre-merge tag would be wrong anyway —
+  the owner's exact steps are in the checklist §2.
+- **GitHub polish:** `gh repo edit` returned HTTP 403 for the sandbox token,
+  so description/topics/Discussions/pin are owner commands (checklist §3);
+  the social-preview image (original design, 1280×640) is committed at
+  `docs/assets/social-preview.png`; issue templates already existed (Day 28).
+- **Career material** under [docs/career/](docs/career/) (not linked from
+  the README): 5 resume bullets with a number→file mapping, the 2-minute
+  pitch, a LinkedIn draft, a 90-second demo script, and the top-25 interview
+  Q&A (safety trade-offs, rules-first, privacy, eval limits, the clinical
+  partner answer, and what is never claimed).
+- **Roadmap** ([docs/roadmap.md](docs/roadmap.md)): Days 31–49 (deep-learning
+  + futuristic tracks) are v2.0; beyond that clinician review, validated
+  translations, user research with consenting students under ethics
+  approval, push reminders, an accessibility audit by real users, a native
+  mobile wrapper. README roadmap section updated.
+
+### Verification (Day 30, final tree, all run in the sandbox)
+
+Full note: [docs/verification/day30-launch.md](docs/verification/day30-launch.md).
+
+| check | result |
+| --- | --- |
+| fresh clone + `cp .env.example .env` + stack + `scripts/smoke.sh` | **SMOKE PASS** (bare-metal; Docker unavailable in the sandbox — owner re-checks `make up`) |
+| `make lint` | PASS (ruff, format, mypy 295 files; eslint, Prettier, tsc) |
+| `make test` | backend **4160 passed, 3 skipped**, statements 96.70% / branches 90.33%, coverage gate satisfied; frontend **601 passed, 3 skipped** |
+| `make eval` | overall CI gate **PASS** (recall 1.000 ensemble / 0.333 rules-only; macro-F1 0.804; response 60/60; 0 regressions) |
+| user journey (11 steps, onboarding → … → delete) | **11/11 PASS** over HTTP against the fresh-clone stack; Playwright browsers cannot download in the sandbox (CI's real-browser job is green on `main`) |
+| helplines `last_verified` | all 35 entries 2026-10-09 (4 days old, within 30); **not re-dated** — no network to sources; 4 entries still `needs_verification` |
+| labels in UI + README | PASS (tested) |
+| resume numbers → files | PASS (mapping in `docs/career/resume-bullets.md`) |
+
+### Known issues (as of Day 30)
+
+- Everything from Day 29 still stands except where fixed above; the most
+  important: **ML over-escalation** (reproduced live today — "feeling
+  overwhelmed at work" drew the crisis card), the sklearn artifact version
+  skew (`InconsistentVersionWarning`), the paraphrasable injection tripwire,
+  the per-process limiter/session state (one worker), and the dev-split
+  rules-only recall floor met at 0.333 with the test split at 0.275.
+- **New (Day 30):** the README's no-Docker quick start does not say the
+  journal needs `FIELD_ENCRYPTION_KEY` (it fail-closes with 503 until one is
+  set; the Docker stack injects a dev default). Parked — a one-line README
+  fix plus thought about whether bare-metal should generate a dev key.
+- The Docker quick start (`make up` / `make smoke`), the Docker-based fresh
+  clone, the demo recording, the real-provider jailbreak run, repo settings
+  (description/topics/Discussions/pin/social preview), the tag push, and the
+  release itself are **owner steps** — listed in the checklist.
+- Helpline phone verification, clinical review, native-speaker review and a
+  jurisdiction legal/privacy review remain the hard gates before real users.
+
+### Parking lot (Day 30)
+
+- Retrain `crisis_v1` on the red-team hard negatives (first v2 item; targets
+  both over-escalation and the sklearn version skew).
+- README: document `FIELD_ENCRYPTION_KEY` in the no-Docker quick start (or
+  generate a dev key on first run in development).
+- Run the branch-coverage gate in CI (still local-only).
+- `npm audit` moderates: adopt react-router 7 deliberately, not via
+  `audit fix --force`.
+- Day 29 carried items: shared session/limiter store, refresh-token cookie,
+  real deployment.
+
+### Day 30 handoff status
+
+Day 29's "retrain is Day 30 step 1" did **not** happen: the Day 30 brief was
+launch, positioning, career material and the roadmap, and the retrain is now
+explicitly the first v2.0 item in [docs/roadmap.md](docs/roadmap.md). The
+30-day build is complete; v1.0.0 ships when the owner merges the PR and
+pushes the tag.
+
+### Next steps (Day 31 — first three)
+
+1. **Publish v1.0.0** (owner): merge the Day 30 PR, run the owner steps in
+   [docs/release-checklist-v1.0.0.md](docs/release-checklist-v1.0.0.md) §2–3
+   (tag push → release workflow; repo description/topics/Discussions/pin/
+   social preview), and re-run the Docker quick start + `make smoke` on a
+   Docker machine.
+2. **Retrain `crisis_v1`** on the red-team hard negatives against the
+   pinned scikit-learn 1.9.1 — the opening of the v2.0 deep-learning track —
+   with the goal of raising dev precision above 0.543 at unchanged ensemble
+   recall, gated by `make eval` and the red-team controls.
+3. **Close the two cheap gaps found on Day 30:** document
+   `FIELD_ENCRYPTION_KEY` in the no-Docker quick start, and add the
+   branch-coverage gate to CI so "gate PASS" never again depends on a local
+   run.
+
+---
+
 **Day 29 — red-team and bug bash — is built and verified, with open
 weaknesses recorded (2026-10-13).** Work is on `arena/e22f678a-manovia`. The
 brief asked for `day-29-red-team-bug-bash`, but this session is pinned to its

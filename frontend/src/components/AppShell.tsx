@@ -91,7 +91,10 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
 
       <footer className="border-t border-border bg-surface" data-print="hide">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted">
-          <p>{t("app.footerDisclaimer")}</p>
+          {/* Day 30 positioning: stays until the clinical review
+              (docs/clinical-review.md) is complete. */}
+          <p className="font-semibold text-ink">{t("app.footerPortfolio")}</p>
+          <p className="mt-1">{t("app.footerDisclaimer")}</p>
           <p className="mt-1">{t("app.footerPrivacy")}</p>
           <p className="mt-3">
             <Link

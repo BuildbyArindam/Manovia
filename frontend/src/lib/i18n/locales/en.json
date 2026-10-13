@@ -1,8 +1,10 @@
 {
   "app": {
     "name": "Manovia",
+    "betaLabel": "Beta",
     "skipLink": "Skip to main content",
     "loading": "Loading…",
+    "footerPortfolio": "Portfolio demo — not a clinical service. Clinical review is not complete.",
     "footerDisclaimer": "Manovia is a self-help companion — not therapy, not a diagnosis, and not a crisis service.",
     "footerPrivacy": "Your entries are encrypted at rest. Nothing here is sold, shared, or used to train anyone else’s model.",
     "footerAccessibility": "Accessibility statement"
