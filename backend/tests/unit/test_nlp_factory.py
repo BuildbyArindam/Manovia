@@ -24,10 +24,18 @@ def settings(**overrides: object) -> Settings:
 
 class TestBuildAnalyzer:
     def test_the_choices_constant_matches_the_documented_set(self) -> None:
-        assert ANALYZER_CHOICES == ("auto", "hf", "keyword", "sentiment", "fake")
+        assert ANALYZER_CHOICES == (
+            "auto",
+            "hf",
+            "baseline",
+            "trained",
+            "keyword",
+            "sentiment",
+            "fake",
+        )
         assert FALLBACK_ORDER == ("keyword", "sentiment")
 
-    @pytest.mark.parametrize("choice", ["auto", "hf"])
+    @pytest.mark.parametrize("choice", ["auto", "hf", "baseline"])
     def test_a_model_choice_puts_the_model_first(self, choice: str) -> None:
         chain = build_analyzer(settings(emotion_analyzer=choice))
         assert isinstance(chain, AnalyzerChain)

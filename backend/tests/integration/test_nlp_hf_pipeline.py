@@ -59,7 +59,12 @@ def tiny_model(tmp_path_factory: pytest.TempPathFactory) -> str:
     directory = tmp_path_factory.mktemp("tiny-emotion-model")
     (directory / "vocab.txt").write_text("\n".join(VOCAB), encoding="utf-8")
 
-    tokenizer = transformers.BertTokenizerFast(vocab_file=str(directory / "vocab.txt"))
+    # The tokenizer must match the model family: a *Bert* tokenizer emits
+    # ``token_type_ids``, which ``DistilBertForSequenceClassification.forward``
+    # does not accept (transformers no longer drops them silently). The product
+    # never mixes families — it loads a hub checkpoint's own tokenizer — so this
+    # is the fixture being wrong, not the analyzer.
+    tokenizer = transformers.DistilBertTokenizerFast(vocab_file=str(directory / "vocab.txt"))
     tokenizer.save_pretrained(directory)
 
     config = transformers.DistilBertConfig(
