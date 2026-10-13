@@ -8,7 +8,7 @@ from app.core.config import Settings
 from app.core.errors import error_response, get_request_id
 from app.db.session import check_database
 
-router = APIRouter()
+router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
