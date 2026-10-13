@@ -70,9 +70,7 @@ def total_expected_cost(
     """Expected cost of the :func:`expected_cost_level` decision for one message."""
     costs = matrix or COST_MATRIX
     chosen = expected_cost_level(dict(probabilities), dict(costs))  # type: ignore[arg-type]
-    return float(
-        sum(float(probabilities.get(true, 0.0)) * costs[true][chosen] for true in LEVELS)
-    )
+    return float(sum(float(probabilities.get(true, 0.0)) * costs[true][chosen] for true in LEVELS))
 
 
 def cost_weighted_cross_entropy(
@@ -143,9 +141,7 @@ def cost_weighted_cross_entropy_python(
         weights = [COST_MATRIX[true][pred] for pred in LEVELS]
         denom = sum(weights) or 1.0
         terms = zip(weights, LEVELS, strict=True)
-        row = -sum(
-            weight * _log(probabilities_row.get(pred, 0.0)) for weight, pred in terms
-        )
+        row = -sum(weight * _log(probabilities_row.get(pred, 0.0)) for weight, pred in terms)
         total += row / denom
     return total / max(1, len(truths))
 

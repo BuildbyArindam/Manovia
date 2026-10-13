@@ -21,6 +21,7 @@ partition.
 from __future__ import annotations
 
 import json
+import math
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -91,10 +92,13 @@ class SafetyExample:
 def load_seed_split(path: str | Path) -> list[dict[str, Any]]:
     """Read a Day-9 split file as raw dicts (the expander's input).
 
-    Relative paths resolve against the **repository** root, not the ML root: the
-    seeds live in ``evals/datasets/``, which is deliberately outside ``ml/`` so
-    that the frozen splits stay where the eval harness and its hash checks expect
-    them.
+    Relative paths resolve the way a human means them: against the working
+    directory when that finds the file, otherwise against the **repository** root.
+    The seeds live in ``evals/datasets/``, deliberately outside ``ml/`` so the
+    frozen splits stay where the eval harness and its hash checks expect them;
+    the two rules differ only for a ``../evals/...`` path, which is how the DVC
+    stage spells it (DVC runs stages from ``ml/``, where the ``..`` is the
+    repository root).
     """
     return list(iter_jsonl(_repo_path(path)))
 
@@ -103,7 +107,12 @@ def _repo_path(path: str | Path) -> Path:
     candidate = Path(path).expanduser()
     if candidate.is_absolute():
         return candidate
-    return (ml_root().parent / candidate).resolve()
+    if candidate.exists():
+        return candidate.resolve()
+    from_root = (ml_root().parent / candidate).resolve()
+    if from_root.exists():
+        return from_root
+    return candidate.resolve()
 
 
 def rows_to_examples(rows: Iterable[GeneratedRow]) -> list[SafetyExample]:
@@ -231,23 +240,40 @@ def assign_splits(
     for key in sorted(strata):
         group = list(strata[key])
         seeded_rng(seed, "split", *key).shuffle(group)
-        n = len(group)
         cursor = 0
-        for position, share in enumerate(shares):
-            remaining = n - cursor
-            if position == len(shares) - 1:
-                take = remaining
-            elif remaining <= 1:
-                take = 0
-            else:
-                take = max(1, round(remaining * share)) if n >= 3 else 0
-                take = min(take, max(0, remaining - (len(shares) - position - 1)))
-            splits[names[position]].extend(group[cursor : cursor + take])
+        for name, take in zip(names, apportion(len(group), shares), strict=True):
+            splits[name].extend(group[cursor : cursor + take])
             cursor += take
 
     for name in splits:
         splits[name].sort(key=lambda example: example.id)
     return splits
+
+
+def apportion(n: int, shares: Sequence[float]) -> list[int]:
+    """Split ``n`` rows across ``shares``: largest-remainder, minimum one each.
+
+    A stratum of 2 rows must not end up entirely in the calibration split, which
+    is what a naive ``round(n * share)`` does (it rounds dev to zero and leaves
+    the tail bucket holding everything). Every split that exists gets at least one
+    row whenever there are at least as many rows as splits, and the counts always
+    sum to ``n``.
+    """
+    count = len(shares)
+    total = sum(shares)
+    if total <= 0:
+        raise ValueError("shares must sum to a positive number")
+    if n <= count:
+        return [1] * n + [0] * (count - n)
+    base = [1] * count
+    remaining = n - count
+    exact = [share * remaining / total for share in shares]
+    counts = [math.floor(value) for value in exact]
+    leftover = remaining - sum(counts)
+    order = sorted(range(count), key=lambda index: (-(exact[index] - counts[index]), index))
+    for index in range(leftover):
+        counts[order[index % count]] += 1
+    return [b + c for b, c in zip(base, counts, strict=True)]
 
 
 # --------------------------------------------------------------------------- #
@@ -269,8 +295,9 @@ def dataset_ref(name: str, path: str | Path) -> DatasetRef:
     )
 
 
-def example_dataset_ref(name: str, examples: Sequence[SafetyExample],
-    path: str | Path) -> DatasetRef:
+def example_dataset_ref(
+    name: str, examples: Sequence[SafetyExample], path: str | Path
+) -> DatasetRef:
     """:func:`dataset_ref` from an in-memory list, for rows not yet written."""
     return DatasetRef(
         name=name,

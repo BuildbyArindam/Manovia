@@ -26,7 +26,7 @@ notes: >-
 data:
   train:
     path: data/safety_toy/train.jsonl
-    sha256: "a836bdf194d721fbbd04167b4a12c333ecb54dbe6d62c2cd1409adf4690f3345"
+    sha256: "15f907ba67262fcc900de44774f59cbc02fd9059020d2a30d640b303b822e92d"
     rows: 20
   # Dev: model selection (early stopping on crisis recall).
   eval:
@@ -37,14 +37,14 @@ data:
   # nowhere else. Never the test split.
   validation:
     path: data/safety_toy/calibration.jsonl
-    sha256: "4ab3ff975172e1754b9c36732843a6824c8daa590c08bccf045032752981b647"
+    sha256: "c0e0fe0db82a1dade4af3b2c717a1644fc07f6a3ced091fe449754d13397ebfa"
     rows: 20
   # Held out from training, from dev and from calibration. For the smoke run this
   # is a slice of the hand-written fixture; for the real run it is the frozen
   # Day-9 file (see configs/safety_lora_xlmr.yaml).
   test:
     path: data/safety_toy/test.jsonl
-    sha256: "1128d9a42d6f6714d93dff9791d537bf7452417d4820974cf8656e15d5e9445a"
+    sha256: "f0b068421274ea1707b395f02cb802ddc8576a5ae5d430623d1ffc31f8815c0b"
     rows: 20
   text_field: text
   label_field: label

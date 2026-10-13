@@ -147,9 +147,7 @@ def expected_cost_level(
     best_level = LEVELS[0]
     best_cost = float("inf")
     for predicted in LEVELS:
-        total = sum(
-            float(probabilities.get(true, 0.0)) * costs[true][predicted] for true in LEVELS
-        )
+        total = sum(float(probabilities.get(true, 0.0)) * costs[true][predicted] for true in LEVELS)
         if total < best_cost - 1e-12:
             best_cost = total
             best_level = predicted

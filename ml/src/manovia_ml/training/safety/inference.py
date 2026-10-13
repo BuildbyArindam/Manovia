@@ -82,6 +82,4 @@ def predict_probabilities(
         batch_size=batch_size,
         device=device,
     )
-    return [
-        dict(zip(LEVELS, apply_temperature(row, temperature), strict=True)) for row in logits
-    ]
+    return [dict(zip(LEVELS, apply_temperature(row, temperature), strict=True)) for row in logits]

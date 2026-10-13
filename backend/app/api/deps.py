@@ -28,7 +28,7 @@ from app.models.enums import ConsentKind
 from app.models.user import User
 from app.services.nlp.base import EmotionAnalyzer
 from app.services.safety.escalation import Escalator, build_escalator
-from app.services.safety.ml_classifier import NullClassifier, SafetyClassifier, build_ml_classifier
+from app.services.safety.ml_classifier import SafetyClassifier, build_safety_classifier
 from app.services.safety.rules import RuleEngine, build_engine
 
 
@@ -90,9 +90,9 @@ def get_ml_classifier(request: Request) -> SafetyClassifier:
     runs rules-only — degradation, never failure.
     """
     settings = request.app.state.settings
-    if not settings.safety_ml_enabled:
-        return NullClassifier(reason="disabled")
-    return build_ml_classifier(artifact_dir=settings.safety_ml_artifact_dir)
+    # Day 33: one selector for both the baseline and the trained model, shared
+    # with the chat orchestrator so the two paths can never disagree.
+    return build_safety_classifier(settings)
 
 
 def get_emotion_analyzer(request: Request) -> EmotionAnalyzer:

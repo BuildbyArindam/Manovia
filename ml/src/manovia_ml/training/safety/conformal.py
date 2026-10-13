@@ -80,9 +80,7 @@ def conformal_quantile(scores: Sequence[float], alpha: float = DEFAULT_ALPHA) ->
     return ordered[index]
 
 
-def prediction_set(
-    probabilities: Mapping[str, float], quantile: float
-) -> frozenset[str]:
+def prediction_set(probabilities: Mapping[str, float], quantile: float) -> frozenset[str]:
     """Every level whose nonconformity score is at or below ``quantile``.
 
     The argmax is always included, so a perfectly confident prediction yields a
@@ -91,9 +89,7 @@ def prediction_set(
     declining to name one level.
     """
     members = {
-        label
-        for label in LEVELS
-        if 1.0 - float(probabilities.get(label, 0.0)) <= quantile + 1e-12
+        label for label in LEVELS if 1.0 - float(probabilities.get(label, 0.0)) <= quantile + 1e-12
     }
     if not members:
         best = max(LEVELS, key=lambda label: float(probabilities.get(label, 0.0)))
@@ -105,11 +101,7 @@ def set_coverage(sets: Sequence[frozenset[str]], labels: Sequence[str]) -> float
     """Share of rows whose true level is inside the prediction set."""
     if not sets:
         return 0.0
-    hits = sum(
-        1
-        for item, label in zip(sets, labels, strict=True)
-        if label.strip().lower() in item
-    )
+    hits = sum(1 for item, label in zip(sets, labels, strict=True) if label.strip().lower() in item)
     return hits / len(sets)
 
 
@@ -132,16 +124,23 @@ def set_size_stats(sets: Sequence[frozenset[str]]) -> dict[str, float]:
 def abstain_level(prediction: frozenset[str], *, point: str) -> str:
     """The level the system acts on, given the set and the point prediction.
 
-    If the set holds any level at or above MEDIUM, the answer is MEDIUM or above
-    — never below the point prediction, and never below MEDIUM. Otherwise the
-    point prediction stands: a set of ``{none, low}`` is ambiguity between two
+    If the set holds any level at or above MEDIUM, the answer is **MEDIUM or
+    above** — never below the point prediction, and never below MEDIUM. Otherwise
+    the point prediction stands: a set of ``{none, low}`` is ambiguity between two
     benign levels, and there is nothing to be cautious about.
+
+    The action is the MEDIUM floor, not the most severe level in the set. The set
+    is the list of levels the model *could not rule out*; promoting to the worst
+    of them would turn every uncertain row into a crisis card, which is a
+    different (and much louder) policy than "uncertainty resolves toward
+    noticing". Deciding *how far* above MEDIUM a message goes is what the point
+    prediction and the ensemble's crisis-mass band are for; this function's only
+    job is to refuse to let ambiguity resolve downward.
     """
-    risky = [level for level in prediction if severity(level) >= severity("medium")]
+    risky = any(severity(level) >= severity("medium") for level in prediction)
     if not risky:
         return point
-    cautious = max(risky, key=severity)
-    return max((point, cautious), key=severity)
+    return max((point, "medium"), key=severity)
 
 
 @dataclass(frozen=True)

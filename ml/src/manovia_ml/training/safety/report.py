@@ -43,9 +43,7 @@ def _hash(value: Any) -> str:
     return str(value)[:16]
 
 
-def _operating_point(
-    config: TrainConfig | None, safety: SafetyRunConfig | None
-) -> list[str]:
+def _operating_point(config: TrainConfig | None, safety: SafetyRunConfig | None) -> list[str]:
     """The lines that say which operating point produced the numbers."""
     if safety is None:
         return ["* Operating point: not recorded (re-rendered from the manifest)"]
@@ -54,8 +52,7 @@ def _operating_point(
         "* Operating point:",
         f"  * cost matrix `{cost.matrix}`, row-normalised {cost.normalise_per_row},",
         f"    decision rule {'expected cost' if cost.cost_decision_rule else 'argmax'}",
-        f"  * conformal alpha {safety.conformal.alpha}, "
-        f"policy `{safety.conformal.policy}`",
+        f"  * conformal alpha {safety.conformal.alpha}, policy `{safety.conformal.policy}`",
         f"  * calibration bins {safety.calibration.bins}",
     ]
     if config is not None:
@@ -151,9 +148,7 @@ def render_report(
         recall = _fmt(row.get("crisis_recall"))
         interval = _ci(row.get("crisis_recall_ci"))
         precision = _fmt(row.get("crisis_precision"))
-        lines.append(
-            f"| {lang} | {cases} | {crisis_cases} | {recall} | {interval} | {precision} |"
-        )
+        lines.append(f"| {lang} | {cases} | {crisis_cases} | {recall} | {interval} | {precision} |")
     lines += [
         "",
         "### Per level",
@@ -195,8 +190,7 @@ def render_report(
         accuracy = _fmt(item.get("accuracy"))
         gap = _fmt(item.get("gap"))
         lines.append(
-            f"| {item.get('bin')} | {item.get('count')} | {confidence} "
-            f"| {accuracy} | {gap} |"
+            f"| {item.get('bin')} | {item.get('count')} | {confidence} | {accuracy} | {gap} |"
         )
     target = _fmt(conformal.get("target_coverage"))
     alpha = _fmt(conformal.get("alpha"))
@@ -238,8 +232,7 @@ def render_report(
             f"| {_fmt(baseline_crisis.get('recall'))} |",
             f"| HIGH+IMMINENT precision | {_fmt(crisis.get('precision'))} "
             f"| {_fmt(baseline_crisis.get('precision'))} |",
-            f"| macro-F1 | {_fmt(evaluation.get('macro_f1'))} "
-            f"| {_fmt(baseline.get('macro_f1'))} |",
+            f"| macro-F1 | {_fmt(evaluation.get('macro_f1'))} | {_fmt(baseline.get('macro_f1'))} |",
             f"| expected cost | {_fmt(evaluation.get('expected_cost'))} "
             f"| {_fmt(baseline.get('expected_cost'))} |",
             f"| ECE | {ece_after} | {_fmt(baseline.get('ece'), 4)} |",
@@ -364,9 +357,9 @@ The decision rule at inference is the expected-cost argmin, not the argmax.
 
 | measure | value |
 | --- | --- |
-| HIGH+IMMINENT recall | {crisis.get('recall')} |
-| HIGH+IMMINENT precision | {crisis.get('precision')} |
-| macro-F1 | {evaluation.get('macro_f1')} |
+| HIGH+IMMINENT recall | {crisis.get("recall")} |
+| HIGH+IMMINENT precision | {crisis.get("precision")} |
+| macro-F1 | {evaluation.get("macro_f1")} |
 | abstention rate | {abstention_rate} |
 
 ## Limitations

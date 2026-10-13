@@ -130,7 +130,7 @@ class SafetyTrainResult:
             "calibration": self.calibration.as_dict(),
             "conformal": self.conformal.as_dict(),
             "baseline": self.baseline,
-        "dev": self.dev_evaluation,
+            "dev": self.dev_evaluation,
             "leakage": self.leakage,
             "data": {ref.name: ref.sha256 for ref in self.data_refs},
             "expected_problems": self.expected_problems,
@@ -197,7 +197,6 @@ def _train_lora(
     directly; the phase tag is set by :func:`train`, which owns the run.
     """
     import torch
-
 
     device = resolve_device(torch)
     build = build_lora_model(
@@ -317,8 +316,13 @@ def _train_lora(
                 if name in best_state:
                     parameter.copy_(best_state[name])
 
-    return model, tokenizer, history, best_epoch, device, (
-        "stopped_early" if stopped_early else "completed"
+    return (
+        model,
+        tokenizer,
+        history,
+        best_epoch,
+        device,
+        ("stopped_early" if stopped_early else "completed"),
     )
 
 
@@ -347,8 +351,7 @@ def _score(
         dict(zip(LEVELS, apply_temperature(row, temperature), strict=True)) for row in logits
     ]
     predictions = [
-        metric_fns.top_level(row, cost_rule=safety.cost.cost_decision_rule)
-        for row in probabilities
+        metric_fns.top_level(row, cost_rule=safety.cost.cost_decision_rule) for row in probabilities
     ]
     return predictions, probabilities
 
@@ -365,28 +368,40 @@ def _crisis_recall(examples: Sequence[SafetyExample], predictions: Sequence[str]
 
 
 def train(
-    config_path: str | Path,
+    config: str | Path | TrainConfig,
     *,
     phase: str = "train",
     parent_run_id: str | None = None,
     log_model: bool = True,
     record_expected: bool = False,
+    artifact_root: str | Path | None = None,
 ) -> SafetyTrainResult:
-    """One safety run: fit, calibrate, conformalise, evaluate, log, report."""
+    """One safety run: fit, calibrate, conformalise, evaluate, log, report.
+
+    ``config`` is a path to a YAML file, or an already-validated
+    :class:`~manovia_ml.config.TrainConfig` (what the tests pass, so a test run
+    writes into a temporary directory instead of ``ml/artifacts``).
+    ``artifact_root`` overrides where the artefact lands, for the same reason.
+    """
     started = time.monotonic()
-    config = load_config(config_path)
-    if config.safety is None or not isinstance(config.model, SafetyLoraConfig):
+    config_path: str | Path | None
+    if isinstance(config, str | Path):
+        config_path = config
+        loaded = load_config(config)
+    else:
+        config_path = None
+        loaded = config
+    # Narrowed through a plain local: mypy's isinstance narrowing is reliable on a
+    # local variable and unreliable across a member expression.
+    model_config = loaded.model
+    if loaded.safety is None or not isinstance(model_config, SafetyLoraConfig):
         raise ConfigError(
             "safety training needs model.kind 'safety_lora' and a `safety:` section; "
             "the TF-IDF baseline path is `safety_tfidf`"
         )
-    safety = config.safety
-    model_config = config.model
-    if (
-        config.data.train is None
-        or config.data.eval is None
-        or config.data.validation is None
-    ):
+    config = loaded
+    safety = loaded.safety
+    if config.data.train is None or config.data.eval is None or config.data.validation is None:
         raise ConfigError("safety training needs train, eval and validation splits")
     seed_state = seed_everything(config.seed, pin_blas_threads=config.threads)
 
@@ -394,6 +409,20 @@ def train(
     dev_examples = load_examples(config.data.eval.path)
     calibration_examples = load_examples(config.data.validation.path)
     test_examples = load_examples(config.data.test.path) if config.data.test else []
+
+    # --- The leakage guard, before a single optimiser step runs -------------- #
+    # An identical row on both sides of the split is not a data property, it is a
+    # bug: the model has already seen the answer. The emotion trainer refuses for
+    # the same reason, and here the consequence is worse than a good-looking
+    # number — it is a false sense of recall, in a domain where a false sense of
+    # recall is the thing being designed against. Checked first so a corrupt
+    # corpus costs a ConfigError, not a training run.
+    leakage = near_duplicate_report(train_examples, test_examples)
+    if leakage["exact_overlap"] > 0:
+        raise ConfigError(
+            f"{leakage['exact_overlap']} training rows appear verbatim in the held-out "
+            "test split; rebuild the corpus before training (see `dvc repro safety_expand`)"
+        )
 
     train_ref = dataset_ref("train", config.data.train.path)
     dev_ref = dataset_ref("dev", config.data.eval.path)
@@ -403,13 +432,13 @@ def train(
     model, tokenizer, history, best_epoch, device, stop_reason = _train_lora(
         config=config,
         safety=safety,
-        model_config=config.model,
+        model_config=model_config,
         train_examples=train_examples,
         dev_examples=dev_examples,
     )
 
     dev_predictions, dev_probabilities = _score(
-        model, tokenizer, dev_examples, config.model, device, safety
+        model, tokenizer, dev_examples, model_config, device, safety
     )
     # --- Calibration: temperature scaling on the calibration split ------------ #
     # Raw logits, not the cost-rule predictions: fitting a temperature on the
@@ -420,8 +449,8 @@ def train(
         model,
         tokenizer,
         calibration_examples,
-        max_length=config.model.tokenizer_max_length,
-        batch_size=config.model.training.eval_batch_size,
+        max_length=model_config.tokenizer_max_length,
+        batch_size=model_config.training.eval_batch_size,
         device=device,
     )
     calibration_result = calibrate(
@@ -430,9 +459,7 @@ def train(
         bins=safety.calibration.bins,
         split="calibration",
     )
-    temperature = (
-        calibration_result.temperature if safety.calibration.enabled else 1.0
-    )
+    temperature = calibration_result.temperature if safety.calibration.enabled else 1.0
 
     # --- Conformal: the quantile comes from the same split -------------------- #
     scaled_probabilities = [
@@ -452,8 +479,8 @@ def train(
         model,
         tokenizer,
         test_examples,
-        max_length=config.model.tokenizer_max_length,
-        batch_size=config.model.training.eval_batch_size,
+        max_length=model_config.tokenizer_max_length,
+        batch_size=model_config.training.eval_batch_size,
         device=device,
     )
     test_probabilities = [
@@ -481,7 +508,8 @@ def train(
         abstention_rate=size_stats["abstention_rate"],
         mean_set_size=size_stats["mean_size"],
         raised_by_abstention=sum(
-            1 for point, final in zip(test_predictions, test_abstained, strict=True)
+            1
+            for point, final in zip(test_predictions, test_abstained, strict=True)
             if severity(final) > severity(point)
         ),
         evaluated_rows=len(test_examples),
@@ -528,8 +556,6 @@ def train(
             seed=config.seed,
         )
 
-    leakage = near_duplicate_report(train_examples, test_examples)
-
     artifact_dir = _save_artifact(
         model=model,
         tokenizer=tokenizer,
@@ -543,6 +569,7 @@ def train(
         history=history,
         device=device,
         base_model=model_config.base_model,
+        artifact_root=artifact_root,
         best_epoch=best_epoch,
         stop_reason=stop_reason,
         data_refs=tuple(
@@ -552,23 +579,23 @@ def train(
     )
 
     metrics = _flat_metrics(evaluation)
-    expected = load_expected_metrics(config_path)
+    expected = load_expected_metrics(config_path) if config_path is not None else None
     problems: list[str] = []
     recorded_path: Path | None = None
     if expected is not None and expected.seed == config.seed:
         problems = compare_metrics(metrics, expected.metrics, tolerance=config.evaluation.tolerance)
 
     params = {
-        "model.base_model": config.model.base_model,
-        "model.tokenizer_max_length": config.model.tokenizer_max_length,
-        "lora.rank": config.model.lora.rank,
-        "lora.alpha": config.model.lora.alpha,
-        "lora.dropout": config.model.lora.dropout,
-        "lora.target_modules": list(config.model.lora.target_modules),
-        "training.epochs": config.model.training.epochs,
-        "training.batch_size": config.model.training.batch_size,
-        "training.learning_rate": config.model.training.learning_rate,
-        "training.max_steps": config.model.training.max_steps or 0,
+        "model.base_model": model_config.base_model,
+        "model.tokenizer_max_length": model_config.tokenizer_max_length,
+        "lora.rank": model_config.lora.rank,
+        "lora.alpha": model_config.lora.alpha,
+        "lora.dropout": model_config.lora.dropout,
+        "lora.target_modules": list(model_config.lora.target_modules),
+        "training.epochs": model_config.training.epochs,
+        "training.batch_size": model_config.training.batch_size,
+        "training.learning_rate": model_config.training.learning_rate,
+        "training.max_steps": model_config.training.max_steps or 0,
         "training.best_epoch": best_epoch,
         "training.stop_reason": stop_reason,
         "training.label_smoothing": safety.cost.label_smoothing,
@@ -592,14 +619,15 @@ def train(
 
     tags_out = {
         "manovia.task": "safety",
-        "manovia.base_model": config.model.base_model,
+        "manovia.base_model": model_config.base_model,
         "manovia.artifact_dir": str(artifact_dir),
         "manovia.calibration_split": "calibration",
         "manovia.conformal_split": "calibration",
         **(config.tracking.tags or {}),
     }
-    data_refs = tuple(ref for ref in (train_ref, dev_ref, calibration_ref,
-        test_ref) if ref is not None)
+    data_refs = tuple(
+        ref for ref in (train_ref, dev_ref, calibration_ref, test_ref) if ref is not None
+    )
     with tracked_run(
         config,
         phase=phase,
@@ -607,7 +635,7 @@ def train(
         seed_state=seed_state,
         params=params,
         tags=tags_out,
-        config_path=Path(config_path),
+        config_path=Path(config_path) if config_path is not None else None,
         parent_run_id=parent_run_id,
     ) as run:
         _stamp_run_id(artifact_dir, run.run_id)
@@ -643,7 +671,7 @@ def train(
                 run.set_tags({"manovia.expected": "failed"})
         run_id = run.run_id
 
-    if record_expected:
+    if record_expected and config_path is not None:
         recorded_path = write_expected_metrics(
             config_path,
             ExpectedMetrics(
@@ -676,7 +704,7 @@ def train(
         expected_problems=problems,
         expected_checked=expected is not None,
         recorded_expected_path=recorded_path,
-        base_model=config.model.base_model,
+        base_model=model_config.base_model,
         elapsed_seconds=time.monotonic() - started,
     )
 
@@ -703,9 +731,7 @@ class _ParameterView:
     @property
     def trainable_parameters(self) -> int:
         return sum(
-            parameter.numel()
-            for parameter in self._model.parameters()
-            if parameter.requires_grad
+            parameter.numel() for parameter in self._model.parameters() if parameter.requires_grad
         )
 
 
@@ -728,9 +754,7 @@ def _evaluate(
     """The held-out report: per-level, binary crisis, per-language, CIs, abstention."""
     # ECE on the held-out split, not on the calibration split the temperature was
     # fitted on: the two answer different questions and both belong in the report.
-    heldout_ece = expected_calibration_error(
-        probabilities, truths, bins=safety.calibration.bins
-    )
+    heldout_ece = expected_calibration_error(probabilities, truths, bins=safety.calibration.bins)
     pairs = list(zip(truths, predictions, strict=True))
     abstain_pairs = list(zip(truths, abstained, strict=True))
     crisis = metric_fns.binary_crisis_metrics(truths, predictions)
@@ -819,7 +843,8 @@ def _evaluate(
             "crisis_recall_ci": list(abstain_recall_ci),
             "crisis_precision": abstain_crisis["precision"],
             "raised_by_abstention": sum(
-                1 for point, final in zip(predictions, abstained, strict=True)
+                1
+                for point, final in zip(predictions, abstained, strict=True)
                 if severity(final) > severity(point)
             ),
         },
@@ -859,8 +884,7 @@ def _baseline_metrics(
     scorer = TfidfBaseline(fit)
     probabilities = scorer.probabilities(test_examples)
     predictions = [
-        metric_fns.top_level(row, cost_rule=safety.cost.cost_decision_rule)
-        for row in probabilities
+        metric_fns.top_level(row, cost_rule=safety.cost.cost_decision_rule) for row in probabilities
     ]
     truths = [example.label for example in test_examples]
     pairs = list(zip(truths, predictions, strict=True))
@@ -932,12 +956,13 @@ def _save_artifact(
     stop_reason: str,
     data_refs: tuple[DatasetRef, ...],
     train_examples: Sequence[SafetyExample],
+    artifact_root: str | Path | None = None,
 ) -> Path:
     """Write the packaged artefact: merged model, tokenizer, calibration, card."""
     from manovia_ml.training.safety.model import SafetyLoRABuild
     from manovia_ml.training.safety.report import write_card
 
-    root = resolve(safety.artifact_dir)
+    root = Path(artifact_root) if artifact_root is not None else resolve(safety.artifact_dir)
     artifact_dir = root / safety.artifact_name
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
@@ -961,9 +986,7 @@ def _save_artifact(
     (artifact_dir / THRESHOLDS_FILENAME).write_text(
         json.dumps(
             {
-                "decision_rule": "expected_cost"
-                if safety.cost.cost_decision_rule
-                else "argmax",
+                "decision_rule": "expected_cost" if safety.cost.cost_decision_rule else "argmax",
                 "temperature": calibration_result.temperature,
                 "conformal_quantile": conformal_result.quantile,
                 "conformal_alpha": conformal_result.alpha,

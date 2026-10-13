@@ -95,6 +95,15 @@ class MLPrediction:
     confidence: float = 0.0
     #: Artifact version string, for audit trails and reports.
     version: str = "unknown"
+    #: Day 33 (trained model only): the level after the conformal abstention
+    #: policy — a prediction set containing MEDIUM or above is treated as MEDIUM
+    #: or above. ``None`` for a classifier with no prediction sets, so a caller
+    #: can tell "no policy" from "policy says NONE".
+    abstained_level: RiskLevel | None = None
+    #: Day 33: the conformal prediction set, most severe first. Empty when the
+    #: classifier has no conformal quantile. A set with more than one element is
+    #: an abstention: the model declined to name one level.
+    prediction_set: tuple[str, ...] = ()
 
     def mass_at_or_above(self, level: RiskLevel) -> float:
         """Total probability on ``level`` and everything more severe."""
@@ -224,6 +233,68 @@ def build_ml_classifier(*, artifact_dir: str = "") -> SafetyClassifier:
         return NullClassifier(reason="artifact_invalid")
 
 
+def build_safety_classifier(settings: Any) -> SafetyClassifier:
+    """The one place that decides *which* ML classifier the ensemble consumes.
+
+    ``SAFETY_ML`` (``settings.safety_ml``) selects between the Day-9 baseline and
+    the Day-33 trained model. Both construction sites — the API dependency and
+    the chat orchestrator — call this, so a deployment cannot end up with the
+    chat path on one model and the assess endpoint on the other.
+
+    The order of the checks is the behaviour:
+
+    1. ``SAFETY_ML_ENABLED=false`` -> a disabled classifier, and the pipeline is
+       exactly the Day-8 rules-only one.
+    2. ``SAFETY_ML=trained`` -> the packaged LoRA model. If it cannot be loaded
+       (missing directory, missing torch/transformers, broken artefact) this
+       falls back to the **baseline**, because "the ML is silently off" is a
+       different deployment from the one the operator asked for, and the
+       fallback is recorded in the classifier's ``version``/``reason``.
+    3. ``SAFETY_ML=baseline`` (the default) -> the Day-9 model.
+
+    Everything here is offline: no network at load or predict time.
+    """
+
+    if not getattr(settings, "safety_ml_enabled", False):
+        return NullClassifier(reason="disabled")
+
+    choice = str(getattr(settings, "safety_ml", "baseline") or "baseline").strip().lower()
+    if choice == "trained":
+        from app.services.safety.trained import (
+            TrainedSafetyClassifier,
+            build_trained_safety_classifier,
+        )
+
+        artifact_dir = str(getattr(settings, "safety_ml_trained_artifact_dir", "") or "")
+        if not artifact_dir.strip():
+            artifact_dir = str(
+                Path(str(files("app").joinpath("ml_artifacts/safety_trained"))).resolve()
+            )
+        trained = build_trained_safety_classifier(artifact_dir=artifact_dir)
+        # Probe the two directories here rather than trusting a lazy object: the
+        # fallback below must be decided at construction time, not on the first
+        # request that happens to need a prediction.
+        if trained.enabled and isinstance(trained, TrainedSafetyClassifier):
+            if trained.artifact_exists():
+                return trained
+        elif trained.enabled:
+            return trained
+        # Recorded, not silent: the fallback keeps the same fitted pipeline but
+        # carries a version string that says the trained model was asked for and
+        # could not be used, so a response or an eval report shows why. Without
+        # this the deployment would look exactly like `SAFETY_ML=baseline`.
+        baseline = build_ml_classifier(artifact_dir=str(settings.safety_ml_artifact_dir))
+        if isinstance(baseline, TfidfLogisticClassifier):
+            return TfidfLogisticClassifier(
+                baseline._pipeline,
+                baseline._classes,
+                f"{baseline.version}+trained-unavailable",
+            )
+        return baseline
+
+    return build_ml_classifier(artifact_dir=str(settings.safety_ml_artifact_dir))
+
+
 __all__ = [
     "LEVEL_LABELS",
     "MAX_CLASSIFIER_CHARS",
@@ -234,6 +305,7 @@ __all__ = [
     "SafetyClassifier",
     "TfidfLogisticClassifier",
     "build_ml_classifier",
+    "build_safety_classifier",
     "preprocess_batch",
     "preprocess_text",
 ]

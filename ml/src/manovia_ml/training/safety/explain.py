@@ -79,34 +79,140 @@ DOMINANCE_THRESHOLD: Final = 0.5
 RISK_LEXICON: Final[dict[str, frozenset[str]]] = {
     "en": frozenset(
         {
-            "die", "dead", "death", "kill", "end", "life", "live", "living", "hurt",
-            "harm", "pain", "hopeless", "worthless", "empty", "alone", "lonely",
-            "scared", "afraid", "plan", "letter", "letters", "goodbye", "note",
-            "tonight", "tomorrow", "morning", "help", "cannot", "cant", "stop",
-            "anymore", "again", "myself", "myself,", "burden", "trapped", "wall",
-            "reason", "future", "wake", "waking", "breath", "bleeding", "blood",
+            "die",
+            "dead",
+            "death",
+            "kill",
+            "end",
+            "life",
+            "live",
+            "living",
+            "hurt",
+            "harm",
+            "pain",
+            "hopeless",
+            "worthless",
+            "empty",
+            "alone",
+            "lonely",
+            "scared",
+            "afraid",
+            "plan",
+            "letter",
+            "letters",
+            "goodbye",
+            "note",
+            "tonight",
+            "tomorrow",
+            "morning",
+            "help",
+            "cannot",
+            "cant",
+            "stop",
+            "anymore",
+            "again",
+            "myself",
+            "myself,",
+            "burden",
+            "trapped",
+            "wall",
+            "reason",
+            "future",
+            "wake",
+            "waking",
+            "breath",
+            "bleeding",
+            "blood",
         }
     ),
     "hi": frozenset(
         {
-            "मरने", "मरना", "मौत", "ज़िंदगी", "जीना", "दर्द", "तकलीफ", "खुद", "ख़ुद",
-            "चोट", "नहीं", "नहि", "आत्महत्या", "उम्मीद", "बेवजह", "अकेला", "अकेली",
-            "डर", "भय", "मदद", "चिट्ठी", "चिट्ठियाँ", "अलविदा", "रात", "सुबह", "कल",
+            "मरने",
+            "मरना",
+            "मौत",
+            "ज़िंदगी",
+            "जीना",
+            "दर्द",
+            "तकलीफ",
+            "खुद",
+            "ख़ुद",
+            "चोट",
+            "नहीं",
+            "नहि",
+            "आत्महत्या",
+            "उम्मीद",
+            "बेवजह",
+            "अकेला",
+            "अकेली",
+            "डर",
+            "भय",
+            "मदद",
+            "चिट्ठी",
+            "चिट्ठियाँ",
+            "अलविदा",
+            "रात",
+            "सुबह",
+            "कल",
         }
     ),
     "hi-Latn": frozenset(
         {
-            "marne", "marna", "maut", "zindagi", "zinda", "jeena", "dard", "takleef",
-            "khud", "chot", "nahi", "nahin", "aatmahatya", "ummeed", "akela", "akele",
-            "dar", "darr", "madad", "chitthi", "chitthiyan", "alvida", "raat", "subah",
-            "kal", "tang", "khatam", "sab",
+            "marne",
+            "marna",
+            "maut",
+            "zindagi",
+            "zinda",
+            "jeena",
+            "dard",
+            "takleef",
+            "khud",
+            "chot",
+            "nahi",
+            "nahin",
+            "aatmahatya",
+            "ummeed",
+            "akela",
+            "akele",
+            "dar",
+            "darr",
+            "madad",
+            "chitthi",
+            "chitthiyan",
+            "alvida",
+            "raat",
+            "subah",
+            "kal",
+            "tang",
+            "khatam",
+            "sab",
         }
     ),
     "bn": frozenset(
         {
-            "মরা", "মরতে", "মৃত্যু", "জীবন", "বাঁচা", "দুঃখ", "কষ্ট", "নিজে", "নিজের",
-            "ক্ষতি", "আঘাত", "নাহি", "আত্মহত্যা", "আশা", "অকেজো", "ভয়", "ত্রাস",
-            "সাহায্য", "চিঠি", "বিদায়", "রাত", "সকাল", "কাল", "সব",
+            "মরা",
+            "মরতে",
+            "মৃত্যু",
+            "জীবন",
+            "বাঁচা",
+            "দুঃখ",
+            "কষ্ট",
+            "নিজে",
+            "নিজের",
+            "ক্ষতি",
+            "আঘাত",
+            "নাহি",
+            "আত্মহত্যা",
+            "আশা",
+            "অকেজো",
+            "ভয়",
+            "ত্রাস",
+            "সাহায্য",
+            "চিঠি",
+            "বিদায়",
+            "রাত",
+            "সকাল",
+            "কাল",
+            "সব",
         }
     ),
 }
@@ -242,9 +348,7 @@ def attribute(
     return [item for item in out if item.word], tokens
 
 
-def _spans(
-    offsets: Any, text: str, tokens: Sequence[str]
-) -> list[tuple[int | None, int | None]]:
+def _spans(offsets: Any, text: str, tokens: Sequence[str]) -> list[tuple[int | None, int | None]]:
     """Character span per token, from the tokenizer's own offset mapping.
 
     Grouping sub-word pieces by their *character span* is what makes the
@@ -421,8 +525,10 @@ def _json(path: Path) -> dict[str, Any]:
 def _print_review(explanations: Sequence[Explanation], findings: dict[str, Any]) -> None:
     print(f"reviewed {len(explanations)} flagged examples\n")
     for item in explanations:
-        print(f"[{item.example_id}] lang={item.lang} true={item.true_label} "
-              f"predicted={item.predicted_level} p={item.confidence:.3f}")
+        print(
+            f"[{item.example_id}] lang={item.lang} true={item.true_label} "
+            f"predicted={item.predicted_level} p={item.confidence:.3f}"
+        )
         print(f"    text: {item.text}")
         for attribution in item.attributions[:5]:
             bar = "#" * max(1, int(abs(attribution.value) * 20))

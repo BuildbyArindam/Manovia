@@ -137,9 +137,7 @@ def evaluate(
     temperature = float(calibration.get("temperature", 1.0)) or 1.0
     from manovia_ml.training.safety.calibration import apply_temperature
 
-    raw_probabilities = [
-        dict(zip(LEVELS, _softmax(row), strict=True)) for row in logits
-    ]
+    raw_probabilities = [dict(zip(LEVELS, _softmax(row), strict=True)) for row in logits]
     probabilities = [
         dict(zip(LEVELS, apply_temperature(row, temperature), strict=True)) for row in logits
     ]
@@ -233,12 +231,11 @@ def evaluate(
         },
         "calibration": {
             "temperature": temperature,
-            "ece_before": expected_calibration_error(
-                raw_probabilities, truths, bins=bins
-            ),
+            "ece_before": expected_calibration_error(raw_probabilities, truths, bins=bins),
             "ece_after": expected_calibration_error(probabilities, truths, bins=bins),
-            "reliability": [item.as_dict() for item in reliability_diagram(probabilities, truths,
-                bins=bins)],
+            "reliability": [
+                item.as_dict() for item in reliability_diagram(probabilities, truths, bins=bins)
+            ],
         },
         "conformal": {
             "quantile": quantile,

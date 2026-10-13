@@ -97,10 +97,7 @@ def build(
 
     target = resolve(out_dir)
     target.mkdir(parents=True, exist_ok=True)
-    paths = {
-        name: write_examples(target / f"{name}.jsonl", rows)
-        for name, rows in splits.items()
-    }
+    paths = {name: write_examples(target / f"{name}.jsonl", rows) for name, rows in splits.items()}
 
     dropped_path = target / "dropped.jsonl"
     with dropped_path.open("w", encoding="utf-8") as handle:
@@ -138,9 +135,7 @@ def build(
     return manifest
 
 
-def _build_toy(
-    *, out_dir: str | Path, seed: int, test_share: float = 0.15
-) -> dict[str, Any]:
+def _build_toy(*, out_dir: str | Path, seed: int, test_share: float = 0.15) -> dict[str, Any]:
     """The smoke-run split of the hand-written fixture under ``ml/data/toy/``.
 
     The only place a fourth slice is cut: the real corpus's held-out split is the
@@ -165,8 +160,9 @@ def _build_toy(
         "seed": seed,
         "expansion": {"paraphrases_per_seed": 0, "adversarial_per_row": 0},
         "rules_filter": "not applied (fixture is hand-labelled)",
-        "seed_files": [{"path": str(fixture), "sha256": sha256_file(fixture),
-            "rows": len(examples)}],
+        "seed_files": [
+            {"path": str(fixture), "sha256": sha256_file(fixture), "rows": len(examples)}
+        ],
         "stats": {"seeds": len(examples), "kept": len(examples), "dropped": 0, "drop_reasons": {}},
         "drop_reasons": {},
         "summaries": {name: summary(rows) for name, rows in splits.items()},

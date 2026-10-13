@@ -195,8 +195,9 @@ _JOINERS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 
-def apply_synonyms(text: str, lang: str, *,
-    rule_ids: Sequence[str] | None = None) -> list[Paraphrase]:
+def apply_synonyms(
+    text: str, lang: str, *, rule_ids: Sequence[str] | None = None
+) -> list[Paraphrase]:
     """Every single-rule synonym swap that applies to ``text``.
 
     Returns one :class:`Paraphrase` per matching rule, so a caller can take the
@@ -212,8 +213,9 @@ def apply_synonyms(text: str, lang: str, *,
     return out
 
 
-def apply_wrapper(text: str, lang: str, *,
-    rule_ids: Sequence[str] | None = None) -> list[Paraphrase]:
+def apply_wrapper(
+    text: str, lang: str, *, rule_ids: Sequence[str] | None = None
+) -> list[Paraphrase]:
     """Every register wrapper that fits around ``text``."""
     out: list[Paraphrase] = []
     for rule_id, prefix, suffix in _WRAPPERS.get(lang, ()):
@@ -237,8 +239,11 @@ def reorder_clauses(text: str, lang: str) -> list[Paraphrase]:
                 continue
             tail = joiner.strip().lstrip(",;").strip()
             separator = f", {tail} " if tail else ", "
-            return [Paraphrase(text=f"{right}{separator}{left}", strategy="reorder",
-                rule_id=f"{lang}.reorder")]
+            return [
+                Paraphrase(
+                    text=f"{right}{separator}{left}", strategy="reorder", rule_id=f"{lang}.reorder"
+                )
+            ]
     return []
 
 
@@ -363,4 +368,3 @@ def build_paraphraser(name: str) -> Paraphraser:
     if name in ("llm", "backend-llm"):
         return BackendLLMParaphraser()
     raise ValueError(f"unknown paraphraser {name!r}; expected 'fake' or 'llm'")
-

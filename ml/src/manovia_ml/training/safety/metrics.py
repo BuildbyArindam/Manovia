@@ -42,8 +42,9 @@ def _normalise(label: str) -> str:
 def accuracy(truths: Sequence[str], predictions: Sequence[str]) -> float:
     if not truths:
         return 0.0
-    hits = sum(1 for a, b in zip(truths, predictions,
-        strict=True) if _normalise(a) == _normalise(b))
+    hits = sum(
+        1 for a, b in zip(truths, predictions, strict=True) if _normalise(a) == _normalise(b)
+    )
     return hits / len(truths)
 
 

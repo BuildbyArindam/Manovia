@@ -1,4 +1,4 @@
-.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
@@ -25,6 +25,19 @@
 #   make emotion-eval   ARTIFACT=artifacts/emotion/manovia-emotion-xlmr-v1
 #   make emotion-tune   CONFIG=... TRIALS=12            (optuna.enabled must be true)
 #   make emotion-data   SRC=... OUT=... SCHEME=goemotions LANG=en
+#
+# Day 33 adds the safety classifier (ADR 0033). The corpus builder is a DVC stage
+# (`make safety-data`); the smoke path is the offline one — a tiny random-init
+# XLM-R on 20 hand-written rows per split, seconds on a CPU — and it exercises
+# the cost matrix, the temperature, the conformal quantile, the abstention
+# policy, the TF-IDF comparison, the artefact layout and the MLflow record. Real
+# numbers need the GPU run in notebooks/colab_safety_lora.ipynb.
+#
+#   make safety-data                                       dvc repro (safety stages)
+#   make safety-smoke                                      tiny run, seconds, offline
+#   make safety-train  CONFIG=configs/safety_lora_xlmr.yaml (needs a GPU)
+#   make safety-eval    ARTIFACT=artifacts/safety/<name> [SAFETY_EVAL_DATA=data/safety/dev.jsonl]
+#   make safety-explain ARTIFACT=artifacts/safety/<name> N=10
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
 PYDIR := $(dir $(abspath $(PYTHON)))
@@ -53,6 +66,11 @@ SMOKE_DATE := $(shell date -u +%Y-%m-%d)
 SMOKE_REPORT ?= reports/smoke/$(SMOKE_DATE)-smoke.md
 SMOKE_JSON ?= /tmp/manovia-ml-smoke-$(SMOKE_DATE).json
 EMOTION_JSON ?= /tmp/manovia-ml-emotion-$(SMOKE_DATE).json
+SAFETY_CONFIG ?= configs/safety_lora_smoke.yaml
+SAFETY_JSON ?= /tmp/manovia-ml-safety-$(SMOKE_DATE).json
+SAFETY_DATA ?= data/safety_toy/dev.jsonl
+SAFETY_EVAL_DATA ?= data/safety/dev.jsonl
+N ?= 10
 
 install:
 	$(PYTHON) -m pip install -e ".[ml,dev]"
@@ -134,6 +152,33 @@ emotion-tune:
 emotion-data:
 	@test -n "$(SRC)" || { echo "usage: make emotion-data SRC=<raw jsonl> OUT=<out jsonl> [SCHEME=goemotions] [LANG=en]"; exit 2; }
 	$(PYTHON) -m manovia_ml.training.emotion.data convert $(SRC) --scheme $(SCHEME) --lang $(LANG) --out $(OUT)
+
+# Day 33. The corpus stages are separate so a CI job can rebuild the data
+# without training anything; `dvc repro` runs every stage including these.
+safety-data:
+	$(PYTHON) -m dvc repro safety_toy_split
+	$(PYTHON) -m dvc repro safety_expand
+
+safety-smoke:
+	$(PYTHON) -m manovia_ml.training.safety.train --config $(SAFETY_CONFIG) --phase smoke --json > $(SAFETY_JSON)
+	$(PYTHON) -c "import json; d=json.load(open('$(SAFETY_JSON)')); print('SAFETY RUN_ID=' + d['run_id']); print('artifact=' + d['artifact_dir'])"
+	$(PYTHON) -m manovia_ml.training.safety.evaluate --artifact $$($(PYTHON) -c "import json;print(json.load(open('$(SAFETY_JSON)'))['artifact_dir'])") --data $(SAFETY_DATA) --bootstrap 200 --json
+	@echo "--- safety smoke ---"
+	@cat $(SAFETY_JSON)
+
+safety-train:
+	@case "$(CONFIG)" in configs/safety_lora_smoke.yaml) \\
+		echo "usage: make safety-train CONFIG=configs/safety_lora_xlmr.yaml  (needs a GPU; use make safety-smoke offline)"; exit 2;; \\
+	esac
+	$(PYTHON) -m manovia_ml.training.safety.train --config $(CONFIG)
+
+safety-eval:
+	@test -d "$(ARTIFACT)" || { echo "no artefact at $(ARTIFACT) — run \`make safety-smoke\` first, or pass ARTIFACT=<dir>"; exit 2; }
+	$(PYTHON) -m manovia_ml.training.safety.evaluate --artifact $(ARTIFACT) --data $(SAFETY_EVAL_DATA) --bootstrap 2000 --json
+
+safety-explain:
+	@test -d "$(ARTIFACT)" || { echo "no artefact at $(ARTIFACT) — run \`make safety-smoke\` first, or pass ARTIFACT=<dir>"; exit 2; }
+	$(PYTHON) -m manovia_ml.training.safety.explain --artifact $(ARTIFACT) --data $(SAFETY_EVAL_DATA) --n $(N)
 
 test:
 	$(PYTHON) -m pytest
