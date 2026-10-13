@@ -38,7 +38,7 @@ entry.
 | [0026](0026-deployment-platform.md) | Deployment platform: Fly.io for the API and Postgres, Netlify for the web | Accepted | 2026-10-13 |
 | [0027](0027-generated-api-reference.md) | Generated API reference with a drift test | Accepted | 2026-10-13 |
 | [0028](0028-model-card-and-clinical-review-gate.md) | Model card and clinical-review checklist as documentation gates | Accepted | 2026-10-13 |
-| [0029](0029-branch-coverage-gates.md) | Per-group branch coverage gates | Accepted; the safety floor is not yet met | 2026-10-13 |
+| [0029](0029-branch-coverage-gates.md) | Per-group branch coverage gates | Accepted; met on Day 28 after two tests were added | 2026-10-13 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number

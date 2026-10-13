@@ -45,6 +45,11 @@ note for each. When a release is tagged, the release workflow
   application-code change on Day 28.
 - `docs/privacy-and-threat-model.md`: helplines described as schema-checked, not
   call-verified.
+- **Removed `GET /api/v1/chat/sessions/{id}/stream?message=`.** It put the user's
+  message in the URL, where proxies and access logs record it. The web client has
+  always used the POST stream. The API reference now lists 62 operations.
+- Two safety tests for branches the coverage gate found untested: the ensemble
+  with a disabled classifier, and a pattern file whose top level is not a mapping.
 
 ### Fixed
 
@@ -52,10 +57,12 @@ note for each. When a release is tagged, the release workflow
   configuration accepts `anthropic`, `ollama` and `fake` only.
 - The README's static "backend coverage 100%" badge did not match the measured
   coverage. It now shows the measured statement and branch figures from the
-  Day 28 run, and says the safety branch gate is failing.
+  Day 28 run, with the gate result stated.
 - `docs/evaluation-report.md` and the README called the Indian helplines
   "verified". `in-kiran` is flagged `needs_verification`; the wording now says so.
-- Prettier formatting in 17 frontend files (line wrapping only).
+- Prettier formatting in 17 frontend files and the frontend README (line wrapping only).
+- The safety branch coverage gate: 91.67% against 95% on the Day 28 check. It now passes
+  with every safety module at 100% branches, after the two tests above.
 
 ## Day 27 — DevOps, observability and deployment
 
@@ -76,8 +83,9 @@ note for each. When a release is tagged, the release workflow
 - Branch coverage measured; overall backend gate at 85%, every
   `app/services/safety` module at 95%, crypto and scoring at 100%
   (`backend/scripts/coverage_gate.py`, run by `make test`).
-- **Status on Day 28:** the safety group measures 91.67% and fails its 95%
-  floor. CI does not run the branch gate. See [ADR 0029](docs/adr/0029-branch-coverage-gates.md).
+- **Status on Day 28:** the safety group measured 91.67% and failed its 95% floor
+  until two tests were added; it passes now. CI does not run the branch gate yet.
+  See [ADR 0029](docs/adr/0029-branch-coverage-gates.md).
 
 ## Day 25 — Offline, accessibility and low bandwidth (PWA)
 

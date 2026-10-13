@@ -5,9 +5,9 @@ A privacy-first, safety-first self-help companion for mental wellbeing. It is no
 > **If you are in danger or in crisis, call your local emergency number now.** The list below is a starting point, not a substitute. See [Crisis and emergency help](#crisis-and-emergency-help).
 
 [![CI](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml/badge.svg)](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml)
-![Backend statement coverage 96.6%, branch coverage 89.9%, safety branch gate failing](https://img.shields.io/badge/backend%20statements%2096.6%25%20%C2%B7%20branches%2089.9%25-yellow.svg)
+![Backend statement coverage 96.6%, branch coverage 89.9%, safety branch gate passing](https://img.shields.io/badge/backend%20statements%2096.6%25%20%C2%B7%20branches%2089.9%25-brightgreen.svg)
 
-The coverage badge is a static figure from the Day 28 run (2026-10-13). The safety-module branch gate is **currently failing** (91.67% against a 95% floor). See [Quality](#quality) and the [known issues](PROGRESS.md).
+The coverage badge is a static figure from the Day 28 run (2026-10-13). It is updated by hand when the numbers change. The safety-module branch gate passes in that run. CI does not run that gate yet. See [Quality](#quality) and the [known issues](PROGRESS.md).
 
 ## What it is
 
@@ -103,7 +103,7 @@ Manovia is a monorepo: a FastAPI backend, a React, Vite and TypeScript frontend,
 ## Quality
 
 - **Tests.** The backend suite (pytest) and the frontend suite (Vitest) run in CI. The Day 28 run is recorded in the [verification note](docs/verification/day28-documentation-and-portfolio.md).
-- **Coverage.** Measured on 2026-10-13: statements 96.6%, branches 89.9%. The branch gate in `backend/scripts/coverage_gate.py` (run by `make test`) requires overall branch coverage of 85%, branch coverage of 95% for every `app/services/safety` module, and 100% for the crypto and scoring modules. The safety group is at 91.67% in the current run, so the gate fails. CI runs pytest with an 80% statement floor and does not run the branch gate yet.
+- **Coverage.** Measured on 2026-10-13: statements 96.6%, branches 89.9%. The branch gate in `backend/scripts/coverage_gate.py` (run by `make test`) requires overall branch coverage of 85%, branch coverage of 95% for every `app/services/safety` module, and 100% for the crypto and scoring modules. In that run every safety module was at 100% branches, after two tests were added for the gaps that had failed the gate. CI runs pytest with an 80% statement floor and does not run the branch gate yet.
 - **Evaluation.** [docs/evaluation-report.md](docs/evaluation-report.md) gives the full numbers, the methods and the limits. In brief, on the frozen test split (51 high-risk and imminent cases), the ensemble caught all 51 (exact 95% lower bound 0.930). Precision was 0.567. The test split has been scored at least once, so these figures are not a clean held-out result.
 
 ## Safety
@@ -140,7 +140,7 @@ The production compose file refuses to start without `SECRET_KEY` and `FIELD_ENC
 ## Known limitations and open decisions
 
 - **Not clinically reviewed.** The crisis copy, helplines, knowledge base and screening presentation need review by a licensed clinician and by native speakers of Hindi and Bengali. See [docs/clinical-review.md](docs/clinical-review.md) and [translations/STATUS.md](translations/STATUS.md).
-- **The safety-module branch gate is failing** at 91.67% against 95%, and CI does not enforce it yet.
+- **CI does not run the branch gate.** The gate passes locally under `make test`. Adding it to the CI workflow is the next step.
 - **Open decisions:** the copyright line in `LICENSE` is still a placeholder, private vulnerability reporting is disabled on GitHub, and the product has no age policy or age gate.
 - **Model versions:** no model identifier is hard-coded, so the production model version is not recorded in the repository.
 
@@ -150,4 +150,4 @@ The complete list is in [PROGRESS.md](PROGRESS.md).
 
 - **Weeks 1 to 3 (Days 1 to 21):** scaffolding, backend and frontend skeletons, the data layer, auth with consent, the crisis rules engine and safety ML backstop, the LLM provider layer, the chat orchestrator and UI, the knowledge base and retrieval, the output guard, check-ins, the journal, exercises, the CBT thought record, screenings and the daily plan.
 - **Week 4 (Days 22 to 28):** privacy controls, English, Hindi and Bengali, the evaluation harness, offline and accessibility work, deployment and observability, and documentation.
-- **Next:** clinician and native-speaker review of the crisis content and safe replies; retraining the safety classifier on the current scikit-learn release with hard negatives; the coverage gate (adding tests or changing the floor, pending a decision); a first real deployment; and a shared session store so that more than one worker can run. The full list is in the parking lot in [PROGRESS.md](PROGRESS.md).
+- **Next:** clinician and native-speaker review of the crisis content and safe replies; retraining the safety classifier on the current scikit-learn release with hard negatives; running the branch gate in CI; a first real deployment; and a shared session store so that more than one worker can run. The full list is in the parking lot in [PROGRESS.md](PROGRESS.md).

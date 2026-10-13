@@ -25,12 +25,19 @@ was 37 of 39, not 38 of 39, and its emotion cell sizes were 5 to 8 items, not
 40 to 50; the privacy document's "verified helplines" became "schema-checked";
 and Prettier had failed on 18 frontend files (line wrapping only, fixed).
 
-Verification (Day 28 tree): backend `ruff check`, `ruff format --check`, and
-`mypy app tests` clean. Backend pytest: **3921 passed, 3 skipped** (exit 0).
-Frontend: lint, `format:check` and typecheck clean; `test:run` **600 passed,
-3 skipped**. **Coverage gate: FAILS, exit 1** (overall statements 96.55% and
-branches 89.87% pass; the safety group is 91.67% against 95%). The README
-badge reports the measured values and says the gate is failing. Full results:
+Two decisions were taken on Day 28 (the maintainer chose them): the safety
+branch gate was closed by **adding two tests**, not by lowering the floor
+(`ensemble.py` with a disabled classifier; a pattern file whose top level is
+not a mapping); and the **GET chat stream route was removed**, because it put
+the user's message in the URL. Streaming is POST only; the API reference now
+lists 62 operations. Its contract tests were updated to assert the route is
+absent (405).
+
+Verification (final Day 28 tree): backend `ruff check`, `ruff format --check`
+and `mypy app tests` clean. Backend pytest: **3923 passed, 3 skipped** (exit 0).
+Frontend: lint, `format:check`, typecheck clean; `test:run` **600 passed,
+3 skipped**. **Coverage gate: passes, exit 0** (overall statements 96.56%,
+branches 89.95%; every `app/services/safety` module at 100% branches). Full results:
 [docs/verification/day28-documentation-and-portfolio.md](docs/verification/day28-documentation-and-portfolio.md).
 Manual checks the sandbox could not run (Docker, smoke, screenshots, phones,
 clinician and native-speaker review, the demo recording):
@@ -38,19 +45,17 @@ clinician and native-speaker review, the demo recording):
 
 ### Known issues (as of Day 28)
 
-- **Safety branch gate fails** (91.67% against 95%). The two uncovered
-  locations are `ensemble.py` lines 253 to 258 (`decide()` with a disabled
-  classifier; no test covers it) and `patterns.py` line 480 (the loader's
-  "not a mapping" error). The Day 26 and Day 27 "gate PASS" claims do not hold
-  for this tree. Decision open: add the two tests, or change the floor (the
-  floor should not change without an explicit decision). See
+- **Safety branch gate (fixed on Day 28).** It failed at 91.67% against 95%.
+  The gaps were `ensemble.py` lines 253 to 258 (`decide()` with a disabled
+  classifier) and `patterns.py` line 480 (the loader's "not a mapping" error).
+  Two tests now cover them and the gate passes. The Day 26 and Day 27 "gate
+  PASS" claims were wrong for the tree they described. See
   [ADR 0029](docs/adr/0029-branch-coverage-gates.md).
 - **CI does not run the branch gate.** `ci.yml` runs pytest with an 80%
   statement floor and no branch measurement. `make test` runs the gate locally.
-- **Chat stream puts the user's message in the query string**
-  (`GET /api/v1/chat/sessions/{id}/stream?message=`, `chat.py`). Query strings
-  reach access logs and proxies. Open and unfixed. Options: remove the GET
-  route, or document the risk. Decision open.
+- **Resolved on Day 28:** the GET chat stream route
+  (`/api/v1/chat/sessions/{id}/stream?message=`), which put the message in the
+  query string, was removed. Streaming is POST only. ADR 0011 is amended.
 - **LICENSE copyright line is a placeholder** (`[Your Name]`). Owner's decision.
 - **Private vulnerability reporting is disabled** on GitHub
   (`{"enabled":false}`). Owner's decision; repo settings were not changed.
@@ -73,8 +78,9 @@ clinician and native-speaker review, the demo recording):
 - **The frozen test split has been scored twice** (2026-10-10 and 2026-10-12),
   so its figures are not a clean held-out result.
 - **Test counts:** the Day 27 record says 3906 backend tests passed. The Day 28
-  baseline was 3910 and the final run 3921, which includes nine new API-docs
-  tests. The gap from 3910 to 3921 is not explained yet.
+  baseline was 3910. Day 28 added nine API-docs tests and two safety tests, which
+  gives 3921. The final run shows 3923, so two tests are still unexplained. The
+  final figure is 3923 passed, 3 skipped.
 
 ### Day 28 handoff status
 
