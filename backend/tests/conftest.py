@@ -96,6 +96,19 @@ _ENV_KEYS = (
     # that builds Settings() — the same reasoning as the thresholds above.
     "SAFETY_ML",
     "SAFETY_ML_TRAINED_ARTIFACT_DIR",
+    # Day 34: compressed-model serving + shadow. A developer trying the
+    # ONNX student locally must not flip the whole suite's expectations.
+    "ML_RUNTIME_ENABLED",
+    "ML_RUNTIME_REGISTRY_DIR",
+    "ML_RUNTIME_MODEL_NAME",
+    "ML_RUNTIME_TIMEOUT_SECONDS",
+    "ML_RUNTIME_MAX_BATCH_SIZE",
+    "ML_RUNTIME_BATCH_WAIT_MS",
+    "ML_RUNTIME_MAX_WORKERS",
+    "SAFETY_SHADOW_ENABLED",
+    "SAFETY_SHADOW_CANDIDATE_DIR",
+    "SAFETY_SHADOW_CANDIDATE_VERSION",
+    "SAFETY_SHADOW_LOG_PATH",
     # Chat orchestrator (Day 11).
     "CHAT_MAX_MESSAGE_CHARS",
     "CHAT_RATE_LIMIT_PER_MINUTE",

@@ -106,6 +106,13 @@ ner = [
 rag = [
     "sentence-transformers>=2.7.0",
 ]
+# Compressed-model serving (Day 34). Deliberately NOT a base dependency:
+# the API must import and serve rules+baseline without the ONNX runtime,
+# and app.services.ml_runtime imports it lazily. Install with
+#   pip install -e ".[dev,serving]"
+serving = [
+    "onnxruntime>=1.20.0",
+]
 dev = [
     # Pinned deliberately: `python -m venv` seeds whatever setuptools the OS
     # happened to ship, and pip-audit audits *that* too. On this machine the
@@ -209,3 +216,16 @@ ignore_missing_imports = true
 follow_imports = "skip"
 # AccessLogFreeUvicornWorker subclasses the (untyped) UvicornWorker.
 disallow_subclassing_any = false
+
+# Day 34: onnxruntime/onnx are imported lazily inside app/services/ml_runtime
+# and its tests, and are only installed with the `serving` extra. Scoped to
+# those two modules on purpose: an earlier draft also listed numpy.* here,
+# which stopped mypy from using numpy's real stubs everywhere and broke
+# previously-clean modules (rag/store.py) under CI's Python 3.12 — numpy
+# must stay fully typed.
+[[tool.mypy.overrides]]
+module = ["onnxruntime.*", "onnxruntime", "onnx.*", "onnx"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_subclassing_any = false
+disallow_untyped_calls = false

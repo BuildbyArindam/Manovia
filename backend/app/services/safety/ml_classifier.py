@@ -292,6 +292,38 @@ def build_safety_classifier(settings: Any) -> SafetyClassifier:
             )
         return baseline
 
+    if choice == "onnx":
+        # Day 34: the distilled student from the registry (@production,
+        # checksum-verified). Any failure — no registry configured, bad
+        # checksum, missing onnxruntime — falls back to the baseline with
+        # the reason in the version string, exactly like `trained` above.
+        registry_dir = str(getattr(settings, "ml_runtime_registry_dir", "") or "")
+        baseline = build_ml_classifier(artifact_dir=str(settings.safety_ml_artifact_dir))
+
+        def _onnx_unavailable() -> SafetyClassifier:
+            if isinstance(baseline, TfidfLogisticClassifier):
+                return TfidfLogisticClassifier(
+                    baseline._pipeline,
+                    baseline._classes,
+                    f"{baseline.version}+onnx-unavailable",
+                )
+            return baseline
+
+        if not registry_dir.strip():
+            return _onnx_unavailable()
+        try:
+            from app.services.ml_runtime.classifier import build_onnx_safety_classifier
+
+            return build_onnx_safety_classifier(
+                registry_dir=registry_dir,
+                model_name=str(getattr(settings, "ml_runtime_model_name", "safety-student")),
+                timeout_seconds=float(getattr(settings, "ml_runtime_timeout_seconds", 2.0)),
+                max_batch_size=int(getattr(settings, "ml_runtime_max_batch_size", 16)),
+                batch_wait_ms=float(getattr(settings, "ml_runtime_batch_wait_ms", 5.0)),
+            )
+        except Exception:  # checksum, registry, session: all degrade alike
+            return _onnx_unavailable()
+
     return build_ml_classifier(artifact_dir=str(settings.safety_ml_artifact_dir))
 
 

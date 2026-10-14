@@ -192,6 +192,58 @@ production. **These outrank every other incident.**
    the advisor's sign-off. Update docs/safety-design.md if the threat model
    changed.
 
+## Model rollback (Day 34)
+
+When to use this: a promoted compressed model misbehaves — disagreement
+rate in shadow or early production climbs, crisis recall on the frozen
+eval regresses, latency blows the 80 ms p95 budget
+(`ml/configs/release_gates.yaml`), or an artefact is corrupt. Rolling back
+is an alias move, not a redeploy: the previous version's bytes are already
+in the registry, checksummed.
+
+**One-command rollback** (from `ml/`, with the same tracking URI and
+registry dir the promotion used):
+
+```bash
+python -m manovia_ml.compression.registry \
+  --tracking-uri "$MLFLOW_TRACKING_URI" \
+  --registry-dir "$ML_RUNTIME_REGISTRY_DIR" \
+  --model safety-student rollback
+```
+
+That moves `@production` back to `previous_production` in MLflow *and* in
+the materialised `aliases.json` the backend loads. Then:
+
+1. **Restart or reload the API** so the runtime drops the bad session
+   (`fly machines restart`, or redeploy — the loader resolves
+   `@production` at startup). No code change, no retraining.
+2. **Verify**: `GET /api/v1/ready` 200; send one pinned HIGH fixture from
+   `evals/datasets/crisis_cases_dev.jsonl` via a guest session and confirm
+   the crisis card + helplines; check the classifier version string in the
+   response/log names the restored version.
+3. **If the registry itself is damaged** (both production and previous
+   fail checksum): set `SAFETY_ML=baseline` and restart. The factory falls
+   back to the Day-9 classifier and records `+onnx-unavailable` in its
+   version — the safety path stays up on rules + baseline while the
+   registry is rebuilt. Never hand-edit `aliases.json` or a manifest
+   checksum to make a corrupt file load: a checksum mismatch means the
+   bytes are not the model that passed the gates.
+4. **Before re-promoting anything**: re-run the gate check on the frozen
+   eval (`python -m manovia_ml.compression.check_gates --metrics
+   <pipeline_metrics.json> --task safety`, exit 0 required) and the shadow
+   report (`python backend/scripts/shadow_report.py <shadow.jsonl>`):
+   disagreement categories only, `production_crisis_only` is the dangerous
+   direction and must be ~0 on synthetic traffic before promotion.
+5. **Record it**: incident note with the model versions (from → to), the
+   gate/shadow numbers that triggered the rollback, and the run ids. Model
+   versions are metadata and safe to paste; message text never is.
+
+Promotion is the reverse path and is deliberately not one command:
+distil → export → gate check (exit 0) → `register` → `promote
+--gates-passed` → shadow for a soak period → watch
+`production_crisis_only`. Skipping the gate flag makes promotion refuse
+(`GateRejectedError`), by design.
+
 ## Appendix: what NOT to do (checklist)
 
 - Do not log or paste user text anywhere during an incident.

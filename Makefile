@@ -172,6 +172,13 @@ ml-emotion-tune:
 ml-emotion-data:
 	$(MAKE) -C ml emotion-data SRC=$(SRC) OUT=$(OUT) SCHEME=$(SCHEME) LANG=$(LANG)
 
+# Day 34 compression path (offline smoke; see ml/README.md).
+ml-distill-smoke:
+	$(MAKE) -C ml distill-smoke
+
+ml-distill-gates:
+	$(MAKE) -C ml distill-gates
+
 # Network: downloads GoEmotions (Apache-2.0; see ml/data/CATALOGUE.md).
 ml-fetch-goemotions:
 	$(MAKE) -C ml fetch-goemotions

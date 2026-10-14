@@ -1,0 +1,55 @@
+# Day 34 REAL run (Colab/Kaggle, GPU): distil the Day-32 emotion teacher
+# into a multilingual MiniLM-class student. Sandbox: do not run (needs the
+# Day-32 artefact + torch + hub). Steps: ml/notebooks/colab_distill_export.ipynb.
+name: distill_emotion_student
+task: emotion
+seed: 20261014
+notes: >-
+  Real distillation: Day-32 LoRA emotion teacher (xlm-roberta-base, nine
+  labels) into multilingual MiniLM. The 174-row hand-written validation
+  set is the frozen eval; thresholds are tuned on validation only in the
+  teacher run and are never refitted here. Null pins = not yet run.
+
+teacher_kind: trained_artifact
+teacher_artifact_dir: artifacts/emotion/manovia-emotion-v1
+teacher_size_mb: 1100.0
+
+data:
+  train:
+    path: data/processed/toy_train.jsonl
+    sha256: null
+    rows: null
+  eval:
+    path: data/processed/toy_eval.jsonl
+    sha256: null
+    rows: null
+  test:
+    path: data/validation/emotion_validation.jsonl
+    sha256: "fb116c7cf6c7f43f0571451b18a6a1e4d898ba5ce4e5f93663d4bb7aae41b08c"
+    rows: 174
+  text_field: text
+  label_field: labels
+  lang_field: lang
+  labels: [joy, sadness, anger, fear, anxiety, shame, loneliness, calm, neutral]
+
+student:
+  kind: transformer
+  base_model: microsoft/multilingual-MiniLM-L12-H384
+
+training:
+  temperature: 2.0
+  alpha: 0.7
+  epochs: 3
+  learning_rate: 0.00003
+  l2: 0.01
+  batch_size: 32
+
+tracking:
+  experiment: manovia-ml-distill
+  tracking_uri: null
+  log_environment: true
+  tags:
+    purpose: real
+    day: "34"
+
+threads: 1

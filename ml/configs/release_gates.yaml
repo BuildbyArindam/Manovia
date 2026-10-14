@@ -1,0 +1,49 @@
+# Release gates for a compressed candidate (Day 34, ADR 0034).
+#
+# A candidate that fails ANY gate below is rejected: it is not promoted, the
+# quantised artefact is not served, and the report says which gate failed.
+# These numbers are the contract between "smaller/faster" and "still safe":
+# compression may cost a little accuracy, it may not cost crisis recall.
+#
+# Thresholds were chosen for the frozen eval sets named in the distill configs
+# (the hand-written toy fixtures in this sandbox; the frozen Day-9 test split
+# and the 174-row emotion validation set for real runs). Tightening a number
+# here is a safety decision and needs an ADR note, not a quiet edit.
+
+# The safety path protects HIGH+IMMINENT recall above everything else.
+safety:
+  # Absolute floor on the frozen eval set: below this the model is not a
+  # safety model at all, whatever its size.
+  min_crisis_recall: 0.80
+  # How much crisis recall the student may lose against its teacher.
+  max_crisis_recall_drop_vs_teacher: 0.05
+  # How much crisis recall INT8 may lose against the fp32 student. This is
+  # the gate Message-2 verifies by deliberately degrading a model.
+  max_crisis_recall_drop_int8_vs_fp32: 0.02
+  min_accuracy: 0.60
+
+# The emotion path is a tone hint (ADR 0009): it may trade a little macro-F1
+# for size, and the trade is bounded here so it is a decision, not drift.
+emotion:
+  min_macro_f1: 0.30
+  max_macro_f1_drop_vs_teacher: 0.10
+  max_macro_f1_drop_int8_vs_fp32: 0.03
+
+# Serving budget on CPU (backend/app/services/ml_runtime). The safety target
+# from the brief is p95 < 80 ms per message; the gate is that number, so a
+# candidate that misses it cannot be promoted however accurate it is.
+serving:
+  max_p95_latency_ms: 80.0
+  max_p50_latency_ms: 40.0
+
+# A student that is not smaller than its teacher has no reason to exist.
+size:
+  # Student fp32 ONNX must be at most this fraction of the teacher size the
+  # config declares (teacher_size_mb). The smoke teachers are tiny sklearn
+  # stand-ins, so the smoke configs declare their real byte size; the real
+  # configs declare the XLM-R teacher's on-disk size.
+  max_student_teacher_ratio: 0.50
+  # INT8 must not be larger than fp32 by more than this fraction. A tiny
+  # fixture graph can grow under dynamic quantisation (operator overhead);
+  # the tolerance records that instead of pretending it cannot happen.
+  max_int8_fp32_ratio: 1.10

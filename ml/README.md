@@ -99,6 +99,32 @@ a run cannot forget:
 | `make ml-emotion-tune CONFIG=... TRIALS=12` | the Optuna sweep (needs `optuna.enabled: true`) |
 | `make ml-emotion-data SRC=... OUT=... SCHEME=goemotions LANG=en` | convert a corpus through the mapping table |
 | `ml/scripts/fetch_goemotions.sh` | download + convert GoEmotions (network; needs `datasets`) |
+| `make distill-smoke` (in `ml/`) | Day 34 offline path: distil → ONNX → INT8 → gates → report (stand-in teacher, linear student) |
+| `make distill-gates METRICS=<pipeline_metrics.json>` | release-gate check; exit 1 rejects the candidate |
+| `make registry-status` | MLflow alias + materialised registry state |
+
+## Day 34: compression, serving and safe rollout
+
+`src/manovia_ml/compression/` distils a Day-32/33 teacher into a small
+student (temperature loss, `configs/distill_*.yaml`), exports ONNX,
+applies INT8 dynamic quantisation, scores fp32 vs INT8 on the frozen
+eval, and checks `configs/release_gates.yaml` — a failed gate rejects
+the candidate and blocks promotion. The registry
+(`compression/registry.py`) maps staging/production/archived onto
+MLflow aliases, verifies SHA-256 at registration and at load, and
+materialises the serving directory the backend's ONNX runtime reads
+(`SAFETY_ML=onnx`). Serving (batching, warm-up, timeouts, previous-version
+fallback) and shadow mode live in `backend/app/services/ml_runtime/`;
+ADR 0034 records the decisions, `docs/runbook.md` the rollback.
+
+Sandbox honesty: the committed smoke path uses a TF-IDF stand-in teacher
+and a hashed-feature linear student (the Day-32/33 weights and a GPU do
+not exist here), with train==eval toy fixtures — its numbers are plumbing.
+The real MiniLM students run from `notebooks/colab_distill_export.ipynb`
+with `configs/distill_*_student.yaml`: upload the Day-32/33 artefacts,
+fill the null `sha256`/`rows` pins from your corpus build, distil, export,
+gate, register, promote with `--gates-passed` only on a PASS, then shadow
+before serving. Exact owner steps are in PROGRESS.md (Day 34).
 
 ## How the pieces fit together
 

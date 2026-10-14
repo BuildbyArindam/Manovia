@@ -52,6 +52,15 @@ training = [
     "optuna==4.7.0",
     "accelerate==1.15.0",
 ]
+# Day 34 serving: ONNX export + CPU inference for the compressed students.
+# A fourth extra on purpose: distillation/gates/registry logic must stay
+# importable (and testable) without the runtime, exactly as the training
+# stack is optional for the linear path. Versions are what the sandbox ran
+# against on 2026-10-14.
+serving = [
+    "onnx==1.23.2",
+    "onnxruntime==1.31.0",
+]
 dev = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
@@ -154,6 +163,16 @@ module = [
     "accelerate.*",
     "accelerate",
 ]
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+# Day 34 serving stack (onnx/onnxruntime), optional via the `serving` extra.
+# Same treatment as the training stack: untyped at the boundary, covered by
+# tests that run the real session.
+module = ["onnx.*", "onnx", "onnxruntime.*", "onnxruntime"]
 ignore_missing_imports = true
 follow_imports = "skip"
 disallow_subclassing_any = false

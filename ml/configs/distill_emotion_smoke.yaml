@@ -1,0 +1,54 @@
+# Day 34 smoke: distil the emotion teacher into a tiny linear student.
+# Same honesty contract as distill_safety_smoke.yaml: stand-in teacher,
+# linear student, train==eval on the 84-row toy fixture. Plumbing only.
+# The toy fixture covers six of the nine emotions; the config's label list
+# is those six, and the report must say so (the real run uses all nine).
+name: distill_emotion_smoke
+task: emotion
+seed: 20261014
+notes: >-
+  Smoke only: sklearn stand-in teacher, linear_hash student, six toy
+  labels, train==eval. Numbers measure the pipeline, not emotion quality.
+
+teacher_kind: sklearn_tfidf
+teacher_size_mb: 0.0
+
+data:
+  train:
+    path: data/toy/toy_emotion.jsonl
+    sha256: "a9155710f0d297c07c319054dd3647ea170767923713997f316e183ae02f640e"
+    rows: 84
+  eval:
+    path: data/toy/toy_emotion.jsonl
+    sha256: "a9155710f0d297c07c319054dd3647ea170767923713997f316e183ae02f640e"
+    rows: 84
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [joy, sadness, anger, fear, calm, neutral]
+
+student:
+  kind: linear_hash
+  feature_dim: 1024
+  word_ngram_max: 2
+  char_ngram_min: 3
+  char_ngram_max: 5
+  max_length_chars: 2000
+
+training:
+  temperature: 2.0
+  alpha: 0.7
+  epochs: 60
+  learning_rate: 0.5
+  l2: 0.0001
+  batch_size: 32
+
+tracking:
+  experiment: manovia-ml-distill
+  tracking_uri: null
+  log_environment: true
+  tags:
+    purpose: smoke
+    day: "34"
+
+threads: 1

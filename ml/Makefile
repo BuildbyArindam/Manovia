@@ -1,4 +1,4 @@
-.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
@@ -179,6 +179,28 @@ safety-eval:
 safety-explain:
 	@test -d "$(ARTIFACT)" || { echo "no artefact at $(ARTIFACT) — run \`make safety-smoke\` first, or pass ARTIFACT=<dir>"; exit 2; }
 	$(PYTHON) -m manovia_ml.training.safety.explain --artifact $(ARTIFACT) --data $(SAFETY_EVAL_DATA) --n $(N)
+
+# Day 34. The compression path, offline: distil (stand-in teacher) → ONNX →
+# INT8 → release gates → report. Artefacts land in /tmp (model bytes are
+# never committed); the report + metrics are the committed outputs when an
+# operator copies them under reports/. DISTILL_CONFIG picks the task.
+DISTILL_CONFIG ?= configs/distill_safety_smoke.yaml
+DISTILL_OUT ?= /tmp/manovia-day34-distill
+distill-smoke:
+	$(PYTHON) -m manovia_ml.compression.pipeline --config $(DISTILL_CONFIG) --out $(DISTILL_OUT)
+
+# Gate check on an existing pipeline payload (exit 1 = candidate rejected).
+METRICS ?= $(DISTILL_OUT)/pipeline_metrics.json
+TASK ?= safety
+distill-gates:
+	$(PYTHON) -m manovia_ml.compression.check_gates --metrics $(METRICS) --task $(TASK)
+
+# Registry status (aliases) for the materialised serving directory.
+REGISTRY_DIR ?= artifacts/registry
+MODEL ?= safety-student
+TRACKING_URI ?= file:mlruns
+registry-status:
+	$(PYTHON) -m manovia_ml.compression.registry --tracking-uri $(TRACKING_URI) --registry-dir $(REGISTRY_DIR) --model $(MODEL) status
 
 test:
 	$(PYTHON) -m pytest

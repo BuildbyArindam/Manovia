@@ -48,11 +48,11 @@ RAG_EMBEDDER_CHOICES: tuple[str, ...] = ("auto", "sentence_transformers", "tfidf
 
 # Which safety classifier the ensemble consumes (Day 33). ``baseline`` is the
 # Day-9 TF-IDF model; ``trained`` is the cost-sensitive LoRA model.
-SAFETY_ML_CHOICES: tuple[str, ...] = ("baseline", "trained")
+SAFETY_ML_CHOICES: tuple[str, ...] = ("baseline", "trained", "onnx")
 
 #: The literal type for ``SAFETY_ML``. Declared next to the choices tuple so a
 #: reader sees the two together, and used verbatim in ``Settings.safety_ml``.
-SafetyMLChoice = Literal["baseline", "trained"]
+SafetyMLChoice = Literal["baseline", "trained", "onnx"]
 
 # The shipped safety-ML operating point (Day 9, dev-split tuned; see
 # docs/safety-design.md §12). The feature flag below makes deploying an
@@ -271,6 +271,36 @@ class Settings(BaseSettings):
     # Where the Day-33 trained artifact lives. Empty means
     # app/ml_artifacts/safety_trained/, the same convention as the baseline.
     safety_ml_trained_artifact_dir: str = ""
+
+    # --- Compressed-model serving + shadow rollout (Day 34, ADR 0034) ---
+    # The ONNX runtime loads the distilled student from the materialised
+    # registry (promotion writes it; see manovia_ml.compression.registry).
+    # Off by default: a deployment that never sets these behaves exactly as
+    # it did before Day 34. A registry that fails checksum verification
+    # degrades to the SAFETY_ML classifier, never to a startup failure.
+    ml_runtime_enabled: bool = False
+    # Registry root (contains <model>/aliases.json + versions/). Empty =
+    # disabled. Relative paths resolve against the process working directory.
+    ml_runtime_registry_dir: str = ""
+    ml_runtime_model_name: str = "safety-student"
+    # Per-model inference budget: past this the runtime tries the previous
+    # version once, then the caller falls back. The p95 target (<80 ms,
+    # release_gates.yaml) is far below this ceiling; the ceiling exists so
+    # a stalled session can never stall a crisis reply.
+    ml_runtime_timeout_seconds: float = 2.0
+    ml_runtime_max_batch_size: int = 16
+    ml_runtime_batch_wait_ms: float = 5.0
+    ml_runtime_max_workers: int = 4
+    # Shadow mode: the candidate scores live traffic alongside production
+    # and changes nothing (tests assert byte-identical responses). Only
+    # disagreement categories + latencies are recorded — never text.
+    safety_shadow_enabled: bool = False
+    # Candidate artefact directory (manifest.json + model file, verified
+    # by checksum before the runner is built; bad artefact = shadow off).
+    safety_shadow_candidate_dir: str = ""
+    safety_shadow_candidate_version: str = "candidate"
+    # JSONL disagreement log (categories only). Empty = in-memory only.
+    safety_shadow_log_path: str = ""
 
     # --- Privacy controls and security hardening (Day 22) ---
     # Per-table ceiling for a data export. An export must finish and must not

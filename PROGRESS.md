@@ -1,5 +1,160 @@
 # Manovia — Progress
 
+**Day 34 — compression, serving and safe model rollout — is built, verified in
+the sandbox and ready for review (2026-10-14).** The brief asked for a new branch
+`day-34-compression-serving-safe-model` created from `main`; this session is
+pinned to its Arena branch (`arena/cd57c269-manovia`), as on Days 19–33, so the
+work is committed there and the PR comes from it. Nothing was pushed to `main`.
+
+**What exists now:** knowledge distillation of the Day-33 safety and Day-32
+emotion teachers into small students (temperature loss, MiniLM-class real
+configs + an offline linear student), ONNX export with INT8 dynamic
+quantisation gated on frozen-eval crisis recall
+(`ml/configs/release_gates.yaml`), an ONNX Runtime serving layer in
+`backend/app/services/ml_runtime/` (dynamic batching, startup warm-up,
+thread pool, per-model timeout, previous-version fallback), an MLflow-alias
+registry whose production loader verifies SHA-256, shadow mode that records
+disagreement categories only, one-command rollback, ADR 0034, a runbook
+model-rollback section, and **38 new tests** (15 ML, 23 backend).
+
+**What does not exist, and why:** a real distilled MiniLM student with real
+quality numbers. This sandbox has no GPU and cannot reach the Hugging Face
+hub, so the teachers here are TF-IDF stand-ins and the student is a
+hashed-feature linear model on toy fixtures (train==eval): its recall/F1 of
+1.0 is plumbing, not quality. The real run is
+`ml/notebooks/colab_distill_export.ipynb` with
+`ml/configs/distill_*_student.yaml`. What *is* real in the sandbox: sizes,
+latencies, gate mechanics, checksum behaviour, shadow invariance, rollback.
+
+### Completed (Day 34)
+
+- **Distillation** (`ml/src/manovia_ml/compression/distill.py`): exact
+  `alpha·T²·CE(teacher_T, student_T) + (1−alpha)·CE(y, student_1)` loss in
+  numpy for the offline student; `transformer` students refuse in the sandbox
+  with the notebook path instead of half-running. Configs are data
+  (`DistillConfig`, `extra=forbid`); the committed-config test now dispatches
+  per family (Train / Distill / gates) at the same strictness.
+- **ONNX + INT8** (`onnx_export.py`, `pipeline.py`): `Gemm→Softmax` graph over
+  hashed features (spec in the manifest; backend mirror pinned by golden
+  vectors — top index 11, nnz 35 on the pinned sentence, both suites).
+  Fixture result: fp32 0.0198 MB → INT8 0.0058 MB, identical crisis recall.
+- **Release gates** (`gates.py`, `check_gates.py`, `release_gates.yaml`):
+  INT8 crisis-recall drop ≤ 0.02, absolute recall ≥ 0.80, p95 ≤ 80 ms.
+  A deliberately degraded student (crisis columns reversed, recall 0.0) is
+  rejected with exit 1; missing metrics fail closed; promotion without a
+  passing report raises `GateRejectedError`.
+- **Serving** (`backend/app/services/ml_runtime/`): registry `@production`
+  loaded by alias with SHA-256 verified before any session exists; warm-up
+  at startup; a batcher coalesces concurrent singles; per-model timeout
+  falls back production → previous version → the pre-Day-34 classifier
+  (`SAFETY_ML=onnx`, reason recorded as `+onnx-unavailable`, the Day-33
+  pattern). Model path measured: **p95 16.2 ms at 50 concurrent,
+  5.7 ms sequential** (2-CPU sandbox) — inside the 80 ms target.
+- **Registry** (`compression/registry.py`): MLflow aliases stand in for
+  stages (staging/production/archived — MLflow 3.x removed stages);
+  registration verifies the checksum before recording it; promotion
+  materialises the serving directory and remembers `previous_production`;
+  rollback is one alias move (runbook § Model rollback).
+- **Shadow mode** (`shadow.py` + one discarded-result call in
+  `pipeline.run_ensemble`): closed category vocabulary, records hold no
+  text field, JSONL log + `backend/scripts/shadow_report.py` (refuses
+  unexpected keys). Live soak: 200 messages, disagreement 0.400
+  (120 agree / 20 higher / 20 lower / 20 candidate-crisis-only /
+  20 production-crisis-only, 0 errors), candidate p95 10.4 ms, and
+  **responses byte-identical with shadow on vs off** (also asserted in
+  `tests/ml_runtime` at pipeline and API level).
+
+### Verification (Day 34)
+
+Full table with commands in
+`docs/verification/day34-compression-serving-rollout.md`. Headlines:
+comparison table for both tasks (sizes/latencies above); degraded-model
+gate rejection PASS; shadow soak PASS; corruption → checksum refusal +
+previous/baseline fallback PASS (registry-level and through the real
+`SAFETY_ML=onnx` factory); rollback restores `production: v1` PASS;
+load test PASS for the model path, **FAIL for the end-to-end endpoint at
+50 concurrent in this sandbox** (p95 1086 ms on 2 CPUs with SQLite —
+pre-Day-34 stack queueing; sequential endpoint p95 is 12.5 ms).
+Suites: backend **4327 passed, 3 skipped** (full `pytest -q`, 209 s);
+backend ruff/format clean, mypy clean (312 files); ML **315 passed,
+1 failed, 7 skipped** — the one failure
+(`test_emotion_baselines_report`) and the skips need the
+torch/transformers `training` extra this sandbox did not install (CI
+installs it; the file is untouched by this branch); ML ruff clean,
+mypy clean (90 files, with `huggingface_hub` present); frontend
+**608 passed, 3 skipped**, lint + typecheck clean (no frontend files
+changed).
+
+### Decisions (Day 34)
+
+- ADR 0034: distillation loss + two student kinds; ONNX/INT8 gated on
+  frozen-eval recall; MLflow aliases as stages; shadow invariance by
+  construction (result discarded in the pipeline).
+
+### Known issues (as of Day 34)
+
+- **No real student exists yet** (no GPU/hub): every quality number above
+  is from the stand-in teacher + linear student on toy fixtures. The
+  emotion smoke covers six of nine labels.
+- **End-to-end endpoint latency at 50 concurrent** misses 80 ms p95 in
+  this 2-CPU/SQLite sandbox (model path passes). Production sizing —
+  gunicorn workers, Postgres, a bigger host — needs an owner load test
+  before any p95 claim is made about the endpoint as deployed.
+- The toy-fitted INT8 candidate **over-raises** on live-shaped text
+  (e.g. "a bit tired and sad" → crisis mass over the floor): expected
+  from 80 training rows, and exactly what shadow + gates exist to catch
+  for a real candidate.
+- `teacher_size_mb` for real runs is declared (XLM-R ≈ 1.1 GB), to be
+  replaced by the measured artefact size in the first real report.
+
+### Parking lot (Day 34)
+
+- Real MiniLM distillation runs (owner, Colab/Kaggle) for both teachers,
+  with per-language recall/F1 and the size ratio against measured teacher
+  bytes — then paste into the committed compression reports.
+- Production load test on the deployed shape (workers × Postgres) to
+  close the 50-concurrent endpoint question above.
+- Shadow soak on real (consented, metadata-only) traffic with a
+  `production_crisis_only` budget as a promotion gate, not just a report.
+- INT8 calibration-data quantisation (static) if dynamic quantisation
+  ever costs recall on a real student; per-channel weights.
+- Registry GC: pruning archived version directories by policy.
+
+### Day 34 handoff status
+
+Branch `arena/cd57c269-manovia` (the brief's
+`day-34-compression-serving-safe-model` name is the PR's source intent;
+the session branch is pinned, as on Days 19–33). Nothing pushed to
+`main`. Everything asked for is on disk and verified **except the things
+the sandbox cannot do**: a real GPU distillation, a Hugging Face
+download, and a production-shaped load test.
+
+The owner must check by hand:
+
+1. `ml/notebooks/colab_distill_export.ipynb` runs end-to-end on a T4 with
+   the Day-32/33 artefacts uploaded; fill the null `sha256`/`rows` pins
+   in `ml/configs/distill_*_student.yaml` from that corpus build.
+2. The real candidate passes `check_gates` on the frozen Day-9 test split
+   (safety) and the 174-row emotion set before any `--gates-passed`
+   promotion; read its compression report, not just the PASS line.
+3. A shadow soak (≥1k messages) with `production_crisis_only` ≈ 0 before
+   `SAFETY_ML=onnx` serves anything; then the rollback command in
+   `docs/runbook.md` rehearsed once against the staging registry.
+4. The deployed-shape load test (workers × Postgres) for the
+   50-concurrent endpoint p95 — the sandbox cannot answer this one.
+
+### Next steps (Day 35 — first three)
+
+1. **Run the real distillation** (owner GPU run above) and record the
+   first honest tradeoff table: teacher vs fp32 vs INT8 size, latency,
+   safety crisis recall and emotion macro-F1 on the frozen sets.
+2. **Close the endpoint-concurrency question** on the deployed shape:
+   profile the 50-concurrent path (thread pool, SQLite→Postgres, worker
+   count) until end-to-end p95 is measured, not assumed.
+3. **Promote through the full ceremony once**: register → gates →
+   shadow soak → promote → rehearsed rollback, all against the staging
+   registry, with the numbers pasted here.
+
 **Day 32 — fine-tune a multilingual emotion model (LoRA) — is built, verified in
 the sandbox and committed (2026-10-13).** The brief asked for a new branch
 `day-32-fine-tune-multilingual-emotion` created from `main`; this session is
