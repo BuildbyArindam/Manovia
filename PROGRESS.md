@@ -75,6 +75,21 @@ previous/baseline fallback PASS (registry-level and through the real
 load test PASS for the model path, **FAIL for the end-to-end endpoint at
 50 concurrent in this sandbox** (p95 1086 ms on 2 CPUs with SQLite —
 pre-Day-34 stack queueing; sequential endpoint p95 is 12.5 ms).
+**CI found one real bug the sandbox hid.** The first PR run failed the
+Backend job at `mypy (strict)` — invisible locally because the sandbox's
+mypy cache and Python 3.11 disagreed with CI's 3.12. The job's mypy step
+now emits `::error` annotations (the ML job's pattern; the raw log host
+is unreachable from restricted networks), which named it: three
+`var-annotated` errors on `x = np.asarray(...)` lines, two of them in
+pre-existing `rag/store.py`. Root cause: Day 34 had added `numpy.*` to
+the shared `follow_imports = "skip"` mypy override, so numpy lost its
+real stubs and every typed assignment degraded to `Any`. Fix: the
+override is scoped to `onnx`/`onnxruntime` only (numpy stays fully
+typed), the one new-code variable is annotated explicitly, and
+`tests/ml_runtime/test_mypy_config.py` fails if numpy ever re-enters a
+skip-override. Backend job then passed in full (12m22s, coverage gate
+included) and **all seven PR checks are green** on the fixed tree.
+
 Suites: backend **4327 passed, 3 skipped** (full `pytest -q`, 209 s);
 backend ruff/format clean, mypy clean (312 files); ML **315 passed,
 1 failed, 7 skipped** — the one failure
