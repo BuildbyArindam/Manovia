@@ -157,6 +157,36 @@ subprocess with a `sitecustomize` blocking both `torch` and `transformers`.
 **4270 passed, 3 skipped, 0 failures.** The full-suite row in the table above
 quotes that run, not the sandbox's.
 
+**The Day-25 accessibility suite passes locally on this branch — verified, not
+assumed.** CI's `Accessibility & Lighthouse` job fails intermittently (3 of the
+last 6 runs, always in the Playwright step, Lighthouse then skipped), and its
+Playwright log cannot be read from this sandbox (GitHub redirects job logs to
+`productionresultssa15.blob.core.windows.net`, which the network policy blocks,
+and `playwright install` cannot reach its CDN — so the suite could not be run
+the obvious way). It *was* run anyway: a Chromium 153 build was fetched from
+`registry.npmjs.org` (the `@sparticuz/chromium` tarball, brotli-decompressed with
+Node's `zlib`), and the config's existing
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` escape hatch pointed Playwright at it. The
+API was brought up under the a11y job's own environment (`APP_ENV=development`,
+`LLM_PROVIDER=fake`, `LLM_FAKE_LATENCY_MS=300`, `EMOTION_ANALYZER=keyword`,
+fresh SQLite) and the production build served by `vite preview` on 4173:
+
+    Playwright (prod config): 31 passed, 13 skipped, 0 failed — 7.7m
+    API log during the run:  0 error/critical lines, 0 5xx responses
+
+That is the same suite, the same production bundle and the same fake-LLM API
+conditions as the failing job, and it passes. The failure is therefore in CI's
+Playwright environment, not in this branch's code — which the diff also predicts:
+**zero files under `frontend/` changed**, and with `SAFETY_ML` unset (the a11y
+job's setting) `build_safety_classifier` takes the `baseline` branch, which is
+the untouched `build_ml_classifier(artifact_dir=settings.safety_ml_artifact_dir)`
+call `main` makes. The same commit (`984d11c`) both passed and failed across two
+runs, which is what an environment flake looks like and what a code regression
+does not. **The user should re-run the a11y job (`gh run rerun <id> --failed`) or
+read `test-results/day25/results.json` from the `day25-a11y-lighthouse-reports`
+artifact**; a Chromium-156-vs-153 headless-shell difference is the leading
+suspect and is not reproducible here.
+
 **All seven CI checks are green on the final commit** (`39d34a6`, then `984d11c`):
 Backend, Frontend, ML, Evaluation Harness, Dependency audit, Secrets scan, and
 Accessibility & Lighthouse. The a11y job failed once on an intermediate commit and
