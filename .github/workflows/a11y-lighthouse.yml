@@ -128,6 +128,18 @@ jobs:
         working-directory: frontend
         run: npm run test:e2e:prod
 
+      # The job log is the only place a failing spec's name appears, and it is
+      # served from a blob store some networks cannot reach (`gh run view --log`
+      # comes back empty too), while the step's own annotation says only "exit
+      # code 1". Playwright writes test-results/day25/results.json on failure,
+      # so turn that into annotations the API *can* return. Diagnostic only:
+      # `if: failure()` runs it after the step above failed, and it never fails
+      # the job itself.
+      - name: Name the failing spec, as an annotation
+        if: failure()
+        working-directory: frontend
+        run: node scripts/playwright-failures.mjs test-results/day25/results.json
+
       - name: Lighthouse (mobile, 3 runs per route, median)
         working-directory: frontend
         env:
