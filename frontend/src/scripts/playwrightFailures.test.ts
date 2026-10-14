@@ -86,8 +86,10 @@ describe("playwright-failures", () => {
     expect(out).toContain(
       "::error file=e2e/day25/a11y.spec.ts::states: help dialog [desktop-1280x800] timedOut",
     );
-    expect(out).toContain("e2e/day25/a11y.spec.ts > states: help dialog");
+    // The assertion text rides *inside* the annotation, because the annotation
+    // is the part the API returns and a title alone says which spec, not why.
     expect(out).toContain("Test timeout of 120000ms exceeded.");
+    expect(out).toContain("e2e/day25/a11y.spec.ts > states: help dialog");
     expect(out).toContain("playwright-failures: 1 of 2 spec(s) failed");
   });
 
@@ -124,6 +126,7 @@ describe("playwright-failures", () => {
     expect(out).toContain(
       "::error file=e2e/day25/pwa.spec.ts::the start URL opens offline [mobile-360x640] failed",
     );
+    expect(out).toContain("expect(received).toBe(expected)");
     expect(out).not.toContain("the manifest parses cleanly");
     expect(out).toContain("playwright-failures: 1 of 2 spec(s) failed");
   });

@@ -115,7 +115,14 @@ for (const { spec, failure } of failed) {
     .map((test) => String(test.projectName ?? ""))
     .filter((name) => name.length > 0)
     .join(", ");
-  console.log(`::error file=${file}::${title} [${projects || "no project"}] ${failure.status}`);
+  // The error goes *inside* the annotation, not just into the log: an
+  // annotation is the part `gh api .../annotations` returns, so a title alone
+  // tells a reader which spec broke but not why. Playwright's message already
+  // names the assertion, the locator and the received value.
+  const summary = summarise(failure.message).split("\n").join(" | ");
+  console.log(
+    `::error file=${file}::${title} [${projects || "no project"}] ${failure.status} — ${summary}`,
+  );
   console.log(`  ${file} > ${title}`);
   console.log(`  ${summarise(failure.message)}`);
   console.log("");
