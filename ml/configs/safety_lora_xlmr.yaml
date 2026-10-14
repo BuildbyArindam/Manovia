@@ -1,0 +1,163 @@
+# The real Day-33 run: xlm-roberta-base + LoRA, cost-sensitive, into five risk
+# levels. The input to ml/notebooks/colab_safety_lora.ipynb.
+#
+# NOT run in this sandbox. Reasons, in order: no GPU (LoRA on a 278M-parameter
+# encoder over ~3,450 rows is hours on CPU and needs CUDA for mixed precision),
+# and Hugging Face is unreachable here, so the weights cannot be downloaded at
+# all. Every number this config would produce is therefore unknown — which is
+# why the smoke config exists and why this file pins no expected metrics.
+#
+# Verified on the Hub (2026-10-13, via the API):
+#   id          FacebookAI/xlm-roberta-base (xlm-roberta-base redirects here)
+#   licence     MIT
+#   parameters  278,885,778 (F32, safetensors available)
+#   languages   100, including en, hi and bn
+#   sha         e73636d4f797dec63c3081bb6ed5c7b0bb3f2089
+#   why         the same model the emotion run uses, so the two classifiers share
+#               a tokenizer and a base; the alternative comparison is ADR 0032.
+#
+# Before the first run:
+#   1. Read ml/data/CATALOGUE.md § 15 (the synthetic safety corpus) and accept
+#      what it says about templated expansion.
+#   2. Generate the corpus (DVC stage `safety_expand`):
+#        cd ml && dvc repro safety_expand
+#      That writes data/safety/{train,dev,calibration}.jsonl from the Day-9
+#      train/dev seeds only. It never reads crisis_cases_test.jsonl.
+#   3. Fill in the sha256/rows pins below from `dvc status` / the stage report,
+#      then never change them silently again.
+#   4. Point `data.test.path` at the frozen Day-9 test split. Its hash is in
+#      evals/datasets/manifest.json; the trainer refuses to run if a training row
+#      appears verbatim in it.
+#   5. Run the notebook, not this file directly: the notebook is what records
+#      what the machine was and what MLflow said afterwards.
+name: safety_lora_xlmr
+
+seed: 20261013
+
+notes: >-
+  xlm-roberta-base (MIT) with LoRA rank 16, fine-tuned with the cost-sensitive
+  loss from training/safety/taxonomy.py (a missed IMMINENT costs 25; the cheapest
+  off-diagonal cell is 1), calibrated by temperature scaling on a dedicated
+  calibration split, and given a conformal prediction set at 95% target coverage.
+  The point prediction is the expected-cost argmin; the abstention policy is the
+  MEDIUM floor. Trained on ~3,450 synthetic rows expanded from the Day-9 seeds;
+  evaluated on the frozen 116-row Day-9 test split that training never reads.
+
+data:
+  train:
+    path: data/safety/train.jsonl
+    sha256: null            # fill in from `dvc status` after step 2
+    rows: null
+  eval:
+    path: data/safety/dev.jsonl
+    sha256: null
+    rows: null
+  # The calibration split is where the temperature and the conformal quantile are
+  # fitted. Never dev (that is model selection) and never test (that is the
+  # measurement). A split that does two of those jobs cannot do either.
+  validation:
+    path: data/safety/calibration.jsonl
+    sha256: null
+    rows: null
+  test:
+    path: ../evals/datasets/crisis_cases_test.jsonl
+    sha256: "0845c77a48214818b7ffe945f892e120bac45eeb33818741cc56b4d1d3cc4362"
+    rows: 116
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [none, low, medium, high, imminent]
+
+model:
+  kind: safety_lora
+  base_model: FacebookAI/xlm-roberta-base
+  tokenizer_max_length: 96
+  lora:
+    rank: 16
+    alpha: 32
+    dropout: 0.1
+    target_modules: [query, value]
+    bias: none
+    freeze_base: false
+  training:
+    epochs: 4
+    batch_size: 32
+    eval_batch_size: 64
+    # Lower than the emotion run on purpose: with a cost-weighted loss the loss
+    # scale is set by the matrix (the worst cell is 25), and 1e-4 keeps the first
+    # epoch from being spent undoing a large initial step.
+    learning_rate: 1.0e-4
+    weight_decay: 0.01
+    warmup_ratio: 0.06
+    max_grad_norm: 1.0
+    # No label smoothing: the targets are the truth, and the cost matrix is what
+    # expresses "missing an IMMINENT is worse than a false alarm". Smoothing on
+    # top of that would blur exactly the asymmetry being optimised.
+    label_smoothing: 0.0
+    class_weighting: balanced
+    scheduler: cosine
+    mixed_precision: auto
+    gradient_accumulation_steps: 1
+    # Crisis recall on dev is the selection metric (see the trainer); two stale
+    # epochs with a 0.001 floor.
+    early_stopping_patience: 2
+    early_stopping_min_delta: 0.001
+    max_steps: null
+    log_every_steps: 50
+
+evaluation:
+  # A CPU/GPU float-reduction wobble of ~1e-2 is what the smoke config measured;
+  # see ml/tests/test_safety_train.py for the contract this number buys.
+  tolerance: 5.0e-2
+  metrics: [accuracy, macro_f1, weighted_f1]
+  confusion_matrix: true
+
+safety:
+  cost:
+    matrix: default
+    normalise_per_row: true
+    label_smoothing: 0.0
+    # The point prediction is the Bayes argmin under the matrix, not the argmax
+    # of the probabilities. This is the flag that makes the loss and the decision
+    # rule agree.
+    cost_decision_rule: true
+  calibration:
+    enabled: true
+    bins: 10
+    # Wide bounds on purpose: a badly over-confident small model needs T well
+    # above 2, and a search that cannot reach it reports a calibration it did
+    # not achieve.
+    lower: 0.05
+    upper: 10.0
+  conformal:
+    enabled: true
+    # 0.05 -> 95% target coverage, with the finite-sample correction. The
+    # achieved coverage on the held-out split is what the report must print next
+    # to the target; a quantile fitted on the same rows it is evaluated on is a
+    # tautology.
+    alpha: 0.05
+    policy: abstain_medium
+  report:
+    bootstrap_resamples: 2000
+    confidence_level: 0.95
+    error_cases: 20
+    # The Day-9 TF-IDF model trained on 340 hand-written rows is a different
+    # experiment, not a baseline; the trainer's own TF-IDF fit on these same rows
+    # is the comparison that means something.
+    compare_baseline: true
+  baseline_class_weight: balanced
+  artifact_dir: artifacts/safety
+  artifact_name: manovia-safety-xlmr-v1
+
+tracking:
+  experiment: manovia-ml-safety
+  tracking_uri: null         # MLFLOW_TRACKING_URI, then file:<ml root>/mlruns
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: real-run
+    model: xlm-roberta-base
+    data: synthetic safety corpus, expanded from Day-9 seeds
+    gpu: required
+
+threads: 4

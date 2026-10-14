@@ -616,6 +616,9 @@ random thresholds) asserts `final >= rules level` from the outside. When the ML
 path is disabled (`SAFETY_ML_ENABLED=false`), missing its artifact, or throws,
 the pipeline is exactly the Day 8 pipeline.
 
+*(Day 33 adds a second, trained classifier behind the same interface and the same
+`combine()`; §12.8 describes it and §12.9 lists what it has not established.)*
+
 ### 12.3 The raise bands
 
 The model contributes two numbers: its top-class calibrated confidence, and its
@@ -716,6 +719,174 @@ Three honest caveats about the 1.00 itself:
 - **Audit linkage follows the chosen storage mode.** The public assessment endpoint
   and ephemeral chats use NULL user/session ids; saved chats link events to their
   owner and session. Every row remains metadata-only.
+
+### 12.8 Day 33: the trained classifier — cost-sensitive, calibrated, abstaining
+
+Day 9's classifier is a char n-gram TF-IDF model trained on 340 hand-written rows
+with a recall-first operating point bolted on afterwards. Day 33 replaces the
+*optional* ML path with a model trained for the decision this system actually
+makes, and keeps the ensemble unchanged. The decision record is
+[ADR 0033](adr/0033-safety-trained-classifier.md).
+
+The ratchet from §12.2 is unchanged; what sits in the middle box changes:
+
+```
+RuleEngine.assess()            rules level, categories, pattern ids, pragmatics
+    │
+    ▼
+SafetyClassifier               C2 (Day-9 TF-IDF) or C2b (Day-33 trained LoRA)
+    │                          chosen by SAFETY_ML=trained|baseline
+    │                          C2b adds: expected-cost point level,
+    │                          temperature-scaled confidence, a conformal
+    │                          prediction set and the abstention level
+    ▼
+ensemble.combine()             final = max(rules, ML-if-confident)
+    │                          ML can RAISE, never LOWER (property-tested)
+    ▼
+Escalator.plan()               unchanged — policy table, templates, helplines
+```
+
+#### 12.8.1 The cost matrix is the specification
+
+The loss is not cross-entropy with class weights; it is the cost matrix
+`COST_MATRIX[true][predicted]` in `ml/src/manovia_ml/training/safety/taxonomy.py`,
+row-normalised:
+
+| truth \ predicted | none | low | medium | high | imminent |
+| --- | --- | --- | --- | --- | --- |
+| **none** | 0 | 1 | 3 | 8 | 20 |
+| **low** | 1 | 0 | 2 | 6 | 16 |
+| **medium** | 4 | 2 | 0 | 5 | 12 |
+| **high** | 12 | 8 | 5 | 0 | 3 |
+| **imminent** | 25 | 16 | 10 | 4 | 0 |
+
+The worst cell is a missed IMMINENT (25); the cheapest off-diagonal cell is 1.
+The asymmetry is deliberately **narrow — 25 against 20, not a 10× factor** — and
+that choice is a decision, not an oversight. A matrix that made over-flagging
+nearly free would train a model that escalates almost everything, which on this
+product means a crisis card for a bad evening; a matrix that was symmetric would
+be plain cross-entropy and would not encode the bias at all. 25:20 is the
+narrowest asymmetry that still orders the errors the way the product needs them
+ordered, and it is documented here so the next person can argue with a number
+instead of a feeling.
+
+The point prediction at inference is the Bayes argmin under the same matrix
+(`expected_cost_level`), not the argmax of the probabilities. A model that
+trained on one decision rule and predicted with another would be optimising
+something it never measured.
+
+#### 12.8.2 Calibration: one parameter, fitted on a split that is nothing else
+
+Temperature scaling (a single scalar `T` dividing the logits, fitted by
+golden-section search on the negative log likelihood) is fitted on the
+**calibration** split — which exists for this purpose and nothing else. It is not
+dev (dev selects the model, and a temperature fitted on the rows early stopping
+watched is a second use of the same rows) and it is never the test split.
+
+The report prints ECE before and after and the reliability diagram bins. The
+asymmetry to watch is that a well-separated model can be left *sharper* than it
+arrived: the search minimises NLL, and a confident correct prediction has lower
+NLL when sharper. `ml/tests/test_safety_calibration.py` asserts both directions,
+so a fitter that only knows how to soften cannot pass.
+
+#### 12.8.3 Conformal prediction sets, and the abstention policy
+
+Split conformal on the same calibration split produces a **prediction set** — the
+levels the model could not rule out — at a 95% target coverage with the
+finite-sample correction (`ceil((n+1)(1-alpha))/n`-th order statistic). At n=10
+that correction is the difference between "about 95%" and "at least 95%", and it
+is also why a small calibration split produces wide sets: the guarantee holds, but
+it is bought with abstention.
+
+The policy is the **MEDIUM floor**:
+
+```
+abstain_level(set, point) = point, or MEDIUM if the set contains any level >= MEDIUM
+```
+
+It never lowers the point prediction, and it never promotes to the most severe
+level in the set. `{medium, imminent}` acts as MEDIUM, not IMMINENT: the set lists
+what could not be ruled out, and how far above MEDIUM a message goes is the point
+prediction's job. Promoting to the worst plausible level would turn every
+uncertain row into a crisis card, which is the alarm-fatigue failure §12.6 already
+measures from the other side.
+
+In the ensemble this reaches the user through the existing suspicion band
+(§12.3): the abstention level is what the band's `mass` comparison sees, so a
+cautious model produces a MEDIUM check-in rather than a crisis card, and a
+confident one produces nothing extra. **The three raise bands and the
+`max(rules, ml)` policy are unchanged.**
+
+#### 12.8.4 Explainability is a developer instrument, never a user surface
+
+`ml/src/manovia_ml/training/safety/explain.py` computes Integrated Gradients for
+flagged examples and reports three shortcut signals: single-token dominance (one
+token holding more than half the attribution mass), an off-lexicon top token, and
+copy-paste attributions (two flagged examples from different categories lighting
+up the same words). It is the instrument for the failure mode metrics hide — a
+model at 1.000 recall that has learned "the word *exam* means crisis" and is
+scored on a test set that contains *exam*.
+
+None of the three signals is proof. They are the questions the script exists to
+make a human ask, and the output never reaches a user: it is a terminal tool with
+a `--json` mode for a reviewer.
+
+#### 12.8.5 `SAFETY_ML` and the fallback
+
+`SAFETY_ML=trained|baseline` selects the classifier in **one** place
+(`build_safety_classifier`), called by both the API dependency and the chat
+orchestrator, so a deployment cannot end up with the chat path on one model and
+the assess endpoint on the other. `SAFETY_ML_ENABLED=false` still yields the
+Day-8 rules-only pipeline.
+
+The fallback order is behaviour, not detail: `trained` requested and the artefact
+missing, unreadable, or unloadable (no `torch`, no `transformers`, a corrupt
+directory) falls back to the **Day-9 baseline** carrying a `+trained-unavailable`
+version suffix — never to rules-only. "The ML is silently off" is a different
+deployment from the one the operator asked for, and the suffix is what makes the
+difference visible in a response, in `describe()`, and in an eval report. The
+eval harness refuses to write a report that says `--model trained` without also
+saying whether the trained model was actually loaded.
+
+### 12.9 What the Day-33 work does not establish
+
+Stated here rather than in a PR description, because this is the section a reader
+will look for in six months.
+
+- **No trained model has been run on real data in the build sandbox.** There is no
+  GPU and the Hugging Face hub is unreachable, so `FacebookAI/xlm-roberta-base`
+  cannot be downloaded. Every Day-33 number in this repository comes from the
+  smoke path: a **randomly initialised** 2-layer XLM-R stand-in on 20 hand-written
+  rows per split. Those numbers measure the pipeline, not the classifier, and are
+  noise by construction. The ready-to-run path is
+  `ml/notebooks/colab_safety_lora.ipynb` with `ml/configs/safety_lora_xlmr.yaml`.
+- **The corpus is synthetic and templated.** 456 hand-written Day-9 seeds expand
+  to 3,445 kept rows (127 dropped as `rules_inconsistent`) through a fixed set of
+  paraphrase and adversarial transforms. That is far less lexical diversity than
+  the row count suggests, and it is inherited from the Day-9 corpus: the maximum
+  Jaccard similarity between a training row and a frozen test row is **0.719**
+  with **zero verbatim overlap**, because two hand-written Day-9 rows were already
+  near-paraphrases of each other. A number measured on this corpus is a number
+  about this corpus.
+- **One writer's four registers, no native-speaker review.** The hi/bn rows are
+  written by the same person who wrote the rules they are tested against, which
+  is the closest thing to a guaranteed agreement the eval could have.
+- **The IMMINENT tier is the smallest and the most consequential**, and the
+  Day-9 rules-only baseline already misses most of it on the frozen test split
+  (recall 0.275 against a gate floor of 0.330 — a documented gate failure, not a
+  silent pass). A cost matrix that weights a missed IMMINENT at 25 is a statement
+  of intent; it is not evidence that the tier is now detectable.
+- **95% conformal coverage is a conditional guarantee.** It holds when the test
+  split is exchangeable with the calibration split. On a templated synthetic
+  corpus that assumption is untested, so the coverage number is optimistic until
+  a run on text nobody wrote reports otherwise.
+- **The abstention policy's recall/precision trade has not been measured on a
+  real model.** The smoke run's random model abstains on every row, which is the
+  correct behaviour for a model that knows nothing and says nothing about what
+  the policy costs.
+- **Calibration and coverage are two different claims.** A wide conformal set can
+  mean a careful model or a badly calibrated one; only the held-out coverage
+  number separates them, and it has not been measured on a real model either.
 
 ## 13. Output safety (Day 14)
 

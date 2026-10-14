@@ -9,6 +9,7 @@ from a run of the scripts in `ml/src/`.
 | --- | --- | --- | --- |
 | [`colab_goemotions_tfidf.ipynb`](colab_goemotions_tfidf.ipynb) | Google Colab or Kaggle (free CPU is enough) | GoEmotions (Apache-2.0, see the catalogue § 1) | not run in this sandbox — no GPU and a network download; it is the ready-to-run path for the first real training run |
 | [`colab_emotion_lora.ipynb`](colab_emotion_lora.ipynb) | Google Colab or Kaggle (a free T4 is enough; CPU works but is slow) | GoEmotions converted to Manovia's nine emotions + the committed 174-row hi/bn/en set | not run in this sandbox — no GPU, and the hub is unreachable; the same code path ran on CPU against a tiny random-init model (`configs/emotion_lora_smoke.yaml`), so what is untested here is the data and the scale, not the loop |
+| [`colab_safety_lora.ipynb`](colab_safety_lora.ipynb) | Google Colab or Kaggle (a free T4 is enough; CPU works but is slow) | the synthetic safety corpus expanded from the Day-9 train/dev seeds (`dvc repro safety_expand`), evaluated on the frozen Day-9 test split | not run in this sandbox — no GPU, and the hub is unreachable; the same code path ran on CPU against a tiny random-init model (`configs/safety_lora_smoke.yaml`, `make safety-smoke`), so what is untested here is the data and the scale, not the loop |
 
 ## Why the notebook exists at all
 
@@ -45,6 +46,36 @@ python -m manovia_ml.training.emotion.evaluate --artifact artifacts/emotion/mano
     --data data/validation/emotion_validation.jsonl --bootstrap 2000 --json
 python -m manovia_ml.training.emotion.tune    --config configs/emotion_lora_xlmr.yaml --trials 12   # optuna.enabled first
 ```
+
+## The safety LoRA notebook (Day 33)
+
+`colab_safety_lora.ipynb` fine-tunes `FacebookAI/xlm-roberta-base` (MIT) with LoRA
+into the five risk levels, using the cost-weighted loss from
+`training/safety/taxonomy.py`, then calibrates with temperature scaling on a
+dedicated calibration split and attaches a conformal prediction set at 95% target
+coverage. The point prediction is the expected-cost argmin; the abstention policy
+is the MEDIUM floor.
+
+It is generated from `notebooks/_build_safety_notebook.py` rather than hand-edited,
+so the cell list is reviewable as code — regenerate it with:
+
+```bash
+cd ml && python notebooks/_build_safety_notebook.py
+```
+
+```bash
+cd ml
+python -m manovia_ml.training.safety.train    --config configs/safety_lora_xlmr.yaml
+python -m manovia_ml.training.safety.evaluate --artifact artifacts/safety/manovia-safety-xlmr-v1 \
+    --data ../evals/datasets/crisis_cases_test.jsonl --train data/safety/train.jsonl --bootstrap 2000 --json
+python -m manovia_ml.training.safety.explain  --artifact artifacts/safety/manovia-safety-xlmr-v1 \
+    --data ../evals/datasets/crisis_cases_test.jsonl --n 10 --json
+```
+
+Three things to read before quoting anything from that run: the artefact's
+`MODEL_CARD.md`, the held-out conformal coverage against the 0.95 target, and the
+`explain` output's shortcut signals. The corpus is synthetic and templated, so a
+high number on it is a statement about this corpus, not about crisis language.
 
 Run the smoke config first on any new machine: it is the same pipeline in
 seconds, and it is what tells you whether a failure is your environment or the

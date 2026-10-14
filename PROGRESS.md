@@ -21,6 +21,200 @@ run, GoEmotions and the Colab notebook are owner steps, and the day is honest
 about it instead of shipping a metric from a random stand-in. The smoke run
 exists to prove the *pipeline*; every report it writes says its numbers are noise.
 
+**Day 33 — the safety classifier: cost-sensitive training, calibration,
+abstention and explainability — is built and verified in the sandbox
+(2026-10-14).** Branch `day-33-safety-classifier-cost-sensitive` from `main`
+(`a6c89bd`), mirrored on `arena/6d727140-manovia`; nothing pushed to `main`. The
+PR is [open and not merged](#day-33-handoff-status).
+
+**What exists now:** a cost-sensitive LoRA training path in `ml/` for the five
+risk levels (cost matrix, corpus builder, trainer, temperature calibration,
+conformal prediction sets, abstention policy, TF-IDF comparison, evaluation,
+report, Integrated-Gradients review), a second hand-written fixture split,
+`SAFETY_ML=trained|baseline` in the backend with a visible fallback, 102 new ML
+tests and 43 new backend tests, a `--model trained|baseline` flag on the safety
+eval harness, ADR 0033, `docs/safety-design.md` §12.8–§12.9, model card v1.2, and
+a catalogue entry for the synthetic corpus.
+
+**What does not exist, and why:** a trained model with real numbers. No GPU and
+no Hugging Face access, so `FacebookAI/xlm-roberta-base` cannot be downloaded.
+Every Day-33 number in this repository comes from the smoke path — a
+**randomly initialised** 2-layer XLM-R on 20 hand-written rows per split — and is
+noise by construction. The ready-to-run path is
+`ml/notebooks/colab_safety_lora.ipynb` + `ml/configs/safety_lora_xlmr.yaml`.
+
+### Completed (Day 33)
+
+- **The cost matrix is the specification** (`ml/src/manovia_ml/training/safety/taxonomy.py`),
+  in code rather than config because it is a product decision, not a
+  hyperparameter. Worst cell a missed IMMINENT (25), cheapest off-diagonal 1,
+  asymmetry deliberately **narrow (25:20)** so that over-flagging is not free.
+  The point prediction at inference is the Bayes argmin under the same matrix, so
+  the model is trained and asked the same question. `COST_MATRIX_DOC` prints it;
+  18 tests pin its shape, monotonicity and the derived class weights.
+- **The corpus is expanded from the Day-9 seeds, with provenance on every row**
+  (`build_data.py`): 456 hand-written seeds → **3,445 kept rows, 127 dropped as
+  `rules_inconsistent`**, through template paraphrase + adversarial augmentation
+  (typos, spacing, romanised Hindi, code-mixing, emoji). Splits train 2,756 /
+  dev 365 / **calibration 358** — the fourth split exists for the temperature and
+  the conformal quantile and nothing else. Every row carries `seed_id`, `source`,
+  `transforms`, `rules_level`, `rules_agrees`. The frozen test split is never read
+  by the builder, and the trainer now **refuses** a corpus with a verbatim
+  training row in the held-out split.
+- **A more lenient engine is not a drop.** The rules filter drops a row only when
+  the engine is *stricter* than the label; a more lenient engine is the gap the
+  model exists to close. That asymmetry is asserted by a test, because the
+  obvious implementation (drop on any disagreement) would have removed exactly
+  the rows the classifier is for.
+- **Calibration is one parameter, fitted on the calibration split**:
+  temperature scaling by golden-section search on the NLL, in log space so a
+  wandering search cannot invert the ranking. The contract is asserted in both
+  directions — a confidently wrong model gets `T > 1`, and a well-separated model
+  may be left *sharper* — so a fitter that only knows how to soften cannot pass.
+- **Conformal prediction sets at 95%, with the finite-sample correction**
+  (`ceil((n+1)(1-alpha))/n`), and the **abstention policy is a MEDIUM floor**:
+  the point prediction, or MEDIUM if the set contains any level ≥ MEDIUM. It
+  never lowers the point prediction and never promotes to the worst plausible
+  level — `{medium, imminent}` acts as MEDIUM, not IMMINENT. The same rule is
+  implemented twice (in `ml/` and in the backend bridge) and the two are pinned
+  to each other by golden vectors, because two copies of a safety rule that drift
+  is one rule.
+- **The ensemble is unchanged.** `max(rules, ml)`, the three raise bands, the
+  pragmatics gate. The abstention level reaches the user through the *existing*
+  suspicion band, so a cautious model produces a MEDIUM check-in and a confident
+  one produces nothing extra. The hypothesis property test "ML never lowers
+  rules" is extended, not duplicated.
+- **Explainability is a developer instrument** (`explain.py`): Integrated
+  Gradients (completeness, not a saliency picture) for flagged examples, plus
+  three named shortcut signals — single-token dominance, off-lexicon top token,
+  copy-paste attributions. Special tokens are never attributed, the module
+  refuses to run in the trainer's process, and the output never reaches a user.
+- **`SAFETY_ML=trained|baseline` selects the classifier in one place**
+  (`build_safety_classifier`), called by both the API dependency and the chat
+  orchestrator. A missing or unloadable trained artefact falls back to the Day-9
+  baseline with a `+trained-unavailable` version suffix — **never to
+  rules-only** — and the safety package still contains no logging call at all, so
+  the reason travels in the classifier object.
+- **The eval harness can name the model it measured** (`--model`), and refuses to
+  write a report that says `trained` without saying whether the trained model
+  loaded. The flag was the bug: it used to be accepted and then ignored, because
+  the selector reads its choice from settings.
+- **Three toy-fixture rows were near-copies of frozen test rows** (Jaccard 0.963,
+  0.759, 0.700) and are rewritten; a test now keeps the fixture disjoint from the
+  frozen split (worst 0.342).
+
+### Verification (Day 33, final tree, every command run in the sandbox)
+
+| check | result |
+| --- | --- |
+| `cd ml && pytest -q -m "not network"` | **323 passed** in 41.5 s, offline (tmp file-store MLflow, tiny random-init model) — 102 of them new for Day 33 |
+| `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 95 files formatted; **77 source files** typed (tests included) |
+| `cd backend && pytest -q tests/safety/ -m "not network"` | **826 passed** — 43 new (the trained-classifier bridge + the `--model` flag) |
+| `cd backend && ruff check .` / `ruff format --check .` / `mypy app` | **clean**; 360 files formatted; **149 source files** typed |
+| `make safety-smoke` — the whole Day-33 path on a CPU, offline | exit 0; run `a5fab0f0…`, 5.6 s on CPU. HIGH+IMMINENT test recall **0.000**, macro-F1 0.333; abstention policy recall 0.000, raised 0, **abstention rate 1.000**; temperature **T=10.000**, ECE **0.1103 → 0.1010**; conformal target 0.950, calibration **1.000**, held-out **1.000**, q=0.8011; TF-IDF baseline recall 0.250 / precision 0.667; leakage max_jaccard 0.194, exact_overlap 0. **Plumbing numbers on a random stand-in — not quality** |
+| two identical safety runs | 14 of 15 logged metrics **bit-identical**; the one that moves, `mean_set_size`, moves by a **whole number of rows** (asserted as such, not hidden in a tolerance) |
+| `python evals/run_safety_eval.py --split test --model baseline` | precision **0.567** [0.463, 0.670], recall **1.000** [1.000, 1.000] (51 crisis cases); rules-only recall **0.275** [0.157, 0.404] |
+| `python evals/run_safety_eval.py --split test --model trained` | **identical numbers, because the trained artefact does not exist** — and the report says so in a block quote rather than letting the reader assume otherwise |
+| `python evals/run_safety_eval.py --split dev --model trained` | precision 0.543 [0.441, 0.645], recall 1.000; rules-only recall 0.333; CI gate **PASS** |
+| `--split test` CI gate | **FAIL** on `rules_high_imminent_recall_min 0.330` (observed 0.275). A pre-existing property of the frozen test split, not a Day-33 regression; documented, not silenced |
+| `SAFETY_ML=baseline` flip (env var, dev) | same numbers as the default run, gate PASS — the baseline path is unaffected by the new flag |
+| attribution review on 10 flagged examples | `reviewed 10`, **6 single-token-dominant** (0.986–0.994), **8 off-lexicon top tokens**, 0 copy-paste pairs, verdict "review these rows by hand" — the shortcut-learning evidence the tool exists to produce, from a random model |
+| `dvc status` in `ml/` | up to date; the regenerated toy split is **byte-identical** to the config's pinned hashes |
+| `make ml-catalogue` | 15 entries, table current; `tests/test_catalogue.py` **15 passed** |
+| the notebook's hash-pinning cell | executed against a copy of the real config: 3 digests pinned, 0 nulls left, the frozen test split's hash preserved |
+| frontend: `npm ci` / `npm run typecheck` / `npm run lint` / `npm run test:run` | clean install; typecheck clean; lint clean; **601 passed, 3 skipped** in 73 files (1 file skipped) — 91.6 s |
+
+### Known issues (as of Day 33)
+
+- **No trained model has been run on real data.** No GPU, no hub. Every number
+  above is from the smoke path on a randomly-initialised model. The real run is
+  `ml/notebooks/colab_safety_lora.ipynb` with
+  `ml/configs/safety_lora_xlmr.yaml`, and its `sha256`/`rows` pins are `null`
+  until the owner pastes measured values in.
+- **The corpus is templated.** 3,445 rows from 456 seeds is far less lexical
+  diversity than the row count suggests. The Day-9 hand-written set already
+  contains near-paraphrases across the train/test boundary: **max Jaccard 0.719**
+  against the frozen test split with **zero verbatim overlap**. Inherited, not
+  introduced — and recorded in the catalogue entry rather than discovered later.
+- **The IMMINENT tier is the smallest and the most consequential**, and the
+  rules-only baseline misses most of it on the frozen test split (0.275 against a
+  0.330 floor). The cost matrix states the intent; it is not evidence the tier is
+  now detectable.
+- **95% conformal coverage is a conditional guarantee** (exchangeability with the
+  calibration split), untested on a templated corpus.
+- **The abstention policy's recall/precision trade is unmeasured** on a real
+  model: the random stand-in abstains on every row, which is correct behaviour
+  for a model that knows nothing and says nothing about what the policy costs.
+- **The backend bridge has no logging by construction.** The safety package's
+  privacy test greps the sources *including docstrings*, so a failure reason
+  travels in the classifier object (`failure`, `describe()`) instead of a log
+  line. Anyone adding a `logger.warning` to `app/services/safety/` will fail that
+  test, and should.
+- **`ml/dvc.lock` moves when `ml/src/.../data.py` changes** (it is a recorded
+  dependency of the toy-split stage); the Day-31 checker catches a stale one in
+  CI.
+
+### Parking lot (Day 33)
+
+- **The first real safety run** (owner, Colab/Kaggle): bring back the run id, the
+  pins, `evaluation.json`, the report, the card and the `explain` JSON; then paste
+  the numbers here and in model card §5.2b.
+- **Per-language numbers for the trained classifier** (en / hi / hi-Latn / bn)
+  with intervals, against the TF-IDF baseline fitted on the same rows.
+- **A native-speaker review pass** on the hi and bn rows, as the emotion
+  held-out set still needs. One writer's four registers is the corpus's biggest
+  single bias.
+- **A second base model** (MuRIL) decided by numbers per language, as in ADR 0032.
+- **Cost-matrix sensitivity**: how much the 25:20 asymmetry actually changes the
+  operating point, by re-running the smoke path with a wider and a narrower
+  matrix. The number is a judgement call and should be defended with a
+  measurement.
+- **Conformal coverage on a real split**, with the achieved coverage printed next
+  to the 0.95 target every time.
+- **Attribution review in CI** on a fixed set of flagged ids, so a model that
+  starts keying on one word fails a check rather than a human noticing.
+- **A latency budget for the trained classifier** on the machine that runs it
+  (the smoke numbers are a 2-layer stand-in's).
+- From Day 32 and still open: MuRIL-vs-XLM-R by numbers, a `loneliness` source,
+  GPU determinism, model-registry registration, DVC remote, MLflow server
+  deployment, scheduled catalogue re-verification, the `crisis_v1` retrain on
+  red-team hard negatives.
+
+### Day 33 handoff status
+
+Branch `day-33-safety-classifier-cost-sensitive` from `main` (`a6c89bd`),
+mirrored on `arena/6d727140-manovia`; nothing pushed to `main`. Three commits,
+one topic each. Everything asked for is on disk and verified **except the things
+the sandbox cannot do**: a real GPU training run, a Hugging Face download, and a
+Colab notebook execution.
+
+The owner must check by hand, on a machine with a GPU and network:
+
+1. `cd ml && dvc repro safety_expand` produces the corpus with the same drop
+   reasons (a different count means the paraphraser or the rules changed).
+2. `ml/notebooks/colab_safety_lora.ipynb` runs to the end on a T4, and the
+   artefact's `MODEL_CARD.md` is read before any number is quoted.
+3. `SAFETY_ML=trained` with that artefact in `app/ml_artifacts/safety_trained/`
+   (or `SAFETY_ML_TRAINED_ARTIFACT_DIR`) loads it, and `describe()` reports the
+   run id rather than `+trained-unavailable`.
+4. `python evals/run_safety_eval.py --split test --model trained` then produces
+   **different** numbers from `--model baseline`; if it does not, the artefact
+   was not loaded and the report says why.
+
+### Next steps (Day 34 — first three)
+
+1. **Run the real safety training run** and paste the numbers into model card
+   §5.2b and PROGRESS.md: HIGH+IMMINENT recall and precision with 95% CIs,
+   per-language recall, the abstention rate, and the achieved conformal coverage
+   against the 0.95 target — each next to the baseline fitted on the same rows.
+2. **Decide the abstention policy's operating point from those numbers**, not
+   from the smoke run: how many benign rows the MEDIUM floor escalates, and
+   whether the suspicion band's floor should move. Ship only if the rules-only
+   recall floor and the `max(rules, ml)` property still hold.
+3. **Wire the attribution review into CI** on a fixed set of flagged ids, so
+   shortcut learning fails a check instead of waiting for a human to read a
+   terminal.
+
 ### Completed (Day 32)
 
 - **The taxonomy is one table, with a test per row** (`ml/src/manovia_ml/training/emotion/taxonomy.py`).

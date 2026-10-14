@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Card version | 1.1 (Day 32, 2026-10-13) — adds the fine-tuned emotion model (C4 alternate) and its limitations |
+| Card version | 1.2 (Day 33, 2026-10-14) — adds the trained safety classifier (C2b alternate) behind the unchanged ensemble, and states plainly that no trained number exists yet |
 | Product | Manovia, a privacy-first mental wellbeing **self-help** companion |
 | Status | Pre-launch. **Not clinically reviewed.** Clinical review is a precondition of public launch ([docs/clinical-review.md](clinical-review.md)). |
 | Not | A medical device, a diagnostic tool, therapy, or a crisis service. It cannot send help to anyone. |
@@ -25,6 +25,7 @@ Architecture context: [docs/architecture.md](architecture.md). Safety design:
 | --- | --- | --- | --- | --- | --- | --- |
 | C1 | **Crisis rules engine** | Deterministic, pattern-based rules in YAML (`backend/app/content/safety/*.yaml`), with normalisation and pragmatics checks | Primary crisis detection. Runs **before any model call** | n/a (it is the floor) | In process, offline | On, always |
 | C2 | **Safety ML classifier `crisis_v1`** | TF-IDF (character 2–4 and word 1–2 n-grams) into multinomial logistic regression, sigmoid-calibrated (cv = 3). Trained 2026-10-10 on the 340-case training split | A backstop for what the rules miss | **No.** It can only raise a level | In process, no network at load or predict time | On (`SAFETY_ML_ENABLED`) |
+| C2b | **Safety ML classifier (trained, Day 33 alternate)** | `SAFETY_ML=trained`: a LoRA fine-tune of `FacebookAI/xlm-roberta-base` (MIT) into the five risk levels, trained with a cost-weighted loss, temperature-scaled on a dedicated calibration split, and given a conformal prediction set with an abstention policy ([ADR 0033](adr/0033-safety-trained-classifier.md)). **Not trained yet in this repository** — no GPU and no hub access, so no weights exist to point at | A backstop for what the rules miss, with a stated cost of each error and a stated uncertainty | **No.** It can only raise a level | In process, no network at load or predict time; a missing or unloadable artefact falls back to C2 with a `+trained-unavailable` version, never to rules-only | `SAFETY_ML=baseline` |
 | C3 | **Ensemble** | Final level = max(rules level, ML level when confident), with a pragmatics gate. Code: `backend/app/services/safety/ensemble.py` | Combines C1 and C2 | **No** (by construction; partly tested; the safety branch gate for this module was closed on Day 28 after two tests were added, see [ADR 0029](adr/0029-branch-coverage-gates.md)) | In process | On |
 | C4 | **Emotion analyser** | Primary by default: `SamLowe/roberta-base-go_emotions` through Hugging Face, **only when the `nlp` extra is installed**. Otherwise the lexicon chain (keyword, then sentiment). **Optional alternate (`EMOTION_ANALYZER=trained`, Day 32):** a locally fine-tuned XLM-R + LoRA model packaged as an artefact directory ([ADR 0032](adr/0032-emotion-lora-finetune.md)); never committed, and a missing directory falls back to the lexicon | A tone hint and an optional mood tag. It never decides risk | No | In process (`hf`/`trained` load a model on first use) | `EMOTION_ANALYZER=auto`; Compose sets `keyword`; `trained` only where a run artefact has been placed |
 | C5 | **Lexicon fallbacks** | Keyword lexicon and a polarity sentiment scorer, `backend/app/services/nlp/` | Fallback for C4, and the path measured by the emotion evaluation | No | In process | Always attached |
@@ -35,9 +36,16 @@ Architecture context: [docs/architecture.md](architecture.md). Safety design:
 | C10 | **Screening instruments** | PHQ-9 and GAD-7: official item wording and published scoring. Not machine learning | Self-screening, with support shown before any PHQ-9 score when item 9 is positive | n/a | Deterministic | On |
 
 C1, C3, C7 and C10 are rules, not learned models, and carry most of the safety
-weight. The learned components (C2, C4, C6, C8) are each bounded so that they
+weight. The learned components (C2, C2b, C4, C6, C8) are each bounded so that they
 cannot lower a safety outcome, cannot be called at HIGH or IMMINENT risk, or are
 checked by a deterministic filter before a person sees their output.
+
+C2b is the same role as C2 behind the same interface and the same `combine()`.
+What it adds is a **stated cost of each error** (the cost matrix in
+[`ml/src/manovia_ml/training/safety/taxonomy.py`](../ml/src/manovia_ml/training/safety/taxonomy.py))
+and a **stated uncertainty** (the conformal prediction set and the abstention
+level), neither of which C2 has. What it does not add, today, is a number: no
+trained model exists in this repository yet, and §5.2b says exactly that.
 
 ## 2. Intended use
 
@@ -134,6 +142,34 @@ On dev: accuracy **0.543**, macro-F1 **0.459**, HIGH+IMMINENT recall **0.804**
 (metadata: [crisis_v1/metadata.json](../backend/app/ml_artifacts/crisis_v1/metadata.json)).
 Alone, the classifier would miss about one crisis in five. This is why the
 ensemble keeps the rules as the floor and uses the classifier only to raise a level.
+
+### 5.2b The trained safety classifier (C2b, Day 33)
+
+**No quality number is claimed here, and that is deliberate rather than coy.**
+The sandbox that built the pipeline has no GPU and cannot reach the Hugging Face
+hub, so `FacebookAI/xlm-roberta-base` cannot be downloaded and no trained weights
+exist in this repository. The real run is an owner step:
+[`ml/notebooks/colab_safety_lora.ipynb`](../ml/notebooks/colab_safety_lora.ipynb)
+with [`ml/configs/safety_lora_xlmr.yaml`](../ml/configs/safety_lora_xlmr.yaml).
+
+What *was* verified, on a randomly-initialised 2-layer XLM-R stand-in and 20
+hand-written rows per split (`configs/safety_lora_smoke.yaml`, `make safety-smoke`):
+
+| claim | what was checked | what it does not mean |
+| --- | --- | --- |
+| the cost-weighted loss reaches the optimiser | the matrix is logged with the run; `class_weights_from_cost` and the expected-cost decision rule are unit-tested against the matrix | nothing about how well the resulting model orders errors |
+| temperature scaling is fitted, not assumed | the fitted `T` is recorded per run, ECE before/after and the reliability bins are in the artefact | the smoke run's `T ≈ 8–10` is a random model's number |
+| conformal sets are computed and the policy is applied | the quantile, the coverage on the calibration split and on the held-out slice, and the abstention rate are all reported | the random model abstains on every row, so the policy's *cost* is unmeasured |
+| the abstention policy never lowers a level | a property test over all five point levels × five set shapes, in both `ml/` and `backend/` | nothing about recall |
+| the held-out split stays held out | every split's sha256 is in the manifest and in MLflow; the trainer refuses a corpus with a verbatim training row in the test split; the toy fixture is tested against the frozen split for near-duplicates (worst Jaccard 0.342) | the corpus itself contains near-paraphrases *within* the Day-9 hand-written set (max 0.719 to the frozen test split, zero verbatim overlap) |
+| a trained model cannot silently become the baseline | `SAFETY_ML=trained` with a missing artefact yields a `+trained-unavailable` version, and the eval harness refuses to write a report that says `trained` without saying whether it loaded | nothing about the trained model's quality |
+
+The corpus behind it: 456 hand-written Day-9 seeds expanded to **3,445 kept rows**
+(127 dropped as `rules_inconsistent`), split train 2,756 / dev 365 / calibration
+358. It is **synthetic and templated**, in four registers written by one person,
+with no native-speaker review — so a number measured on it is a number about it.
+The full statement of what this work does not establish is
+[`docs/safety-design.md` §12.9](safety-design.md).
 
 ### 5.3 Emotion (C4 as shipped: the lexicon chain)
 
