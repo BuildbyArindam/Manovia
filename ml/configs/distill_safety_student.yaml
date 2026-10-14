@@ -1,0 +1,58 @@
+# Day 34 REAL run (Colab/Kaggle, GPU): distil the Day-33 safety teacher
+# into a multilingual MiniLM-class student. Do not run in this sandbox:
+# it needs the packaged Day-33 artefact, torch+transformers and the hub.
+# Exact steps: ml/notebooks/colab_distill_export.ipynb and ml/README.md.
+name: distill_safety_student
+task: safety
+seed: 20261014
+notes: >-
+  Real distillation: Day-33 cost-sensitive LoRA teacher (xlm-roberta-base)
+  into multilingual MiniLM. Frozen Day-9 test split is the eval set; it is
+  never trained or tuned on. Pins (sha256/rows) are filled by the owner
+  after the Day-33 run produces the artefact — null means "not yet run".
+
+teacher_kind: trained_artifact
+teacher_artifact_dir: artifacts/safety/manovia-safety-v1
+# xlm-roberta-base fp32 on disk, approx. 1.1 GB; replaced by the measured
+# artefact size in the run report.
+teacher_size_mb: 1100.0
+
+data:
+  train:
+    path: data/safety/train.jsonl
+    sha256: null
+    rows: null
+  eval:
+    path: data/safety/dev.jsonl
+    sha256: null
+    rows: null
+  test:
+    path: data/safety/test.jsonl
+    sha256: null
+    rows: null
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [none, low, medium, high, imminent]
+
+student:
+  kind: transformer
+  base_model: microsoft/multilingual-MiniLM-L12-H384
+
+training:
+  temperature: 2.0
+  alpha: 0.7
+  epochs: 3
+  learning_rate: 0.00003
+  l2: 0.01
+  batch_size: 32
+
+tracking:
+  experiment: manovia-ml-distill
+  tracking_uri: null
+  log_environment: true
+  tags:
+    purpose: real
+    day: "34"
+
+threads: 1

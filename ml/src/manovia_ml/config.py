@@ -39,6 +39,9 @@ from manovia_ml.paths import config_dir
 __all__ = [
     "ConfigError",
     "DataConfig",
+    "DistillConfig",
+    "DistillStudentConfig",
+    "DistillTrainingConfig",
     "EmotionLoraConfig",
     "EmotionReportConfig",
     "EmotionRunConfig",
@@ -67,6 +70,7 @@ __all__ = [
     "expected_metrics_path",
     "load_config",
     "load_config_dict",
+    "load_distill_config",
     "load_expected_metrics",
     "write_expected_metrics",
 ]
@@ -552,6 +556,97 @@ def load_config(path: str | Path) -> TrainConfig:
     if not isinstance(raw, dict):
         raise ConfigError(f"{candidate}: config must be a mapping at the top level")
     return load_config_dict(raw, origin=str(candidate))
+
+
+class DistillStudentConfig(StrictModel):
+    """The student a distillation run trains (Day 34).
+
+    ``kind: linear_hash`` is the offline smoke student: a multinomial logistic
+    regression over hashed n-gram features, trained with the exact
+    temperature-scaled distillation loss in numpy. It exists so the whole
+    Day-34 path (distil → ONNX → INT8 → gates → registry) runs on a CPU with
+    no torch and no download. ``kind: transformer`` names the real student
+    (a MiniLM/DistilBERT-class multilingual encoder) and is only runnable
+    where torch+transformers are installed (Colab/Kaggle); the trainer
+    refuses with instructions anywhere else rather than half-running.
+    """
+
+    kind: Literal["linear_hash", "transformer"] = "linear_hash"
+    #: Hub id for ``transformer`` (e.g. microsoft/multilingual-MiniLM-L12-H384).
+    #: Empty for the linear student. Never hard-coded in code (AGENTS.md).
+    base_model: str = ""
+    #: Hashed-feature width for the linear student. 1024 keeps the fp32 ONNX
+    #: at ~20 KB for five classes while covering the toy vocabularies.
+    feature_dim: int = Field(default=1024, ge=64, le=65536)
+    word_ngram_max: int = Field(default=2, ge=1, le=3)
+    char_ngram_min: int = Field(default=3, ge=2, le=6)
+    char_ngram_max: int = Field(default=5, ge=2, le=8)
+    max_length_chars: int = Field(default=2000, ge=64, le=20000)
+
+    @model_validator(mode="after")
+    def _char_range(self) -> DistillStudentConfig:
+        if self.char_ngram_max < self.char_ngram_min:
+            raise ValueError("student.char_ngram_max must be >= char_ngram_min")
+        if self.kind == "transformer" and not self.base_model.strip():
+            raise ValueError("student.kind 'transformer' requires student.base_model")
+        return self
+
+
+class DistillTrainingConfig(StrictModel):
+    """The distillation loss and optimisation loop, all config-resident."""
+
+    #: Softmax temperature for teacher/student distributions.
+    temperature: float = Field(default=2.0, gt=0.0, le=20.0)
+    #: Weight on the distillation (soft) term; 1-alpha weights hard-label CE.
+    alpha: float = Field(default=0.7, ge=0.0, le=1.0)
+    epochs: int = Field(default=60, ge=1, le=2000)
+    learning_rate: float = Field(default=0.5, gt=0.0, lt=10.0)
+    l2: float = Field(default=1e-4, ge=0.0, lt=1.0)
+    batch_size: int = Field(default=32, ge=1, le=8192)
+
+
+class DistillConfig(StrictModel):
+    """One distillation run: a Day-32/33 teacher into a small student."""
+
+    name: str = Field(min_length=1)
+    task: Literal["safety", "emotion"]
+    seed: int = Field(ge=0, lt=2**32)
+    notes: str | None = None
+    #: The teacher this student distils. ``sklearn_tfidf`` trains a TF-IDF +
+    #: logistic-regression stand-in on the same rows (the sandbox has no
+    #: Day-32/33 weights); ``trained_artifact`` names a packaged Day-32/33
+    #: artefact directory for the real run. The name is recorded in every
+    #: report so a smoke number can never be quoted as a teacher number.
+    teacher_kind: Literal["sklearn_tfidf", "trained_artifact"] = "sklearn_tfidf"
+    teacher_artifact_dir: str = ""
+    #: Declared teacher size (MB) for the size-ratio gate and the tradeoff
+    #: table. Measured for the smoke stand-in at run time when 0.
+    teacher_size_mb: float = Field(default=0.0, ge=0.0)
+    data: DataConfig
+    student: DistillStudentConfig = DistillStudentConfig()
+    training: DistillTrainingConfig = DistillTrainingConfig()
+    tracking: TrackingConfig = TrackingConfig()
+    threads: int | None = Field(default=1, ge=1)
+
+
+def load_distill_config(path: str | Path) -> DistillConfig:
+    """Load and validate a distillation YAML (``extra=forbid``, like TrainConfig)."""
+
+    candidate = Path(path)
+    if not candidate.is_absolute() and not candidate.is_file():
+        candidate = config_dir() / path
+    if not candidate.is_file():
+        raise ConfigError(f"distill config not found: {path} (looked at {candidate})")
+    try:
+        raw = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"{candidate}: invalid YAML: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{candidate}: config must be a mapping at the top level")
+    try:
+        return DistillConfig.model_validate(raw)
+    except ValidationError as exc:
+        raise ConfigError(f"{candidate}: invalid distill config\n{exc}") from exc
 
 
 class ExpectedMetrics(StrictModel):

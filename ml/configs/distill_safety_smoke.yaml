@@ -1,0 +1,59 @@
+# Day 34 smoke: distil the safety teacher into a tiny linear student, offline.
+#
+# What this proves: the distillation loss, the hashed featurizer, the ONNX
+# export, INT8 quantisation, the release gates and the registry — end to end
+# on one CPU with no torch and no download. What it does NOT prove: model
+# quality. The teacher is a TF-IDF stand-in (the Day-33 weights do not exist
+# in this sandbox), the student is a hashed-feature linear model, and train
+# and eval are the same 80 hand-written rows, so every number is plumbing
+# and is inflated by construction. The real run is
+# configs/distill_safety_student.yaml on Colab/Kaggle.
+name: distill_safety_smoke
+task: safety
+seed: 20261014
+notes: >-
+  Smoke only: sklearn stand-in teacher, linear_hash student, train==eval on
+  the 80-row hand-written fixture. Numbers measure the pipeline, not safety.
+
+teacher_kind: sklearn_tfidf
+teacher_size_mb: 0.0
+
+data:
+  train:
+    path: data/toy/safety_toy.jsonl
+    sha256: "423cb0ebbf34c8d4e4470bc68e2e2fa620d3fb135378ec3a6e5fc361d1e23002"
+    rows: 80
+  eval:
+    path: data/toy/safety_toy.jsonl
+    sha256: "423cb0ebbf34c8d4e4470bc68e2e2fa620d3fb135378ec3a6e5fc361d1e23002"
+    rows: 80
+  text_field: text
+  label_field: label
+  lang_field: lang
+  labels: [none, low, medium, high, imminent]
+
+student:
+  kind: linear_hash
+  feature_dim: 1024
+  word_ngram_max: 2
+  char_ngram_min: 3
+  char_ngram_max: 5
+  max_length_chars: 2000
+
+training:
+  temperature: 2.0
+  alpha: 0.7
+  epochs: 60
+  learning_rate: 0.5
+  l2: 0.0001
+  batch_size: 32
+
+tracking:
+  experiment: manovia-ml-distill
+  tracking_uri: null
+  log_environment: true
+  tags:
+    purpose: smoke
+    day: "34"
+
+threads: 1

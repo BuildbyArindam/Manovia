@@ -26,6 +26,7 @@ mlruns/
 
 # Belt and braces: even if one of the above slips, these never enter Git.
 *.joblib
+*.npz
 *.pkl
 *.pickle
 *.pt
