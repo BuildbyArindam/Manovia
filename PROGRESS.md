@@ -111,6 +111,7 @@ noise by construction. The ready-to-run path is
 | `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 95 files formatted; **77 source files** typed (tests included) |
 | `cd backend && pytest -q tests/safety/ -m "not network"` | **826 passed** — 43 new (the trained-classifier bridge + the `--model` flag) |
 | `cd backend && ruff check .` / `ruff format --check .` / `mypy app` | **clean**; 360 files formatted; **149 source files** typed |
+| `cd backend && pytest -q` (the whole suite) | **4230 passed, 34 failed, 1 skipped, 5 deselected** in 1592 s — the 34 are a pre-existing, import-time-pollution flake that reproduces identically on the base commit and disappears when the two `model`-marked integration modules are excluded from collection; see *Known issues* |
 | `make safety-smoke` — the whole Day-33 path on a CPU, offline | exit 0; run `a5fab0f0…`, 5.6 s on CPU. HIGH+IMMINENT test recall **0.000**, macro-F1 0.333; abstention policy recall 0.000, raised 0, **abstention rate 1.000**; temperature **T=10.000**, ECE **0.1103 → 0.1010**; conformal target 0.950, calibration **1.000**, held-out **1.000**, q=0.8011; TF-IDF baseline recall 0.250 / precision 0.667; leakage max_jaccard 0.194, exact_overlap 0. **Plumbing numbers on a random stand-in — not quality** |
 | two identical safety runs | 14 of 15 logged metrics **bit-identical**; the one that moves, `mean_set_size`, moves by a **whole number of rows** (asserted as such, not hidden in a tolerance) |
 | `python evals/run_safety_eval.py --split test --model baseline` | precision **0.567** [0.463, 0.670], recall **1.000** [1.000, 1.000] (51 crisis cases); rules-only recall **0.275** [0.157, 0.404] |
@@ -153,6 +154,26 @@ noise by construction. The ready-to-run path is
 - **`ml/dvc.lock` moves when `ml/src/.../data.py` changes** (it is a recorded
   dependency of the toy-split stage); the Day-31 checker catches a stale one in
   CI.
+- **The full backend suite is not green in *this* sandbox, and was not before
+  Day 33.** `pytest -q` in `backend/` reports **34 failed, 4230 passed, 1
+  skipped, 5 deselected** (1592 s). Diagnosed rather than assumed: the same 34
+  fail on the base commit `a6c89bd` with every Day-33 backend file reverted, so
+  it is not a regression from this day. The failures are confined to
+  `tests/integration/{test_dev_analyze,test_journal_api}.py`,
+  `tests/security/{test_injection,test_log_sentinels,test_sentry_scrub}.py`
+  and `tests/privacy/test_privacy_api.py`, and they **disappear** when
+  `tests/integration/test_nlp_model.py` and `test_nlp_hf_pipeline.py` are
+  excluded from collection (`--ignore=…`): importing them makes
+  `pytest.importorskip("torch"/"transformers")` succeed, because this sandbox
+  has the `training` extra installed and the backend job does not. Reproduced
+  with `-k "dev_analyze or journal"`, which imports every module in the
+  directory and runs only those tests — so it is **import-time pollution, not
+  test-order flakiness**. Every affected test passes in its own group
+  (`tests/security` 110 passed; `tests/integration` in two halves, 259
+  passed; `tests/privacy` + `tests/integration/test_dev_analyze.py` +
+  `test_journal_api.py`, 79 passed). CI's `Backend` job installs
+  `backend[dev]` only, so it never sees this. Parking lot, with the
+  reproduction, rather than a skipped test.
 
 ### Parking lot (Day 33)
 
@@ -175,6 +196,12 @@ noise by construction. The ready-to-run path is
   starts keying on one word fails a check rather than a human noticing.
 - **A latency budget for the trained classifier** on the machine that runs it
   (the smoke numbers are a 2-layer stand-in's).
+- **The full-suite import-time pollution** above, with the one-line
+  reproduction (`pytest tests/integration -k "dev_analyze or journal"` on a
+  machine with torch+transformers installed). The likely shape is a
+  module-scoped `HFEmotionAnalyzer` fixture or a transformers-level logging
+  side effect at import time; it is worth a proper fix because it hides real
+  failures behind 34 noise ones.
 - From Day 32 and still open: MuRIL-vs-XLM-R by numbers, a `loneliness` source,
   GPU determinism, model-registry registration, DVC remote, MLflow server
   deployment, scheduled catalogue re-verification, the `crisis_v1` retrain on
