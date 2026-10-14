@@ -110,7 +110,7 @@ noise by construction. The ready-to-run path is
 | `cd ml && pytest -q -m "not network"` | **323 passed** in 41.5 s, offline (tmp file-store MLflow, tiny random-init model) — 102 of them new for Day 33 |
 | `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 95 files formatted; **77 source files** typed (tests included) |
 | `cd backend && pytest -q tests/safety/ -m "not network"` | **826 passed** — 43 new (the trained-classifier bridge + the `--model` flag) |
-| `cd backend && ruff check .` / `ruff format --check .` / `mypy app` | **clean**; 360 files formatted; **149 source files** typed |
+| `cd backend && ruff check .` / `ruff format --check .` / `mypy app tests` (what CI runs) | **clean**; 360 files formatted; **300 source files** typed |
 | `cd backend && pytest -q` (the whole suite) | **4230 passed, 34 failed, 1 skipped, 5 deselected** in 1592 s — the 34 are a pre-existing, import-time-pollution flake that reproduces identically on the base commit and disappears when the two `model`-marked integration modules are excluded from collection; see *Known issues* |
 | `make safety-smoke` — the whole Day-33 path on a CPU, offline | exit 0; run `a5fab0f0…`, 5.6 s on CPU. HIGH+IMMINENT test recall **0.000**, macro-F1 0.333; abstention policy recall 0.000, raised 0, **abstention rate 1.000**; temperature **T=10.000**, ECE **0.1103 → 0.1010**; conformal target 0.950, calibration **1.000**, held-out **1.000**, q=0.8011; TF-IDF baseline recall 0.250 / precision 0.667; leakage max_jaccard 0.194, exact_overlap 0. **Plumbing numbers on a random stand-in — not quality** |
 | two identical safety runs | 14 of 15 logged metrics **bit-identical**; the one that moves, `mean_set_size`, moves by a **whole number of rows** (asserted as such, not hidden in a tolerance) |
@@ -124,6 +124,16 @@ noise by construction. The ready-to-run path is
 | `make ml-catalogue` | 15 entries, table current; `tests/test_catalogue.py` **15 passed** |
 | the notebook's hash-pinning cell | executed against a copy of the real config: 3 digests pinned, 0 nulls left, the frozen test split's hash preserved |
 | frontend: `npm ci` / `npm run typecheck` / `npm run lint` / `npm run test:run` | clean install; typecheck clean; lint clean; **601 passed, 3 skipped** in 73 files (1 file skipped) — 91.6 s |
+
+**A root cause found by CI rather than by the sandbox.** The backend job runs
+`mypy app tests`; the local run only covered `mypy app`, so four
+`--strict` errors in the two new Day-33 test files reached the pull request
+(`SET_CASES` annotated `frozenset[str]` over `set[str]` literals, an unannotated
+loader factory, `predict_batch`'s `MLPrediction | None` items indexed as if
+non-optional, and `MLPrediction.prediction_set` — which carries level *names* —
+handed `RiskLevel` members). All four are fixed, `mypy app tests` is clean over
+300 files locally, and the lesson is the same one Day 32 recorded: **run the
+command CI runs, not a convenient subset of it.**
 
 ### Known issues (as of Day 33)
 
