@@ -128,7 +128,8 @@ class _OnnxScorer:
     def predict_proba(self, texts: Sequence[str]) -> np.ndarray:
         features = self._featurizer.transform(texts)
         outputs = self._session.run(["probabilities"], {"features": features})
-        return np.asarray(outputs[0], dtype=np.float64)
+        result: np.ndarray = np.asarray(outputs[0], dtype=np.float64)
+        return result
 
     def predict(self, texts: Sequence[str], labels: Sequence[str]) -> list[str]:
         probabilities = self.predict_proba(texts)

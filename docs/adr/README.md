@@ -43,6 +43,7 @@ entry.
 | [0031](0031-ml-platform.md) | ML platform: data catalogue, DVC-versioned data, MLflow tracking, config-driven reproducible runs | Accepted (Day 31) | 2026-10-13 |
 | [0032](0032-emotion-lora-finetune.md) | Fine-tuning the multilingual emotion model: LoRA on XLM-R, nine-label taxonomy, packaged artefact behind `EMOTION_ANALYZER=trained` | Accepted (Day 32) | 2026-10-13 |
 | [0033](0033-safety-trained-classifier.md) | Training the safety classifier: cost-sensitive loss, temperature calibration, conformal abstention, Integrated-Gradients review, behind `SAFETY_ML=trained` | Accepted (Day 33) | 2026-10-14 |
+| [0034](0034-compression-serving-rollout.md) | Compression, serving and safe rollout: distillation into small students, ONNX INT8 with release gates, MLflow alias registry with checksums, shadow mode and one-command rollback | Accepted (Day 34) | 2026-10-14 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number

@@ -36,7 +36,9 @@ from manovia_ml.paths import resolve
 __all__ = ["main", "run_pipeline"]
 
 
-def _gate_metrics(config: DistillConfig, result: Any, fp32: dict, int8: dict) -> dict[str, float]:
+def _gate_metrics(
+    config: DistillConfig, result: Any, fp32: dict[str, Any], int8: dict[str, Any]
+) -> dict[str, float]:
     teacher = result.metrics["teacher"]
     student = result.metrics["student"]
     metrics: dict[str, float] = {

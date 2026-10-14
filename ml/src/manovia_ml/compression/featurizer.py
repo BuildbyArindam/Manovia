@@ -96,22 +96,32 @@ class HashingFeaturizer:
         return out
 
     def transform_one(self, text: str) -> np.ndarray:
-        vector = np.zeros(self.dim, dtype=np.float64)
+        vector: np.ndarray = np.zeros(self.dim, dtype=np.float64)
         for feature in self.features(text):
             vector[_feature_index(feature, self.dim)] += 1.0
         vector = np.log1p(vector)
         norm = float(np.linalg.norm(vector))
         if norm > 0.0:
             vector /= norm
-        return vector.astype(np.float32)
+        result: np.ndarray = vector.astype(np.float32)
+        return result
 
     def transform(self, texts: Sequence[str]) -> np.ndarray:
         if not texts:
-            return np.zeros((0, self.dim), dtype=np.float32)
-        return np.stack([self.transform_one(text) for text in texts])
+            empty: np.ndarray = np.zeros((0, self.dim), dtype=np.float32)
+            return empty
+        stacked: np.ndarray = np.stack([self.transform_one(text) for text in texts])
+        return stacked
 
 
 def featurize_texts(texts: Sequence[str], **kwargs: int) -> np.ndarray:
     """Convenience: build a featurizer from keyword spec and transform."""
 
-    return HashingFeaturizer(**kwargs).transform(texts)  # type: ignore[arg-type]
+    featurizer = HashingFeaturizer(
+        dim=int(kwargs.get("dim", 1024)),
+        word_ngram_max=int(kwargs.get("word_ngram_max", 2)),
+        char_ngram_min=int(kwargs.get("char_ngram_min", 3)),
+        char_ngram_max=int(kwargs.get("char_ngram_max", 5)),
+        max_length_chars=int(kwargs.get("max_length_chars", 2000)),
+    )
+    return featurizer.transform(texts)

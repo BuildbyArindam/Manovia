@@ -73,7 +73,8 @@ def softmax(logits: np.ndarray, *, temperature: float = 1.0) -> np.ndarray:
     scaled = logits / temperature
     scaled = scaled - scaled.max(axis=-1, keepdims=True)
     exp = np.exp(scaled)
-    return exp / exp.sum(axis=-1, keepdims=True)
+    result: np.ndarray = exp / exp.sum(axis=-1, keepdims=True)
+    return result
 
 
 def _soften(probabilities: np.ndarray, temperature: float) -> np.ndarray:
@@ -81,7 +82,8 @@ def _soften(probabilities: np.ndarray, temperature: float) -> np.ndarray:
 
     clipped = np.clip(probabilities, 1e-12, None)
     powered = clipped ** (1.0 / temperature)
-    return powered / powered.sum(axis=-1, keepdims=True)
+    result: np.ndarray = powered / powered.sum(axis=-1, keepdims=True)
+    return result
 
 
 @dataclass
@@ -193,13 +195,14 @@ class _SklearnTeacher:
             raise DistillationError("teacher used before fit")
         raw = self._pipeline.predict_proba(list(texts))
         classes = [str(item).lower() for item in self._pipeline.classes_]
-        out = np.zeros((len(texts), len(self._labels)), dtype=np.float64)
+        out: np.ndarray = np.zeros((len(texts), len(self._labels)), dtype=np.float64)
         for column, label in enumerate(classes):
             if label in self._labels:
                 out[:, self._labels.index(label)] = raw[:, column]
         row_sums = out.sum(axis=1, keepdims=True)
         row_sums[row_sums == 0.0] = 1.0
-        return out / row_sums
+        normalised: np.ndarray = out / row_sums
+        return normalised
 
 
 def _train_linear_student(
@@ -214,12 +217,12 @@ def _train_linear_student(
 
     rng = np.random.default_rng(derive_seed(config.seed, "distill-init"))
     dim = features.shape[1]
-    weights = (rng.standard_normal((dim, n_classes)) * 0.01).astype(np.float64)
-    bias = np.zeros(n_classes, dtype=np.float64)
+    weights: np.ndarray = (rng.standard_normal((dim, n_classes)) * 0.01).astype(np.float64)
+    bias: np.ndarray = np.zeros(n_classes, dtype=np.float64)
     temperature = config.training.temperature
     alpha = config.training.alpha
     targets_soft = _soften(teacher_soft, temperature)
-    x = features.astype(np.float64)
+    x: np.ndarray = features.astype(np.float64)
     losses: list[float] = []
     m_w = np.zeros_like(weights)
     v_w = np.zeros_like(weights)
@@ -356,7 +359,7 @@ def distill(config: DistillConfig, *, out_dir: Path | None = None) -> DistillRes
         max_length_chars=config.student.max_length_chars,
     )
     features = featurizer.transform(train_texts)
-    hard = np.zeros((len(train_texts), len(labels)), dtype=np.float64)
+    hard: np.ndarray = np.zeros((len(train_texts), len(labels)), dtype=np.float64)
     for row, label in enumerate(train_labels):
         hard[row, label_index[label]] = 1.0
 

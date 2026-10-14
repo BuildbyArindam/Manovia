@@ -281,10 +281,12 @@ class OnnxModelRuntime:
         except ModelRuntimeUnavailableError:
             if self._fallback_spec is None:
                 raise
-        probabilities = self._predict_with(self._fallback_spec, text)  # type: ignore[arg-type]
+        fallback = self._fallback_spec
+        assert fallback is not None  # narrowed by the raise above
+        probabilities = self._predict_with(fallback, text)
         return RuntimePrediction(
             probabilities=probabilities,
-            model_version=self._fallback_spec.version,  # type: ignore[union-attr]
+            model_version=fallback.version,
             latency_ms=(time.perf_counter() - started) * 1000.0,
             used_fallback=True,
         )

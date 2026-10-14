@@ -169,6 +169,16 @@ disallow_subclassing_any = false
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
+# Day 34 serving stack (onnx/onnxruntime), optional via the `serving` extra.
+# Same treatment as the training stack: untyped at the boundary, covered by
+# tests that run the real session.
+module = ["onnx.*", "onnx", "onnxruntime.*", "onnxruntime"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
 # The backend, imported lazily and *inside a function* by the baseline harness
 # (`manovia_ml.training.emotion.baselines`). `ml/` is a separate project and must
 # stay installable without the backend checkout, so mypy cannot follow these

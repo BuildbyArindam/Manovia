@@ -19,12 +19,12 @@ from manovia_ml.compression.featurizer import HashingFeaturizer
 from manovia_ml.config import load_distill_config
 
 
-def _write_jsonl(path: Path, rows: list[dict]) -> Path:
+def _write_jsonl(path: Path, rows: list[dict[str, str]]) -> Path:
     path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
     return path
 
 
-def _toy_rows() -> tuple[list[dict], list[dict]]:
+def _toy_rows() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     train = [
         {"text": "i want to end my life tonight", "label": "IMMINENT", "lang": "en"},
         {"text": "i have a plan to hurt myself", "label": "HIGH", "lang": "en"},
@@ -45,7 +45,7 @@ def _config(tmp_path: Path, train: Path, held_out: Path, **overrides: object) ->
         load_config_dict,  # noqa: F401  (keeps import local)
     )
 
-    payload: dict = {
+    payload: dict[str, object] = {
         "name": "test_distill",
         "task": "safety",
         "seed": 7,

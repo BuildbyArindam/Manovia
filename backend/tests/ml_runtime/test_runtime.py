@@ -45,7 +45,7 @@ def _write_model(directory: Path, *, seed: int) -> LoadedModel:
     weights = (rng.standard_normal((64, 5)) * 0.5).astype(np.float32)
     # Make "end/life"-ish rows predictable enough: the classifier test only
     # needs a valid distribution, not accuracy.
-    bias = np.zeros(5, dtype=np.float32)
+    bias: np.ndarray = np.zeros(5, dtype=np.float32)
     graph = helper.make_graph(
         nodes=[
             helper.make_node("Gemm", ["features", "W", "b"], ["logits"]),

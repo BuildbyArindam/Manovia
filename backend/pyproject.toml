@@ -210,6 +210,8 @@ module = [
     # Day 27: gunicorn config/worker and the observability stack below.
     # "manovia_worker.*" is checked here (it subclasses the untyped worker).
     "uvicorn_worker.*", "gunicorn.*", "prometheus_client.*", "sentry_sdk.*",
+    # Day 34: onnxruntime is imported lazily inside app/services/ml_runtime.
+    "onnxruntime.*", "onnx.*", "numpy.*",
     "manovia_worker.*", "gunicorn.conf",
 ]
 ignore_missing_imports = true

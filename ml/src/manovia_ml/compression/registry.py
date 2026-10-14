@@ -82,7 +82,8 @@ def verify_artifact(directory: Path) -> dict[str, Any]:
     manifest_path = directory / MANIFEST_FILENAME
     if not manifest_path.is_file():
         raise RegistryError(f"{directory}: no {MANIFEST_FILENAME}")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    parsed: dict[str, Any] = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = parsed
     model_file = manifest.get("model_file")
     expected = manifest.get("sha256")
     if not isinstance(model_file, str) or not isinstance(expected, str):
@@ -134,7 +135,8 @@ class RegistryManager:
                 "archived": [],
                 "previous_production": None,
             }
-        return json.loads(path.read_text(encoding="utf-8"))
+        aliases: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        return aliases
 
     def _write_aliases(self, model_name: str, aliases: dict[str, Any]) -> Path:
         path = self._aliases_path(model_name)
