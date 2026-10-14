@@ -25,7 +25,7 @@ exists to prove the *pipeline*; every report it writes says its numbers are nois
 abstention and explainability — is built and verified in the sandbox
 (2026-10-14).** Branch `day-33-safety-classifier-cost-sensitive` from `main`
 (`a6c89bd`), mirrored on `arena/6d727140-manovia`; nothing pushed to `main`. The
-PR is [open and not merged](#day-33-handoff-status).
+PR is [#41](https://github.com/BuildbyArindam/Manovia/pull/41), open and **not merged**.
 
 **What exists now:** a cost-sensitive LoRA training path in `ml/` for the five
 risk levels (cost matrix, corpus builder, trainer, temperature calibration,
