@@ -176,13 +176,28 @@ def test_load_config_rejects_broken_yaml(tmp_path: Path) -> None:
 
 
 def test_every_shipped_config_validates() -> None:
-    """A config that does not parse is a run that cannot happen."""
+    """A config that does not parse is a run that cannot happen.
 
+    Day 34 added two more config families beside ``TrainConfig``:
+    distillation runs (``distill_*.yaml``) and the release gates
+    (``release_gates.yaml``). Each file is validated by its own strict
+    loader — unknown keys are still errors everywhere — and a file that
+    matches no family fails here rather than being quietly skipped.
+    """
+
+    from manovia_ml.compression.gates import load_release_gates
+    from manovia_ml.config import load_distill_config
     from manovia_ml.paths import config_dir
 
     configs = sorted(config_dir().glob("*.y*ml"))
     assert configs, "no configs found"
     for path in configs:
+        if path.name == "release_gates.yaml":
+            load_release_gates(path)
+            continue
+        if path.name.startswith("distill_"):
+            assert load_distill_config(path).name, path.name
+            continue
         parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
         config = load_config_dict(parsed, origin=str(path))
         assert config.name, path.name

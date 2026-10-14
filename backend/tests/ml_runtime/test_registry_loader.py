@@ -41,7 +41,12 @@ def _version(root: Path, model: str, version: str, payload: bytes = b"model-byte
 def _registry(tmp_path: Path) -> RegistryLoader:
     _version(tmp_path, "safety-student", "v1", b"v1-bytes")
     _version(tmp_path, "safety-student", "v2", b"v2-bytes")
-    aliases: dict[str, object] = {"production": "v2", "previous_production": "v1", "staging": None, "archived": []}
+    aliases: dict[str, object] = {
+        "production": "v2",
+        "previous_production": "v1",
+        "staging": None,
+        "archived": [],
+    }
     (tmp_path / "safety-student" / "aliases.json").write_text(json.dumps(aliases), encoding="utf-8")
     return RegistryLoader(tmp_path)
 
