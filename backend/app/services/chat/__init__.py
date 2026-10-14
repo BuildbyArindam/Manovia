@@ -47,7 +47,7 @@ from app.services.llm import LLMProvider, Redactor, build_llm_chain
 from app.services.nlp import build_analyzer
 from app.services.nlp.base import EmotionAnalyzer
 from app.services.safety.escalation import build_escalator
-from app.services.safety.ml_classifier import NullClassifier, SafetyClassifier, build_ml_classifier
+from app.services.safety.ml_classifier import SafetyClassifier, build_safety_classifier
 from app.services.safety.rules import build_engine
 
 
@@ -78,11 +78,9 @@ def build_orchestrator(
     tests and scripts inject Fakes.
     """
     if classifier is None:
-        classifier = (
-            build_ml_classifier(artifact_dir=settings.safety_ml_artifact_dir)
-            if settings.safety_ml_enabled
-            else NullClassifier(reason="disabled")
-        )
+        # Day 33: the same selector the API dependency uses, so `SAFETY_ML` means
+        # one thing across the whole app.
+        classifier = build_safety_classifier(settings)
     # Day 13: the knowledge-backed retriever when retrieval is enabled; the
     # null one otherwise, and the pipeline is exactly what it was on Day 11.
     # Store/embedder load failures degrade to "no reference material" inside

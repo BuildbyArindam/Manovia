@@ -11,6 +11,12 @@
 data/processed/
 data/raw/
 data/downloads/
+# Day 33: the expanded synthetic safety corpus and the toy fixture's derived
+# splits. Both are outputs of `make ml-safety-data`; DVC records their hashes and
+# the training run records the sha256 of the files it read. The hand-written
+# fixture itself (data/toy/safety_toy.jsonl) IS committed — see data/README.md.
+data/safety/
+data/safety_toy/
 
 # Locally downloaded run artefacts (manovia_ml.serving.artifacts.fetch_run_artifact)
 artifacts/

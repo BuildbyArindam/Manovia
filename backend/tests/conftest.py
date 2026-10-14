@@ -91,6 +91,11 @@ _ENV_KEYS = (
     "SAFETY_ML_CRISIS_MASS_FLOOR",
     "SAFETY_ML_SUSPICION_FLOOR",
     "SAFETY_ML_ARTIFACT_DIR",
+    # Day 33: which classifier the ensemble consumes. A developer who exports
+    # SAFETY_ML=trained to try the real model must not silently flip every test
+    # that builds Settings() — the same reasoning as the thresholds above.
+    "SAFETY_ML",
+    "SAFETY_ML_TRAINED_ARTIFACT_DIR",
     # Chat orchestrator (Day 11).
     "CHAT_MAX_MESSAGE_CHARS",
     "CHAT_RATE_LIMIT_PER_MINUTE",

@@ -99,8 +99,24 @@ async function resetFocus(page: Page): Promise<void> {
   });
 }
 
+/**
+ * Hooks the regression test uses to reproduce a tab-walk race deterministically.
+ *
+ * The chat's "Jump to latest" button is the reason these exist. It is rendered
+ * the moment the conversation un-pins — which the browser can cause by revealing
+ * the focused node inside the scroll container — and that `scroll` event lands
+ * asynchronously, so the button can appear *after* the walk's last Tab and
+ * *before* the unreached-controls query. A control that was never given the
+ * chance to be tabbed to is then reported as unreachable, which is a lie, and
+ * which is what failed this suite on CI once in every few runs.
+ */
+interface AuditHooks {
+  /** Runs after the walk's last Tab and before the unreached controls are read. */
+  afterWalk?: () => Promise<void>;
+}
+
 /** Walk the whole tab order once; report wrapping and unreached controls. */
-async function audit(page: Page, surface: string): Promise<SurfaceReport> {
+async function audit(page: Page, surface: string, hooks: AuditHooks = {}): Promise<SurfaceReport> {
   await resetFocus(page);
   const total = await page.evaluate(
     () =>
@@ -109,20 +125,24 @@ async function audit(page: Page, surface: string): Promise<SurfaceReport> {
       ).length,
   );
   const max = total * 2 + 20;
-  const sequence: Focused[] = [];
-  let wrapped = false;
-  for (let i = 0; i < max; i += 1) {
-    await page.keyboard.press("Tab");
-    const now = await focused(page);
-    sequence.push(now);
-    // Wrapped: the first element of the walk has come round again.
-    const first = sequence.find((item) => item.key !== "body");
-    if (first !== undefined && sequence.filter((item) => item.key === first.key).length > 1) {
-      wrapped = true;
-      break;
+  const walkOnce = async (): Promise<{ sequence: Focused[]; wrapped: boolean }> => {
+    const sequence: Focused[] = [];
+    let wrapped = false;
+    for (let i = 0; i < max; i += 1) {
+      await page.keyboard.press("Tab");
+      const now = await focused(page);
+      sequence.push(now);
+      // Wrapped: the first element of the walk has come round again.
+      const first = sequence.find((item) => item.key !== "body");
+      if (first !== undefined && sequence.filter((item) => item.key === first.key).length > 1) {
+        wrapped = true;
+        break;
+      }
     }
-  }
-  const unreachable = await page.evaluate(() => {
+    return { sequence, wrapped };
+  };
+  const unreached = (): Promise<string[]> =>
+    page.evaluate(() => {
     const selector =
       "a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=checkbox], [role=switch], [role=radio], [tabindex]:not([tabindex='-1'])";
     const reachedGroups = new Set(
@@ -166,6 +186,23 @@ async function audit(page: Page, surface: string): Promise<SurfaceReport> {
     }
     return out;
   });
+
+  let walked = await walkOnce();
+  if (hooks.afterWalk !== undefined) {
+    await hooks.afterWalk();
+  }
+  let unreachable = await unreached();
+  // A control that arrived while the walk was running was never offered a Tab,
+  // so walk once more before calling anything unreachable. Bounded, and only on
+  // the path where something was missed: a genuinely unreachable control still
+  // fails, it just fails after one honest second chance.
+  if (unreachable.length > 0) {
+    await resetFocus(page);
+    walked = await walkOnce();
+    unreachable = await unreached();
+  }
+
+  const { sequence, wrapped } = walked;
   const report: SurfaceReport = {
     surface,
     presses: sequence.length,
@@ -293,4 +330,32 @@ test("onboarding → chat → mood → exercise → settings, keyboard only", as
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("html")).toHaveAttribute("data-contrast", "more");
   await audit(page, "settings (high contrast on)");
+});
+
+/**
+ * The race the `audit` second pass exists for, reproduced on purpose.
+ *
+ * In the real app the chat's "Jump to latest" button arrives between the walk's
+ * last Tab and the unreached-controls query, because the `scroll` event that
+ * un-pins the conversation is asynchronous. That is a timing accident, so this
+ * test makes it happen on demand: append a control at exactly that moment and
+ * hold the audit to the property it claims to check — that every keyboard-
+ * reachable control is reachable by Tab, including one that showed up late.
+ *
+ * Before the second pass this fails with the control named in `unreachable`;
+ * after it, the walk is repeated and the control is reached.
+ */
+test("a control that arrives mid-walk is still held to the tab order", async ({ page }) => {
+  await page.goto("/");
+  await audit(page, "home, with a control that arrives late", {
+    afterWalk: async () => {
+      await page.evaluate(() => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "A control that arrived late";
+        button.dataset.testid = "late-arriving-control";
+        document.body.append(button);
+      });
+    },
+  });
 });

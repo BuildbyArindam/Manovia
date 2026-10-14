@@ -74,3 +74,115 @@ stages:
       hash: md5
       md5: 96aa0e0c9936e61c0a4f486a02fcdebe
       size: 2876
+  safety_toy_split:
+    cmd: python -m manovia_ml.training.safety.build_data --toy --out-dir 
+      data/safety_toy --seed 20261013
+    deps:
+    - path: data/toy/safety_toy.jsonl
+      hash: md5
+      md5: 80d60a851fc1931fb02f7cfd07e6cf24
+      size: 15605
+    - path: src/manovia_ml/hashing.py
+      hash: md5
+      md5: 5a39c2e354b4641dbe52a96f7c1a15a2
+      size: 6699
+    - path: src/manovia_ml/paths.py
+      hash: md5
+      md5: 86df4e75c8c25480c95d7640c96aa3fb
+      size: 3774
+    - path: src/manovia_ml/seeds.py
+      hash: md5
+      md5: f5af30e497de0ad8f1a76801211a4e54
+      size: 5888
+    - path: src/manovia_ml/training/safety/build_data.py
+      hash: md5
+      md5: fd2ac36c42dc5a4462ecf3f0665d4c03
+      size: 9299
+    - path: src/manovia_ml/training/safety/data.py
+      hash: md5
+      md5: f8adb201a6c120b72c6c34d6fcb71417
+      size: 15946
+    outs:
+    - path: data/safety_toy/calibration.jsonl
+      hash: md5
+      md5: e791eda4917a74ecb67164375b2df051
+      size: 3873
+    - path: data/safety_toy/dev.jsonl
+      hash: md5
+      md5: f01fd81eaa4f029c826aebd323eae56d
+      size: 3937
+    - path: data/safety_toy/manifest.json
+      hash: md5
+      md5: b6014e5cf9d8ade23b7ac9e0b7c95819
+      size: 4761
+    - path: data/safety_toy/test.jsonl
+      hash: md5
+      md5: 75364c6648d27f76da08d70d50d12c71
+      size: 3869
+    - path: data/safety_toy/train.jsonl
+      hash: md5
+      md5: 458c0126e5d4e2f9f65e63094259bb60
+      size: 3926
+  safety_expand:
+    cmd: python -m manovia_ml.training.safety.build_data --seeds 
+      ../evals/datasets/crisis_cases_train.jsonl --seeds 
+      ../evals/datasets/crisis_cases_dev.jsonl --out-dir data/safety --seed 
+      20261013 --paraphrases 4 --adversarial 1
+    deps:
+    - path: ../evals/datasets/crisis_cases_dev.jsonl
+      hash: md5
+      md5: 1a50038899093f14be938a4f62417f1c
+      size: 21176
+    - path: ../evals/datasets/crisis_cases_train.jsonl
+      hash: md5
+      md5: 727e9d8596d061caf1dbb3dfc113e291
+      size: 62748
+    - path: src/manovia_ml/hashing.py
+      hash: md5
+      md5: 5a39c2e354b4641dbe52a96f7c1a15a2
+      size: 6699
+    - path: src/manovia_ml/paths.py
+      hash: md5
+      md5: 86df4e75c8c25480c95d7640c96aa3fb
+      size: 3774
+    - path: src/manovia_ml/seeds.py
+      hash: md5
+      md5: f5af30e497de0ad8f1a76801211a4e54
+      size: 5888
+    - path: src/manovia_ml/training/safety/augment.py
+      hash: md5
+      md5: 5208bc0baf4f1dd7af040b9403e307f1
+      size: 27917
+    - path: src/manovia_ml/training/safety/build_data.py
+      hash: md5
+      md5: fd2ac36c42dc5a4462ecf3f0665d4c03
+      size: 9299
+    - path: src/manovia_ml/training/safety/data.py
+      hash: md5
+      md5: f8adb201a6c120b72c6c34d6fcb71417
+      size: 15946
+    - path: src/manovia_ml/training/safety/providers.py
+      hash: md5
+      md5: 51980b3324cce081634c01789137a4b3
+      size: 15073
+    outs:
+    - path: data/safety/calibration.jsonl
+      hash: md5
+      md5: bba1934c049aa63ca2f6cb74fe512ce1
+      size: 167286
+    - path: data/safety/dev.jsonl
+      hash: md5
+      md5: f3976fc12b8aa14e5bca5fdefcc1f42f
+      size: 170753
+    - path: data/safety/dropped.jsonl
+      hash: md5
+      md5: 2df6463f3349b0de1ff2acc26ca8b00b
+      size: 6638
+    - path: data/safety/manifest.json
+      hash: md5
+      md5: 1c62d2537a6709bf27ab2fdd7a1bce80
+      size: 4376
+    - path: data/safety/train.jsonl
+      hash: md5
+      md5: 63d3a8a1730e1d26e0dbb4d363a2c0fb
+      size: 1274234

@@ -53,3 +53,62 @@ stages:
       - data/processed/toy_smoke_train.jsonl
       - data/processed/toy_smoke_eval.jsonl
       - data/processed/toy_smoke.manifest.json
+
+  # Day 33: the hand-written safety fixture's four-way split. This is the only
+  # place a fourth slice is cut, because it is the only place there is no frozen
+  # held-out file to protect; the real corpus's held-out split is the Day-9 file
+  # and it is read by the evaluator alone.
+  safety_toy_split:
+    desc: >-
+      Train/dev/calibration/test slices of the hand-written safety fixture
+      (80 rows, 5 risk levels x en/hi/hi-Latn/bn). Feeds
+      configs/safety_lora_smoke.yaml.
+    cmd: >-
+      python -m manovia_ml.training.safety.build_data --toy
+      --out-dir data/safety_toy --seed 20261013
+    deps:
+      - data/toy/safety_toy.jsonl
+      - src/manovia_ml/training/safety/build_data.py
+      - src/manovia_ml/training/safety/data.py
+      - src/manovia_ml/hashing.py
+      - src/manovia_ml/paths.py
+      - src/manovia_ml/seeds.py
+    outs:
+      - data/safety_toy/train.jsonl
+      - data/safety_toy/dev.jsonl
+      - data/safety_toy/calibration.jsonl
+      - data/safety_toy/test.jsonl
+      - data/safety_toy/manifest.json
+
+  # Day 33: the expanded synthetic safety corpus. Deterministic given the seeds,
+  # the code and the seed value: the paraphraser is the offline Fake by default,
+  # so `dvc repro` needs no network and no vendor (AGENTS.md, ML ground rule 10).
+  # The frozen test split is deliberately NOT a dependency: it is an input to the
+  # evaluator and to nothing else, and there is no code path here that opens it.
+  safety_expand:
+    desc: >-
+      Expand the hand-written Day-9 train + dev seeds into the synthetic safety
+      corpus (template paraphrase + adversarial augmentation, rules-engine label
+      filtering, method-word and duplicate screens), then split it into
+      train/dev/calibration.
+    cmd: >-
+      python -m manovia_ml.training.safety.build_data
+      --seeds ../evals/datasets/crisis_cases_train.jsonl
+      --seeds ../evals/datasets/crisis_cases_dev.jsonl
+      --out-dir data/safety --seed 20261013 --paraphrases 4 --adversarial 1
+    deps:
+      - ../evals/datasets/crisis_cases_train.jsonl
+      - ../evals/datasets/crisis_cases_dev.jsonl
+      - src/manovia_ml/training/safety/build_data.py
+      - src/manovia_ml/training/safety/data.py
+      - src/manovia_ml/training/safety/augment.py
+      - src/manovia_ml/training/safety/providers.py
+      - src/manovia_ml/hashing.py
+      - src/manovia_ml/paths.py
+      - src/manovia_ml/seeds.py
+    outs:
+      - data/safety/train.jsonl
+      - data/safety/dev.jsonl
+      - data/safety/calibration.jsonl
+      - data/safety/dropped.jsonl
+      - data/safety/manifest.json

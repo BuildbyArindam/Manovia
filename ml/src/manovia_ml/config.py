@@ -49,6 +49,13 @@ __all__ = [
     "LoraTrainingConfig",
     "ModelConfig",
     "OptunaConfig",
+    "SafetyCalibrationConfig",
+    "SafetyConformalConfig",
+    "SafetyCostConfig",
+    "SafetyLoraConfig",
+    "SafetyReportConfig",
+    "SafetyRunConfig",
+    "SafetyTfidfConfig",
     "SgdConfig",
     "SplitSpec",
     "TfidfConfig",
@@ -310,7 +317,101 @@ class EmotionLoraConfig(StrictModel):
     training: LoraTrainingConfig = LoraTrainingConfig()
 
 
-ModelConfig = Annotated[SgdConfig | LogRegConfig | EmotionLoraConfig, Field(discriminator="kind")]
+class SafetyCostConfig(StrictModel):
+    """The cost matrix the loss and the decision rule use (Day 33).
+
+    The matrix itself lives in ``training/safety/taxonomy.py`` because it is a
+    product decision, not a hyperparameter; what is config-resident is *whether*
+    it is used, how it is normalised, and how much label smoothing is applied to
+    the targets before the cost lookup.
+    """
+
+    #: Which matrix. One exists today; naming it means adding a second is an act.
+    matrix: Literal["default"] = "default"
+    #: Row-normalise the loss (see ``training/safety/cost.NORMALISE_PER_ROW``).
+    normalise_per_row: bool = True
+    #: Smoothing applied to the one-hot target before the cost weights are
+    #: looked up. 0.0 means "the truth is the truth".
+    label_smoothing: float = Field(default=0.0, ge=0.0, lt=0.5)
+    #: Whether the inference-time decision rule is the expected-cost argmin
+    #: (true, the point of the matrix) or a plain argmax.
+    cost_decision_rule: bool = True
+
+
+class SafetyCalibrationConfig(StrictModel):
+    """Temperature scaling: one parameter, fitted on the calibration split."""
+
+    enabled: bool = True
+    #: Reliability-diagram bins. Also the ECE bin count.
+    bins: int = Field(default=10, ge=2, le=50)
+    #: Search bounds for the temperature. Wide on purpose: a badly over-confident
+    #: small model needs a T well above 2.
+    lower: float = Field(default=0.05, gt=0.0, lt=10.0)
+    upper: float = Field(default=10.0, gt=0.05, le=100.0)
+
+
+class SafetyConformalConfig(StrictModel):
+    """Split conformal prediction sets and the abstention policy."""
+
+    enabled: bool = True
+    #: Target miscoverage. 0.05 -> 95% coverage.
+    alpha: float = Field(default=0.05, gt=0.0, lt=1.0)
+    #: The only policy implemented: a set containing a level >= MEDIUM makes the
+    #: message MEDIUM or above. See ``training/safety/conformal.abstain_level``.
+    policy: Literal["abstain_medium"] = "abstain_medium"
+
+
+class SafetyReportConfig(StrictModel):
+    """What the evaluation writes: intervals, per-language tables, error cases."""
+
+    bootstrap_resamples: int = Field(default=2000, ge=100, le=50000)
+    confidence_level: float = Field(default=0.95, gt=0.0, lt=1.0)
+    error_cases: int = Field(default=20, ge=1, le=200)
+    #: Whether to fit the TF-IDF baseline on the same data and report both.
+    compare_baseline: bool = True
+
+
+class SafetyRunConfig(StrictModel):
+    """Everything safety-specific that is not the model or the data (Day 33)."""
+
+    #: The baseline's class weighting, hoisted here so both model kinds agree.
+    baseline_class_weight: Literal["balanced", "none"] = "balanced"
+    cost: SafetyCostConfig = SafetyCostConfig()
+    calibration: SafetyCalibrationConfig = SafetyCalibrationConfig()
+    conformal: SafetyConformalConfig = SafetyConformalConfig()
+    report: SafetyReportConfig = SafetyReportConfig()
+    #: Where a packaged artefact is written, relative to the ML root.
+    artifact_dir: str = "artifacts/safety"
+    #: Name of the packaged model directory (a version, not a date).
+    artifact_name: str = "manovia-safety-v1"
+
+
+class SafetyLoraConfig(StrictModel):
+    """A cost-sensitive LoRA fine-tune of a multilingual encoder into five levels."""
+
+    kind: Literal["safety_lora"] = "safety_lora"
+    #: Hub id, a local directory, or ``tiny://xlm-roberta`` for the offline
+    #: stand-in. Never a hard-coded path.
+    base_model: str = Field(min_length=1)
+    tokenizer_max_length: int = Field(default=96, ge=8, le=512)
+    lora: LoraAdapterConfig = LoraAdapterConfig()
+    training: LoraTrainingConfig = LoraTrainingConfig()
+
+
+class SafetyTfidfConfig(StrictModel):
+    """The Day-9 TF-IDF baseline, fit on the same expanded corpus.
+
+    Exists so the transformer's numbers can be compared against something trained
+    on the *same rows*: a linear model trained on 340 hand-written cases is a
+    different experiment, not a baseline.
+    """
+
+    kind: Literal["safety_tfidf"] = "safety_tfidf"
+    #: ``balanced`` is the scalar approximation of the cost matrix; ``None`` is
+    #: the unweighted Day-9 operating point.
+    class_weight: Literal["balanced", "none"] = "balanced"
+    calibration_cv: int = Field(default=3, ge=2, le=10)
+    max_iter: int = Field(default=5000, ge=100, le=100_000)
 
 
 class EvaluationConfig(StrictModel):
@@ -333,6 +434,12 @@ class TrackingConfig(StrictModel):
     tags: dict[str, str] = {}
 
 
+ModelConfig = Annotated[
+    SgdConfig | LogRegConfig | EmotionLoraConfig | SafetyLoraConfig | SafetyTfidfConfig,
+    Field(discriminator="kind"),
+]
+
+
 class TrainConfig(StrictModel):
     """The whole description of one training run."""
 
@@ -348,6 +455,9 @@ class TrainConfig(StrictModel):
     #: exactly that pairing — a config that tunes thresholds for a TF-IDF model
     #: is a mistake, not a feature.
     emotion: EmotionRunConfig | None = None
+    #: Day 33: the cost matrix, calibration, conformal and report settings. The
+    #: same pairing rule as `emotion:` — see the validator below.
+    safety: SafetyRunConfig | None = None
     #: BLAS/OpenMP thread pinning. 1 = reproducible everywhere; None = leave the
     #: pools alone (faster, and the tolerance covers the difference).
     threads: int | None = Field(default=1, ge=1)
@@ -363,6 +473,40 @@ class TrainConfig(StrictModel):
             raise ValueError(
                 "model.kind 'emotion_lora' requires data.validation: thresholds are tuned on "
                 "the validation split, never on the test split"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _safety_pairing(self) -> TrainConfig:
+        """A safety run needs its section, and only a safety run may have one.
+
+        The same rule as `_emotion_pairing`, plus the split mapping, because that
+        is the part a config author knows and everyone else does not:
+        ``data.eval`` is the *dev* split (model selection), ``data.validation``
+        is the *calibration* split (temperature and conformal quantile), and
+        ``data.test`` is the frozen Day-9 file. A safety run without a
+        calibration split would silently temperature-scale on dev, which is the
+        bug this check exists to prevent.
+        """
+        needs_safety = isinstance(self.model, (SafetyLoraConfig, SafetyTfidfConfig))
+        if needs_safety and self.safety is None:
+            raise ValueError(
+                "model.kind 'safety_lora'/'safety_tfidf' requires the `safety:` section "
+                "(cost matrix, calibration, conformal)"
+            )
+        if not needs_safety and self.safety is not None:
+            raise ValueError(
+                "the `safety:` section only applies to model.kind 'safety_lora'/'safety_tfidf'"
+            )
+        if needs_safety and self.data.validation is None:
+            raise ValueError(
+                "a safety run requires data.validation: it is the *calibration* split, where "
+                "the temperature and the conformal quantile are fitted"
+            )
+        if needs_safety and self.data.test is None:
+            raise ValueError(
+                "a safety run requires data.test: the frozen Day-9 split is the only place a "
+                "number may be quoted from"
             )
         return self
 

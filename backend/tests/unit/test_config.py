@@ -233,6 +233,39 @@ def test_every_documented_analyzer_choice_is_accepted(choice: str) -> None:
     assert settings.emotion_analyzer == choice
 
 
+def test_a_developers_ambient_safety_ml_choice_cannot_reach_a_test() -> None:
+    """Day 33: `SAFETY_ML` must be neutralised like the thresholds around it.
+
+    `clean_env` in ``tests/conftest.py`` deletes the Day-9 safety keys so a
+    developer's shell cannot flip what a test proves. `SAFETY_ML` was added on
+    Day 33 and was missing from that list, so exporting `SAFETY_ML=trained` to
+    try the real model would have silently moved every test that builds
+    ``Settings()`` onto the trained path. This asserts the *fixture's* contract,
+    not the setting's: it is the isolation that is under test.
+    """
+
+    from tests.conftest import _ENV_KEYS
+
+    assert "SAFETY_ML" in _ENV_KEYS
+    assert "SAFETY_ML_TRAINED_ARTIFACT_DIR" in _ENV_KEYS
+
+
+def test_the_safety_ml_choice_is_read_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SAFETY_ML", "trained")
+    assert Settings(_env_file=None).safety_ml == "trained"
+    monkeypatch.setenv("SAFETY_ML", "baseline")
+    assert Settings(_env_file=None).safety_ml == "baseline"
+
+
+def test_an_unknown_safety_ml_choice_is_refused_at_startup() -> None:
+    """A typo in SAFETY_ML must fail at startup, not silently mean baseline."""
+
+    with pytest.raises(ValidationError, match="safety_ml"):
+        Settings(_env_file=None, safety_ml="imaginary")
+
+
 def test_the_trained_choice_needs_its_own_directory() -> None:
     """``trained`` is not a synonym for the hub model: it needs an artefact."""
 

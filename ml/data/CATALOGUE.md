@@ -59,6 +59,7 @@ listed in § Verification log.
 | 12 | Dreaddit / SMHD (self-reported mental-health diagnoses) | en | none published that we could find; distributed by the authors on request | none | yes | DO NOT USE | 2026-10-13 |
 | 13 | Manovia fixtures (evals/datasets/*, ml/data/toy/*) | en, hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-13 |
 | 14 | Manovia hi/bn emotion set (planned, not yet written) | hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored for Manovia | commercial | no | USE WITH CONDITIONS | 2026-10-13 |
+| 15 | Manovia synthetic safety corpus (expanded from the Day-9 seeds) | en, hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-13 |
 <!-- catalogue-table:end -->
 
 ## Entries
@@ -616,6 +617,46 @@ these pages, not from memory):
 | 10 | HF card + GitHub `PennShenLab/MentalChat16K` | MIT label on Hub; PISCES trial transcripts inside |
 | 11 | erisk.irlab.org/depresym_dataset.html | research use under user agreement |
 | 12 | LREC 2024 survey listing Reddit mental-health corpora | Dreaddit/SMHD exist; no licence published |
+
+### 15. Manovia synthetic safety corpus (expanded from the Day-9 seeds)
+
+```yaml
+catalogue:
+  name: Manovia synthetic safety corpus (expanded from the Day-9 seeds)
+  source: "generated in-repo by ml/src/manovia_ml/training/safety/build_data.py from evals/datasets/crisis_cases_{train,dev}.jsonl"
+  licence: "MIT (repository licence, LICENSE); authored in this repository"
+  licence_evidence: ./LICENSE
+  allowed_use: commercial
+  languages: [en, hi, hi-Latn, bn]
+  size: "456 seeds -> 3,445 kept rows (127 dropped as rules_inconsistent); splits train 2,756 / dev 365 / calibration 358"
+  label_scheme: "five risk levels (none < low < medium < high < imminent) plus seven categories"
+  known_biases: >-
+    Synthetic by construction, and the expansion is templated: the same seed
+    produces several rows through a fixed set of paraphrase and adversarial
+    transforms, so the corpus is far less lexically diverse than its row count
+    suggests. Max Jaccard similarity against the frozen test split is 0.72
+    (a paraphrase of a train seed against a near-identical test row) with zero
+    verbatim overlap; that similarity is inherited from the hand-written Day-9
+    corpus, not introduced here. It cannot represent real crisis language, and a
+    number measured on it is a number about this corpus.
+  personal_data: false
+  personal_data_notes: >-
+    No real people's messages, by rule. The seeds are the hand-written synthetic
+    Day-9 cases; the paraphraser is a Fake in CI and the LLM provider in a real
+    run, and neither is ever given a real user message. Provenance travels on
+    every row (seed_id, source, transforms, rules_level, rules_agrees), so any
+    row can be traced back to the seed it came from and dropped.
+  status: used
+  verdict: USE
+  verdict_reason: >-
+    Owned by the project, MIT-licensed, no personal data, and generated
+    reproducibly from a committed seed file with a fixed seed — which is what
+    makes a 3,445-row corpus checkable without committing a single byte of it.
+    The frozen test split is never read by the builder: it is an input to the
+    evaluator only, its hash lives in evals/datasets/manifest.json, and the
+    trainer refuses a corpus that leaks a training row into it.
+  verified_on: 2026-10-13
+```
 
 Candidates rejected before a licence read (no traceable original release found,
 or nothing but a vendor/blog repost): "Hindi Emotion Dataset" reposts on Kaggle

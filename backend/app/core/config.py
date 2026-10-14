@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,6 +45,14 @@ LLM_PROVIDER_CHOICES: tuple[str, ...] = ("anthropic", "ollama", "fake")
 # app.services.rag.embedders.EMBEDDER_KINDS (kept a literal here, like the
 # emotion choices above, so config imports no services module).
 RAG_EMBEDDER_CHOICES: tuple[str, ...] = ("auto", "sentence_transformers", "tfidf", "hashing")
+
+# Which safety classifier the ensemble consumes (Day 33). ``baseline`` is the
+# Day-9 TF-IDF model; ``trained`` is the cost-sensitive LoRA model.
+SAFETY_ML_CHOICES: tuple[str, ...] = ("baseline", "trained")
+
+#: The literal type for ``SAFETY_ML``. Declared next to the choices tuple so a
+#: reader sees the two together, and used verbatim in ``Settings.safety_ml``.
+SafetyMLChoice = Literal["baseline", "trained"]
 
 # The shipped safety-ML operating point (Day 9, dev-split tuned; see
 # docs/safety-design.md §12). The feature flag below makes deploying an
@@ -250,6 +259,18 @@ class Settings(BaseSettings):
     # app/ml_artifacts/. A missing artifact degrades to rules-only, never to a
     # startup failure.
     safety_ml_artifact_dir: str = ""
+    # Which ML classifier the ensemble uses (Day 33). ``baseline`` is the Day-9
+    # TF-IDF + calibrated logistic regression and the default, so a deployment
+    # that never sets this behaves exactly as it did before Day 33. ``trained``
+    # is the cost-sensitive LoRA model packaged under
+    # ``safety_ml_trained_artifact_dir``; if that directory or its libraries are
+    # missing the factory falls back to ``baseline`` — never to "no classifier",
+    # because a silent downgrade to rules-only would change behaviour without
+    # saying so. Both paths only ever RAISE a level (docs/safety-design.md §12).
+    safety_ml: SafetyMLChoice = "baseline"
+    # Where the Day-33 trained artifact lives. Empty means
+    # app/ml_artifacts/safety_trained/, the same convention as the baseline.
+    safety_ml_trained_artifact_dir: str = ""
 
     # --- Privacy controls and security hardening (Day 22) ---
     # Per-table ceiling for a data export. An export must finish and must not
