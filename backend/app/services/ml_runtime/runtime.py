@@ -133,7 +133,7 @@ class _Batcher:
     def _run_session(self, features: list[list[float]]) -> Any:
         import numpy as np
 
-        array = np.asarray(features, dtype=np.float32)
+        array: np.ndarray = np.asarray(features, dtype=np.float32)
         outputs = self._session.session.run(["probabilities"], {self._session.input_name: array})
         return outputs[0]
 
