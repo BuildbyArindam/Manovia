@@ -2,7 +2,7 @@
 
 import secrets
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import timedelta
 
 import structlog
@@ -59,6 +59,54 @@ API_TITLE = "Manovia API"
 API_VERSION = "1.0.0"
 
 
+def _build_shadow_runner(settings: Settings) -> object | None:
+    """Day 34 shadow runner, or None. Never raises: shadow is optional.
+
+    The candidate artefact is checksum-verified before a session exists;
+    a bad artefact means shadow stays off and the reason is kept on the
+    returned marker's behalf by the caller (``app.state.shadow_failure``).
+    """
+
+    if not settings.safety_shadow_enabled or not settings.safety_shadow_candidate_dir.strip():
+        return None
+    import json
+    from pathlib import Path
+
+    from app.services.ml_runtime.registry import (
+        ChecksumMismatchError,
+        LoadedModel,
+        sha256_file,
+    )
+    from app.services.ml_runtime.runtime import OnnxModelRuntime
+    from app.services.ml_runtime.shadow import ShadowRunner
+
+    directory = Path(settings.safety_shadow_candidate_dir).expanduser()
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    model_path = directory / str(manifest["model_file"])
+    if sha256_file(model_path) != manifest["sha256"]:
+        raise ChecksumMismatchError("shadow candidate checksum mismatch; shadow disabled")
+    loaded = LoadedModel(
+        model_name="shadow-candidate",
+        version=settings.safety_shadow_candidate_version,
+        directory=directory,
+        model_path=model_path,
+        manifest=manifest,
+    )
+    runtime = OnnxModelRuntime(
+        loaded,
+        timeout_seconds=settings.ml_runtime_timeout_seconds,
+        max_batch_size=settings.ml_runtime_max_batch_size,
+        batch_wait_ms=settings.ml_runtime_batch_wait_ms,
+        max_workers=settings.ml_runtime_max_workers,
+    )
+    return ShadowRunner(
+        runtime,
+        candidate_version=settings.safety_shadow_candidate_version,
+        candidate_labels=tuple(str(item) for item in manifest.get("labels", [])),
+        log_path=settings.safety_shadow_log_path or None,
+    )
+
+
 def create_app(settings: Settings | None = None, *, database: Database | None = None) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -92,6 +140,18 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     @asynccontextmanager
     async def lifespan(created: FastAPI) -> AsyncIterator[None]:
         db: Database = created.state.db
+        # Day 34 warm-up: synthetic inputs through the ONNX sessions so the
+        # first real message does not pay session warm-up. Failure is
+        # recorded on the runtime, never raised — startup must not die
+        # because a compressed model would not warm.
+        runtime = getattr(created.state, "ml_runtime", None)
+        if runtime is not None:
+            with suppress(Exception):  # warm-up is best-effort by design
+                runtime.warmup()
+        shadow = getattr(created.state, "shadow_runner", None)
+        if shadow is not None:
+            with suppress(Exception):  # shadow warm-up is best-effort too
+                shadow.warmup()
         yield
         orchestrator: ChatOrchestrator | None = created.state.chat_orchestrator
         if orchestrator is not None:
@@ -124,6 +184,35 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     # eagerly: a bad EMOTION_MODEL_ID must not stop the app from starting, it
     # must fall back to the lexicon analyzers on first use.
     app.state.emotion_analyzer = build_analyzer(app_settings)
+
+    # Day 34 compressed-model serving + shadow. Both are built (not warmed)
+    # here; warm-up happens in the lifespan. Construction failures are
+    # recorded as metadata and never stop startup (ADR 0034).
+    app.state.ml_runtime = None
+    app.state.ml_runtime_failure = "disabled"
+    if app_settings.ml_runtime_enabled and app_settings.ml_runtime_registry_dir.strip():
+        try:
+            from app.services.ml_runtime.runtime import build_runtime_from_registry
+
+            app.state.ml_runtime = build_runtime_from_registry(
+                app_settings.ml_runtime_registry_dir,
+                app_settings.ml_runtime_model_name,
+                timeout_seconds=app_settings.ml_runtime_timeout_seconds,
+                max_batch_size=app_settings.ml_runtime_max_batch_size,
+                batch_wait_ms=app_settings.ml_runtime_batch_wait_ms,
+                max_workers=app_settings.ml_runtime_max_workers,
+            )
+            app.state.ml_runtime_failure = "none"
+        except Exception as exc:  # registry/checksum/session: degrade alike
+            app.state.ml_runtime_failure = f"unavailable:{type(exc).__name__}"
+    app.state.shadow_runner = None
+    app.state.shadow_failure = "disabled"
+    if app_settings.safety_shadow_enabled:
+        try:
+            app.state.shadow_runner = _build_shadow_runner(app_settings)
+            app.state.shadow_failure = "none" if app.state.shadow_runner else "not_configured"
+        except Exception as exc:
+            app.state.shadow_failure = f"unavailable:{type(exc).__name__}"
 
     # Chat (Day 11). The session service is cheap and owns the ephemeral
     # (in-memory) store. The orchestrator is built on first use instead:

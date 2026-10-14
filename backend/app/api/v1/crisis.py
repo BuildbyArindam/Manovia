@@ -301,6 +301,7 @@ async def crisis_assess(
         min_confidence=settings.safety_ml_min_confidence,
         crisis_mass_floor=settings.safety_ml_crisis_mass_floor,
         suspicion_floor=settings.safety_ml_suspicion_floor,
+        shadow_runner=getattr(request.app.state, "shadow_runner", None),
     )
     plan = escalator.plan(final_assessment, region=payload.region, locale=payload.locale)
 
