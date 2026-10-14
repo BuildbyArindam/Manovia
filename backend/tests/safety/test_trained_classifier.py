@@ -24,8 +24,10 @@ from __future__ import annotations
 
 import ast
 import json
-from collections.abc import Callable
+import sys
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import pytest
@@ -185,6 +187,29 @@ def test_the_prediction_set_matches_the_ml_implementation(
     assert _prediction_set(probabilities, quantile) == expected
 
 
+def test_a_torch_that_is_not_installed_is_a_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No torch means no model, remembered as a type — never a crash.
+
+    ``sys.modules["torch"] = None`` makes ``import torch`` raise
+    ``ModuleNotFoundError`` (an ``ImportError``), which the bridge turns into a
+    remembered reason and the Day-9 baseline fallback.
+    """
+
+    monkeypatch.setitem(sys.modules, "torch", None)
+    directory = _write_artifact(tmp_path)
+    # No injected loader: the default one is what imports torch, so this is the
+    # path a deployment without the training extra actually takes.
+    classifier = TrainedSafetyClassifier(directory)
+
+    with pytest.raises(ModelUnavailableError):
+        classifier.predict("anything")
+
+    assert classifier.failure.startswith("load_failed:")
+    assert "ModuleNotFoundError" in classifier.failure
+
+
 @pytest.mark.parametrize(("prediction", "point", "expected"), ABSTAIN_CASES)
 def test_the_abstention_policy_resolves_toward_caution(
     prediction: frozenset[str], point: str, expected: str
@@ -213,6 +238,91 @@ def test_the_abstention_policy_never_lowers_the_point_prediction() -> None:
 # --------------------------------------------------------------------------- #
 
 
+class _FakeTensor:
+    """A list of lists that knows the tensor operations the bridge uses."""
+
+    def __init__(self, data: Any) -> None:
+        self._data = data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __truediv__(self, temperature: float) -> _FakeTensor:
+        rows = self._data
+        if rows and isinstance(rows[0], list):
+            return _FakeTensor([[value / temperature for value in row] for row in rows])
+        return _FakeTensor([value / temperature for value in rows])
+
+    def cpu(self) -> _FakeTensor:
+        return self
+
+    def to(self, _device: str) -> _FakeTensor:
+        """The bridge moves every batch to the device; a CPU fake is already there."""
+
+        return self
+
+    def tolist(self) -> Any:
+        return self._data
+
+
+def _softmax(rows: list[list[float]]) -> list[list[float]]:
+    """Row-wise softmax in plain Python: the fake must not need torch either."""
+
+    out: list[list[float]] = []
+    for row in rows:
+        peak = max(row)
+        exponentials = [pow(2.718281828459045, value - peak) for value in row]
+        total = sum(exponentials)
+        out.append([value / total for value in exponentials])
+    return out
+
+
+class _FakeTorch(ModuleType):
+    """The torch surface ``_probabilities`` touches, and nothing else."""
+
+    #: Some library resolves ``torch.Tensor`` by attribute at import time, so the
+    #: fake has to answer to the name even though nothing here calls it.
+    Tensor = _FakeTensor
+
+    def __init__(self) -> None:
+        super().__init__("torch")
+
+    def tensor(self, data: Any) -> _FakeTensor:
+        return _FakeTensor(data)
+
+    def ones(self, *shape: int) -> _FakeTensor:
+        if len(shape) == 2:
+            return _FakeTensor([[1.0] * shape[1] for _ in range(shape[0])])
+        return _FakeTensor([1.0] * shape[0])
+
+    def no_grad(self) -> Any:
+        class _Context:
+            def __enter__(self) -> None:
+                return None
+
+            def __exit__(self, *_: object) -> None:
+                return None
+
+        return _Context()
+
+    def softmax(self, logits: _FakeTensor, dim: int = -1) -> _FakeTensor:
+        assert dim == -1, "the bridge only softmaxes the last dimension"
+        return _FakeTensor(_softmax(logits._data))
+
+
+@pytest.fixture(autouse=True)
+def fake_torch(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Install a fake torch for every test in this module.
+
+    ``autouse`` on purpose: a test that forgets the fixture would otherwise pass
+    in a sandbox with torch installed and fail in CI, which is exactly the bug
+    this replaces. One test below overrides it for the *missing* torch path.
+    """
+
+    monkeypatch.setitem(sys.modules, "torch", _FakeTorch())
+    yield
+
+
 class FakeModel:
     """A stand-in for a sequence-classification head.
 
@@ -229,7 +339,7 @@ class FakeModel:
         return self
 
     def __call__(self, **encoded: Any) -> Any:
-        import torch
+        import torch  # the fake installed by the `fake_torch` fixture
 
         wanted = len(encoded["input_ids"])
         rows = self._logits[:wanted]
@@ -245,7 +355,7 @@ class FakeModel:
 
 class FakeTokenizer:
     def __call__(self, texts: Any, **kwargs: Any) -> dict[str, Any]:
-        import torch
+        import torch  # the fake installed by the `fake_torch` fixture
 
         rows = [[1, 2, 3] for _ in texts]
         return {"input_ids": torch.tensor(rows), "attention_mask": torch.ones(len(rows), 3)}
