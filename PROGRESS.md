@@ -262,6 +262,57 @@ each one is listed above with its fix.
   `backend[dev]` only, so it never sees this. Parking lot, with the
   reproduction, rather than a skipped test.
 
+**All seven CI checks are green on the final commit `a27e0e1`** — Backend,
+Frontend, ML, Evaluation Harness, Dependency audit, Secrets scan, and
+Accessibility & Lighthouse. Not merged, as instructed.
+
+Two real bugs were found on the way there, both of them the same shape: **an
+assertion that was true when it was written and false on a different day**,
+which is the flake that costs the most to diagnose because the code did not
+change.
+
+1. **`keyboard.spec.ts` — "controls the keyboard never reached".** CI's a11y job
+   failed twice naming the keyboard walkthrough and nothing else, and the job
+   log was unreachable from this sandbox (GitHub serves it from a blob store
+   the network policy blocks). `scripts/playwright-failures.mjs` now turns
+   `test-results/day25/results.json` into `::error` annotations, which
+   `gh api .../check-runs/<id>/annotations` *does* return — and the annotation
+   named the spec **and the control**: `"button Jump to latest jump-to-latest"`.
+   The chat's "Jump to latest" button is rendered the moment the conversation
+   un-pins, and the browser can un-pin it by revealing the focused node inside
+   the scroll container. That `scroll` event is asynchronous, so the button can
+   appear after the walk's last Tab and before the unreached-controls query —
+   whereupon it is reported as unreachable, which is a lie: it was never offered
+   a Tab. The audit now walks once more, bounded and only when something was
+   missed, before calling a control unreachable; a genuinely unreachable control
+   still fails. The regression test appends a control between the walk and the
+   query, so the race is reproduced deterministically rather than once in every
+   few CI runs. **Verified it bites**: with the second pass removed the test
+   fails with the same error shape CI reported.
+2. **`test_safety_train.py` — "6 rows changed set membership".** The ML job
+   failed on this day's own reproducibility test. Reproduced locally at 5 rows
+   in 1 of 6 runs. The cause was not the one the test claimed: a row's conformal
+   set membership is `1 - p(true) <= quantile + 1e-12`, and the quantile is one
+   order statistic of the calibration scores, so *every* held-out row whose own
+   score lands in that epsilon band can flip together. This config trains a
+   random-init 2-layer stand-in on 20 rows, so the probabilities are
+   near-uniform and the quantile sits in the middle of a flat tie group —
+   almost any row can be on the boundary. The old test asserted "at most 3
+   rows", a number read off a single local run, and then failed on CI at 6.
+   **A bound taken from one observation is not a bound** — changing the conformal
+   alpha moves 32 of them, which is how the teeth were checked. The constant is
+   gone; the contract is now the part that carries meaning (every thresholded
+   metric bit-identical; the one continuous mean moves only in whole rows, which
+   separates a boundary flip from drift; the config tolerance is at least one
+   row wide).
+
+The lesson worth keeping: **a magic number in a test is a flake with a delay
+fuse.** Both of these were "3 rows" and "the walk reaches everything it
+snapshots" — statements that were true once and were never re-derived from the
+mechanism. Where a bound is genuinely needed, derive it from the thing that
+produces it (here: the tie group at the quantile) or assert the mechanism
+instead of the count.
+
 ### Parking lot (Day 33)
 
 - **The first real safety run** (owner, Colab/Kaggle): bring back the run id, the
