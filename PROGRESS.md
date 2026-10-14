@@ -157,6 +157,15 @@ subprocess with a `sitecustomize` blocking both `torch` and `transformers`.
 **4270 passed, 3 skipped, 0 failures.** The full-suite row in the table above
 quotes that run, not the sandbox's.
 
+**All seven CI checks are green on the final commit** (`39d34a6`, then `984d11c`):
+Backend, Frontend, ML, Evaluation Harness, Dependency audit, Secrets scan, and
+Accessibility & Lighthouse. The a11y job failed once on an intermediate commit and
+**passed on the identical code** after an empty re-run commit, with the Playwright
+step succeeding both times — recorded as the flake it is rather than left as a red
+check nobody explained. Three of the four CI failures this day were the same class
+of bug (a command run in the sandbox that was not the command CI runs), and each
+one is listed above with its fix.
+
 ### Known issues (as of Day 33)
 
 - **No trained model has been run on real data.** No GPU, no hub. Every number
