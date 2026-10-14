@@ -23,6 +23,7 @@ weights is a supported state, not an outage.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +79,7 @@ SET_CASES: tuple[tuple[dict[str, float], float, frozenset[str]], ...] = (
     (
         {"none": 0.01, "low": 0.02, "medium": 0.03, "high": 0.10, "imminent": 0.84},
         0.20,
-        {"imminent"},
+        frozenset({"imminent"}),
     ),
     # A torn one keeps every level the model could not rule out: at q=0.75 the
     # membership rule is p >= 0.25, so medium (0.20) is ruled out and the two
@@ -86,15 +87,19 @@ SET_CASES: tuple[tuple[dict[str, float], float, frozenset[str]], ...] = (
     (
         {"none": 0.10, "low": 0.15, "medium": 0.20, "high": 0.30, "imminent": 0.25},
         0.75,
-        {"high", "imminent"},
+        frozenset({"high", "imminent"}),
     ),
     # The argmax is always in the set, even when nothing clears the quantile.
-    ({"none": 0.90, "low": 0.04, "medium": 0.03, "high": 0.02, "imminent": 0.01}, 0.05, {"none"}),
+    (
+        {"none": 0.90, "low": 0.04, "medium": 0.03, "high": 0.02, "imminent": 0.01},
+        0.05,
+        frozenset({"none"}),
+    ),
     # A near-tie between two crisis levels: both, never one.
     (
         {"none": 0.02, "low": 0.03, "medium": 0.05, "high": 0.45, "imminent": 0.45},
         0.60,
-        {"high", "imminent"},
+        frozenset({"high", "imminent"}),
     ),
 )
 
@@ -186,7 +191,9 @@ class FakeTokenizer:
         return {"input_ids": torch.tensor(rows), "attention_mask": torch.ones(len(rows), 3)}
 
 
-def _loader(logits: list[list[float]], calls: list[int] | None = None):
+def _loader(
+    logits: list[list[float]], calls: list[int] | None = None
+) -> Callable[[Path, str, int], tuple[Any, Any]]:
     def load(directory: Path, device: str, max_length: int) -> tuple[Any, Any]:
         if calls is not None:
             calls.append(max_length)
@@ -318,7 +325,13 @@ def test_batch_scoring_matches_single_calls(tmp_path: Path) -> None:
     assert single.predict("first") is not None
     results = batch.predict_batch(["first", "second"])
 
-    assert [item.level for item in results] == [RiskLevel.IMMINENT, RiskLevel.HIGH]
+    # predict_batch may return None for a row it could not score; the contract is
+    # that a short batch on a working model scores every row.
+    assert results and all(item is not None for item in results)
+    assert [item.level for item in results if item is not None] == [
+        RiskLevel.IMMINENT,
+        RiskLevel.HIGH,
+    ]
 
 
 def test_describe_carries_provenance_and_never_text(tmp_path: Path) -> None:

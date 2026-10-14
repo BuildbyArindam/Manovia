@@ -236,8 +236,10 @@ def test_the_ml_prediction_type_still_carries_the_abstention_fields() -> None:
         confidence=0.4,
         version="day33-test",
         abstained_level=RiskLevel.MEDIUM,
-        prediction_set=(RiskLevel.NONE, RiskLevel.MEDIUM),
+        # The set carries level *names* (what the conformal quantile compares
+        # against); only ``abstained_level`` is a RiskLevel.
+        prediction_set=("NONE", "MEDIUM"),
     )
 
     assert prediction.abstained_level is RiskLevel.MEDIUM
-    assert len(prediction.prediction_set) == 2
+    assert list(prediction.prediction_set) == ["NONE", "MEDIUM"]
