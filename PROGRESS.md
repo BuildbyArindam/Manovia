@@ -109,9 +109,9 @@ noise by construction. The ready-to-run path is
 | --- | --- |
 | `cd ml && pytest -q -m "not network"` | **343 passed** in 37.2 s, offline (tmp file-store MLflow, tiny random-init model) — 122 of them new for Day 33 |
 | `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 96 files formatted; **78 source files** typed (tests included) |
-| `cd backend && pytest -q tests/safety/ -m "not network"` | **839 passed** — 56 new (the trained-classifier bridge, the `--model` flag, and the abstention mirror) |
+| `cd backend && pytest -q tests/safety/ -m "not network"` | **840 passed** — 57 new (the trained-classifier bridge, the `--model` flag, the abstention mirror, and the fake torch) |
 | `cd backend && ruff check .` / `ruff format --check .` / `mypy app tests` (what CI runs) | **clean**; 360 files formatted; **300 source files** typed |
-| `cd backend && pytest -q` (the whole suite) | **4230 passed, 34 failed, 1 skipped, 5 deselected** in 1592 s — the 34 are a pre-existing, import-time-pollution flake that reproduces identically on the base commit and disappears when the two `model`-marked integration modules are excluded from collection; see *Known issues* |
+| `cd backend && pytest -q` (the whole suite) | **4270 passed, 3 skipped** in 208 s — run the way CI runs it, with a `sitecustomize` blocking the `torch` and `transformers` imports, which is what `.[dev]`-only gives the backend job. The 34 failures the naive sandbox run reports are the environment flake described in *Known issues* |
 | `make safety-smoke` — the whole Day-33 path on a CPU, offline | exit 0; run `a5fab0f0…`, 5.6 s on CPU. HIGH+IMMINENT test recall **0.000**, macro-F1 0.333; abstention policy recall 0.000, raised 0, **abstention rate 1.000**; temperature **T=10.000**, ECE **0.1103 → 0.1010**; conformal target 0.950, calibration **1.000**, held-out **1.000**, q=0.8011; TF-IDF baseline recall 0.250 / precision 0.667; leakage max_jaccard 0.194, exact_overlap 0. **Plumbing numbers on a random stand-in — not quality** |
 | two identical safety runs | 14 of 15 logged metrics **bit-identical**; the one that moves, `mean_set_size`, moves by a **whole number of rows** (asserted as such, not hidden in a tolerance) |
 | `python evals/run_safety_eval.py --split test --model baseline` | precision **0.567** [0.463, 0.670], recall **1.000** [1.000, 1.000] (51 crisis cases); rules-only recall **0.275** [0.157, 0.404] |
@@ -146,6 +146,17 @@ on each side, which is the same as no pin. The vectors now live in
 directions. Verified the mirror bites by breaking one vector and watching both
 suites fail, then restoring it.
 
+**The third CI failure was the same shape as the first two, and the lesson is now
+written down.** The fakes in `tests/safety/test_trained_classifier.py` did
+`import torch` inside `__call__`, so every `predict()` test passed in a sandbox
+with the training extra installed and failed in the backend job, which installs
+`.[dev]` only. Fixed with the Day-32 pattern — a `_FakeTorch` module injected
+through `sys.modules`, sized for what the bridge actually calls — and then
+**verified in the CI condition rather than assumed**: the whole suite re-run in a
+subprocess with a `sitecustomize` blocking both `torch` and `transformers`.
+**4270 passed, 3 skipped, 0 failures.** The full-suite row in the table above
+quotes that run, not the sandbox's.
+
 ### Known issues (as of Day 33)
 
 - **No trained model has been run on real data.** No GPU, no hub. Every number
@@ -175,7 +186,8 @@ suites fail, then restoring it.
 - **`ml/dvc.lock` moves when `ml/src/.../data.py` changes** (it is a recorded
   dependency of the toy-split stage); the Day-31 checker catches a stale one in
   CI.
-- **The full backend suite is not green in *this* sandbox, and was not before
+- **The full backend suite is not green in *this* sandbox's default
+  configuration, and was not before
   Day 33.** `pytest -q` in `backend/` reports **34 failed, 4230 passed, 1
   skipped, 5 deselected** (1592 s). Diagnosed rather than assumed: the same 34
   fail on the base commit `a6c89bd` with every Day-33 backend file reverted, so
