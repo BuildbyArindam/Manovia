@@ -187,14 +187,29 @@ read `test-results/day25/results.json` from the `day25-a11y-lighthouse-reports`
 artifact**; a Chromium-156-vs-153 headless-shell difference is the leading
 suspect and is not reproducible here.
 
-**All seven CI checks are green on the final commit** (`39d34a6`, then `984d11c`):
-Backend, Frontend, ML, Evaluation Harness, Dependency audit, Secrets scan, and
-Accessibility & Lighthouse. The a11y job failed once on an intermediate commit and
-**passed on the identical code** after an empty re-run commit, with the Playwright
-step succeeding both times — recorded as the flake it is rather than left as a red
-check nobody explained. Three of the four CI failures this day were the same class
-of bug (a command run in the sandbox that was not the command CI runs), and each
-one is listed above with its fix.
+**Outcome: the job passed on the final commit** (`ddefb7e`, 10m16s), so all seven
+checks are green. The a11y job failed on 4 of the 8 runs this day and passed on 4
+— including twice on code that differed from a failing run by nothing but a commit
+message — which is an environment flake, not a regression, and the local run above
+is the evidence that the suite itself is sound.
+
+**The flake is now diagnosable, which it was not before.** The a11y job's Playwright
+step writes `test-results/day25/results.json` on failure, but its only reader was
+the job log — which GitHub serves from a blob store a restricted network cannot
+reach (`gh run view --log` returns nothing, and the step's annotation says only
+"Process completed with exit code 1"). `scripts/playwright-failures.mjs` now reads
+that file and emits `::error` workflow commands, which GitHub turns into
+annotations `gh api .../check-runs/<id>/annotations` returns. It runs under
+`if: failure()` and **exits 0 always** — a diagnostic must never be the reason a
+job fails — and `src/scripts/playwrightFailures.test.ts` (7 tests, spawning the
+real script) covers the timed-out, nested-suite, over-long-message, all-pass,
+missing-file, malformed-JSON and empty-report cases.
+
+**All seven CI checks are green on the final commit** (`ddefb7e`): Backend,
+Frontend, ML, Evaluation Harness, Dependency audit, Secrets scan, and
+Accessibility & Lighthouse. Three of the four CI failures this day were the same
+class of bug (a command run in the sandbox that was not the command CI runs), and
+each one is listed above with its fix.
 
 ### Known issues (as of Day 33)
 
