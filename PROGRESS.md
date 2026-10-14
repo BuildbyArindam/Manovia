@@ -31,8 +31,8 @@ PR is [#41](https://github.com/BuildbyArindam/Manovia/pull/41), open and **not m
 risk levels (cost matrix, corpus builder, trainer, temperature calibration,
 conformal prediction sets, abstention policy, TF-IDF comparison, evaluation,
 report, Integrated-Gradients review), a second hand-written fixture split,
-`SAFETY_ML=trained|baseline` in the backend with a visible fallback, 102 new ML
-tests and 43 new backend tests, a `--model trained|baseline` flag on the safety
+`SAFETY_ML=trained|baseline` in the backend with a visible fallback, 122 new ML
+tests and 56 new backend tests, a `--model trained|baseline` flag on the safety
 eval harness, ADR 0033, `docs/safety-design.md` §12.8–§12.9, model card v1.2, and
 a catalogue entry for the synthetic corpus.
 
@@ -107,9 +107,9 @@ noise by construction. The ready-to-run path is
 
 | check | result |
 | --- | --- |
-| `cd ml && pytest -q -m "not network"` | **323 passed** in 41.5 s, offline (tmp file-store MLflow, tiny random-init model) — 102 of them new for Day 33 |
-| `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 95 files formatted; **77 source files** typed (tests included) |
-| `cd backend && pytest -q tests/safety/ -m "not network"` | **826 passed** — 43 new (the trained-classifier bridge + the `--model` flag) |
+| `cd ml && pytest -q -m "not network"` | **343 passed** in 37.2 s, offline (tmp file-store MLflow, tiny random-init model) — 122 of them new for Day 33 |
+| `cd ml && ruff check .` / `ruff format --check .` / `mypy src tests` | **clean**; 96 files formatted; **78 source files** typed (tests included) |
+| `cd backend && pytest -q tests/safety/ -m "not network"` | **839 passed** — 56 new (the trained-classifier bridge, the `--model` flag, and the abstention mirror) |
 | `cd backend && ruff check .` / `ruff format --check .` / `mypy app tests` (what CI runs) | **clean**; 360 files formatted; **300 source files** typed |
 | `cd backend && pytest -q` (the whole suite) | **4230 passed, 34 failed, 1 skipped, 5 deselected** in 1592 s — the 34 are a pre-existing, import-time-pollution flake that reproduces identically on the base commit and disappears when the two `model`-marked integration modules are excluded from collection; see *Known issues* |
 | `make safety-smoke` — the whole Day-33 path on a CPU, offline | exit 0; run `a5fab0f0…`, 5.6 s on CPU. HIGH+IMMINENT test recall **0.000**, macro-F1 0.333; abstention policy recall 0.000, raised 0, **abstention rate 1.000**; temperature **T=10.000**, ECE **0.1103 → 0.1010**; conformal target 0.950, calibration **1.000**, held-out **1.000**, q=0.8011; TF-IDF baseline recall 0.250 / precision 0.667; leakage max_jaccard 0.194, exact_overlap 0. **Plumbing numbers on a random stand-in — not quality** |
@@ -134,6 +134,17 @@ non-optional, and `MLPrediction.prediction_set` — which carries level *names* 
 handed `RiskLevel` members). All four are fixed, `mypy app tests` is clean over
 300 files locally, and the lesson is the same one Day 32 recorded: **run the
 command CI runs, not a convenient subset of it.**
+
+**A second root cause found by reading the claim instead of trusting it.** The
+backend test's docstring said its golden vectors were "shared with
+`ml/tests/test_safety_conformal.py`" — a file that did not exist, while the ADR
+and this file both claimed the two copies of the MEDIUM-floor rule were "pinned to
+each other by golden vectors". They were not: there was one hand-maintained list
+on each side, which is the same as no pin. The vectors now live in
+`ml/tests/test_safety_conformal.py` and the backend test **parses that file with
+`ast`** to parametrise itself from it, so there is one copy checked in both
+directions. Verified the mirror bites by breaking one vector and watching both
+suites fail, then restoring it.
 
 ### Known issues (as of Day 33)
 
