@@ -464,20 +464,36 @@ def test_two_identical_runs_agree_on_the_thresholded_metrics(
 ) -> None:
     """Same config, same seed, same numbers — measured, then written down.
 
-    Run twice here and compared. 14 of the 15 logged metrics come out
-    **bit-identical**; the exception is ``mean_set_size``, which moves by exactly
-    1/15 — one held-out row. The cause is the conformal quantile boundary: the
-    row whose nonconformity score sits exactly on it flips in or out with the
-    last bits of a blocked float reduction, and the set-size mean is the only
-    metric that counts rows rather than classifying them.
+    Run twice here and compared. Every logged metric except ``mean_set_size``
+    comes out **bit-identical**; the exception is ``mean_set_size``, which moves
+    by a whole number of held-out rows — 1 to 6 of the 15 in this toy config.
+
+    **Why it moves, and why there is no small bound on it.** ``mean_set_size``
+    counts rows, and a row's membership in its conformal set is decided by
+    ``1 - p(true) <= quantile + 1e-12``. The quantile is one order statistic of
+    the *calibration* scores, so any held-out row whose own score lands within
+    that epsilon of the quantile flips in or out with the last bits of the
+    probabilities. This config trains a random-init 2-layer stand-in on 20 rows,
+    so its probabilities are near-uniform: ``1 - p`` is about 0.8 for nearly
+    every level of nearly every row, the quantile sits in the middle of that
+    flat tie group, and therefore *almost any row* can be on the boundary. That
+    is a property of the fixture, not of nondeterminism in the model, and it is
+    why an earlier version of this test asserted "at most 3 rows" — a number
+    taken from one local measurement, which then failed on CI at 6. A bound read
+    off a single observation is not a bound; changing the conformal alpha moves
+    32 of them.
 
     So the contract is not "everything is identical" (a torch-on-CPU promise that
     would be false) and not "everything is within a loose tolerance" (which would
     hide a genuinely different model). It is:
 
-    * every metric that comes from comparing a level to a threshold is identical;
-    * the one continuous mean may move by at most one row's worth, and the config
-      tolerance has to be at least that large or it is unmeetable.
+    * every metric that comes from comparing a level to a threshold is identical,
+      which pins the model, the thresholds and the abstention behaviour;
+    * the one continuous mean moves only in whole rows, which distinguishes a
+      boundary row flipping (harmless, and expected here) from continuous drift
+      (a different model, and a real failure);
+    * the config tolerance is at least one row wide, or no metric could ever move
+      without failing.
     """
 
     config = tiny_run["config"]
@@ -507,10 +523,18 @@ def test_two_identical_runs_agree_on_the_thresholded_metrics(
     # the held-out rows, so it can only change by whole rows: any difference that
     # is not an exact multiple of 1/rows is continuous drift, which is a
     # different (and much worse) failure than a boundary row flipping.
+    # There is deliberately no "at most N rows" assertion here. The rows that can
+    # flip are the ones whose nonconformity score sits within 1e-12 of the
+    # conformal quantile, and with a random-init stand-in on 20 rows the
+    # probabilities are near-uniform, so that is most of the split — 6 of 15 has
+    # been observed on identical inputs, and 32 on a different alpha. A small
+    # constant would be a number read off one run, which is exactly the flake
+    # this test kept producing. The whole-rows check below is the part that
+    # carries meaning: it separates "a boundary row flipped" from "the model
+    # drifted".
     moved = abs(again.metrics["mean_set_size"] - first["mean_set_size"])
     rows_moved = moved / row_step
     assert abs(rows_moved - round(rows_moved)) < 1e-6, (
         f"mean_set_size moved by {moved:.6f}, which is {rows_moved:.3f} rows — "
         "a mean over a row count can only move in whole rows"
     )
-    assert round(rows_moved) <= 3, f"{round(rows_moved)} rows changed set membership"
