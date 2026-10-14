@@ -22,6 +22,7 @@ weights is a supported state, not an outage.
 
 from __future__ import annotations
 
+import ast
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -72,8 +73,81 @@ def test_the_artifact_layout_matches_the_ml_package() -> None:
 # The abstention policy, as golden vectors                                     #
 # --------------------------------------------------------------------------- #
 
+
 #: (probabilities, quantile) -> expected set. Shared with the ML-side test
-#: ``ml/tests/test_safety_conformal.py::test_the_backend_golden_vectors_match``.
+#: ``ml/tests/test_safety_conformal.py::ABSTAIN_CASES`` — and the test at the
+#: bottom of this file parses that file to prove the two still agree.
+def _literal_frozenset(node: ast.expr) -> frozenset[str]:
+    """Evaluate a literal set, written either as ``{...}`` or ``frozenset({...})``.
+
+    ``ast.literal_eval`` refuses the call form, and the ML vectors use it because
+    the policy's signature takes a frozenset — so the reader of *that* file sees
+    the type the production code receives.
+    """
+
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id
+        in {
+            "frozenset",
+            "set",
+        }
+    ):
+        assert len(node.args) == 1, "frozenset() in a vector takes one argument"
+        node = node.args[0]
+    return frozenset(ast.literal_eval(node))
+
+
+def _ml_abstain_cases() -> tuple[tuple[frozenset[str], str, str], ...]:
+    """The abstention vectors, read from the ML suite that owns them.
+
+    One copy of the vectors, in ``ml/tests/test_safety_conformal.py``, parsed
+    with ``ast`` — not imported, because the backend must run without the ML
+    extras and ``ml/`` must run without the backend. Parsing rather than
+    duplicating is the point: a hand-kept second copy is a second thing to
+    forget, and a forgotten mirror is worse than no mirror.
+
+    A missing file is a hard error rather than a skip. A mirror that cannot be
+    checked must not pretend to be checked.
+    """
+
+    ml_file = Path(__file__).resolve().parents[3] / "ml" / "tests" / "test_safety_conformal.py"
+    if not ml_file.is_file():
+        raise FileNotFoundError(
+            f"the ML-side abstention vectors are missing: {ml_file}. They are the single "
+            "source of truth for the MEDIUM-floor policy, and this suite refuses to run "
+            "without them rather than fall back to a private copy."
+        )
+    tree = ast.parse(ml_file.read_text(encoding="utf-8"), filename=str(ml_file))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.AnnAssign) or not isinstance(node.target, ast.Name):
+            continue
+        if node.target.id != "ABSTAIN_CASES":
+            continue
+        if not isinstance(node.value, ast.Tuple):
+            raise AssertionError("ABSTAIN_CASES must stay a tuple literal")
+        out: list[tuple[frozenset[str], str, str]] = []
+        for element in node.value.elts:
+            assert isinstance(element, ast.Tuple) and len(element.elts) == 3, (
+                "each ABSTAIN_CASES entry must be a 3-tuple (set, point, expected)"
+            )
+            out.append(
+                (
+                    _literal_frozenset(element.elts[0]),
+                    ast.literal_eval(element.elts[1]),
+                    ast.literal_eval(element.elts[2]),
+                )
+            )
+        assert len(out) >= 10, f"expected the full vector set, found {len(out)}"
+        return tuple(out)
+    raise AssertionError(f"ABSTAIN_CASES not found in {ml_file}")
+
+
+#: ``(set, point) -> expected abstention level``. Parsed from the ML suite, so
+#: there is exactly one copy of these vectors in the repository.
+ABSTAIN_CASES: tuple[tuple[frozenset[str], str, str], ...] = _ml_abstain_cases()
+
 SET_CASES: tuple[tuple[dict[str, float], float, frozenset[str]], ...] = (
     # A confident prediction is a singleton.
     (
@@ -111,21 +185,7 @@ def test_the_prediction_set_matches_the_ml_implementation(
     assert _prediction_set(probabilities, quantile) == expected
 
 
-@pytest.mark.parametrize(
-    ("prediction", "point", "expected"),
-    [
-        # A risky set means MEDIUM or above, never below the point prediction.
-        (frozenset({"low", "medium"}), "none", "medium"),
-        # The action is the MEDIUM floor, not the worst level in the set.
-        (frozenset({"medium", "imminent"}), "high", "high"),
-        (frozenset({"none", "medium", "imminent"}), "none", "medium"),
-        (frozenset({"none", "low"}), "none", "none"),
-        # Ambiguity between two benign levels is not a reason to escalate.
-        (frozenset({"none", "low"}), "low", "low"),
-        # A set that only reaches MEDIUM raises a NONE point prediction.
-        (frozenset({"none", "medium"}), "none", "medium"),
-    ],
-)
+@pytest.mark.parametrize(("prediction", "point", "expected"), ABSTAIN_CASES)
 def test_the_abstention_policy_resolves_toward_caution(
     prediction: frozenset[str], point: str, expected: str
 ) -> None:
@@ -314,6 +374,46 @@ def test_empty_text_is_not_scored(tmp_path: Path) -> None:
     assert classifier.predict("") is None
     assert classifier.predict("   \n ") is None
     assert classifier.predict_batch(["", " "]) == [None, None]
+
+
+# --------------------------------------------------------------------------- #
+# The mirror: the same rule, implemented twice                                  #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_backend_and_the_trainer_agree_on_every_abstention_vector() -> None:
+    """The MEDIUM floor exists in two places, so it is checked in both.
+
+    ``backend/.../trained.py::_abstain_level`` and
+    ``ml/.../conformal.py::abstain_level`` are the same rule, written twice
+    because ``ml/`` must run without the backend checkout and the backend must
+    not import the ML extras. Two copies of a safety rule are one rule only while
+    something checks they agree — so this test **parses the ML test file** rather
+    than keeping a second hand-maintained copy of the vectors, and a reader who
+    edits one side without the other fails here.
+
+    Parsed with ``ast``: the vectors are a module-level tuple of 3-tuples, which
+    is a shape a reader can check by eye and a parser can read without importing
+    a package that is not installed.
+    """
+
+    for prediction, point, expected in ABSTAIN_CASES:
+        assert _abstain_level(prediction, point=point) == expected, (
+            f"{sorted(prediction)} at point {point!r}: backend says "
+            f"{_abstain_level(prediction, point=point)!r}, the ML suite expects {expected!r}"
+        )
+
+
+def test_the_local_prediction_set_vectors_hold() -> None:
+    """``SET_CASES`` stays a local copy: it is about this file's own reader.
+
+    The abstention vectors are single-sourced from the ML suite; these are the
+    *set* vectors, which is the one place the two implementations could diverge
+    on the quantile arithmetic rather than on the policy.
+    """
+
+    for probabilities, quantile, expected in SET_CASES:
+        assert _prediction_set(probabilities, quantile) == set(expected)
 
 
 def test_batch_scoring_matches_single_calls(tmp_path: Path) -> None:
