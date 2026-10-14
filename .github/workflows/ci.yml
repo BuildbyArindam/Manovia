@@ -62,7 +62,21 @@ jobs:
         run: ruff format --check .
 
       - name: mypy (strict)
-        run: mypy app tests
+        # Annotations mirror the ML job's pytest pattern: the raw step log
+        # is not always readable from a restricted network, while
+        # ::error annotations are available through the checks API. The
+        # step still exits with mypy's own status.
+        run: |
+          set +e
+          mypy app tests > /tmp/mypy.log 2>&1
+          status=$?
+          cat /tmp/mypy.log
+          if [ "$status" -ne 0 ]; then
+            grep -E "error:" /tmp/mypy.log | head -30 | while read -r line; do
+              echo "::error::$line"
+            done
+          fi
+          exit "$status"
 
       - name: pytest with coverage (fail under 80%)
         run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80
