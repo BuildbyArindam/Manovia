@@ -89,3 +89,38 @@ async def test_voice_to_chat_crisis_path(
     chat_data = res_chat.json()
     assert chat_data["metadata"]["risk_level"] == "high"
     assert "helpline" in chat_data["reply"].lower() or "crisis" in chat_data["reply"].lower()
+
+
+
+@pytest.mark.asyncio
+async def test_synthesize_voice(client: AsyncClient) -> None:
+    headers = await get_auth_headers(client)
+    data = {"text": "hello world", "language": "en", "speed": 1.0}
+    response = await client.post("/api/v1/voice/synthesize", data=data, headers=headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "audio/wav"
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_real(client: AsyncClient, monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("VOICE_STT_FAKE", "false")
+    class FakeWhisperModel:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+        def transcribe(self, audio: str, beam_size: int = 5):
+            class FakeSegment:
+                text = "Real transcription."
+            class FakeInfo:
+                language = "en"
+                language_probability = 1.0
+            return [FakeSegment()], FakeInfo()
+    import sys
+    class FakeModule:
+        WhisperModel = FakeWhisperModel
+    monkeypatch.setitem(sys.modules, "faster_whisper", FakeModule)
+    headers = await get_auth_headers(client)
+    audio_content = b"fake"
+    files = {"audio": ("test.wav", audio_content, "audio/wav")}
+    response = await client.post("/api/v1/voice/transcribe", files=files, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["text"] == "Real transcription."
+
