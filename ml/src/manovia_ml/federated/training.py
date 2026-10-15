@@ -13,6 +13,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from manovia_ml.federated.config import FederatedConfig
+from manovia_ml.seeds import derive_seed
 
 
 def model(config: FederatedConfig) -> Any:
@@ -116,7 +117,9 @@ def private(
     and the RDP hook are Opacus-owned, including empty batches and actual steps.
     """
     net = model(config)
-    torch.manual_seed(config.seed)
+    # Distinct reproducible streams per release; never reuse Gaussian noise
+    # across sweep arms. Public seeded research is still not production DP.
+    torch.manual_seed(derive_seed(config.seed, "dp", str(noise), str(clip)))
     optimizer = torch.optim.SGD(net.parameters(), lr=config.learning_rate)
     loader = DataLoader(data, batch_size=min(config.batch_size, len(data)))
     engine = PrivacyEngine(accountant="rdp", secure_mode=False)

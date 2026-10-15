@@ -38,3 +38,15 @@ aggregation, adversarial robustness or product integration. Every proposed phone
 control is labelled unmeasured in the exhaustive design claim register.
 
 See `docs/federated-design.md`, catalogue §17 and `ml/reports/day38-model-card.md`.
+
+## Verification follow-up
+
+Final review found sweep arms initially reset the same noise seed. They now use
+setting-specific derived streams, pinned by a regression test; a production
+composition claim additionally assumes fresh independent secret randomness, not
+public seeded research. The operating point remains predeclared, not test-picked.
+The full backend command exposed the existing Day-37 safety coverage deficit;
+focused tests cover corrupt metadata, optional local-loader boundaries and
+trained/ONNX selector degradation. No backend production code or coverage floor
+was changed. The ML CI job now installs the federated extra and runs the smoke
+so the real Flower/Opacus tests cannot silently skip there.

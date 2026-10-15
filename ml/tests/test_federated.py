@@ -21,7 +21,16 @@ from manovia_ml.config import TrackingConfig
 from manovia_ml.federated.config import FederatedConfig
 from manovia_ml.federated.data import cohort
 from manovia_ml.federated.experiment import attack_auc, run
-from manovia_ml.federated.training import aggregate, federated, fit, load, model, parameters
+from manovia_ml.federated.training import (
+    aggregate,
+    federated,
+    fit,
+    load,
+    model,
+    parameters,
+    private,
+)
+from manovia_ml.seeds import derive_seed
 
 
 def test_flower_weighted_aggregation_and_fedprox() -> None:
@@ -244,3 +253,25 @@ def test_parameter_load_roundtrip() -> None:
     load(second, parameters(first))
     for a, b in zip(parameters(first), parameters(second), strict=True):
         np.testing.assert_array_equal(a, b)
+
+
+def test_dp_sweep_uses_distinct_noise_streams(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reusing the same Gaussian tape across released models breaks composition."""
+    config = FederatedConfig(clients=3, rounds=1, batch_size=16)
+    data = cohort(config, iid=False).train
+    original = torch.manual_seed
+    seeds: list[int] = []
+
+    def capture(seed: int) -> Any:
+        seeds.append(seed)
+        return original(seed)
+
+    monkeypatch.setattr(torch, "manual_seed", capture)
+    for noise, clip in ((1.0, 0.5), (1.0, 1.0), (2.0, 0.5)):
+        private(data, config, noise=noise, clip=clip, evaluate=lambda _net: 0.0)
+    streams = [
+        derive_seed(config.seed, "dp", str(noise), str(clip))
+        for noise, clip in ((1.0, 0.5), (1.0, 1.0), (2.0, 0.5))
+    ]
+    assert len(set(streams)) == 3
+    assert seeds == [value for stream in streams for value in (config.seed, stream)]

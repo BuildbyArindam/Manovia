@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" role="img" aria-label="Synthetic held-out MASE convergence by round">
+<rect width="1100" height="700" fill="white"/>
+<text x="30" y="25">Day 38 synthetic experiment: MASE (lower is better)</text>
+<path d="M60 45 V480 H610" fill="none" stroke="black"/>
+<polyline points="60.0,75.7 240.0,195.8 420.0,278.1 600.0,333.6" stroke="#111111" fill="none" stroke-dasharray="1 2"/>
+<text x="630" y="50" fill="#111111" font-size="13">centralised: 1.337</text>
+<polyline points="60.0,74.8 240.0,194.5 420.0,276.6 600.0,332.1" stroke="#005ab5" fill="none" stroke-dasharray="1 2"/>
+<text x="630" y="74" fill="#005ab5" font-size="13">FedAvg IID drop=0.0: 1.338</text>
+<polyline points="60.0,74.3 240.0,193.9 420.0,276.0 600.0,331.6" stroke="#a53b00" fill="none" stroke-dasharray="1 2"/>
+<text x="630" y="98" fill="#a53b00" font-size="13">FedProx IID drop=0.0: 1.338</text>
+<polyline points="60.0,70.5 240.0,177.8 420.0,272.1 600.0,324.6" stroke="#14733c" fill="none" stroke-dasharray="1 2"/>
+<text x="630" y="122" fill="#14733c" font-size="13">FedAvg IID drop=0.3: 1.342</text>
+<polyline points="60.0,70.0 240.0,177.2 420.0,271.5 600.0,324.0" stroke="#8c32a8" fill="none" stroke-dasharray="1 2"/>
+<text x="630" y="146" fill="#8c32a8" font-size="13">FedProx IID drop=0.3: 1.343</text>
+<polyline points="60.0,74.7 240.0,194.4 420.0,276.5 600.0,332.1" stroke="#111111" fill="none" stroke-dasharray="2 2"/>
+<text x="630" y="170" fill="#111111" font-size="13">FedAvg non-IID drop=0.0: 1.338</text>
+<polyline points="60.0,74.2 240.0,193.8 420.0,275.9 600.0,331.5" stroke="#005ab5" fill="none" stroke-dasharray="2 2"/>
+<text x="630" y="194" fill="#005ab5" font-size="13">FedProx non-IID drop=0.0: 1.338</text>
+<polyline points="60.0,97.1 240.0,189.6 420.0,274.6 600.0,347.8" stroke="#a53b00" fill="none" stroke-dasharray="2 2"/>
+<text x="630" y="218" fill="#a53b00" font-size="13">FedAvg non-IID drop=0.3: 1.329</text>
+<polyline points="60.0,96.5 240.0,189.0 420.0,274.0 600.0,347.2" stroke="#14733c" fill="none" stroke-dasharray="2 2"/>
+<text x="630" y="242" fill="#14733c" font-size="13">FedProx non-IID drop=0.3: 1.329</text>
+<polyline points="60.0,190.3 240.0,358.1 420.0,425.5 600.0,463.1" stroke="#8c32a8" fill="none" stroke-dasharray="2 2"/>
+<text x="630" y="266" fill="#8c32a8" font-size="13">DP sigma=0.8 C=0.5: 1.264</text>
+<polyline points="60.0,305.7 240.0,417.2 420.0,425.5 600.0,470.0" stroke="#111111" fill="none" stroke-dasharray="3 2"/>
+<text x="630" y="290" fill="#111111" font-size="13">DP sigma=0.8 C=1.0: 1.260</text>
+<polyline points="60.0,186.4 240.0,335.4 420.0,401.2 600.0,440.9" stroke="#005ab5" fill="none" stroke-dasharray="3 2"/>
+<text x="630" y="314" fill="#005ab5" font-size="13">DP sigma=1.6 C=0.5: 1.276</text>
+<polyline points="60.0,291.0 240.0,413.5 420.0,457.6 600.0,465.8" stroke="#a53b00" fill="none" stroke-dasharray="3 2"/>
+<text x="630" y="338" fill="#a53b00" font-size="13">DP sigma=1.6 C=1.0: 1.262</text>
+<polyline points="60.0,167.9 240.0,364.5 420.0,433.4 600.0,450.5" stroke="#14733c" fill="none" stroke-dasharray="3 2"/>
+<text x="630" y="362" fill="#14733c" font-size="13">DP sigma=3.2 C=0.5: 1.271</text>
+<polyline points="60.0,205.8 240.0,379.3 420.0,417.6 600.0,442.2" stroke="#8c32a8" fill="none" stroke-dasharray="3 2"/>
+<text x="630" y="386" fill="#8c32a8" font-size="13">DP sigma=3.2 C=1.0: 1.275</text>
+<text x="10" y="60">1.487</text>
+<text x="10" y="480">1.260</text>
+<text x="70" y="510">Round / DP epoch (different optimizer budgets)</text>
+</svg>

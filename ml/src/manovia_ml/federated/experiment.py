@@ -190,7 +190,8 @@ def render(config: FederatedConfig, rows: list[dict[str, Any]], run_id: str, dat
             f"{abs(rows[0]['auc'] - 0.5):.4f} to {abs(chosen['auc'] - 0.5):.4f}.",
             "",
             f"If all {len(private_rows)} DP models were released on real private data, "
-            f"basic composition gives epsilon ≤ {composition:.4f}, delta ≤ "
+            f"with independent secret randomness, basic composition gives epsilon ≤ "
+            f"{composition:.4f}, delta ≤ "
             f"{len(private_rows) * config.delta:g}, before selection/metric releases.",
             "",
             "## Limits and interpretation",
