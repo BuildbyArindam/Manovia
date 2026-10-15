@@ -411,6 +411,16 @@ export class ApiClient {
     return this.tokens.read()?.refreshToken ?? null;
   }
 
+  /**
+   * Obtain the short-lived access token for an authenticated same-origin
+   * WebSocket. Browsers cannot attach an Authorization header to `WebSocket`,
+   * so Day 40 passes this only in a `Sec-WebSocket-Protocol` value — never in a
+   * URL/query string. The existing refresh rules still apply before opening.
+   */
+  async accessTokenForWebSocket(): Promise<string | null> {
+    return (await this.tokensForRequest())?.accessToken ?? null;
+  }
+
   /** True when a session exists and its access token is not stale. */
   hasUsableSession(): boolean {
     const tokens = this.tokens.read();

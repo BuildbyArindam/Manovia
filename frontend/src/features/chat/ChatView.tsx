@@ -19,7 +19,7 @@ import { useCallback, type ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { PageHeader } from "@/components/PageHeader";
-import type { ApiClient } from "@/lib/api";
+import { api as defaultClient, type ApiClient } from "@/lib/api";
 
 import { ChatControls } from "./ChatControls";
 import { ChatFailureBanner, OfflineNotice } from "./ChatFailureBanner";
@@ -27,6 +27,7 @@ import { CompanionNotice } from "./CompanionNotice";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { StarterChips } from "./StarterChips";
+import { VoiceCompanion } from "./VoiceCompanion";
 import { CHAT_COPY } from "./copy";
 import { isSoftened } from "./chatState";
 import { useAutoScroll } from "./useAutoScroll";
@@ -39,7 +40,8 @@ export interface ChatViewProps {
 }
 
 export function ChatView({ client }: ChatViewProps): ReactElement {
-  const chat = useChat(client === undefined ? {} : { client });
+  const resolvedClient = client ?? defaultClient;
+  const chat = useChat({ client: resolvedClient });
   const navigate = useNavigate();
   const [showMoodHint] = useMoodHintPreference();
 
@@ -81,6 +83,13 @@ export function ChatView({ client }: ChatViewProps): ReactElement {
         onClear={chat.clearConversation}
         onNewChat={chat.startNewChat}
         onLocaleChange={chat.setLocale}
+      />
+
+      <VoiceCompanion
+        client={resolvedClient}
+        locale={state.locale}
+        disabled={state.sending || !online}
+        onOpenSession={chat.openVoiceSession}
       />
 
       {online ? null : <OfflineNotice />}
