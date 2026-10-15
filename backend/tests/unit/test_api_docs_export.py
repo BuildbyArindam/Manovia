@@ -84,7 +84,7 @@ def test_every_schema_operation_is_documented(
     # 63 after the Day-36 opt-in Mood Outlook route; 62 after the Day-28 removal
     # of GET /chat/sessions/{id}/stream (it put the message in the URL).
     # Update this count only when an operation is added or removed.
-    assert len(operations) == 63
+    assert len(operations) == 66
     for path, method in operations:
         row = f"| `{method.upper()}` | `{path}` |"
         assert row in markdown, f"missing from api.md: {method.upper()} {path}"
