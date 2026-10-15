@@ -147,6 +147,11 @@ include = ["app*"]
 # Day 9 safety ML artifact (trained offline from evals/datasets; see
 # evals/train_safety_classifier.py). Missing artifact degrades to rules-only.
 "app.ml_artifacts.crisis_v1" = ["model.joblib", "metadata.json"]
+# Day 35 retrieval calibration (fusion weight, abstain floors, split
+# fingerprints), written by ml/src/manovia_ml/retrieval/tuning.py. A missing file
+# degrades to the documented defaults with a `rag_tuning_missing` warning rather
+# than failing startup, but a deployment without it is serving untuned numbers.
+"app.ml_artifacts.retrieval_v1" = ["tuning.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -195,6 +200,10 @@ known-first-party = ["app"]
 # here), exactly like the LLM provider errors above; same reasoning, same
 # waiver.
 "app/services/rag/base.py" = ["N818"]
+# CrossEncoderUnavailable is the Day-35 sibling of EmbedderUnavailable: it
+# names the condition the factory branches on (fall back to the untrained
+# scorer), not a type of failure. Same waiver, same reasoning.
+"app/services/rag/rerank.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.11"

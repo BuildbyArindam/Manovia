@@ -48,14 +48,46 @@ from app.services.rag.base import Embedder, EmbedderUnavailable
 
 _log = structlog.get_logger()
 
-#: Word-ish tokens: letters and digits in any script **plus** the Devanagari
-#: and Bengali combining-mark ranges. The Day 6 lesson: Python's ``\w`` stops
-#: at combining marks (Unicode Mn), so a bare ``\w+`` cannot match an Indic
-#: word — "अकेला" would split into "अक" and "ल" and never match anything.
-_TOKEN_RE = re.compile(r"[^\W_]+|[\u0900-\u097F\u0980-\u09FF]+", re.UNICODE)
-#: The same character class for the sklearn vectorizer (which rejects
-#: capture groups in ``token_pattern``, hence no parentheses anywhere).
-_TFIDF_TOKEN_PATTERN = r"[^\W_]+|[\u0900-\u097F\u0980-\u09FF]+"
+#: Combining marks Indic scripts are written with: Latin diacriticals (for
+#: transliterations), Devanagari, Bengali, Gurmukhi and Oriya. Python's ``\w``
+#: matches Indic *letters* but not their vowel signs and matras (Unicode Mn), so
+#: the marks have to be in the class or no Indic word survives tokenisation.
+_MARKS: Final[str] = (
+    "\u0300-\u036f"  # combining diacriticals (Latin transliterations)
+    "\u0900-\u097f"  # Devanagari
+    "\u0980-\u09ff"  # Bengali
+    "\u0a00-\u0a7f"  # Gurmukhi
+    "\u0b00-\u0b7f"  # Oriya
+)
+#: Word-ish tokens: letters and digits in any script **plus** the combining
+#: marks above, as one character class. Digits stay in on purpose — "5 4 3 2 1
+#: technique" is a real way to ask for the five-senses grounding exercise, and a
+#: tokenizer that drops them makes that query unfindable.
+#:
+#: Day 35 fix (ADR 0035 §Tokenisation). This used to be an *alternation* —
+#: ``[^\W_]+|[\u0900-\u097F\u0980-\u09FF]+`` — which does not do what its
+#: comment claimed: at "बहुत" the first branch matches "बह", stops at the matra
+#: (\W), and the second branch then swallows "ुत", so every Hindi and Bengali
+#: word was indexed as two fragments. Both sides of the cosine fragmented the
+#: same way, so retrieval still worked — badly, and silently: the fragments "ा"
+#: and "ह" are shared by unrelated words, which is exactly the noise IDF was
+#: supposed to remove. The Day-35 retrieval eval set is what surfaced it.
+_TOKEN_RE = re.compile(rf"(?:[^\W_]|[{_MARKS}])+", re.UNICODE)
+#: The same expression as a string, for the sklearn vectorizer (which rejects
+#: capture groups in ``token_pattern`` — hence the non-capturing ``(?:…)``).
+_TFIDF_TOKEN_PATTERN = rf"(?:[^\W_]|[{_MARKS}])+"
+
+
+def tokenize(text: str) -> list[str]:
+    """The corpus's word tokens, lowercased. Shared by every lexical stage.
+
+    One tokenizer for TF-IDF, BM25 and the reranker's overlap features: two
+    lexical stages that disagree about what a word is cannot be fused by rank
+    without the disagreement showing up as noise (ADR 0035).
+    """
+
+    return _TOKEN_RE.findall(text.casefold())
+
 
 #: Small English stopword list — including question words, which carry no
 #: topic and otherwise dominate short queries. Indic languages get no
@@ -206,7 +238,7 @@ EMBEDDER_KINDS: Final = ("auto", "sentence_transformers", "tfidf", "hashing")
 #: yields different vectors for the same text (stopword list, n-grams, model
 #: card). Part of the ingest signature, so the change forces a rebuild instead
 #: of leaving a store whose vectors no longer match what today's code computes.
-EMBEDDER_FIT_VERSION: Final = 4
+EMBEDDER_FIT_VERSION: Final = 5
 
 #: Similarity floors that suit each embedding space when the deployment has
 #: not set RAG_MIN_SIMILARITY explicitly. The TF-IDF figure is measured on
@@ -540,4 +572,5 @@ __all__ = [
     "TfidfEmbedder",
     "build_embedder_factory",
     "embedder_marker",
+    "tokenize",
 ]

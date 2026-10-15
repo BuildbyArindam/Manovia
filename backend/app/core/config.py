@@ -46,6 +46,13 @@ LLM_PROVIDER_CHOICES: tuple[str, ...] = ("anthropic", "ollama", "fake")
 # emotion choices above, so config imports no services module).
 RAG_EMBEDDER_CHOICES: tuple[str, ...] = ("auto", "sentence_transformers", "tfidf", "hashing")
 
+# Which retriever answers a chat turn (Day 35). Env key RETRIEVER — no RAG_
+# prefix, because this selects *which retriever exists* rather than tuning one.
+# ``baseline`` (the Day-13 dense-only retriever) stays the default and the
+# rollback: a new retrieval implementation ships dark until an operator asks
+# for it, so an ML change can never disturb the safety ordering above it.
+RETRIEVER_CHOICES: tuple[str, ...] = ("baseline", "hybrid", "hybrid_rerank")
+
 # Which safety classifier the ensemble consumes (Day 33). ``baseline`` is the
 # Day-9 TF-IDF model; ``trained`` is the cost-sensitive LoRA model.
 SAFETY_ML_CHOICES: tuple[str, ...] = ("baseline", "trained", "onnx")
@@ -361,6 +368,33 @@ class Settings(BaseSettings):
     # How many chunks one chat turn may retrieve (the orchestrator's top-k).
     rag_retrieval_limit: int = 3
 
+    # --- Retrieval implementation (Day 35) ---
+    # The env key is RETRIEVER, deliberately without the RAG_ prefix: this
+    # selects *which retriever exists*, not a knob inside one.
+    #   baseline       Day 13 dense-only cosine (default, and the rollback)
+    #   hybrid         BM25 + dense, reciprocal rank fusion (tuned on dev)
+    #   hybrid_rerank  hybrid, then a cross-encoder over the top candidates
+    # See docs/adr/0035-fine-tuned-retrieval-hybrid-rerank.md.
+    retriever: str = "baseline"
+    # The numbers below are *calibrated*, and their source of truth is the
+    # committed app/ml_artifacts/retrieval_v1/tuning.json that
+    # ml/src/manovia_ml/retrieval/tuning.py wrote on the dev + calibration
+    # splits. Each field is therefore optional: None means "take the fitted
+    # value", a number means "an operator is overriding a fitted value", which
+    # is the rollback lever and nothing else.
+    rag_hybrid_dense_weight: float | None = None
+    rag_hybrid_fusion_k: int | None = None
+    rag_hybrid_candidates: int | None = None
+    rag_rerank_candidates: int | None = None
+    # Score floor below which the retriever returns nothing (the "no good
+    # answer" decision). Applies to the calibrated [0, 1] score of the active
+    # setting: fused confidence for `hybrid`, reranker probability for
+    # `hybrid_rerank`.
+    rag_abstain_score: float | None = None
+    # Where the reranker weights + tuning.json live. Packaged data, committed,
+    # no weights: a feature vector and a coefficient per feature.
+    rag_reranker_dir: str = "app/ml_artifacts/retrieval_v1"
+
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> "Settings":
         if self.app_env.strip().lower() != "production":
@@ -537,6 +571,44 @@ class Settings(BaseSettings):
                 "point; set FEATURE_ML_THRESHOLDS_UNLOCKED=true to accept the "
                 "change deliberately (and record it in PROGRESS.md)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _check_retriever_settings(self) -> "Settings":
+        """Day 35: the retriever choice and its overrides must be usable.
+
+        A typo here would otherwise surface as silently-baseline retrieval in
+        production — the failure mode this product can least afford to be quiet
+        about, because "the corpus stopped being used" looks exactly like "the
+        model got worse".
+        """
+        if self.retriever.strip().casefold() not in RETRIEVER_CHOICES:
+            raise ValueError(
+                f"RETRIEVER must be one of {', '.join(sorted(RETRIEVER_CHOICES))} "
+                f"(got {self.retriever!r})"
+            )
+        weight = self.rag_hybrid_dense_weight
+        if weight is not None and not 0.0 <= weight <= 1.0:
+            raise ValueError("RAG_HYBRID_DENSE_WEIGHT must be in [0, 1]")
+        for name, value in (
+            ("RAG_HYBRID_FUSION_K", self.rag_hybrid_fusion_k),
+            ("RAG_HYBRID_CANDIDATES", self.rag_hybrid_candidates),
+            ("RAG_RERANK_CANDIDATES", self.rag_rerank_candidates),
+        ):
+            if value is not None and value < 1:
+                raise ValueError(f"{name} must be at least 1")
+        abstain = self.rag_abstain_score
+        if abstain is not None and not 0.0 <= abstain <= 1.0:
+            raise ValueError("RAG_ABSTAIN_SCORE must be in [0, 1]")
+        if (
+            self.rag_rerank_candidates is not None
+            and self.rag_hybrid_candidates is not None
+            and self.rag_rerank_candidates > self.rag_hybrid_candidates
+        ):
+            # Reranking more documents than the fusion produced means the extra
+            # ones carry no fused score, so the abstain threshold would be
+            # calibrated over numbers that do not exist.
+            raise ValueError("RAG_RERANK_CANDIDATES must not exceed RAG_HYBRID_CANDIDATES")
         return self
 
     @model_validator(mode="after")

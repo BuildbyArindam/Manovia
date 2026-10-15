@@ -13,6 +13,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Final, Protocol, runtime_checkable
 
+from app.services.chat.retrieval import RetrievedChunk
+
 
 class EmbedderError(RuntimeError):
     """An embedding could not be produced."""
@@ -104,6 +106,37 @@ def chunk_id(doc_id: str, chunk_index: int) -> str:
     return f"{doc_id}{CHUNK_ID_SEP}{chunk_index:02d}"
 
 
+@dataclass(frozen=True)
+class ScoredChunk:
+    """One retrieved passage *with* the score that ranked it.
+
+    Day 35: the evaluation harness and the "no good answer" calibration both
+    need the number behind the ordering — a threshold can only be fitted on
+    scores that exist for the queries where the system answered nothing, and a
+    failure case is only diagnosable with the score that beat the right answer.
+    ``RetrievedChunk`` (what the orchestrator consumes) deliberately has no
+    score: the prompt must never see a number it could be tempted to quote.
+
+    ``score`` is comparable across retrievers because both put it in ``[0, 1]``:
+    the baseline's cosine, the hybrid's fused confidence, the reranker's
+    probability. ``stage`` says which of them produced it.
+    """
+
+    source_id: str
+    title: str
+    text: str
+    score: float
+    #: "dense" | "fused" | "reranked" — which stage's number ``score`` is.
+    stage: str = "dense"
+    #: The chunk the score belongs to (``<doc id>#<chunk index>``).
+    chunk_id: str = ""
+
+    def as_chunk(self) -> RetrievedChunk:
+        """The orchestrator-facing shape: the passage, without its score."""
+
+        return RetrievedChunk(source_id=self.source_id, title=self.title, text=self.text)
+
+
 @dataclass
 class StoredChunk:
     """One chunk as the store keeps it: id, text, metadata, row position."""
@@ -122,6 +155,7 @@ __all__ = [
     "EmbedderError",
     "EmbedderUnavailable",
     "EmbeddingVector",
+    "ScoredChunk",
     "StoredChunk",
     "chunk_id",
 ]

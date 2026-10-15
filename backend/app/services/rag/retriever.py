@@ -26,11 +26,13 @@ sees raw identifiers and has nothing to scrub.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import structlog
 from starlette.concurrency import run_in_threadpool
 
 from app.services.chat.retrieval import RetrievedChunk
-from app.services.rag.base import Embedder
+from app.services.rag.base import Embedder, ScoredChunk
 from app.services.rag.store import FaissVectorStore, Hit
 
 _log = structlog.get_logger()
@@ -73,6 +75,44 @@ class KnowledgeRetriever:
     def min_similarity(self) -> float:
         return self._min_similarity
 
+    async def rank(
+        self,
+        query: str,
+        *,
+        limit: int = 3,
+        language: str | None = None,
+        apply_floor: bool = True,
+    ) -> list[ScoredChunk]:
+        """The ranked candidates, best first, as :class:`ScoredChunk`.
+
+        Day 35 added this next to ``retrieve`` because the retrieval eval and
+        the abstain calibration both need the score behind the ordering: a
+        failure case is only diagnosable with the number that beat the right
+        answer, and a threshold can only be fitted on scores that exist for the
+        queries where the honest answer is "nothing here".
+
+        ``apply_floor=False`` returns those candidates *before* the similarity
+        floor, which is the view the calibration has to see. The language
+        fallback still keys off the floored result — "this language has nothing
+        good enough" is exactly what it has always meant — and ``retrieve`` is
+        this method with the floor on, so the two can never disagree about the
+        ordering.
+        """
+        if limit < 1 or not query.strip() or self.is_empty:
+            return []
+        want = normalize_language(language)
+
+        every, above = await self._search(query, limit=limit, language=want)
+        if not above and want is not None and want != self._fallback_language:
+            # The requested language has nothing strong enough; curated
+            # English material is still better than nothing. Logged so the
+            # corpus gap is visible rather than silent.
+            _log.info("rag_language_fallback", requested=want, fallback=self._fallback_language)
+            every, above = await self._search(query, limit=limit, language=self._fallback_language)
+
+        hits = above if apply_floor else every
+        return [self._to_scored(hit) for hit in self._dedupe(hits, limit)]
+
     async def retrieve(
         self, query: str, *, limit: int = 3, language: str | None = None
     ) -> list[RetrievedChunk]:
@@ -81,37 +121,39 @@ class KnowledgeRetriever:
         Empty is a normal answer: nothing matched well enough, and returning
         it is the retriever's job rather than the prompt's problem.
         """
-        if limit < 1 or not query.strip() or self.is_empty:
-            return []
-        want = normalize_language(language)
+        ranked = await self.rank(query, limit=limit, language=language)
+        return [item.as_chunk() for item in ranked]
 
-        hits = await self._search(query, limit=limit, language=want)
-        if not hits and want is not None and want != self._fallback_language:
-            # The requested language has nothing strong enough; curated
-            # English material is still better than nothing. Logged so the
-            # corpus gap is visible rather than silent.
-            _log.info("rag_language_fallback", requested=want, fallback=self._fallback_language)
-            hits = await self._search(query, limit=limit, language=self._fallback_language)
+    async def _search(
+        self, query: str, *, limit: int, language: str | None
+    ) -> tuple[list[Hit], list[Hit]]:
+        """Embed, search and filter by language; return (all hits, hits above floor).
 
-        return [self._to_chunk(hit) for hit in hits]
-
-    async def _search(self, query: str, *, limit: int, language: str | None) -> list[Hit]:
-        """Embed the query, search, filter by language, then apply the floor."""
+        Both lists come back from one search so ``rank`` can serve the floored
+        view to a chat turn and the unfloored one to an evaluation without
+        paying for the encode twice.
+        """
         vectors = await run_in_threadpool(self._embedder.embed, [query])
         if not vectors:
             # An embedder that answers nothing (e.g. the zero embedder over an
             # unusable store) means "no reference material", never a crash.
-            return []
+            return [], []
         where = {"language": language} if language else None
         # Over-fetch so a document with several strong chunks still leaves
         # room for `limit` *distinct* documents after the dedupe below.
         hits = await run_in_threadpool(self._store.query, vectors[0], k=limit * 3, where=where)
-        above = [hit for hit in hits if hit.score >= self._min_similarity]
+        return hits, [hit for hit in hits if hit.score >= self._min_similarity]
+
+    @staticmethod
+    def _dedupe(hits: Sequence[Hit], limit: int) -> list[Hit]:
+        """One card per document, best chunk first, at most ``limit`` of them.
+
+        A document's second-best chunk is never a different recommendation, and
+        duplicate cards read as a bug.
+        """
         kept: list[Hit] = []
         seen_docs: set[str] = set()
-        for hit in above:
-            # One card per document: a document's second-best chunk is never
-            # a different recommendation, and duplicate cards read as a bug.
+        for hit in hits:
             if hit.metadata.doc_id in seen_docs:
                 continue
             seen_docs.add(hit.metadata.doc_id)
@@ -120,11 +162,14 @@ class KnowledgeRetriever:
                 break
         return kept
 
-    def _to_chunk(self, hit: Hit) -> RetrievedChunk:
-        return RetrievedChunk(
+    def _to_scored(self, hit: Hit) -> ScoredChunk:
+        return ScoredChunk(
             source_id=hit.metadata.doc_id,
             title=hit.metadata.title,
             text=self._store.text_of(hit.id),
+            score=hit.score,
+            stage="dense",
+            chunk_id=hit.id,
         )
 
 

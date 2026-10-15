@@ -136,6 +136,21 @@ class FaissVectorStore:
     def text_of(self, chunk_id: str) -> str:
         return self._chunks[chunk_id].text
 
+    def chunk(self, chunk_id: str) -> StoredChunk:
+        """The stored chunk (text + metadata + row) by id.
+
+        Raises ``KeyError`` for an id this store does not hold: the hybrid
+        retriever fuses ranks from two indexes built over the same store, so an
+        unknown id there is a bug worth a traceback rather than a silent skip.
+        """
+
+        return self._chunks[chunk_id]
+
+    def chunks(self) -> list[StoredChunk]:
+        """Every chunk, in index-row order (the order BM25 is built in)."""
+
+        return [self._chunks[chunk_id] for chunk_id in self._rows]
+
     # --------------------------------------------------------- persist #
 
     def save(self, directory: Path) -> None:
