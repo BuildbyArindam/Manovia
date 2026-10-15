@@ -1,6 +1,6 @@
 # Manovia ML platform (`ml/`)
 
-Days 31–36. This directory is the foundation for every model Manovia might ever
+Days 31–37. This directory is the foundation for every model Manovia might ever
 put near a user: a **data catalogue** with licences and verdicts, **experiment
 tracking** where every run records enough to be reproduced, **configs** that are
 validated rather than convention, and **cards** that have to exist before a
@@ -9,7 +9,8 @@ number is quoted. Day 32 added the first real model: a **LoRA fine-tune of
 artefact the backend can load with `EMOTION_ANALYZER=trained`. Day 36 adds a
 synthetic mood-forecast research pipeline; its sequence-model scores are blocked
 in this sandbox because PyTorch is not installed, so only transparent baselines
-are reported.
+are reported. Day 37 adds a synthetic contextual-bandit policy evaluation behind
+a deterministic safety boundary; it remains offline research, not a serving path.
 
 Nothing here is wired into the API's *safety* path, and the crisis gate is
 untouched (AGENTS.md, ML ground rule 1): the emotion model is a tone hint, it
@@ -113,6 +114,8 @@ a run cannot forget:
 | `make retrieval-pipeline` | the five above, in order |
 | `make retrieval-smoke` | every stage on toy settings in ~30 s; its report is titled SMOKE (plumbing, not a result) |
 | `make mood-forecast` | Day 36: generate synthetic data, compare baselines and (with the optional training extra) GRU/LSTM/Transformer quantiles; logs to MLflow and writes `reports/day36-mood-forecasting.md` |
+| `make jitai-sim` | Day 37: run 20-seed synthetic contextual-bandit and logged-data IPS/DR evaluation; logs aggregates to MLflow and writes `reports/day37-jitai.md` |
+| `make jitai-smoke` | Day 37: same safety checks and estimators on tiny synthetic episodes (20 small seeds) |
 
 ## Day 34: compression, serving and safe rollout
 
@@ -215,6 +218,42 @@ interval or a probability. It never reads mood notes or journal text.
 Decisions and limitations: [ADR 0036](../docs/adr/0036-mood-forecasting.md); code and
 API/UI verification:
 [docs/verification/day36-mood-forecasting.md](../docs/verification/day36-mood-forecasting.md).
+
+## Day 37: contextual-bandit intervention policy (offline research only)
+
+`simulation/jitai_sim.py` is the CLI for the synthetic simulator in
+`src/manovia_ml/simulation/jitai.py`. It imports and exercises the backend's
+actual `app.services.plan.policy` algorithms and safety wrapper. The checked-in
+`configs/jitai.yaml` runs 20 seeds over four heterogeneous synthetic groups,
+compares an **offline-only** random reference with epsilon-greedy, LinUCB and
+Bayesian Thompson sampling, reports cumulative reward/regret and fairness gaps,
+and runs IPS/DR on disjoint logged uniform-behavior data against simulator
+truth. It prints five model-feature-based `Why this?` examples. The generated
+interaction log is hashed in memory; event rows, personal data and model weights
+are not written.
+
+```bash
+make jitai-smoke  # tiny episodes, still 20 seeds; local MLflow + /tmp report
+make jitai-sim     # full 20-seed evaluation; MLflow + reports/day37-jitai.md
+```
+
+The epsilon-greedy, LinUCB and Thompson suggestions go through the backend's
+outer deterministic guard: only the explicit curated action list is eligible,
+MEDIUM-or-higher risk and any PHQ-9 item-9 response bypass the learner, and a
+per-user rolling ledger caps exploration at one in five suggestions with no
+consecutive exploration. The random row is only a research comparator and must
+never be served. Ratings measure bounded pre/post self-report change; skips are
+missing outcomes, not failures. No time-in-app, session-duration or streak
+signal is in the reward.
+
+Results from the full run are in [`reports/day37-jitai.md`](reports/day37-jitai.md)
+and [`docs/evaluation-report.md`](../docs/evaluation-report.md); the framing,
+assumptions and non-production boundary are in
+[ADR 0037](../docs/adr/0037-personalised-intervention-policy.md). This is not
+clinical evidence and is not connected to `GET /plan/today`. Per-user posterior
+and exploration state are process-local, and the four response profiles are
+hand-authored. Durable state, privacy/safety review, native-language copy review
+and a separate product-integration decision are required before any rollout.
 
 ## How the pieces fit together
 

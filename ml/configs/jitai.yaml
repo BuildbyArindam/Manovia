@@ -1,0 +1,37 @@
+name: day37-jitai-contextual-bandits
+seed: 3701
+seeds: 20
+algorithms:
+  - random
+  - epsilon_greedy
+  - linucb
+  - thompson_sampling
+bandit:
+  epsilon: 0.2
+  linucb_alpha: 0.35
+  thompson_draws: 48
+  population_prior_precision: 1.0
+  user_prior_precision: 2.0
+  exploration_cap: 0.2
+  abandonment_penalty: 0.1
+online:
+  users_per_group: 3
+  steps_per_user: 60
+  reward_noise_std: 0.16
+  abandonment_probability: 0.04
+  context_jitter: 1
+offline:
+  users_per_group: 4
+  train_events_per_user: 80
+  evaluation_events_per_user: 80
+  behavior_policy: uniform
+fairness_gap_flag: 0.15
+report_output: reports/day37-jitai.md
+tracking:
+  experiment: manovia-jitai
+  tracking_uri: null
+  log_environment: true
+  run_name: day37-jitai-synthetic-evaluation
+  tags:
+    manovia.day: "37"
+    manovia.scope: synthetic-only

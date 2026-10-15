@@ -39,6 +39,7 @@ from manovia_ml.mlflow_api import mlflow
 from manovia_ml.mood_forecast.config import MoodForecastConfig
 from manovia_ml.paths import default_tracking_uri, ml_root
 from manovia_ml.seeds import SeedState
+from manovia_ml.simulation.jitai_config import JITAIConfig
 
 __all__ = ["RunHandle", "TrackedConfig", "git_state", "library_versions", "tracked_run"]
 
@@ -46,7 +47,7 @@ __all__ = ["RunHandle", "TrackedConfig", "git_state", "library_versions", "track
 #: protocol: each of these is a frozen pydantic model that carries ``name``,
 #: ``tracking`` and a JSON dump, and naming them keeps ``mypy --strict`` honest
 #: about what ``tracked_run`` reads (Day 35 added the retrieval shape).
-TrackedConfig = TrainConfig | DistillConfig | RetrievalConfig | MoodForecastConfig
+TrackedConfig = TrainConfig | DistillConfig | RetrievalConfig | MoodForecastConfig | JITAIConfig
 
 #: Libraries whose version can change a number. Anything else is in the
 #: ``environment.json`` artefact; these are also params, so they are visible in

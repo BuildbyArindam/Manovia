@@ -1,5 +1,119 @@
 # Manovia — Progress
 
+## Day 37 — Personalised intervention policy (contextual bandits with safety constraints)
+
+**Implemented and verified on 2026-10-15** on Arena's pinned branch
+`arena/ee484020-manovia`; no branch switch was made. The task uses an offline
+research seam and is **not wired into `GET /plan/today`**. ADR 0037 records the
+scope and the existing ADR-0011 filename conflict. The branch is pushed;
+[PR #45](https://github.com/BuildbyArindam/Manovia/pull/45) is open and intentionally
+left unmerged.
+
+**What shipped:** an explicit allow-list of eight reviewed exercises and three
+daily-plan actions, with deterministic `support-options` excluded from learning;
+closed numeric/time/emotion/history/preference features; bounded pre/post-rating
+reward and a small started-abandonment penalty; per-user Bayesian linear
+posteriors warm-started from a shared population prior; epsilon-greedy, LinUCB
+and Bayesian-linear Thompson sampling; and an outer safety wrapper that gates
+MEDIUM-or-higher risk and every PHQ-9 item-9 response before calling the learner.
+The wrapper enforces the 20% exploration cap and no-consecutive-exploration
+rule, exposes alternate/skip choices, and logs propensities without user keys,
+context or text. Skips do not train the policy. Model-feature-derived “Why this?”
+copy is generated without an LLM.
+
+The ML side includes heterogeneous synthetic users, logged action propensities,
+IPS/DR against simulator ground truth, seeded reward/regret/fairness summaries,
+five explanation examples, and MLflow aggregate logging. No raw event rows,
+real-user data or model weights are committed. The report is
+[`ml/reports/day37-jitai.md`](ml/reports/day37-jitai.md), the measured summary is
+[`docs/evaluation-report.md`](docs/evaluation-report.md), and commands/results,
+mutation check, grep proof and limitations are in
+[`docs/verification/day37-jitai.md`](docs/verification/day37-jitai.md).
+
+**Full synthetic run (20 independent seeds):** cumulative reward / regret,
+mean [95% CI]: random `-73.388 [-76.016, -70.759]` / `354.908 [352.823,
+356.994]`; epsilon-greedy `168.710 [157.803, 179.617]` / `115.455 [103.145,
+127.765]`; LinUCB `193.795 [186.693, 200.897]` / `84.867 [78.846, 90.888]`;
+Thompson `155.293 [147.573, 163.012]` / `125.985 [117.440, 134.530]`. The
+three learned policies' early-to-late regret per decision fell under the
+hand-authored response model. IPS `0.3917` and DR `0.3900` were respectively
+`0.0063` and `0.0046` from synthetic ground truth `0.3854`. All four full-run
+group gaps were below the descriptive `0.15` review threshold; this is not a
+fairness or clinical certification. Full-run MLflow id:
+`f329789262f64a4ab624e0e72dd1ca42`.
+
+### Decisions and verification (Day 37)
+
+- **ADR:** [0037 — Personalised intervention policy](docs/adr/0037-personalised-intervention-policy.md).
+  The user-requested `0011-bandit-policy.md` cannot be used because ADR 0011 is
+  already occupied and ADR numbers are never reused. The policy remains an
+  offline research seam; the existing deterministic daily plan is unchanged.
+- **Backend:** policy tests **27 passed**. Full `make lint` passed (Ruff, format,
+  mypy); full pytest portion passed **4,566 tests, 4 skipped**, but `make test`
+  exits non-zero at the repository's Day-26 coverage gate: overall coverage
+  `94.59%` statements / `86.95%` branches passes the 85% floor, while unchanged
+  `app/services/safety/ml_classifier.py` and `trained.py` remain below that
+  separate safety-group 95% floor. See the verification note for exact values.
+- **Safety mutation:** disabling the MEDIUM+ gate made the named direct and
+  property-based gate tests fail (2 failures); the source was restored and the
+  targeted policy suite passed. Reward grep found no engagement, time-in-app,
+  session-duration, streak, session-length or return-frequency feature terms.
+- **ML:** full `make ml-lint` passed; full `make ml-test` passed **473 tests,
+  11 skipped**. The skips are optional ONNX/training/PyTorch paths. Smoke: 20
+  tiny seeds, 4,800 generated interactions, passed. Full run: 20 seeds,
+  108,800 generated interactions, passed. No GPU or real dataset was needed.
+- **Frontend:** full lint, TypeScript type-check and tests passed; Vitest reports
+  **613 passed, 3 skipped** (74 files passed; one skipped). No frontend product
+  code changed. An optional Prettier check still finds two unrelated Day-25
+  files; `npm ci` also reported 9 existing audit findings (4 moderate, 5 high).
+- **Branch/commit:** the Arena-pinned task branch is `arena/ee484020-manovia`;
+  `ed1a748` is the pushed backend/ADR milestone, `02bd2d0` the simulation
+  milestone, and `c528cba` the results/verification milestone. No work was
+  pushed to `main`; [PR #45](https://github.com/BuildbyArindam/Manovia/pull/45)
+  is open and intentionally unmerged.
+
+### Known issues / sandbox limitations (Day 37)
+
+1. The complete backend coverage gate is still red on the unchanged safety
+   classifier modules despite every backend test passing; see above and
+   `docs/verification/day37-jitai.md`.
+2. The optional ML training/ONNX extras and GPU are absent, so their 11 ML tests
+   are skipped. The contextual-bandit experiment itself uses the real backend
+   policy implementation and CPU-only synthetic data.
+3. The frontend Prettier check flags only
+   `frontend/e2e/day25/keyboard.spec.ts` and
+   `frontend/src/scripts/playwrightFailures.test.ts`; neither was changed just
+   to widen Day 37's scope. The dependency install reports 9 audit findings.
+4. The output and OPE assumptions are synthetic. User state and exploration
+   ledgers are process-local; there is no durable outcome store, live opt-in,
+   or clinical/native-language review.
+
+### Parking lot (Day 37 — outside this task's scope)
+
+- Close the existing backend safety coverage-floor gap and review the two
+  pre-existing frontend formatting findings and npm audit report.
+- Have clinical/safety reviewers and native English/Hindi/Bengali speakers
+  review the curated action list and all five full-run “Why this?” examples.
+- Real-world effectiveness, safety, fairness and OPE validation under an
+  approved protocol; synthetic numbers are not a substitute.
+- If product integration is separately approved: design explicit opt-in,
+  alternate/skip and action-rating semantics; privacy-reviewed durable shared
+  and per-user posteriors; override-aware logging; cross-worker consistency; a
+  new ADR and monitored rollback. Do not wire this seam into the existing plan
+  endpoint as a follow-up shortcut.
+
+### Day 38 — first three steps
+
+1. Review the Day-37 PR, ADR and full evaluation report; resolve the backend
+   coverage gate so the complete repository test target can return zero.
+2. Obtain clinical/safety and native-speaker review of the curated arms and
+   five model-feature explanations; document accept/reject decisions before any
+   new action or user-facing copy is proposed.
+3. If a separate product experiment is approved, write an integration ADR and
+   privacy/safety design for consent, user overrides, skip/rating events,
+   durable posterior state and rollback. Keep the live daily plan deterministic
+   until that review is complete.
+
 ## Day 36 — Mood forecasting with sequence models and honest uncertainty
 
 **Implemented and verified on 2026-10-15** on Arena's pinned branch

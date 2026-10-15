@@ -36,6 +36,9 @@ ml = [
     # Experiment tracking. Local file store by default; see
     # ml/docker/mlflow/docker-compose.mlflow.yml for the optional service.
     "mlflow==3.17.1",
+    # The Day-37 simulator imports the checked-out backend policy seam; its
+    # package initializers reach the backend NLP package, which needs structlog.
+    "structlog==26.1.0",
     # Data versioning (`dvc repro`, `dvc status`).
     "dvc==3.67.1",
 ]

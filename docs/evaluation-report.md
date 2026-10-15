@@ -131,3 +131,49 @@ Behind `--with-judge` / `--judge fake|llm`, `run_response_eval.py` scores replie
   - The overall score is a weighted average of `0.992` on explicit keyword-bearing sentences and `0.011` on implicit/somatic/domain-shifted sentences. Any downstream consumer must treat `EmotionResult` as a noisy lexical signal.
 - **LLM-as-judge scores (`5.00 / 5.00` offline) are NOT ground truth**:
   - Automated judges prefer polite, formulaic phrasing, struggle with romanised Hindi/Bengali code-switching, and cannot verify clinical appropriateness. They are diagnostic indicators only and must never replace deterministic safety checks or human review.
+
+---
+
+## 6. Day 37 — contextual-bandit intervention policy (synthetic research)
+
+**Status:** research-only offline seam. Nothing from this experiment is connected to `GET /plan/today`; the existing deterministic daily plan is unchanged. This simulation is not clinical evidence or a claim of benefit for real people.
+
+The full run used `ml/configs/jitai.yaml`, seed base `3701`, and **20 independent seeds** over four hand-authored synthetic user types. It generated 108,800 in-memory interactions (SHA-256 `88b0e9af393502abf7d7327e4ed6924b4f8a31dd4326a09873e76f63ebf4ffc7`); no event rows or model weights were saved. The 95% intervals below are normal-approximation intervals across the 20 seed-level results. Reward is bounded pre/post 1–5 self-rating improvement with a 0.1 penalty for a started abandoned session; skip is missing, not failure. No engagement, time-in-app or streak signal is in the reward.
+
+### Online comparison: cumulative reward and regret
+
+| Policy | Cumulative reward, mean [95% CI] | Cumulative regret, mean [95% CI] | Regret / decision: early → late |
+| --- | ---: | ---: | ---: |
+| `random` | -73.388 [-76.016, -70.759] | 354.908 [352.823, 356.994] | 0.4830 → 0.5004 |
+| `epsilon_greedy` | 168.710 [157.803, 179.617] | 115.455 [103.145, 127.765] | 0.3390 → 0.0713 |
+| `linucb` | 193.795 [186.693, 200.897] | 84.867 [78.846, 90.888] | 0.2374 → 0.0670 |
+| `thompson_sampling` | 155.293 [147.573, 163.012] | 125.985 [117.440, 134.530] | 0.3390 → 0.1002 |
+
+`random` is an unconstrained, offline-only reference and is not eligible to serve. Epsilon-greedy, LinUCB and Thompson sampling pass through the deterministic safety wrapper; the measured early-to-late regret fell for all three under this synthetic response model.
+
+### Offline policy evaluation (held-out uniform-behavior logs)
+
+The target policy is trained on a disjoint synthetic training portion. Evaluation uses logged action propensities and is compared with the simulator's expected target-policy reward.
+
+| Estimate | Mean [95% CI] | Simulator ground truth | Absolute gap |
+| --- | ---: | ---: | ---: |
+| IPS | 0.3917 [0.3741, 0.4094] | 0.3854 | 0.0063 |
+| Doubly robust (DR) | 0.3900 [0.3827, 0.3972] | 0.3854 | 0.0046 |
+| Logged behavior value | -0.1053 [-0.1077, -0.1029] | n/a | n/a |
+
+These close gaps validate estimator plumbing only for this stationary, overlapping synthetic setup; they do not demonstrate validity on confounded or safety-censored real logs.
+
+### Fairness by synthetic user type
+
+Mean bounded reward per decision, averaged over the 20 seeds. A `FLAG` is raised when the max–min group gap exceeds the configured descriptive threshold of `0.15`; it is not a fairness certification.
+
+| Policy | High-energy evening | Low-energy morning | Anxiety afternoon | Reflective evening | Max–min gap | Review |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `random` | -0.096 | -0.096 | -0.114 | -0.102 | 0.018 | OK |
+| `epsilon_greedy` | 0.248 | 0.231 | 0.294 | 0.164 | 0.130 | OK |
+| `linucb` | 0.314 | 0.250 | 0.303 | 0.209 | 0.106 | OK |
+| `thompson_sampling` | 0.235 | 0.196 | 0.272 | 0.159 | 0.113 | OK |
+
+None of the four simulated policy rows exceeded the `0.15` review threshold. Group gaps are descriptive and small samples / hand-authored profiles limit interpretation.
+
+Five model-feature-derived `Why this?` examples for wording review, full method and limitations are in [`ml/reports/day37-jitai.md`](../ml/reports/day37-jitai.md). The aggregate run was logged to local MLflow as `f329789262f64a4ab624e0e72dd1ca42`. The 20-seed smoke/full commands, named safety-property tests, mutation result, reward-term grep and broader verification outputs are recorded in [`docs/verification/day37-jitai.md`](verification/day37-jitai.md).
