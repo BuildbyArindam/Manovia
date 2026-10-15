@@ -392,3 +392,7 @@ privacy accounting. Research uses `secure_mode=False` and a public seed for
 reproducibility, never a production cryptographic randomness claim. On-device
 storage, phone energy rules and consent controls are unimplemented requirements,
 not measured guarantees. Human checks are enumerated in the Day-38 verification.
+
+## Audio handling
+
+Voice recordings made in the browser using the `MediaRecorder` API are streamed directly to the local backend. The backend processes the audio in-memory or inside temporal storage, transcribes it, and immediately deletes the recording. The transcript is returned to the user to review and edit before sending. Voice audio bytes are NEVER stored in the database, NEVER written to application logs, and NEVER passed to external APIs. Text-to-speech similarly streams transient synthesized audio arrays and are not persisted.
