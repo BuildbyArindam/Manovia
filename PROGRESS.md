@@ -5,8 +5,9 @@
 **Implemented and verified on 2026-10-15** on Arena's pinned branch
 `arena/ee484020-manovia`; no branch switch was made. The task uses an offline
 research seam and is **not wired into `GET /plan/today`**. ADR 0037 records the
-scope and the existing ADR-0011 filename conflict. The branch is pushed; the
-Day-37 PR is opened separately and intentionally left unmerged.
+scope and the existing ADR-0011 filename conflict. The branch is pushed;
+[PR #45](https://github.com/BuildbyArindam/Manovia/pull/45) is open and intentionally
+left unmerged.
 
 **What shipped:** an explicit allow-list of eight reviewed exercises and three
 daily-plan actions, with deterministic `support-options` excluded from learning;
@@ -66,8 +67,10 @@ fairness or clinical certification. Full-run MLflow id:
   code changed. An optional Prettier check still finds two unrelated Day-25
   files; `npm ci` also reported 9 existing audit findings (4 moderate, 5 high).
 - **Branch/commit:** the Arena-pinned task branch is `arena/ee484020-manovia`;
-  `ed1a748` is the pushed backend/ADR milestone and `02bd2d0` is the pushed
-  simulation milestone. No work was pushed to `main`, and the PR is not merged.
+  `ed1a748` is the pushed backend/ADR milestone, `02bd2d0` the simulation
+  milestone, and `c528cba` the results/verification milestone. No work was
+  pushed to `main`; [PR #45](https://github.com/BuildbyArindam/Manovia/pull/45)
+  is open and intentionally unmerged.
 
 ### Known issues / sandbox limitations (Day 37)
 
