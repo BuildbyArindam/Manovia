@@ -28,7 +28,7 @@ dependencies = [
     "uvicorn-worker==0.4.0",
     "pydantic==2.14.1",
     "pydantic-settings==2.15.0",
-    "python-multipart==0.0.17",
+    "python-multipart==0.0.32",
     # [asyncio] pulls in greenlet, which SQLAlchemy's async sessions require.
     "sqlalchemy[asyncio]==2.1.4",
     "alembic==1.20.0",
