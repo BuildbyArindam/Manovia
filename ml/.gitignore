@@ -18,6 +18,18 @@ data/downloads/
 data/safety/
 data/safety_toy/
 
+# Day 35: the retrieval eval set's *derived* bytes. The hand-written ground
+# truth (data/retrieval/retrieval_queries.jsonl) and its card ARE committed;
+# the paraphrased expansion and the four-way split are DVC outputs of
+# `retrieval_expand` / `retrieval_split` and are reproducible from it.
+data/retrieval/expanded.jsonl
+data/retrieval/dropped.jsonl
+data/retrieval/expand_manifest.json
+data/retrieval_splits/
+# Trained retrieval artefacts (the contrastive projection, the reranker
+# coefficients, a fine-tuned checkpoint). Never committed, like every weight.
+data/retrieval_artifacts/
+
 # Locally downloaded run artefacts (manovia_ml.serving.artifacts.fetch_run_artifact)
 artifacts/
 

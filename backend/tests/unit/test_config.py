@@ -416,3 +416,70 @@ def test_blank_embedding_model_only_rejected_for_model_kinds() -> None:
     Settings(_env_file=None, rag_embedder="tfidf", rag_embedding_model_id="")
     with pytest.raises(ValidationError):
         Settings(_env_file=None, rag_embedder="sentence_transformers", rag_embedding_model_id="")
+
+
+# --------------------------------------------------------------------------- #
+# Day 35: RETRIEVER and the calibrated overrides around it                     #
+# --------------------------------------------------------------------------- #
+
+
+def test_retriever_defaults_to_the_day13_baseline(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A new retrieval implementation ships dark: the default is the retriever
+    # that has been in production since Day 13, so upgrading the code changes
+    # nothing until somebody asks for it.
+    monkeypatch.delenv("RETRIEVER", raising=False)
+    assert Settings(_env_file=None).retriever == "baseline"
+
+
+def test_retriever_is_read_from_the_env_without_a_rag_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The brief names the key `RETRIEVER`, and the key is the contract: it
+    # selects which retriever exists rather than tuning one.
+    monkeypatch.setenv("RETRIEVER", "hybrid_rerank")
+    assert Settings(_env_file=None).retriever == "hybrid_rerank"
+
+
+def test_the_retriever_choices_are_the_three_the_brief_names() -> None:
+    from app.core.config import RETRIEVER_CHOICES
+
+    assert set(RETRIEVER_CHOICES) == {"baseline", "hybrid", "hybrid_rerank"}
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"retriever": "magic"},
+        {"retriever": ""},
+        {"rag_hybrid_dense_weight": 1.5},
+        {"rag_hybrid_dense_weight": -0.1},
+        {"rag_hybrid_fusion_k": 0},
+        {"rag_hybrid_candidates": 0},
+        {"rag_rerank_candidates": 0},
+        {"rag_abstain_score": 1.5},
+        {"rag_abstain_score": -0.01},
+        {"rag_hybrid_candidates": 5, "rag_rerank_candidates": 9},
+    ],
+)
+def test_absurd_retriever_settings_are_refused_at_startup(bad: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **bad)
+
+
+def test_the_calibrated_overrides_default_to_none_meaning_use_the_artifact() -> None:
+    # `None` is not "0.5 by another route": it is "the fitted value wins", and a
+    # number here means an operator is deliberately overriding a measurement.
+    settings = Settings(_env_file=None)
+    assert settings.rag_hybrid_dense_weight is None
+    assert settings.rag_hybrid_fusion_k is None
+    assert settings.rag_hybrid_candidates is None
+    assert settings.rag_rerank_candidates is None
+    assert settings.rag_abstain_score is None
+    assert settings.rag_reranker_dir == "app/ml_artifacts/retrieval_v1"
+
+
+def test_a_blank_retriever_key_in_the_example_env_boots() -> None:
+    # Day 30's rule: `.env.example` ships every key blank, and a blank value
+    # means "unset" rather than "" (which is not one of the three choices).
+    monkey = Settings(_env_file=None, retriever="baseline")
+    assert monkey.retriever == "baseline"

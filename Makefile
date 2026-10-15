@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
@@ -150,6 +150,30 @@ ml-report:
 
 ml-smoke:
 	$(MAKE) -C ml smoke
+
+# Day 35: fine-tuned retrieval (ADR 0035). `ml-retrieval-pipeline` is the whole
+# chain in order; the individual targets are what a re-fit after a corpus change
+# runs. See ml/Makefile for which stages need the backend importable.
+ml-retrieval-finetune:
+	$(MAKE) -C ml retrieval-finetune
+
+ml-retrieval-tune:
+	$(MAKE) -C ml retrieval-tune
+
+ml-retrieval-rerank:
+	$(MAKE) -C ml retrieval-rerank
+
+ml-retrieval-calibrate:
+	$(MAKE) -C ml retrieval-calibrate
+
+ml-retrieval-eval:
+	$(MAKE) -C ml retrieval-eval
+
+ml-retrieval-pipeline:
+	$(MAKE) -C ml retrieval-pipeline
+
+ml-retrieval-smoke:
+	$(MAKE) -C ml retrieval-smoke
 
 ml-test:
 	$(MAKE) -C ml test

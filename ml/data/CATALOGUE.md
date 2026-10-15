@@ -60,6 +60,7 @@ listed in § Verification log.
 | 13 | Manovia fixtures (evals/datasets/*, ml/data/toy/*) | en, hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-13 |
 | 14 | Manovia hi/bn emotion set (planned, not yet written) | hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored for Manovia | commercial | no | USE WITH CONDITIONS | 2026-10-13 |
 | 15 | Manovia synthetic safety corpus (expanded from the Day-9 seeds) | en, hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-13 |
+| 16 | Manovia retrieval eval set (hand-written + template-paraphrased) | en, hi, hi-Latn, bn, bn-Latn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-14 |
 <!-- catalogue-table:end -->
 
 ## Entries
@@ -665,3 +666,45 @@ here so the same search is not repeated from scratch.
 
 **Next verification due:** 2027-04-11 (180 days), or sooner if any entry's
 status changes from `candidate` to `used`.
+
+### 16. Manovia retrieval eval set (Day 35)
+
+```yaml
+catalogue:
+  name: Manovia retrieval eval set (hand-written + template-paraphrased)
+  source: "hand-written rows committed at ml/data/retrieval/retrieval_queries.jsonl; synthetic rows generated in-repo by ml/src/manovia_ml/retrieval/augment.py (DVC stage retrieval_expand)"
+  licence: "MIT (repository licence, LICENSE); authored in this repository"
+  licence_evidence: ./LICENSE
+  allowed_use: commercial
+  languages: [en, hi, hi-Latn, bn, bn-Latn]
+  size: "154 hand-written rows -> 254 expanded (100 synthetic, 12 candidates screened out); splits train 97 / dev 85 / calibration 20 / test 52"
+  label_scheme: "1-3 relevant knowledge-document ids per answerable row, or has_answer=false with a no_answer_reason (out-of-scope 42, corpus-gap 17); relevance is topical, not language-matched"
+  known_biases: >-
+    One author, so one view of how distress is phrased; the topic mix follows the
+    40-document corpus rather than real traffic (exams, sleep and breathing
+    over-represented, relationships and money represented only as corpus-gap
+    no-answer rows). The hi/bn/bn-Latn rows have no native-speaker review yet —
+    the limitation translations/STATUS.md already records for product copy. The
+    synthetic rows are template paraphrases of hand-written seeds: they inherit
+    their labels (which is why they are usable at all) and are lexically closer
+    to the corpus than a real first draft, which is why they are kept out of the
+    test split entirely.
+  personal_data: false
+  personal_data_notes: >-
+    No real people's messages. Crisis and self-harm content is deliberately
+    absent: the deterministic crisis gate runs before retrieval (AGENTS.md rule
+    1), so those turns never reach a retriever, and including them would make
+    the abstain metric look like a safety mechanism it is not. Provenance travels
+    on every synthetic row (source, generator, seed_id), so any of them can be
+    traced to the hand-written row it came from and dropped.
+  status: used
+  verdict: USE
+  verdict_reason: >-
+    Owned by the project, MIT-licensed, no personal data, and the derived half is
+    reproducible from a committed seed file with a fixed seed — so the 254-row
+    eval set is checkable without committing its bytes. The test split is
+    hand-written only, is read by the evaluator and nothing else, and its content
+    fingerprint is recorded in ml/data/retrieval_splits/manifest.json so any
+    tuning against it changes a hash someone is watching.
+  verified_on: 2026-10-14
+```

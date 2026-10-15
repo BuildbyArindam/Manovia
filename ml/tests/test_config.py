@@ -180,13 +180,15 @@ def test_every_shipped_config_validates() -> None:
 
     Day 34 added two more config families beside ``TrainConfig``:
     distillation runs (``distill_*.yaml``) and the release gates
-    (``release_gates.yaml``). Each file is validated by its own strict
-    loader — unknown keys are still errors everywhere — and a file that
-    matches no family fails here rather than being quietly skipped.
+    (``release_gates.yaml``). Day 35 adds a fourth — retrieval runs
+    (``retrieval_*.yaml``), which describe an embedding/fusion/reranker
+    pipeline rather than a classifier. Each file is validated by its own
+    strict loader — unknown keys are still errors everywhere — and a file
+    that matches no family fails here rather than being quietly skipped.
     """
 
     from manovia_ml.compression.gates import load_release_gates
-    from manovia_ml.config import load_distill_config
+    from manovia_ml.config import load_distill_config, load_retrieval_config
     from manovia_ml.paths import config_dir
 
     configs = sorted(config_dir().glob("*.y*ml"))
@@ -197,6 +199,9 @@ def test_every_shipped_config_validates() -> None:
             continue
         if path.name.startswith("distill_"):
             assert load_distill_config(path).name, path.name
+            continue
+        if path.name.startswith("retrieval_"):
+            assert load_retrieval_config(path).name, path.name
             continue
         parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
         config = load_config_dict(parsed, origin=str(path))
