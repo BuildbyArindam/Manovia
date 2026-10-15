@@ -263,19 +263,37 @@ def test_user_may_choose_another_action_or_skip() -> None:
     assert decision.alternatives
 
 
-def test_policy_logs_propensities_without_context_user_key_or_text(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    caplog.set_level(logging.INFO, logger="manovia.plan.policy")
-    service = SafeInterventionService(SpyEngine())
-    service.suggest(
-        "must-not-be-logged-user-id",
-        CONTEXT,
-        risk_level=RiskLevel.LOW,
-        phq9_item9_response=False,
-    )
-    record = next(record for record in caplog.records if hasattr(record, "policy_event"))
-    event = record.policy_event
+def test_policy_logs_propensities_without_context_user_key_or_text() -> None:
+    class EventCapture(logging.Handler):
+        def __init__(self) -> None:
+            super().__init__(logging.INFO)
+            self.records: list[logging.LogRecord] = []
+
+        def emit(self, record: logging.LogRecord) -> None:
+            self.records.append(record)
+
+    logger = logging.getLogger("manovia.plan.policy")
+    previous_level = logger.level
+    previous_disabled = logger.disabled
+    capture = EventCapture()
+    logger.addHandler(capture)
+    logger.setLevel(logging.INFO)
+    logger.disabled = False
+    try:
+        SafeInterventionService(SpyEngine()).suggest(
+            "must-not-be-logged-user-id",
+            CONTEXT,
+            risk_level=RiskLevel.LOW,
+            phq9_item9_response=False,
+        )
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(previous_level)
+        logger.disabled = previous_disabled
+
+    assert capture.records
+    record = capture.records[0]
+    event = record.__dict__["policy_event"]
     assert event["propensity"] is not None
     assert sum(event["action_propensities"].values()) == pytest.approx(1.0)
     assert "must-not-be-logged-user-id" not in record.getMessage()
