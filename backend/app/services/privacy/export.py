@@ -11,6 +11,7 @@ Shape of the archive (a ZIP, or the same content as one JSON document):
     profile.json          account fields (no password hash, ever)
     consents.json         the append-only consent history
     privacy-settings.json the three Day 22 choices, and their defaults
+    user-settings.json    planner preferences and the default-off Mood Outlook opt-in
     chat.json             saved sessions, each with its decrypted turns
     journal.json          decrypted titles and bodies
     mood.json             check-ins with decrypted notes
@@ -59,10 +60,12 @@ from app.models.plan import PlanItem
 from app.models.privacy import PrivacySetting
 from app.models.safety_event import SafetyEvent
 from app.models.user import User
+from app.models.user_settings import UserSettings
+from app.services.plan.daily_plan import DEFAULT_QUIET_END, DEFAULT_QUIET_START
 from app.services.privacy.store import DEFAULT_SNAPSHOT
 
 #: Bumped when the archive layout changes in a way a reader must know about.
-EXPORT_FORMAT_VERSION = "manovia-export-1"
+EXPORT_FORMAT_VERSION = "manovia-export-2"
 
 #: Per-table ceiling. An export must finish and must not become a memory bomb;
 #: when a table hits the ceiling the manifest says so explicitly, and the API
@@ -75,7 +78,8 @@ _README = """Manovia — your data export
 This archive is everything Manovia stores about you, decrypted for you:
 your chat history (only the conversations you chose to save), journal
 entries, mood check-ins, self-screening results, guided-exercise history,
-thought records, your daily-plan rows and your consent history.
+thought records, daily-plan rows, your planner preferences (including whether
+Mood Outlook is enabled), and your consent history.
 
 What is NOT in here:
   * your password (only a one-way Argon2id hash is stored, and it never
@@ -266,6 +270,38 @@ async def build_user_export(
                     "note": (
                         "retention_days null means 'keep until I delete it'. "
                         "store_chat false is a veto on saving new chat turns."
+                    ),
+                }
+            ),
+        )
+    )
+
+    # --- planner and Outlook preferences ---------------------------------
+    user_settings = await session.get(UserSettings, uid)
+    export.files.append(
+        ExportFile(
+            "user-settings.json",
+            _dump(
+                {
+                    "preferred_exercise_tags": list(user_settings.preferred_exercise_tags or [])
+                    if user_settings
+                    else [],
+                    "quiet_hours_enabled": bool(user_settings.quiet_hours_enabled)
+                    if user_settings
+                    else False,
+                    "quiet_start": user_settings.quiet_start
+                    if user_settings
+                    else DEFAULT_QUIET_START.strftime("%H:%M"),
+                    "quiet_end": user_settings.quiet_end
+                    if user_settings
+                    else DEFAULT_QUIET_END.strftime("%H:%M"),
+                    "mood_outlook_enabled": bool(user_settings.mood_outlook_enabled)
+                    if user_settings
+                    else False,
+                    "been_saved": user_settings is not None,
+                    "note": (
+                        "Mood Outlook is off unless mood_outlook_enabled is true; "
+                        "this preference does not change or delete check-ins."
                     ),
                 }
             ),

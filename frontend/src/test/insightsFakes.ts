@@ -10,10 +10,13 @@
  */
 
 import type { ApiClient } from "@/lib/api";
+import type { PlanSettings } from "@/features/plan/types";
+import { planSettings as makePlanSettings } from "@/test/planFakes";
 
 import type {
   AboutInsights,
   Association,
+  MoodOutlook,
   PatternInsights,
   Rolling,
   RollingPoint,
@@ -434,31 +437,98 @@ export function weeklyInsights(overrides: Partial<WeeklyInsights> = {}): WeeklyI
   };
 }
 
+export function moodOutlook(overrides: Partial<MoodOutlook> = {}): MoodOutlook {
+  return {
+    status: "ready",
+    available: true,
+    today: "2026-10-11",
+    timezone: "Asia/Kolkata",
+    timezone_fallback_used: false,
+    locale: "en",
+    locale_fallback_used: false,
+    lookback_days: 28,
+    minimum_checkin_days: 14,
+    check_ins_used: 20,
+    distinct_checkin_days: 18,
+    latest_check_in: "2026-10-11",
+    summary:
+      "Your recent check-ins average 3.2 on the 1–5 mood scale. If a similar pattern continues, the next three days may be around 2.0–4.4.",
+    uncertainty_note:
+      "This is a rough estimate from your recent check-ins. It is not a calibrated confidence interval or a probability. It can be wrong, and you may feel differently on any day.",
+    not_health_advice: "This personal reflection is not health advice or a medical assessment.",
+    forecast: [
+      { day: "2026-10-12", estimate: 3.2, lower: 2.4, upper: 4.0 },
+      { day: "2026-10-13", estimate: 3.2, lower: 2.1, upper: 4.3 },
+      { day: "2026-10-14", estimate: 3.2, lower: 1.8, upper: 4.6 },
+    ],
+    top_factors: [
+      {
+        tag: "work",
+        label: "work",
+        tagged_days: 7,
+        other_days: 11,
+        tagged_mean: 2.4,
+        other_mean: 3.7,
+        difference: -1.3,
+        sentence:
+          "In your recent check-ins, days tagged work averaged 2.4; other days averaged 3.7 (7 and 11 days). This is a pattern in these entries, not an explanation.",
+      },
+    ],
+    no_factors_note: null,
+    small_action: "If it feels manageable, you might choose one small next step.",
+    optional_support: null,
+    ...overrides,
+  };
+}
+
 export interface InsightsFake {
   client: ApiClient;
   /** Every path the page asked for, in order. */
   calls: string[];
+  settings: PlanSettings;
 }
 
 /**
- * A transport that answers the two insights routes from the payloads given.
+ * A transport for insights, the settings gate, and the opt-in Mood Outlook.
  *
- * `failPatterns` / `failWeekly` make one of them throw, which is how the error
- * and consent states are tested without a server.
+ * `failPatterns`, `failWeekly`, `failSettings` and `failOutlook` make one call
+ * throw, which is how the error and consent states are tested without a server.
  */
 export function makeInsightsFake(
   options: {
     patterns?: PatternInsights;
     weekly?: WeeklyInsights;
+    outlook?: MoodOutlook;
+    settings?: PlanSettings;
     failPatterns?: Error;
     failWeekly?: Error;
+    failOutlook?: Error;
+    failSettings?: Error;
   } = {},
 ): InsightsFake {
-  const fake: InsightsFake = { client: {} as ApiClient, calls: [] };
+  const fake: InsightsFake = {
+    client: {} as ApiClient,
+    calls: [],
+    settings: options.settings ?? makePlanSettings(),
+  };
+  const settingsError = options.failSettings ?? null;
+  const outlookError = options.failOutlook ?? null;
 
   const client = {
     get: async (path: string): Promise<unknown> => {
       fake.calls.push(path);
+      if (path === "/settings") {
+        if (settingsError !== null) {
+          throw settingsError;
+        }
+        return fake.settings;
+      }
+      if (path.startsWith("/insights/outlook")) {
+        if (outlookError !== null) {
+          throw outlookError;
+        }
+        return options.outlook ?? moodOutlook();
+      }
       if (path.startsWith("/insights/weekly")) {
         if (options.failWeekly !== undefined) {
           throw options.failWeekly;

@@ -1,8 +1,7 @@
 /**
- * The two queries this page runs.
- *
- * Both are plain `useQuery` calls over the endpoints in `endpoints.ts`, with two
- * settings that differ from the app's defaults on purpose:
+ * The insights page's queries: pattern and weekly reports, plus a settings-gated
+ * Mood Outlook request. These are plain `useQuery` calls over the endpoints in
+ * `endpoints.ts`, with two settings that differ from the app's defaults on purpose:
  *
  * - `staleTime: 0` and `refetchOnMount: "always"`. The app caches for five
  *   minutes, which is right for exercises and wrong here: somebody can check in
@@ -17,16 +16,25 @@
  * the look-back window cannot serve the numbers for the old one.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
+import { fetchPlanSettings, planSettingsKeys } from "@/features/plan/endpoints";
+import type { PlanSettings } from "@/features/plan/types";
 import { api, type ApiClient } from "@/lib/api";
+import { deviceTimezone } from "@/lib/timezone";
 
-import { fetchPatternInsights, fetchWeeklyInsights, type InsightsQuery } from "./endpoints";
-import type { PatternInsights, WeeklyInsights } from "./types";
+import {
+  fetchMoodOutlook,
+  fetchPatternInsights,
+  fetchWeeklyInsights,
+  type InsightsQuery,
+} from "./endpoints";
+import type { MoodOutlook, PatternInsights, WeeklyInsights } from "./types";
 
 export const insightsKeys = {
   patterns: ["insights", "patterns"] as const,
   weekly: ["insights", "weekly"] as const,
+  outlook: ["insights", "outlook"] as const,
 };
 
 /** How far back `/patterns` looks: the server's own default window. */
@@ -64,4 +72,30 @@ export function useWeeklyInsights(
     queryFn: () => fetchWeeklyInsights({ ...query, weeks }, client),
     ...FRESH,
   });
+}
+
+/**
+ * Read settings first so an opted-out account never asks the Outlook endpoint
+ * for a personal estimate. The backend enforces the same gate independently.
+ */
+export function useMoodOutlook(
+  client: ApiClient = api,
+  query: InsightsQuery = {},
+): {
+  settingsQuery: UseQueryResult<PlanSettings, Error>;
+  outlookQuery: UseQueryResult<MoodOutlook, Error>;
+} {
+  const settingsQuery = useQuery<PlanSettings, Error>({
+    queryKey: planSettingsKeys.current,
+    queryFn: () => fetchPlanSettings(client),
+    ...FRESH,
+  });
+  const timezone = query.tz ?? deviceTimezone();
+  const outlookQuery = useQuery<MoodOutlook, Error>({
+    queryKey: [...insightsKeys.outlook, timezone, query.locale ?? "account"],
+    queryFn: () => fetchMoodOutlook({ ...query, tz: timezone }, client),
+    enabled: settingsQuery.data?.mood_outlook_enabled === true,
+    ...FRESH,
+  });
+  return { settingsQuery, outlookQuery };
 }

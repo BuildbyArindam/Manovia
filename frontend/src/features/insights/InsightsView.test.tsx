@@ -22,7 +22,12 @@ import { axe } from "jest-axe";
 import { describe, expect, it, afterEach, vi } from "vitest";
 
 import { ApiError } from "@/lib/api";
-import { makeInsightsFake, patternInsights, weeklyInsights } from "@/test/insightsFakes";
+import {
+  makeInsightsFake,
+  moodOutlook,
+  patternInsights,
+  weeklyInsights,
+} from "@/test/insightsFakes";
 import { renderWithProviders } from "@/test/utils";
 
 import { InsightsView } from "./InsightsView";
@@ -346,6 +351,62 @@ describe("failure states", () => {
     expect(panels[0]).toHaveTextContent(INSIGHTS_COPY.consentTitle);
     expect(within(panels[0] as HTMLElement).getByRole("link")).toHaveAttribute("href", "/settings");
     expect(within(panels[0] as HTMLElement).queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("Mood Outlook", () => {
+  it("stays hidden behind explicit opt-in and links to Settings", async () => {
+    const fake = makeInsightsFake();
+    render(fake);
+
+    await screen.findByText(/stays off until you choose to turn it on/);
+    const card = screen.getByTestId("mood-outlook");
+    expect(
+      within(card).getByRole("link", { name: INSIGHTS_COPY.outlookOpenSettings }),
+    ).toHaveAttribute("href", "/settings");
+    expect(fake.calls.some((path) => path.startsWith("/insights/outlook"))).toBe(false);
+  });
+
+  it("renders numeric uncertainty as an accessible table, not a colour-only band", async () => {
+    const fake = makeInsightsFake({ outlook: moodOutlook() });
+    fake.settings.mood_outlook_enabled = true;
+    const { container } = render(fake);
+
+    const table = await screen.findByRole("table", {
+      name: INSIGHTS_COPY.outlookTableCaption,
+    });
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
+    expect(
+      within(table).getByRole("columnheader", { name: INSIGHTS_COPY.outlookPossibleRange }),
+    ).toBeVisible();
+    expect(within(table).getByText("2.4–4")).toHaveAccessibleName("2.4 to 4");
+    const card = screen.getByTestId("mood-outlook");
+    expect(card).toHaveTextContent("not a calibrated confidence interval or a probability");
+    expect(card).toHaveTextContent("not health advice");
+    expect(fake.calls.some((path) => path.startsWith("/insights/outlook"))).toBe(true);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("shows the server's holdback sentence without an empty forecast table", async () => {
+    const fake = makeInsightsFake({
+      outlook: moodOutlook({
+        status: "not_enough_data",
+        available: false,
+        summary:
+          "Mood Outlook needs at least 14 different check-in days within the last 28 days, plus a recent check-in. Your estimate is not shown yet.",
+        forecast: [],
+        top_factors: [],
+        no_factors_note: null,
+        small_action: null,
+        optional_support: null,
+      }),
+    });
+    fake.settings.mood_outlook_enabled = true;
+    render(fake);
+
+    await screen.findByText(/needs at least 14 different check-in days/);
+    const card = screen.getByTestId("mood-outlook");
+    expect(within(card).queryByRole("table")).not.toBeInTheDocument();
   });
 });
 

@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **1.0.0** · 62 operations across 52 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **1.0.0** · 63 operations across 53 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -139,6 +139,7 @@ Manovia API **1.0.0** · 62 operations across 52 paths. The machine-readable sch
 | --- | --- | --- | --- | --- | --- |
 | `GET` | `/api/v1/insights/weekly` | Read Weekly | yes + consent | 200, 422 | The last ``weeks`` natural weeks, a week-over-week trend, and a summary. |
 | `GET` | `/api/v1/insights/patterns` | Read Patterns | yes + consent | 200, 422 | Rolling averages, a trend, tag associations and the shape of the days. |
+| `GET` | `/api/v1/insights/outlook` | Read Mood Outlook | yes + consent | 200, 422 | An explicit-opt-in, numeric-only, three-day personal-history estimate. |
 
 ## Crisis resources and assessment
 

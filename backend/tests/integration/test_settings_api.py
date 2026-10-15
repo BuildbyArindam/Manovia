@@ -49,6 +49,7 @@ async def test_get_returns_defaults_and_the_tag_vocabulary(client: httpx.AsyncCl
     assert body["quiet_hours_enabled"] is False
     assert body["quiet_start"] == "22:00"
     assert body["quiet_end"] == "07:00"
+    assert body["mood_outlook_enabled"] is False
     assert "breathing" in body["known_exercise_tags"]
     assert "grounding" in body["known_exercise_tags"]
 
@@ -72,6 +73,20 @@ async def test_put_round_trips(client: httpx.AsyncClient) -> None:
     again = (await client.get(ROOT, headers=headers)).json()
     assert again["preferred_exercise_tags"] == ["breathing", "mindfulness"]
     assert again["quiet_hours_enabled"] is True
+
+
+async def test_mood_outlook_opt_in_is_persisted_and_can_be_disabled(
+    client: httpx.AsyncClient,
+) -> None:
+    _, headers = await guest(client)
+    enabled = await client.put(ROOT, headers=headers, json={"mood_outlook_enabled": True})
+    assert enabled.status_code == 200
+    assert enabled.json()["mood_outlook_enabled"] is True
+    assert (await client.get(ROOT, headers=headers)).json()["mood_outlook_enabled"] is True
+
+    disabled = await client.put(ROOT, headers=headers, json={"mood_outlook_enabled": False})
+    assert disabled.status_code == 200
+    assert disabled.json()["mood_outlook_enabled"] is False
 
 
 async def test_put_dedupes_and_casefolds_tags(client: httpx.AsyncClient) -> None:

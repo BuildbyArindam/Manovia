@@ -39,6 +39,8 @@ from app.models.user import User
 
 WEEKLY = "/api/v1/insights/weekly"
 PATTERNS = "/api/v1/insights/patterns"
+OUTLOOK = "/api/v1/insights/outlook"
+SETTINGS = "/api/v1/settings"
 VERSION = "2026-10-01"
 
 KOLKATA = ZoneInfo("Asia/Kolkata")
@@ -189,6 +191,87 @@ async def patterns(client: httpx.AsyncClient, me: Person, **params: str) -> dict
     return body
 
 
+async def enable_outlook(client: httpx.AsyncClient, me: Person, enabled: bool = True) -> None:
+    response = await client.put(
+        SETTINGS,
+        headers=me.headers,
+        json={"mood_outlook_enabled": enabled},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["mood_outlook_enabled"] is enabled
+
+
+async def outlook(client: httpx.AsyncClient, me: Person, **params: str) -> dict[str, Any]:
+    response = await client.get(OUTLOOK, headers=me.headers, params=params)
+    assert response.status_code == 200, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+async def seed_outlook_persona(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    persona: str,
+) -> None:
+    """Seed a deterministic numeric-only persona for output and wording checks."""
+    repository = MoodRepository(session)
+    for offset in range(40):
+        day = TODAY - timedelta(days=39 - offset)
+        factors: dict[str, object] | None = None
+        if persona == "steady_high":
+            valence = 4
+        elif persona == "steady_low":
+            valence = 2
+        elif persona == "rising":
+            valence = 2 if offset < 20 else 4
+        elif persona == "work_tagged_low":
+            tagged = offset % 2 == 0
+            valence = 2 if tagged else 4
+            factors = {"work": 1} if tagged else None
+        else:
+            raise ValueError(f"unknown synthetic persona {persona!r}")
+        local = datetime.combine(
+            day,
+            datetime.min.time().replace(hour=12),
+            tzinfo=KOLKATA,
+        )
+        await repository.record(
+            user_id=user_id,
+            valence=valence,
+            energy=3,
+            factors=factors,
+            created_at=local.astimezone(UTC),
+        )
+    await session.commit()
+
+
+async def seed_outlook_ages(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    ages_days: Sequence[int],
+    entries_per_day: int = 1,
+) -> None:
+    """Seed a precise set of local check-in dates for eligibility edge cases."""
+    repository = MoodRepository(session)
+    for age in ages_days:
+        day = TODAY - timedelta(days=age)
+        local = datetime.combine(
+            day,
+            datetime.min.time().replace(hour=12),
+            tzinfo=KOLKATA,
+        )
+        for _ in range(entries_per_day):
+            await repository.record(
+                user_id=user_id,
+                valence=3,
+                energy=3,
+                created_at=local.astimezone(UTC),
+            )
+    await session.commit()
+
+
 def associations(body: dict[str, Any], *, reported_only: bool = True) -> list[dict[str, Any]]:
     factors = body["factors"]
     assert isinstance(factors, dict)
@@ -258,6 +341,190 @@ async def test_window_bounds_are_rejected_rather_than_clamped(
     response = await client.get(path, headers=me.headers, params={param: value})
 
     assert response.status_code == 422
+
+
+# --------------------------------------------------------------------------- #
+# Opt-in Mood Outlook                                                          #
+# --------------------------------------------------------------------------- #
+
+
+async def test_outlook_requires_authentication_consent_and_explicit_opt_in(
+    client: httpx.AsyncClient,
+) -> None:
+    anonymous = await client.get(OUTLOOK)
+    assert anonymous.status_code == 401
+
+    unconsented = await person(client, kinds=())
+    consent_refusal = await client.get(OUTLOOK, headers=unconsented.headers)
+    assert consent_refusal.status_code == 403
+    assert consent_refusal.json()["error"]["code"] == "consent_required"
+
+    opted_out = await person(client)
+    settings = await client.get(SETTINGS, headers=opted_out.headers)
+    assert settings.status_code == 200
+    assert settings.json()["mood_outlook_enabled"] is False
+    refusal = await client.get(OUTLOOK, headers=opted_out.headers)
+    assert refusal.status_code == 403
+    assert refusal.json()["error"]["code"] == "outlook_opt_in_required"
+
+
+@pytest.mark.parametrize(
+    ("history_days", "expected_status", "expected_available"),
+    [(5, "not_enough_data", False), (14, "ready", True), (40, "ready", True)],
+)
+async def test_outlook_cold_start_gate_for_five_fourteen_and_forty_days(
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+    history_days: int,
+    expected_status: str,
+    expected_available: bool,
+) -> None:
+    me = await person(client)
+    await enable_outlook(client, me)
+    await seed_history(session, me.id, days=history_days, seed=history_days)
+
+    body = await outlook(client, me, tz="Asia/Kolkata", locale="en")
+
+    assert body["status"] == expected_status
+    assert body["available"] is expected_available
+    assert body["minimum_checkin_days"] == 14
+    assert body["lookback_days"] == 28
+    if history_days == 5:
+        assert body["forecast"] == []
+        assert body["distinct_checkin_days"] == 5
+    else:
+        assert len(body["forecast"]) == 3
+        assert body["distinct_checkin_days"] == min(history_days, 28)
+        assert all(
+            point["lower"] <= point["estimate"] <= point["upper"] for point in body["forecast"]
+        )
+        assert "can be wrong" in body["uncertainty_note"]
+        assert "not a calibrated confidence interval or a probability" in body["uncertainty_note"]
+        assert body["not_health_advice"]
+
+
+async def test_outlook_requires_distinct_days_and_a_checkin_within_seven_days(
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+) -> None:
+    duplicate_days = await person(client)
+    await enable_outlook(client, duplicate_days)
+    await seed_outlook_ages(
+        session,
+        duplicate_days.id,
+        ages_days=range(7),
+        entries_per_day=2,
+    )
+    duplicate_body = await outlook(client, duplicate_days, tz="Asia/Kolkata")
+    assert duplicate_body["check_ins_used"] == 14
+    assert duplicate_body["distinct_checkin_days"] == 7
+    assert duplicate_body["status"] == "not_enough_data"
+    assert duplicate_body["forecast"] == []
+
+    stale_person = await person(client)
+    await enable_outlook(client, stale_person)
+    await seed_outlook_ages(
+        session,
+        stale_person.id,
+        ages_days=range(8, 22),
+    )
+    stale_body = await outlook(client, stale_person, tz="Asia/Kolkata")
+    assert stale_body["distinct_checkin_days"] == 14
+    assert stale_body["latest_check_in"] == (TODAY - timedelta(days=8)).isoformat()
+    assert stale_body["status"] == "stale"
+    assert stale_body["available"] is False
+    assert stale_body["forecast"] == []
+    assert "paused" in stale_body["summary"]
+
+
+async def test_outlook_response_does_not_expose_private_notes(
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+) -> None:
+    me = await person(client)
+    await enable_outlook(client, me)
+    await seed_history(
+        session,
+        me.id,
+        days=14,
+        seed=22,
+        note="private-outlook-note-sentinel",
+    )
+
+    body = await outlook(client, me, tz="Asia/Kolkata", locale="en")
+
+    assert "private-outlook-note-sentinel" not in str(body)
+
+
+async def test_four_synthetic_persona_texts_pass_wording_lint(
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+) -> None:
+    """The API's complete sentences stay gentle, uncertain and non-medical."""
+    blocklist = (
+        "diagnos",
+        "disorder",
+        "depress",
+        "anxiety",
+        "crisis",
+        "suicid",
+        "cure",
+        "guaranteed",
+        "definitely",
+        "must",
+        "because",
+        "causes",
+        "will feel",
+    )
+    personas = ("steady_high", "steady_low", "rising", "work_tagged_low")
+    responses: dict[str, dict[str, Any]] = {}
+    for persona_name in personas:
+        me = await person(client)
+        await enable_outlook(client, me)
+        await seed_outlook_persona(session, me.id, persona=persona_name)
+        body = await outlook(client, me, tz="Asia/Kolkata", locale="en")
+        assert body["status"] == "ready"
+        assert len(body["forecast"]) == 3
+        assert "can be wrong" in body["uncertainty_note"]
+        text_parts = [body["summary"], body["uncertainty_note"], body["not_health_advice"]]
+        text_parts.extend(factor["sentence"] for factor in body["top_factors"])
+        optional_sentences = (
+            body["no_factors_note"],
+            body["small_action"],
+            body["optional_support"],
+        )
+        text_parts.extend(item for item in optional_sentences if item)
+        combined = " ".join(text_parts).casefold()
+        for term in blocklist:
+            assert term not in combined, f"{persona_name}: banned wording {term!r}: {combined!r}"
+        responses[persona_name] = body
+
+    assert responses["steady_low"]["optional_support"] is not None
+    assert responses["steady_high"]["optional_support"] is None
+    assert responses["work_tagged_low"]["top_factors"]
+    assert responses["steady_high"]["top_factors"] == []
+
+
+async def test_outlook_localises_to_hindi_and_bengali_and_rejects_bad_timezone(
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+) -> None:
+    me = await person(client)
+    await enable_outlook(client, me)
+    await seed_history(session, me.id, days=14, seed=19)
+
+    for locale in ("hi", "bn"):
+        body = await outlook(client, me, tz="Asia/Kolkata", locale=locale)
+        assert body["locale"] == locale
+        assert body["locale_fallback_used"] is False
+        assert body["available"] is True
+    invalid = await client.get(
+        OUTLOOK,
+        headers=me.headers,
+        params={"tz": "Mars/Olympus", "locale": "en"},
+    )
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "invalid_timezone"
 
 
 # --------------------------------------------------------------------------- #

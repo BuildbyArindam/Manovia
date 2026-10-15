@@ -28,6 +28,7 @@ from app.db.repos import (
     JournalRepository,
     MoodRepository,
     PlanRepository,
+    SettingsRepository,
     UserRepository,
 )
 from app.db.repos.exercises import ExerciseRepository
@@ -168,6 +169,14 @@ async def _fill_every_feature(
         title="A quick check-in",
         why=PLAN_WHY,
     )
+    await SettingsRepository(session).upsert(
+        user_id=user.id,
+        preferred_exercise_tags=["breathing"],
+        quiet_hours_enabled=True,
+        quiet_start="21:00",
+        quiet_end="06:00",
+        mood_outlook_enabled=True,
+    )
     await session.commit()
 
 
@@ -202,6 +211,7 @@ async def test_export_zip_contains_every_feature_decrypted(
         "profile.json",
         "consents.json",
         "privacy-settings.json",
+        "user-settings.json",
         "chat.json",
         "journal.json",
         "mood.json",
@@ -213,7 +223,7 @@ async def test_export_zip_contains_every_feature_decrypted(
     }
 
     manifest = files["manifest.json"]
-    assert manifest["format_version"] == "manovia-export-1"
+    assert manifest["format_version"] == "manovia-export-2"
     assert manifest["contents_are_decrypted"] is True
     assert manifest["counts"]["journal_entries"] == 1
     assert manifest["counts"]["mood_entries"] == 1
@@ -252,6 +262,12 @@ async def test_export_zip_contains_every_feature_decrypted(
     plan = files["plan.json"]
     assert plan[0]["why"] == PLAN_WHY and plan[0]["kind"] == "check_in"
 
+    user_settings = files["user-settings.json"]
+    assert user_settings["preferred_exercise_tags"] == ["breathing"]
+    assert user_settings["quiet_hours_enabled"] is True
+    assert user_settings["mood_outlook_enabled"] is True
+    assert user_settings["been_saved"] is True
+
     assessments = files["assessments.json"]
     assert assessments[0]["instrument"] == "phq9" and assessments[0]["total"] == 9
 
@@ -270,7 +286,7 @@ async def test_export_json_format_is_the_same_document(
     assert "attachment" in response.headers["content-disposition"]
 
     document = response.json()
-    assert document["format_version"] == "manovia-export-1"
+    assert document["format_version"] == "manovia-export-2"
     assert document["files"]["journal.json"][0]["body"] == JOURNAL_BODY
     assert document["files"]["chat.json"][0]["messages"][0]["text"] == CHAT_USER
 
@@ -336,6 +352,8 @@ async def test_export_is_empty_for_a_new_account(client: httpx.AsyncClient) -> N
     assert document["counts"]["journal_entries"] == 0
     assert document["files"]["chat.json"] == []
     assert document["files"]["privacy-settings.json"]["been_saved"] is False
+    assert document["files"]["user-settings.json"]["mood_outlook_enabled"] is False
+    assert document["files"]["user-settings.json"]["been_saved"] is False
 
 
 async def test_export_truncates_with_a_stated_ceiling(

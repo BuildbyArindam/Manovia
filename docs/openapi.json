@@ -3568,6 +3568,235 @@
         "title": "MoodListOut",
         "type": "object"
       },
+      "MoodOutlookOut": {
+        "description": "Authenticated response for the explicitly opted-in Outlook card.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "check_ins_used": {
+            "title": "Check Ins Used",
+            "type": "integer"
+          },
+          "distinct_checkin_days": {
+            "title": "Distinct Checkin Days",
+            "type": "integer"
+          },
+          "forecast": {
+            "items": {
+              "$ref": "#/components/schemas/OutlookPointOut"
+            },
+            "title": "Forecast",
+            "type": "array"
+          },
+          "latest_check_in": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Check In"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "locale_fallback_used": {
+            "title": "Locale Fallback Used",
+            "type": "boolean"
+          },
+          "lookback_days": {
+            "title": "Lookback Days",
+            "type": "integer"
+          },
+          "minimum_checkin_days": {
+            "title": "Minimum Checkin Days",
+            "type": "integer"
+          },
+          "no_factors_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Factors Note"
+          },
+          "not_health_advice": {
+            "title": "Not Health Advice",
+            "type": "string"
+          },
+          "optional_support": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Optional Support"
+          },
+          "small_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Small Action"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "not_enough_data",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "timezone_fallback_used": {
+            "title": "Timezone Fallback Used",
+            "type": "boolean"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "top_factors": {
+            "items": {
+              "$ref": "#/components/schemas/OutlookFactorOut"
+            },
+            "title": "Top Factors",
+            "type": "array"
+          },
+          "uncertainty_note": {
+            "title": "Uncertainty Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "available",
+          "today",
+          "timezone",
+          "timezone_fallback_used",
+          "locale",
+          "locale_fallback_used",
+          "lookback_days",
+          "minimum_checkin_days",
+          "check_ins_used",
+          "distinct_checkin_days",
+          "latest_check_in",
+          "summary",
+          "uncertainty_note",
+          "not_health_advice",
+          "forecast",
+          "top_factors",
+          "no_factors_note",
+          "small_action",
+          "optional_support"
+        ],
+        "title": "MoodOutlookOut",
+        "type": "object"
+      },
+      "OutlookFactorOut": {
+        "description": "A small, non-causal association from closed check-in tags.",
+        "properties": {
+          "difference": {
+            "title": "Difference",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "other_days": {
+            "title": "Other Days",
+            "type": "integer"
+          },
+          "other_mean": {
+            "title": "Other Mean",
+            "type": "number"
+          },
+          "sentence": {
+            "title": "Sentence",
+            "type": "string"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          },
+          "tagged_days": {
+            "title": "Tagged Days",
+            "type": "integer"
+          },
+          "tagged_mean": {
+            "title": "Tagged Mean",
+            "type": "number"
+          }
+        },
+        "required": [
+          "tag",
+          "label",
+          "tagged_days",
+          "other_days",
+          "tagged_mean",
+          "other_mean",
+          "difference",
+          "sentence"
+        ],
+        "title": "OutlookFactorOut",
+        "type": "object"
+      },
+      "OutlookPointOut": {
+        "description": "One day in the personal-history Outlook range.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "estimate": {
+            "title": "Estimate",
+            "type": "number"
+          },
+          "lower": {
+            "title": "Lower",
+            "type": "number"
+          },
+          "upper": {
+            "title": "Upper",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "estimate",
+          "lower",
+          "upper"
+        ],
+        "title": "OutlookPointOut",
+        "type": "object"
+      },
       "PatternsOut": {
         "description": "``GET /api/v1/insights/patterns``.",
         "properties": {
@@ -4563,6 +4792,11 @@
       "SettingsIn": {
         "description": "A whole-settings update: every field present, defaults documented.",
         "properties": {
+          "mood_outlook_enabled": {
+            "default": false,
+            "title": "Mood Outlook Enabled",
+            "type": "boolean"
+          },
           "preferred_exercise_tags": {
             "items": {
               "type": "string"
@@ -4602,6 +4836,10 @@
             "title": "Known Exercise Tags",
             "type": "array"
           },
+          "mood_outlook_enabled": {
+            "title": "Mood Outlook Enabled",
+            "type": "boolean"
+          },
           "preferred_exercise_tags": {
             "items": {
               "type": "string"
@@ -4627,6 +4865,7 @@
           "quiet_hours_enabled",
           "quiet_start",
           "quiet_end",
+          "mood_outlook_enabled",
           "known_exercise_tags"
         ],
         "title": "SettingsOut",
@@ -6842,6 +7081,84 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/insights/outlook": {
+      "get": {
+        "description": "An explicit-opt-in, numeric-only, three-day personal-history estimate.\n\nSequence-model checkpoints are not imported here. The route checks the\npersisted opt-in before reading mood rows, and the repository projection\nexcludes encrypted notes and all journal/free-text fields.",
+        "operationId": "read_mood_outlook_api_v1_insights_outlook_get",
+        "parameters": [
+          {
+            "description": "IANA timezone name used to decide which local day a check-in belongs to (e.g. Asia/Kolkata). Omitted or blank means UTC, and the response says so.",
+            "in": "query",
+            "name": "tz",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "IANA timezone name used to decide which local day a check-in belongs to (e.g. Asia/Kolkata). Omitted or blank means UTC, and the response says so.",
+              "examples": [
+                "Asia/Kolkata"
+              ],
+              "title": "Tz"
+            }
+          },
+          {
+            "description": "Language for the generated sentences (en, hi, bn). Unknown means English.",
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Language for the generated sentences (en, hi, bn). Unknown means English.",
+              "examples": [
+                "en"
+              ],
+              "title": "Locale"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoodOutlookOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Mood Outlook",
+        "tags": [
+          "insights"
         ]
       }
     },

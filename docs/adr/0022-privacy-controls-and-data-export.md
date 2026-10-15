@@ -33,12 +33,14 @@ moment.
 `GET /api/v1/privacy/export?format=zip|json` returns the authenticated user's
 data as a ZIP (`manovia-export/`) or the same payload as a single JSON document.
 
-- **Decrypted for the owner.** `format_version = "manovia-export-1"` and
+- **Decrypted for the owner.** `format_version = "manovia-export-2"` and
   `contents_are_decrypted = true` are stated in `manifest.json`, because a
-  user-visible export that contained ciphertext would be useless.
-- Every table the app writes is included: `profile`, `consents`,
-  `privacy-settings`, `chat`, `journal`, `mood`, `assessments`, `exercises`,
-  `cbt`, `plan`, `safety-events`.
+  user-visible export that contained ciphertext would be useless. Day 36 added
+  `user-settings.json` (planner preferences and the Mood Outlook opt-in); that
+  archive-layout change bumped the format from v1 to v2.
+- Every user-owned table the app writes is included: `profile`, `consents`,
+  `privacy-settings`, `user-settings`, `chat`, `journal`, `mood`, `assessments`,
+  `exercises`, `cbt`, `plan`, `safety-events`.
 - **Ceilings are declared, never silent.** `privacy_export_max_rows` (default
   5000) caps each table; `counts` and `truncated_tables` are in the manifest so
   a person can see that a table was cut rather than assume it was empty.

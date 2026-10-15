@@ -43,12 +43,29 @@ describe("Settings — saved-chat memory", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
+      if (url.endsWith("/api/v1/settings") && method === "GET") {
+        return new Response(
+          JSON.stringify({
+            preferred_exercise_tags: [],
+            quiet_hours_enabled: false,
+            quiet_start: "22:00",
+            quiet_end: "07:00",
+            mood_outlook_enabled: false,
+            known_exercise_tags: ["breathing", "grounding"],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
       return new Response("not found", { status: 404 });
     });
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithProviders(<SettingsPage />);
 
+    const moodOutlookToggle = await screen.findByRole("switch", {
+      name: /show mood outlook on insights/i,
+    });
+    expect(moodOutlookToggle).not.toBeChecked();
     expect(await screen.findByText(SAVED_SUMMARY)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete what Manovia remembers" }));
     expect(screen.getByText(/This cannot be undone/)).toBeInTheDocument();

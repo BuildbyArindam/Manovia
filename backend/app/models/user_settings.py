@@ -1,8 +1,8 @@
-"""``user_settings`` — the planner preferences a person can change in Settings.
+"""``user_settings`` — preferences a person can change in Settings.
 
-One row per person, created on first save. Only planner-relevant choices live
-here: which exercise types they prefer (a subset of the catalogue's tags) and
-their quiet hours, when the planner suggests nothing at all.
+One row per person, created on first save. Planner preferences cover exercise
+tags and quiet hours. The default-off Mood Outlook switch is a separate,
+explicit opt-in and does not change the rest of the planner configuration.
 
 The columns are deliberately boring — a JSON list of tag strings and two
 ``HH:MM`` strings — so the planner can read them as data, validate them on
@@ -48,6 +48,11 @@ class UserSettings(Base):
     quiet_hours_enabled: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, default=False)
     quiet_start: Mapped[str] = mapped_column(sa.String(5), nullable=False, default="22:00")
     quiet_end: Mapped[str] = mapped_column(sa.String(5), nullable=False, default="07:00")
+    #: Day 36: a separate, explicit opt-in for the numeric-only Mood Outlook.
+    #: Default false at both the ORM and database layers; no model reads notes.
+    mood_outlook_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean(), nullable=False, default=False, server_default=sa.false()
+    )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP_TYPE,
         nullable=False,

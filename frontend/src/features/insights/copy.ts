@@ -152,6 +152,65 @@ export const INSIGHTS_COPY = {
     return t("insights.timezoneFallback");
   },
   localeFallback: (locale: string): string => t("insights.localeFallback", { locale }),
+
+  get outlookTitle() {
+    return t("insights.outlookTitle");
+  },
+  get outlookIntro() {
+    return t("insights.outlookIntro");
+  },
+  get outlookOptInBody() {
+    return t("insights.outlookOptInBody");
+  },
+  get outlookOpenSettings() {
+    return t("insights.outlookOpenSettings");
+  },
+  get outlookCheckingSetting() {
+    return t("insights.outlookCheckingSetting");
+  },
+  get outlookLoading() {
+    return t("insights.outlookLoading");
+  },
+  get outlookSettingsError() {
+    return t("insights.outlookSettingsError");
+  },
+  get outlookFetchError() {
+    return t("insights.outlookFetchError");
+  },
+  get outlookRetry() {
+    return t("insights.outlookRetry");
+  },
+  get outlookForecastHeading() {
+    return t("insights.outlookForecastHeading");
+  },
+  get outlookTableCaption() {
+    return t("insights.outlookTableCaption");
+  },
+  get outlookDay() {
+    return t("insights.outlookDay");
+  },
+  get outlookEstimate() {
+    return t("insights.outlookEstimate");
+  },
+  get outlookPossibleRange() {
+    return t("insights.outlookPossibleRange");
+  },
+  outlookRangeValue: (lower: string, upper: string): string =>
+    t("insights.outlookRangeValue", { lower, upper }),
+  get outlookFactorsHeading() {
+    return t("insights.outlookFactorsHeading");
+  },
+  get outlookSmallActionHeading() {
+    return t("insights.outlookSmallActionHeading");
+  },
+  get outlookSupportHeading() {
+    return t("insights.outlookSupportHeading");
+  },
+  get outlookTimezoneFallback() {
+    return t("insights.outlookTimezoneFallback");
+  },
+  outlookLocaleFallback: (locale: string): string =>
+    t("insights.outlookLocaleFallback", { locale }),
 };
 
 export type InsightsCopy = typeof INSIGHTS_COPY;

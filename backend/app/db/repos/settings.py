@@ -1,9 +1,9 @@
-"""Planner preferences (``user_settings``): one row per person, lazily created.
+"""User preferences (``user_settings``): one row per person, lazily created.
 
-A missing row means "defaults": no exercise preference, quiet hours off,
-22:00-07:00 bounds if they are ever switched on. The repository returns
-``None`` for a person who has never saved, and the service layer interprets
-that as defaults — the database never stores a row nobody wrote.
+A missing row means "defaults": no exercise preference, quiet hours off, and
+Mood Outlook off. The repository returns ``None`` for a person who has never
+saved, and the service layer interprets that as defaults — the database never
+stores a row nobody wrote.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ class SettingsRepository:
         quiet_hours_enabled: bool,
         quiet_start: str,
         quiet_end: str,
+        mood_outlook_enabled: bool = False,
     ) -> UserSettings:
         """Create or replace the row. Never commits; the API owns that."""
         row = await self.get(user_id)
@@ -43,5 +44,6 @@ class SettingsRepository:
         row.quiet_hours_enabled = quiet_hours_enabled
         row.quiet_start = quiet_start
         row.quiet_end = quiet_end
+        row.mood_outlook_enabled = mood_outlook_enabled
         await self._session.flush()
         return row
