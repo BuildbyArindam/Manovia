@@ -99,9 +99,16 @@ class ChatReply(BaseModel):
 
 @dataclass(frozen=True)
 class TokenEvent:
-    """A chunk of the reply, to be appended in order."""
+    """A chunk of the reply, to be appended in order.
+
+    ``crisis`` is true only for the single deterministic pre-written crisis
+    token. SSE clients do not receive the flag (their final metadata remains
+    authoritative); direct transports such as Day 40 voice use it to avoid
+    synthesising an ordinary sentence before switching to cached crisis audio.
+    """
 
     text: str
+    crisis: bool = False
 
 
 @dataclass(frozen=True)

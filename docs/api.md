@@ -187,9 +187,9 @@ These routes exist only when `APP_ENV` is not `production`. They are for local d
 
 | Method | Path | Summary | Session | Status codes | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/voice/transcribe` | Transcribe | yes | 200, 422 |  |
-| `GET` | `/api/v1/voice/voices` | Get Voices | yes | 200 |  |
-| `POST` | `/api/v1/voice/synthesize` | Synthesize | yes | 200, 422 |  |
+| `POST` | `/api/v1/voice/transcribe` | Transcribe | yes | 200, 422 | Day 39 compatibility endpoint; live audio uses the documented WebSocket runtime. |
+| `GET` | `/api/v1/voice/voices` | Get Voices | yes | 200 | List reviewed local language choices without exposing model paths. |
+| `POST` | `/api/v1/voice/synthesize` | Synthesize | yes | 200, 422 | Legacy local TTS endpoint; sentence streaming uses the WebSocket runtime. |
 
 ## Regenerating
 

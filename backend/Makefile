@@ -1,4 +1,4 @@
-.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response
+.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response voice-sim
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 
@@ -75,6 +75,11 @@ eval-emotion:
 
 eval-response:
 	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_response_eval.py --provider $(EVAL_PROVIDER) $(EVAL_JUDGE_ARG)
+
+# Day 40: deterministic fake-stage timing; no microphone, audio bytes, model
+# download or network call. Prints per-stage p50/p95 and the <1.5s gate.
+voice-sim:
+	$(PYTHON) scripts/simulate_voice.py
 
 # Day 13 knowledge ingestion: chunk + embed + store the curated corpus,
 # idempotently (a second run is a no-op). RAG_EMBEDDER picks the embedder

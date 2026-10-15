@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="500" viewBox="0 0 900 500" role="img" aria-labelledby="title desc">
+  <title id="title">Day 40 warm-local scripted voice latency, p50 and p95</title>
+  <desc id="desc">A grouped bar chart in milliseconds for VAD, STT partial, STT final, LLM first token, TTS first chunk and total time to first audio. The p95 total is 98.614 milliseconds, below the 1500 millisecond target.</desc>
+  <rect width="900" height="500" fill="#ffffff"/>
+  <text x="450" y="35" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#172033">Warm-local scripted voice latency (ms)</text>
+  <text x="450" y="58" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" fill="#526176">25 turns · p50 vs p95 · total target: 1,500 ms</text>
+  <g stroke="#d7dee9" stroke-width="1">
+    <line x1="85" y1="410" x2="850" y2="410"/><line x1="85" y1="338" x2="850" y2="338"/><line x1="85" y1="266" x2="850" y2="266"/><line x1="85" y1="194" x2="850" y2="194"/><line x1="85" y1="122" x2="850" y2="122"/><line x1="85" y1="90" x2="850" y2="90"/>
+  </g>
+  <g font-family="system-ui, sans-serif" font-size="12" fill="#526176" text-anchor="end">
+    <text x="75" y="414">0</text><text x="75" y="342">20</text><text x="75" y="270">40</text><text x="75" y="198">60</text><text x="75" y="126">80</text><text x="75" y="94">100</text>
+  </g>
+  <g fill="#1d4ed8"><rect x="125" y="409.957" width="24" height="0.043" rx="2"/><rect x="245" y="325.821" width="24" height="84.179" rx="2"/><rect x="365" y="249.220" width="24" height="160.780" rx="2"/><rect x="485" y="178.574" width="24" height="231.426" rx="2"/><rect x="605" y="297.162" width="24" height="112.838" rx="2"/><rect x="725" y="62.805" width="24" height="347.195" rx="2"/></g>
+  <g fill="#0f766e"><rect x="155" y="409.942" width="24" height="0.058" rx="2"/><rect x="275" y="318.646" width="24" height="91.354" rx="2"/><rect x="395" y="239.414" width="24" height="170.586" rx="2"/><rect x="515" y="171.241" width="24" height="238.759" rx="2"/><rect x="635" y="290.037" width="24" height="119.963" rx="2"/><rect x="755" y="54.990" width="24" height="355.010" rx="2"/></g>
+  <g font-family="system-ui, sans-serif" font-size="11" fill="#172033" text-anchor="middle"><text x="137" y="428">VAD</text><text x="257" y="428">STT</text><text x="377" y="428">STT</text><text x="497" y="428">LLM</text><text x="617" y="428">TTS</text><text x="737" y="428">First</text><text x="257" y="443">partial</text><text x="377" y="443">final</text><text x="497" y="443">token</text><text x="617" y="443">chunk</text><text x="737" y="443">audio</text></g>
+  <g font-family="system-ui, sans-serif" font-size="12" fill="#172033"><rect x="355" y="466" width="14" height="14" rx="2" fill="#1d4ed8"/><text x="376" y="478">p50</text><rect x="430" y="466" width="14" height="14" rx="2" fill="#0f766e"/><text x="451" y="478">p95</text><text x="555" y="478" fill="#0f766e" font-weight="700">p95 first audio: 98.614 ms</text></g>
+</svg>

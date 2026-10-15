@@ -1,5 +1,96 @@
 # Manovia — Progress
 
+## Day 40 — Real-time voice companion (streaming, barge-in, crisis-safe)
+
+**Implemented and fully regression-verified on 2026-10-16** on the Arena-pinned
+branch `arena/5a28a810-manovia`. The requested descriptive branch name cannot
+replace the pinned session branch. The Day 40 backend transport is committed as
+`00707da`; the browser companion is committed as `4325d11`; the WebRTC
+VAD/docs milestone is `f5c56b4`. No pull request has been opened and nothing
+has been merged.
+
+### Completed
+
+- An authenticated, same-origin WebSocket carries short mono PCM16 frames and
+  live server events. Browser authentication offers `manovia.v1` plus a
+  short-lived bearer token as subprotocols; the token is not in a URL. The
+  server verifies token family, user, consent and chat-session ownership before
+  accepting only the public protocol.
+- **WebRTC VAD** processes 10 ms in-memory frames only for speech/silence
+  boundaries. It exposes no emotion, mental/health, identity, speaker or affect
+  inference. Incremental STT words pass through the existing
+  `ChatOrchestrator.admit()`/`stream()` safety path; there is no voice-only LLM
+  route.
+- Assistant replies are sentence-buffered, locally synthesized into WAV chunks
+  and played incrementally through Web Audio. Local boolean signal detection
+  stops queued playback synchronously on new speech; server cancellation is the
+  second barge-in layer. The configured acknowledgement target is **<300 ms**.
+- HIGH/IMMINENT transcript stays on deterministic crisis handling: reviewed,
+  localised, prewarmed/cached assistant crisis audio; visible helplines; and
+  continue/end controls. Regression tests pin LLM calls and streams to **zero**
+  and forbid a generic `assistant_audio` chunk before crisis audio.
+- Browser controls provide prominent Stop, assistant mute, show/hide live
+  transcript, latency display, silence timeout, and spoken/visible type
+  fallback for microphone, network, STT and LLM failures. Audio/transcript UI
+  data is in session memory only; no audio/transcript local storage, IndexedDB,
+  upload or database persistence mechanism was added. Existing explicit
+  chat-history choice remains the only transcript-persistence choice. A
+  HIGH/IMMINENT ephemeral turn retains only the pre-existing anonymous,
+  text-free safety-event metadata audit.
+- Dev/preview and nginx proxy WebSocket upgrades; production
+  `Permissions-Policy` permits microphone only for the same origin. Browser
+  protocol/player/component tests use fake sockets, recorders and audio contexts;
+  the Playwright voice check exercises keyboard/a11y controls without requesting
+  microphone permission.
+- [ADR 0039](docs/adr/0039-realtime-voice-companion.md) records the transport,
+  WebRTC VAD, safety and privacy decisions. The verification record contains
+  actual timing output, a p50/p95 chart and the device checklist:
+  [Day 40 verification](docs/verification/day40-realtime-voice.md).
+
+### Executed evidence so far
+
+- `make voice-sim` passed: **25** deterministic warm-local fake turns; p95 time
+  to first audio **98.614 ms**, below the **1,500 ms** target. The p50/p95 stage
+  table and SVG chart are in the verification record.
+- After switching to WebRTC VAD, focused backend config/timing/crisis/transport,
+  rejection and actual SQLite/temp/log default-storage inspection passed
+  (**94 passed, 1 warning**). The high-risk integration path pins prewarmed
+  cache use, LLM `call_count == 0`, stream calls `== 0`, no transcript rows and
+  one anonymous text-free safety-event row. Backend Ruff, formatting and mypy
+  passed at that checkpoint (342 typed source files).
+- A direct scripted barge-in measurement was **0.165 ms** elapsed / **0.009 ms**
+  server acknowledgement against the 300 ms target. A source grep found no
+  voice-feature emotion/health/identity inference implementation terms.
+- Full backend regression initially found stale generated API documentation;
+  `scripts/export_openapi.py` root-fixed it. Re-run: **4,651 passed, 4 skipped**,
+  all coverage gates satisfied (**94.13%** statements / **86.11%** branches).
+  Full frontend regression: **624 passed, 3 skipped** (77 files passed, one
+  skipped), production build, ESLint and TypeScript all passed. Existing React
+  act/jsdom scroll warnings remain non-fatal. The full frontend Prettier check
+  still reports four unchanged non-Day-40 files; all Day 40 paths are formatted.
+
+### Known boundaries / required manual checks
+
+- The sandbox cannot test microphone permission, physical microphone/Bluetooth
+  routing, Web Audio output, a real browser download, or local STT/Piper model
+  downloads. The concise pre-release device checklist is in the verification
+  record and must be completed on a real HTTPS deployment.
+- `SpeechSynthesis` is used only for a no-server network/microphone apology; if
+  a browser lacks it, the visible type fallback remains. Fake STT/TTS exercise
+  safety/transport semantics, not real recognition accuracy or voice quality.
+- `npm ci` reported 9 existing dependency audit findings. They are not changed
+  or claimed resolved by Day 40.
+
+### Parking lot (out of scope for Day 40)
+
+- A separately reviewed WebRTC peer/media transport, cloud-provider failover,
+  selectable voice catalogue, and audio-device/Bluetooth preferences.
+- Consent-led optional durable voice/transcript retention, deletion/export
+  semantics and privacy review; none may be added as an implicit recording
+  feature.
+- Real-device multilingual STT WER/latency study and native-speaker review of
+  local Piper voices; do not infer product quality from the fake timing run.
+
 ## Day 38 — Privacy-preserving ML: federated learning and differential privacy
 
 **Implemented and verified on 2026-10-15**, on Arena's pinned branch

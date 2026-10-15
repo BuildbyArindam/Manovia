@@ -309,6 +309,34 @@ class Settings(BaseSettings):
     # JSONL disagreement log (categories only). Empty = in-memory only.
     safety_shadow_log_path: str = ""
 
+    # --- Real-time voice companion (Day 40) ---
+    # The real-time path receives mono PCM16 chunks over an authenticated
+    # WebSocket. It uses WebRTC VAD only to find speech/silence; it deliberately
+    # never extracts emotion, affect, health, speaker identity or any other
+    # trait from the signal. The transcript goes through the same text chat
+    # orchestrator as a typed message.
+    voice_realtime_enabled: bool = True
+    voice_sample_rate_hz: int = 16_000
+    voice_max_chunk_bytes: int = 65_536
+    voice_max_utterance_seconds: float = 45.0
+    # WebRTC VAD aggressiveness: 0 is most permissive, 3 most aggressive.
+    voice_vad_mode: int = 2
+    voice_vad_silence_ms: int = 500
+    voice_stt_partial_interval_ms: int = 350
+    voice_silence_timeout_seconds: int = 45
+    # Barge-in is local-first: the browser stops scheduled audio immediately;
+    # this is the budget that its acknowledgement test/documentation tracks.
+    voice_barge_in_target_ms: int = 300
+    voice_first_audio_budget_ms: int = 1500
+    # TTS stays behind a local provider. `fake` is deterministic WAV silence
+    # for offline tests; `piper` requires the operator to configure a local
+    # model path per language. No model id/path is hard-coded in application
+    # code and no provider ever sends user words off-device.
+    voice_tts_provider: str = "fake"
+    voice_piper_model_en: str | None = None
+    voice_piper_model_hi: str | None = None
+    voice_piper_model_bn: str | None = None
+
     # --- Privacy controls and security hardening (Day 22) ---
     # Per-table ceiling for a data export. An export must finish and must not
     # become a memory bomb; when a table hits the ceiling, the manifest says so.
@@ -530,6 +558,31 @@ class Settings(BaseSettings):
             raise ValueError("chat_ephemeral_ttl_seconds must be at least 1")
         if self.chat_ephemeral_max_sessions < 1 or self.chat_ephemeral_max_turns < 2:
             raise ValueError("ephemeral session limits are too small to hold a conversation")
+        return self
+
+    @model_validator(mode="after")
+    def _check_voice_realtime_settings(self) -> "Settings":
+        """Reject unsafe/unusable real-time transport limits at startup."""
+        if self.voice_sample_rate_hz not in (8_000, 16_000, 32_000, 48_000):
+            raise ValueError("voice_sample_rate_hz must be a WebRTC VAD PCM sample rate")
+        if not 320 <= self.voice_max_chunk_bytes <= 1_048_576:
+            raise ValueError("voice_max_chunk_bytes must be between 320 and 1048576")
+        if not 1.0 <= self.voice_max_utterance_seconds <= 120.0:
+            raise ValueError("voice_max_utterance_seconds must be between 1 and 120")
+        if self.voice_vad_mode not in (0, 1, 2, 3):
+            raise ValueError("voice_vad_mode must be a WebRTC VAD mode from 0 through 3")
+        if not 100 <= self.voice_vad_silence_ms <= 5_000:
+            raise ValueError("voice_vad_silence_ms must be between 100 and 5000")
+        if not 100 <= self.voice_stt_partial_interval_ms <= 5_000:
+            raise ValueError("voice_stt_partial_interval_ms must be between 100 and 5000")
+        if not 5 <= self.voice_silence_timeout_seconds <= 600:
+            raise ValueError("voice_silence_timeout_seconds must be between 5 and 600")
+        if not 50 <= self.voice_barge_in_target_ms <= 1_000:
+            raise ValueError("voice_barge_in_target_ms must be between 50 and 1000")
+        if not 250 <= self.voice_first_audio_budget_ms <= 10_000:
+            raise ValueError("voice_first_audio_budget_ms must be between 250 and 10000")
+        if self.voice_tts_provider not in {"fake", "piper"}:
+            raise ValueError("voice_tts_provider must be fake or piper")
         return self
 
     @model_validator(mode="after")

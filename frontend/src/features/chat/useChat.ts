@@ -45,6 +45,8 @@ export interface ChatController {
   /** True when the browser says there is no network at all. */
   online: boolean;
   send: (text: string) => Promise<void>;
+  /** Open/reuse the same privacy-default chat session for a voice WebSocket. */
+  openVoiceSession: () => Promise<string | null>;
   retry: () => Promise<void>;
   dismissFailure: () => void;
   setSaveHistory: (value: boolean) => void;
@@ -200,6 +202,13 @@ export function useChat(options: UseChatOptions = {}): ChatController {
     [client, online, openSession, state.locale, state.sending],
   );
 
+  const openVoiceSession = useCallback(async (): Promise<string | null> => {
+    if (state.sending) {
+      return null;
+    }
+    return openSession();
+  }, [openSession, state.sending]);
+
   const retry = useCallback(async (): Promise<void> => {
     const text = lastRetryRef.current;
     if (text === null) {
@@ -237,6 +246,7 @@ export function useChat(options: UseChatOptions = {}): ChatController {
       state,
       online,
       send,
+      openVoiceSession,
       retry,
       dismissFailure,
       setSaveHistory,
@@ -248,6 +258,7 @@ export function useChat(options: UseChatOptions = {}): ChatController {
       state,
       online,
       send,
+      openVoiceSession,
       retry,
       dismissFailure,
       setSaveHistory,

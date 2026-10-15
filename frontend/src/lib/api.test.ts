@@ -176,6 +176,23 @@ describe("ApiClient error envelope", () => {
 });
 
 describe("ApiClient token refresh", () => {
+  it("returns the current short-lived token for a WebSocket subprotocol", async () => {
+    const fetchImpl = mockFetch((url) => {
+      if (url.endsWith("/auth/refresh")) {
+        return jsonResponse(ROTATED_SESSION);
+      }
+      return jsonResponse({});
+    });
+
+    const fresh = makeClient(fetchImpl, FRESH_TOKENS);
+    expect(await fresh.accessTokenForWebSocket()).toBe("access-1");
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    const stale = makeClient(fetchImpl, STALE_TOKENS);
+    expect(await stale.accessTokenForWebSocket()).toBe("access-2");
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("/api/v1/auth/refresh");
+  });
+
   it("refreshes once on a 401 and replays the original request with the new token", async () => {
     const fetchImpl = mockFetch((url, init) => {
       if (url.endsWith("/auth/refresh")) {

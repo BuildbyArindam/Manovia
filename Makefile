@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline ml-mood-forecast ml-jitai-sim ml-jitai-smoke
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval voice-sim up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline ml-mood-forecast ml-jitai-sim ml-jitai-smoke
 
 MOOD_FORECAST_CONFIG ?= configs/mood_forecast.yaml
 MOOD_FORECAST_ARGS ?=
@@ -100,6 +100,10 @@ prod-down:
 
 eval:
 	$(MAKE) -C backend eval
+
+# Day 40 deterministic voice timing simulation (offline; no microphone needed).
+voice-sim:
+	$(MAKE) -C backend voice-sim
 
 # Day 13 knowledge ingestion (see backend/Makefile for the notes).
 ingest:

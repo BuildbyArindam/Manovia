@@ -120,6 +120,9 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000",
+        // Day 40: proxy same-origin WebSocket upgrades too; the browser sends
+        // only /api URLs and never reaches a sandbox/backend localhost host.
+        ws: true,
         // Day 25: keep the browser's Host header, exactly as docker/nginx.conf
         // does (`proxy_set_header Host $host`). The API's OriginGuard (Day 22)
         // accepts an unsafe request when Origin matches Host; rewriting Host to
@@ -144,6 +147,7 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000",
+        ws: true,
         // Same-origin semantics as nginx: see the dev proxy above.
         changeOrigin: false,
       },

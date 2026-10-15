@@ -357,6 +357,43 @@ def test_absurd_chat_settings_are_refused_at_startup(bad: dict[str, Any]) -> Non
 
 
 # --------------------------------------------------------------------------- #
+# Day 40: real-time voice settings                                              #
+# --------------------------------------------------------------------------- #
+
+
+def test_realtime_voice_uses_web_rtc_vad_defaults_and_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(_env_file=None)
+    assert settings.voice_realtime_enabled is True
+    assert settings.voice_sample_rate_hz == 16_000
+    assert settings.voice_vad_mode == 2
+    assert settings.voice_vad_silence_ms == 500
+
+    monkeypatch.setenv("VOICE_VAD_MODE", "3")
+    monkeypatch.setenv("VOICE_SAMPLE_RATE_HZ", "48000")
+    configured = Settings(_env_file=None)
+    assert configured.voice_vad_mode == 3
+    assert configured.voice_sample_rate_hz == 48_000
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"voice_sample_rate_hz": 24_000},
+        {"voice_vad_mode": -1},
+        {"voice_vad_mode": 4},
+        {"voice_vad_silence_ms": 99},
+        {"voice_silence_timeout_seconds": 4},
+        {"voice_barge_in_target_ms": 1_001},
+    ],
+)
+def test_unusable_realtime_voice_settings_are_refused_at_startup(bad: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **bad)
+
+
+# --------------------------------------------------------------------------- #
 # Day 13: retrieval settings                                                    #
 # --------------------------------------------------------------------------- #
 
