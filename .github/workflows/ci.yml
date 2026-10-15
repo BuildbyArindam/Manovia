@@ -288,6 +288,11 @@ jobs:
           MLFLOW_ALLOW_FILE_STORE: "true"
 
       - name: Tests (offline)
+        # The JITAI simulation tests import the backend policy seam. Keep this
+        # aligned with ml/Makefile, because this job installs the ML project but
+        # not the backend as an editable package.
+        env:
+          PYTHONPATH: src:../backend
         # The log of a failed step is not always readable from a sandboxed
         # environment (the signed log URLs live on a host that may be blocked);
         # annotations are readable through the API. So when pytest fails, its
