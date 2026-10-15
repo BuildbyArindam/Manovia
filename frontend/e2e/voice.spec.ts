@@ -15,11 +15,11 @@ test.describe("Voice Journaling (Day 39)", () => {
     expect(results.violations).toEqual([]);
 
     // Keyboard navigate to record button
-    await page.getByRole("button", { name: /voice journal/i }).focus();
-    await expect(page.getByRole("button", { name: /voice journal/i })).toBeFocused();
+    await page.getByTestId("record-button").focus();
+    await expect(page.getByTestId("record-button")).toBeFocused();
     
     // We don't click it because of permissions, but we can verify it's there
-    await expect(page.getByRole("button", { name: /voice journal/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /voice journal/i })).toHaveAttribute("title", expect.stringContaining("NEVER stored"));
+    await expect(page.getByTestId("record-button")).toBeVisible();
+    await expect(page.getByTestId("record-button")).toHaveAttribute("title", expect.stringContaining("NEVER stored"));
   });
 });
