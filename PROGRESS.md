@@ -1,9 +1,85 @@
+# Manovia — Progress
+
+## Day 36 — Mood forecasting with sequence models and honest uncertainty
+
+**Implemented and verified on 2026-10-15** on Arena's pinned branch
+`arena/1829c0a6-manovia` (no branch switch). The research pipeline, API, UI, export,
+docs and tests are on this branch; the active review/PR status will be recorded after
+its one authorized PR is opened. Nothing is to be merged by this task.
+
+**What shipped:** a deterministic synthetic 72-user × 210-day forecasting experiment
+with user-disjoint and forward-only temporal splits, four baselines, optional GRU/LSTM/
+Transformer quantile models, held-out conformal-style interval expansion (descriptive,
+with no formal coverage guarantee), feature ablation and guarded few-shot adaptation;
+an MLflow-logged report; a separate default-off, explicit-
+opt-in, numeric-only three-day Mood Outlook with 14-of-28-day and ≤7-day recency gates;
+English/Hindi/Bengali uncertainty and non-medical copy; an accessible table; generated
+OpenAPI docs; a Settings preference included in privacy export v2; ADR 0036 and this
+verification record.
+
+**Critical research limitation:** PyTorch is absent. The measured MLflow run
+`94aec4c8845c4768b4138aad7c68299e` is baseline-only. Its best baseline was the 7-day
+moving average (MAE 0.554, MASE 0.915, held-out empirical coverage 78.3% at nominal
+80%). GRU/LSTM/Transformer scores, neural ablations and personalization were **not
+measured**. No neural advantage, real-user validity or clinical benefit is claimed; no
+sequence-model weights are served by the product. The product's separate range is a
+rough empirical variability description, not a calibrated confidence interval or a
+probability.
+
+### Verification (Day 36)
+
+- **Backend:** full `pytest -q` → **4504 passed, 4 skipped, 0 failed**. Backend
+  `make lint` clean (Ruff, format, mypy); `scripts/export_openapi.py --check` says
+  `api docs up to date`. The separate privacy-export/Outlook/settings/migration/docs
+  targeted run passed **79 tests**. SQLite migrations were exercised; no Postgres
+  deployment was run in this sandbox.
+- **Frontend:** `npm run lint`, `npm run typecheck`, full `npm run test:run` (**74 files
+  passed, 1 skipped; 613 passed, 3 skipped**), `npm run build`, and Prettier on every
+  changed frontend file all passed. Outlook tests include an axe check and a semantic,
+  accessible numeric-range table; the suite emitted existing React `act(...)` and jsdom
+  `window.scrollTo` warnings.
+- **ML:** Ruff, formatting and mypy clean across 119 files. Mood/config tests:
+  **15 passed, 2 skipped** (both skip because PyTorch is not installed); the baseline
+  test verified MLflow params, metrics and summary artifact. Full ML suite:
+  **468 passed, 11 skipped, 2 failed**. The two failures are pre-existing optional
+  Day-32 checkpoint-availability tests: this sandbox lacks `transformers` and
+  `huggingface_hub`; no Day-36 test failed. `dvc repro safety_toy_split` generated the
+  ignored safety fixture needed by the existing full suite.
+- **Research boundaries:** panel SHA-256
+  `82f956d8a8aef686c7be0e02fe50e6267bd018a28473700d4e430446cc290c3c`; 43 train, 14
+  calibration and 15 held-out users; fit `[0,101)`, validation `[101,130)`, calibration
+  `[130,172)`, test starts at 172. Missing outcomes are masked. Report and four-baseline
+  table: `ml/reports/day36-mood-forecasting.md`.
+
+### Manual follow-up / sandbox limitations
+
+1. On a supported research machine, install the optional ML training extra and run
+   `make ml-mood-forecast` **without** the baseline-only override. Review actual neural
+   scores, interval coverage/width, feature ablations and guarded personalization before
+   making any model-quality claim. Do not use real user histories without a separately
+   approved protocol.
+2. Have native Hindi and Bengali speakers review the new Outlook copy; the ledger at
+   `translations/STATUS.md` correctly marks it as draft. Perform a manual screen-reader
+   pass on the range table (automated axe tests passed).
+3. Before production rollout, run migration `0011` against the supported PostgreSQL
+   version and have the Outlook wording/eligibility reviewed under the existing
+   clinical-review gate. The product has not completed clinical review.
+
+### Parking lot (Day 36 — outside this task's scope)
+
+- Real-world forecast validation and any user-history training, only under explicit
+  privacy/ethics approval with independently designed holdouts and calibration.
+- Any future product decision to serve a learned sequence model requires a separate
+  ADR, a real-data validation plan and calibrated, user-comprehensible uncertainty; do
+  not wire the research weights directly into this endpoint.
+
+## Previous milestone — Day 35: fine-tuned retrieval
+
 **Day 35 — fine-tuned retrieval: embeddings, hybrid search and reranking — is
 built, measured on a frozen test split and ready for review (2026-10-15).** The
 brief asked for a new branch `day-35-fine-tuned-retrieval-embeddings` created from
-`main`; this session is pinned to its Arena branch (`arena/9f7e5c76-manovia`), as on
-Days 19–34, so the work is committed there and the PR comes from it. Nothing was
-pushed to `main`.
+`main`; that session was pinned to its Arena branch (`arena/9f7e5c76-manovia`), as on
+Days 19–34. Nothing was pushed to `main`.
 
 **What exists now:** a labelled retrieval eval set (154 hand-written queries + 59
 no-answer rows, expanded to 254 with flagged template paraphrases) cut into four
@@ -341,7 +417,7 @@ The owner must check by hand:
 4. The two safety-coverage failures above, on a machine with torch and a registry —
    they are the only thing between `make test` and green.
 
-### Next steps (Day 36 — first three)
+### Parking lot (Day 35 carry-forward; outside Day 36 scope)
 
 1. **Run the notebook** (owner GPU/Colab step) and record the first honest
    checkpoint-vs-projection table: off-the-shelf MiniLM vs fine-tuned MiniLM vs the
@@ -356,8 +432,6 @@ The owner must check by hand:
    fixture exist, add the missing `trained.py` / `ml_classifier.py` tests or record
    precisely why those lines cannot be covered, and put the gate in CI so it cannot be
    red and invisible again.
-
-# Manovia — Progress
 
 **Day 34 — compression, serving and safe model rollout — is built, verified in
 the sandbox and ready for review (2026-10-14).** The brief asked for a new branch

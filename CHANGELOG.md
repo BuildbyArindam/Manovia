@@ -12,8 +12,27 @@ to GHCR, GitHub release).
 
 Days 28–34 are not recorded in this file — a pre-existing gap; their changes are in
 [PROGRESS.md](PROGRESS.md) and their decision records in
-[docs/adr/README.md](docs/adr/README.md). Only Day 35 is added here, by the session
-that did it.
+[docs/adr/README.md](docs/adr/README.md). Days 35 and 36 are recorded here by their
+respective sessions.
+
+### Added — Day 36: mood forecasting and opt-in Outlook
+
+- A deterministic **synthetic mood-forecast research pipeline** with explicit user/time
+  splits, four baselines, optional GRU/LSTM/Transformer quantile models, held-out
+  split-conformal interval expansion, feature ablations, guarded few-shot adaptation,
+  MLflow logging and a generated report. PyTorch was unavailable in this sandbox, so
+  the measured report is baseline-only; no neural result or improvement is claimed.
+- A **default-off, explicit-opt-in Mood Outlook** on Insights, backed by numeric-only
+  personal history and gentle English/Hindi/Bengali copy. It withholds estimates without
+  14 distinct check-in days in 28 local days or when the latest check-in is over seven
+  days old. Its empirical range is not represented as a calibrated confidence interval
+  or probability; the endpoint never reads mood notes or journal text.
+- A semantic table for the estimate and variation range, accessible without a chart or
+  colour cue; an opt-in Settings switch and persisted preference; generated API docs.
+- Privacy export v2 adds `user-settings.json`, including the Mood Outlook preference.
+- [ADR 0036](docs/adr/0036-mood-forecasting.md),
+  [docs/verification/day36-mood-forecasting.md](docs/verification/day36-mood-forecasting.md),
+  and `ml/reports/day36-mood-forecasting.md`.
 
 ### Added — Day 35: fine-tuned retrieval (embeddings, hybrid search, reranking)
 
