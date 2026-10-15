@@ -1,4 +1,4 @@
-.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status retrieval-finetune retrieval-tune retrieval-rerank retrieval-calibrate retrieval-eval retrieval-smoke retrieval-pipeline mood-forecast clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status retrieval-finetune retrieval-tune retrieval-rerank retrieval-calibrate retrieval-eval retrieval-smoke retrieval-pipeline mood-forecast jitai-sim jitai-smoke clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
@@ -66,10 +66,10 @@ PYDIR := $(dir $(abspath $(PYTHON)))
 
 # DVC runs each stage's `cmd` through a shell, so `python` on PATH must be the
 # interpreter that has `manovia_ml` installed. Putting the interpreter's own
-# directory first makes `make` and `dvc` agree; PYTHONPATH=src covers a checkout
-# where the package has not been installed at all (CI installs it properly).
+# directory first makes `make` and `dvc` agree; PYTHONPATH includes the ML source
+# and backend checkout so the JITAI simulation exercises the real policy seam.
 export PATH := $(PYDIR):$(PATH)
-export PYTHONPATH := src
+export PYTHONPATH := src:../backend
 
 # Set before the interpreter starts: `seeds.py` can only *read* PYTHONHASHSEED.
 export PYTHONHASHSEED ?= 0
@@ -287,6 +287,14 @@ retrieval-smoke:
 # only to produce an explicitly labelled baseline report when torch is absent.
 mood-forecast:
 	$(PYTHON) -m manovia_ml.mood_forecast.cli --config $(MOOD_FORECAST_CONFIG) $(MOOD_FORECAST_ARGS)
+
+# Day 37. The default evaluates 20 seeds and writes metrics-only reports plus
+# an MLflow run; the smoke config keeps the same constraints with tiny episodes.
+jitai-sim:
+	$(PYTHON) simulation/jitai_sim.py --config configs/jitai.yaml
+
+jitai-smoke:
+	$(PYTHON) simulation/jitai_sim.py --config configs/jitai_smoke.yaml
 
 test:
 	$(PYTHON) -m pytest

@@ -1,0 +1,37 @@
+name: day37-jitai-contextual-bandits-smoke
+seed: 3710
+seeds: 20
+algorithms:
+  - random
+  - epsilon_greedy
+  - linucb
+  - thompson_sampling
+bandit:
+  epsilon: 0.2
+  linucb_alpha: 0.35
+  thompson_draws: 16
+  population_prior_precision: 1.0
+  user_prior_precision: 2.0
+  exploration_cap: 0.2
+  abandonment_penalty: 0.1
+online:
+  users_per_group: 1
+  steps_per_user: 10
+  reward_noise_std: 0.16
+  abandonment_probability: 0.04
+  context_jitter: 1
+offline:
+  users_per_group: 1
+  train_events_per_user: 10
+  evaluation_events_per_user: 10
+  behavior_policy: uniform
+fairness_gap_flag: 0.15
+report_output: /tmp/manovia-day37-jitai-smoke.md
+tracking:
+  experiment: manovia-jitai-smoke
+  tracking_uri: null
+  log_environment: false
+  run_name: day37-jitai-smoke
+  tags:
+    manovia.day: "37"
+    manovia.scope: synthetic-only-smoke

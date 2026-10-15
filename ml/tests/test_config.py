@@ -183,15 +183,17 @@ def test_every_shipped_config_validates() -> None:
     (``release_gates.yaml``). Day 35 adds a fourth — retrieval runs
     (``retrieval_*.yaml``), which describe an embedding/fusion/reranker
     pipeline rather than a classifier. Day 36 adds a fifth — synthetic mood
-    forecasting (``mood_forecast.yaml``). Each file is validated by its own
-    strict loader — unknown keys are still errors everywhere — and a file
-    that matches no family fails here rather than being quietly skipped.
+    forecasting (``mood_forecast.yaml``). Day 37 adds a sixth — contextual-bandit
+    simulations (``jitai*.yaml``). Each file is validated by its own strict
+    loader — unknown keys are still errors everywhere — and a file that matches
+    no family fails here rather than being quietly skipped.
     """
 
     from manovia_ml.compression.gates import load_release_gates
     from manovia_ml.config import load_distill_config, load_retrieval_config
     from manovia_ml.mood_forecast.config import load_mood_forecast_config
     from manovia_ml.paths import config_dir
+    from manovia_ml.simulation.jitai_config import load_jitai_config
 
     configs = sorted(config_dir().glob("*.y*ml"))
     assert configs, "no configs found"
@@ -207,6 +209,9 @@ def test_every_shipped_config_validates() -> None:
             continue
         if path.name == "mood_forecast.yaml":
             assert load_mood_forecast_config(path).name, path.name
+            continue
+        if path.name.startswith("jitai"):
+            assert load_jitai_config(path).name, path.name
             continue
         parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
         config = load_config_dict(parsed, origin=str(path))
