@@ -322,3 +322,8 @@ mlflow-down:
 clean:
 	rm -rf mlruns artifacts .pytest_cache .mypy_cache .ruff_cache
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} +
+
+.PHONY: federated-sim
+FEDERATED_CONFIG ?= configs/federated_smoke.yaml
+federated-sim:
+	$(PYTHON) -m manovia_ml.federated.experiment --config $(FEDERATED_CONFIG)

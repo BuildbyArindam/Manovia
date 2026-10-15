@@ -198,6 +198,11 @@ def test_every_shipped_config_validates() -> None:
     configs = sorted(config_dir().glob("*.y*ml"))
     assert configs, "no configs found"
     for path in configs:
+        if path.name.startswith("federated_"):
+            from manovia_ml.federated.config import FederatedConfig
+
+            assert FederatedConfig.model_validate(yaml.safe_load(path.read_text())).name
+            continue
         if path.name == "release_gates.yaml":
             load_release_gates(path)
             continue

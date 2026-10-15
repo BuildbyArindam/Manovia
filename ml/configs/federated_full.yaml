@@ -1,0 +1,19 @@
+name: day38-federated-full
+seed: 38
+clients: 50
+days: 210
+rounds: 40
+local_steps: 5
+learning_rate: 0.05
+hidden: 8
+proximal_mu: 0.1
+dropout: [0.0, 0.3]
+noise: [0.8, 1.6, 3.2]
+clipping: [0.5, 1.0]
+delta: 0.00001
+batch_size: 64
+test_fraction: 0.3
+tolerance: 0.000001
+report_output: reports/day38-federated-full.md
+tracking:
+  experiment: manovia-federated

@@ -61,6 +61,7 @@ listed in § Verification log.
 | 14 | Manovia hi/bn emotion set (planned, not yet written) | hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored for Manovia | commercial | no | USE WITH CONDITIONS | 2026-10-13 |
 | 15 | Manovia synthetic safety corpus (expanded from the Day-9 seeds) | en, hi, hi-Latn, bn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-13 |
 | 16 | Manovia retrieval eval set (hand-written + template-paraphrased) | en, hi, hi-Latn, bn, bn-Latn | MIT (repository licence, LICENSE); authored in this repository | commercial | no | USE | 2026-10-14 |
+| 17 | Manovia synthetic federated mood pairs (Day 38) | zxx | MIT (repository LICENSE), authored generator; no external data | commercial | no | USE | 2026-10-15 |
 <!-- catalogue-table:end -->
 
 ## Entries
@@ -707,4 +708,30 @@ catalogue:
     fingerprint is recorded in ml/data/retrieval_splits/manifest.json so any
     tuning against it changes a hash someone is watching.
   verified_on: 2026-10-14
+```
+
+### 17. Manovia synthetic federated mood pairs (Day 38)
+
+```yaml
+catalogue:
+  name: Manovia synthetic federated mood pairs (Day 38)
+  source: "In-repo Day-36 generator ml/src/manovia_ml/mood_forecast/synthetic.py; pairing/splits in ml/src/manovia_ml/federated/data.py"
+  licence: "MIT (repository LICENSE), authored generator; no external data"
+  licence_evidence: ./LICENSE
+  allowed_use: commercial
+  languages: [zxx]
+  size: "50 synthetic clients, 40 days smoke / 210 days full; observed nonoverlapping next-day pairs only; exact counts and SHA256 in run report"
+  label_scheme: "current numeric mood/energy, sleep/exercise and weekday -> next-day numeric mood (1-5)"
+  known_biases: >-
+    Hand-authored state-space prior, individual baselines/drift and missingness;
+    no clinical validity, no text or demographic realism. Random within-person
+    holdout is not prospective or unseen-person forecasting. IID control only
+    reshuffles training rows, preserving held-out data. One record is a pair,
+    not a person; many pairs per person invalidate a user-level DP claim.
+  personal_data: false
+  personal_data_notes: "Generated numeric trajectories only, no real users or messages; no external corpora loaded"
+  status: used
+  verdict: USE
+  verdict_reason: "MIT-authored generator and features; no personal data; fixtures and generated data stay transient"
+  verified_on: 2026-10-15
 ```
