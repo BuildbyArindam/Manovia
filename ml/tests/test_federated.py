@@ -144,6 +144,18 @@ def test_missing_observations_are_skipped_and_iid_preserves_rows() -> None:
     noniid, iid = cohort(config, iid=False), cohort(config, iid=True)
     assert len(noniid.train) + len(noniid.test) < config.clients * (config.days // 2)
     assert len(noniid.clients) == 50
+    assert set(noniid.train_pair_ids).isdisjoint(noniid.test_pair_ids)
+    assert len(set(noniid.train_pair_ids + noniid.test_pair_ids)) == (
+        len(noniid.train) + len(noniid.test)
+    )
+    # Each identity encodes nonoverlapping even/odd days, so no raw day leaks.
+    raw_days: set[str] = set()
+    for key in noniid.train_pair_ids + noniid.test_pair_ids:
+        user, pair = key.split(":")
+        for day in pair.split("-"):
+            identity = user + ":" + day
+            assert identity not in raw_days
+            raw_days.add(identity)
     assert all(len(c) > 0 for c in noniid.clients)
     assert noniid.sha256 == iid.sha256
     for a, b in zip(noniid.test.tensors, iid.test.tensors, strict=True):
@@ -169,7 +181,15 @@ def test_attack_uses_negative_loss_direction() -> None:
 
 @pytest.mark.parametrize(
     "field,value",
-    [("noise", [0]), ("clipping", [-1]), ("dropout", [1.0]), ("noise", []), ("unexpected_knob", 7)],
+    [
+        ("noise", [0]),
+        ("clipping", [-1]),
+        ("dropout", [1.0]),
+        ("noise", []),
+        ("unexpected_knob", 7),
+        ("operating_noise", 123),
+        ("operating_clip", 123),
+    ],
 )
 def test_strict_config_rejects_invalid_sweeps(field: str, value: Any) -> None:
     with pytest.raises(ValueError):
@@ -183,6 +203,8 @@ def test_end_to_end_and_seed_reproducibility(tmp_path: Path) -> None:
         rounds=1,
         local_steps=1,
         noise=(2.0,),
+        operating_noise=2.0,
+        operating_clip=0.5,
         clipping=(0.5,),
         dropout=(0.0,),
         batch_size=16,
@@ -196,6 +218,14 @@ def test_end_to_end_and_seed_reproducibility(tmp_path: Path) -> None:
     assert len(rows) == 6
     assert rows[-1]["epsilon"] > 0
     assert rows[-1]["steps"] > 0
+    import math
+
+    training = cohort(config, iid=False).train
+    sample_rate = 1 / math.ceil(len(training) / config.batch_size)
+    expected = epsilon(noise=2.0, q=sample_rate, steps=rows[-1]["steps"], delta=config.delta)
+    assert rows[-1]["epsilon"] == pytest.approx(expected)
+    assert rows[-1]["noise"] == config.operating_noise
+    assert rows[-1]["clip"] == config.operating_clip
     assert all(0 <= r["auc"] <= 1 for r in rows)
     assert "not user-level" in Path(config.report_output).read_text()
     assert Path(config.report_output).with_suffix(".svg").exists()

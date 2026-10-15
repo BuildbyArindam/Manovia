@@ -20,6 +20,8 @@ class Cohort:
     test: TensorDataset
     sha256: str
     scale: float
+    train_pair_ids: tuple[str, ...]
+    test_pair_ids: tuple[str, ...]
     client_target_std: float
 
 
@@ -37,8 +39,10 @@ def cohort(config: FederatedConfig, *, iid: bool) -> Cohort:
     clients = []
     tests = []
     scales = []
+    train_ids: list[str] = []
+    test_ids: list[str] = []
     for user in panel.users:
-        features, targets = [], []
+        features, targets, ids = [], [], []
         for a, b in zip(user.days[::2], user.days[1::2], strict=False):
             if a.valence is None or b.valence is None or a.energy is None:
                 continue
@@ -53,6 +57,7 @@ def cohort(config: FederatedConfig, *, iid: bool) -> Cohort:
                 ]
             )
             targets.append((b.valence - 3) / 2)
+            ids.append(f"{user.user_id}:{a.day_index}-{b.day_index}")
         if len(targets) < 3:
             raise ValueError("too few observed nonoverlapping pairs for a client")
         indices = rng.permutation(len(targets))
@@ -60,6 +65,8 @@ def cohort(config: FederatedConfig, *, iid: bool) -> Cohort:
         x = torch.tensor(features, dtype=torch.float32)
         y = torch.tensor(targets, dtype=torch.float32).reshape(-1, 1)
         tr, te = indices[n_test:], indices[:n_test]
+        train_ids.extend(ids[i] for i in tr)
+        test_ids.extend(ids[i] for i in te)
         clients.append(TensorDataset(x[tr], y[tr]))
         tests.append(TensorDataset(x[te], y[te]))
         scales.extend(abs(y[tr] - x[tr, :1]).flatten().tolist())
@@ -76,5 +83,12 @@ def cohort(config: FederatedConfig, *, iid: bool) -> Cohort:
             for part in torch.tensor_split(order, config.clients)
         ]
     return Cohort(
-        clients, train, test, digest.hexdigest(), max(float(np.mean(scales)), 1e-8), spread
+        clients,
+        train,
+        test,
+        digest.hexdigest(),
+        max(float(np.mean(scales)), 1e-8),
+        tuple(train_ids),
+        tuple(test_ids),
+        spread,
     )

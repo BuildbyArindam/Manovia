@@ -57,7 +57,7 @@ def run(config: FederatedConfig) -> tuple[list[dict[str, Any]], str]:
         len(data.train) + len(data.test),
     )
     rows: list[dict[str, Any]] = []
-    with tracked_run(config, phase="smoke", data_refs=[ref], seed_state=seed_state) as tracked:
+    with tracked_run(config, phase=config.phase, data_refs=[ref], seed_state=seed_state) as tracked:
 
         def record(
             name: str,
@@ -65,6 +65,8 @@ def run(config: FederatedConfig) -> tuple[list[dict[str, Any]], str]:
             curve: list[float],
             *,
             epsilon: float | None = None,
+            noise: float | None = None,
+            clip: float | None = None,
             steps: int = 0,
             participants: list[int] | None = None,
         ) -> None:
@@ -73,6 +75,8 @@ def run(config: FederatedConfig) -> tuple[list[dict[str, Any]], str]:
                 "mase": mase(net, data),
                 "auc": attack_auc(net, data),
                 "epsilon": epsilon,
+                "noise": noise,
+                "clip": clip,
                 "delta": config.delta if epsilon is not None else None,
                 "curve": curve,
                 "steps": steps,
@@ -112,7 +116,15 @@ def run(config: FederatedConfig) -> tuple[list[dict[str, Any]], str]:
                 net, epsilon, curve, steps = private(
                     data.train, config, noise=noise, clip=clip, evaluate=lambda n: mase(n, data)
                 )
-                record(f"DP sigma={noise} C={clip}", net, curve, epsilon=epsilon, steps=steps)
+                record(
+                    f"DP sigma={noise} C={clip}",
+                    net,
+                    curve,
+                    epsilon=epsilon,
+                    noise=noise,
+                    clip=clip,
+                    steps=steps,
+                )
         tracked.log_dict(
             {"rows": rows, "client_target_std": data.client_target_std}, "aggregate-results.json"
         )
@@ -128,14 +140,18 @@ def run(config: FederatedConfig) -> tuple[list[dict[str, Any]], str]:
 
 
 def render(config: FederatedConfig, rows: list[dict[str, Any]], run_id: str, data: Cohort) -> str:
+    persistence = float((data.test.tensors[1] - data.test.tensors[0][:, :1]).abs().mean())
     lines = [
-        "# Day 38 — synthetic smoke evidence (not real training)",
+        f"# Day 38 — synthetic {config.phase} evidence (not real-user training)",
         "",
         f"MLflow run: `{run_id}`. Seed: `{config.seed}`. Clients: {config.clients}.",
         f"Data SHA256: `{data.sha256}`; train/test pairs: {len(data.train)}/{len(data.test)}.",
         f"Client mean-target SD (normalised): {data.client_target_std:.4f}.",
+        f"Persistence held-out MASE: "
+        f"{persistence / data.scale:.4f}; "
+        f"training persistence denominator (normalised mood): {data.scale:.4f}.",
         "",
-        "![Convergence](day38-federated.svg)",
+        f"![Convergence]({Path(config.report_output).with_suffix('.svg').name})",
         "",
         "| Model | MASE ↓ | attack AUC | epsilon | delta | optimizer steps |",
         "| --- | ---: | ---: | ---: | ---: | ---: |",
@@ -147,21 +163,35 @@ def render(config: FederatedConfig, rows: list[dict[str, Any]], run_id: str, dat
             f"| {row['name']} | {row['mase']:.4f} | {row['auc']:.4f} | "
             f"{budget} | {delta} | {row['steps'] or 'local, see config'} |"
         )
-    chosen = min(
-        (r for r in rows if r["epsilon"] is not None), key=lambda r: (r["epsilon"], r["mase"])
+    chosen = next(
+        (
+            r
+            for r in rows
+            if r["noise"] == config.operating_noise and r["clip"] == config.operating_clip
+        ),
+        None,
     )
+    if chosen is None:
+        raise ValueError("predeclared operating point must be present in the sweep")
+    private_rows = [r for r in rows if r["epsilon"] is not None]
+    composition = sum(r["epsilon"] for r in private_rows)
     lines.extend(
         [
             "",
             "## Operating point (research only)",
             "",
-            f"Conservative smoke selection: **{chosen['name']}**, epsilon "
-            f"{chosen['epsilon']:.4f} at delta {config.delta}. Select lowest epsilon, "
-            "then lowest MASE; no deployment recommendation. Accuracy loss relative to "
+            f"Predeclared research operating point: **{chosen['name']}**, epsilon "
+            f"{chosen['epsilon']:.4f} at delta {config.delta}. "
+            "Highest configured noise reduces epsilon; C=1 allows more signal than C=0.5. "
+            "No holdout-based selection, no deployment recommendation. MASE difference from "
             f"central MASE: {chosen['mase'] - rows[0]['mase']:+.4f}.",
             f"Attack AUC: non-private {rows[0]['auc']:.4f}, chosen DP "
             f"{chosen['auc']:.4f}. Distance to chance changes from "
             f"{abs(rows[0]['auc'] - 0.5):.4f} to {abs(chosen['auc'] - 0.5):.4f}.",
+            "",
+            f"If all {len(private_rows)} DP models were released on real private data, "
+            f"basic composition gives epsilon ≤ {composition:.4f}, delta ≤ "
+            f"{len(private_rows) * config.delta:g}, before selection/metric releases.",
             "",
             "## Limits and interpretation",
             "",
@@ -206,7 +236,7 @@ def svg(rows: list[dict[str, Any]]) -> str:
         '<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" '
         'role="img" aria-label="Synthetic held-out MASE convergence by round">',
         '<rect width="1100" height="700" fill="white"/>',
-        '<text x="30" y="25">Day 38 synthetic smoke: MASE (lower is better)</text>',
+        '<text x="30" y="25">Day 38 synthetic experiment: MASE (lower is better)</text>',
         '<path d="M60 45 V480 H610" fill="none" stroke="black"/>',
     ]
     for i, row in enumerate(rows):
@@ -238,8 +268,15 @@ def svg(rows: list[dict[str, Any]]) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/federated_smoke.yaml")
+    parser.add_argument("--seed", type=int, help="Explicit independent repeat; logged in config")
+    parser.add_argument("--report-output", help="Separate report path for each repeat")
     args = parser.parse_args()
-    config = FederatedConfig.model_validate(yaml.safe_load(Path(args.config).read_text()))
+    raw = yaml.safe_load(Path(args.config).read_text())
+    if args.seed is not None:
+        raw["seed"] = args.seed
+    if args.report_output is not None:
+        raw["report_output"] = args.report_output
+    config = FederatedConfig.model_validate(raw)
     _, run_id = run(config)
     print(Path(config.report_output).read_text())
     print(f"MLflow run id: {run_id}")

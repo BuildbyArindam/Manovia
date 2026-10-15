@@ -1,4 +1,7 @@
 name: day38-federated-full
+phase: evaluation
+operating_noise: 3.2
+operating_clip: 1.0
 seed: 38
 clients: 50
 days: 210

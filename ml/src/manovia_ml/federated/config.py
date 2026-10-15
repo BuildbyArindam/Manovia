@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field, model_validator
 
 from manovia_ml.config import StrictModel, TrackingConfig
@@ -9,6 +11,9 @@ from manovia_ml.config import StrictModel, TrackingConfig
 
 class FederatedConfig(StrictModel):
     name: str = "day38-federated-smoke"
+    phase: Literal["smoke", "evaluation"] = "smoke"
+    operating_noise: float = Field(default=3.2, gt=0)
+    operating_clip: float = Field(default=1.0, gt=0)
     seed: int = Field(default=38, ge=0, lt=2**32)
     clients: int = Field(default=50, ge=3)
     days: int = Field(default=40, ge=35)
@@ -35,4 +40,6 @@ class FederatedConfig(StrictModel):
             raise ValueError("noise and clipping must be positive")
         if any(not 0 <= v < 1 for v in self.dropout):
             raise ValueError("dropout must be in [0, 1)")
+        if self.operating_noise not in self.noise or self.operating_clip not in self.clipping:
+            raise ValueError("operating point must be present in the sweep")
         return self
