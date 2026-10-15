@@ -258,7 +258,8 @@ All in [ADR 0035](docs/adr/0035-fine-tuned-retrieval.md); the short form:
 
 Branch `arena/9f7e5c76-manovia` (the brief's `day-35-fine-tuned-retrieval-embeddings`
 name is the PR's source intent; the session branch is pinned, as on Days 19–34).
-Nothing pushed to `main`. Everything asked for is on disk and measured **except the
+Nothing pushed to `main`. The PR is
+[#43](https://github.com/BuildbyArindam/Manovia/pull/43), open and **not merged**. Everything asked for is on disk and measured **except the
 things this sandbox cannot do**: a multilingual checkpoint fine-tune, a real
 cross-encoder, and a green safety-coverage gate that needs torch.
 
