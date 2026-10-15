@@ -79,7 +79,7 @@ export function VoiceRecorder({ onTranscribe, disabled = false }: VoiceRecorderP
             } else {
               setError("Transcription failed.");
             }
-          } catch (err) {
+          } catch {
             setError("Network error during transcription.");
           } finally {
             setTranscribing(false);
@@ -96,7 +96,7 @@ export function VoiceRecorder({ onTranscribe, disabled = false }: VoiceRecorderP
         }
       }, maxDuration);
 
-    } catch (err) {
+    } catch {
       setError("Microphone permission denied or unavailable.");
     }
   };
