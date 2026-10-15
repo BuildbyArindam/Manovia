@@ -311,15 +311,16 @@ class Settings(BaseSettings):
 
     # --- Real-time voice companion (Day 40) ---
     # The real-time path receives mono PCM16 chunks over an authenticated
-    # WebSocket. It uses only a short-lived energy gate to find speech/silence;
-    # it deliberately never extracts emotion, affect, health, speaker identity
-    # or any other trait from the signal. The transcript goes through the same
-    # text chat orchestrator as a typed message.
+    # WebSocket. It uses WebRTC VAD only to find speech/silence; it deliberately
+    # never extracts emotion, affect, health, speaker identity or any other
+    # trait from the signal. The transcript goes through the same text chat
+    # orchestrator as a typed message.
     voice_realtime_enabled: bool = True
     voice_sample_rate_hz: int = 16_000
     voice_max_chunk_bytes: int = 65_536
     voice_max_utterance_seconds: float = 45.0
-    voice_vad_energy_threshold: float = 600.0
+    # WebRTC VAD aggressiveness: 0 is most permissive, 3 most aggressive.
+    voice_vad_mode: int = 2
     voice_vad_silence_ms: int = 500
     voice_stt_partial_interval_ms: int = 350
     voice_silence_timeout_seconds: int = 45
@@ -562,14 +563,14 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _check_voice_realtime_settings(self) -> "Settings":
         """Reject unsafe/unusable real-time transport limits at startup."""
-        if self.voice_sample_rate_hz not in (8_000, 16_000, 24_000, 48_000):
-            raise ValueError("voice_sample_rate_hz must be a supported PCM sample rate")
+        if self.voice_sample_rate_hz not in (8_000, 16_000, 32_000, 48_000):
+            raise ValueError("voice_sample_rate_hz must be a WebRTC VAD PCM sample rate")
         if not 320 <= self.voice_max_chunk_bytes <= 1_048_576:
             raise ValueError("voice_max_chunk_bytes must be between 320 and 1048576")
         if not 1.0 <= self.voice_max_utterance_seconds <= 120.0:
             raise ValueError("voice_max_utterance_seconds must be between 1 and 120")
-        if self.voice_vad_energy_threshold <= 0:
-            raise ValueError("voice_vad_energy_threshold must be positive")
+        if self.voice_vad_mode not in (0, 1, 2, 3):
+            raise ValueError("voice_vad_mode must be a WebRTC VAD mode from 0 through 3")
         if not 100 <= self.voice_vad_silence_ms <= 5_000:
             raise ValueError("voice_vad_silence_ms must be between 100 and 5000")
         if not 100 <= self.voice_stt_partial_interval_ms <= 5_000:

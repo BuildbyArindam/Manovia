@@ -41,9 +41,15 @@ class FakeSocket implements VoiceSocket {
 class FakeRecorder implements PcmRecorder {
   onPcm: ((pcm: string) => void) | null = null;
   onSignal: (() => void) | null = null;
+  sampleRateHz: number | null = null;
   stopped = false;
 
-  async start(onPcm: (pcm: string) => void, onSignal: () => void): Promise<void> {
+  async start(
+    targetSampleRateHz: number,
+    onPcm: (pcm: string) => void,
+    onSignal: () => void,
+  ): Promise<void> {
+    this.sampleRateHz = targetSampleRateHz;
     this.onPcm = onPcm;
     this.onSignal = onSignal;
   }
@@ -172,9 +178,16 @@ describe("VoiceCompanion", () => {
     expect(JSON.parse(socket.sent[0] ?? "{}")).toMatchObject({ type: "start", locale: "en" });
 
     await act(async () => {
+      socket.message({
+        type: "ready",
+        sample_rate_hz: 48_000,
+        silence_timeout_seconds: 45,
+        barge_in_target_ms: 300,
+      });
       socket.message({ type: "started", storage: "memory_only" });
     });
     await waitFor(() => expect(screen.getByTestId("voice-status")).toHaveTextContent("Listening"));
+    expect(recorder.sampleRateHz).toBe(48_000);
 
     act(() => recorder.onPcm?.("pcm-frame"));
     expect(socket.sent.map((item) => JSON.parse(item).type)).toContain("audio");

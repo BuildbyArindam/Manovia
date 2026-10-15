@@ -21,9 +21,9 @@ from app.services.safety.rules import build_engine
 from app.services.voice.realtime import (
     CrisisAudioCache,
     LatencyBreakdown,
-    PcmEnergyVad,
     RealtimeVoiceSession,
     SpeechSynthesizer,
+    WebRtcVad,
     summarize_latency,
 )
 from tests.chat.conftest import FakeConversation
@@ -109,7 +109,7 @@ def voice_settings(settings: Settings) -> Settings:
         update={
             "voice_vad_silence_ms": 100,
             "voice_stt_partial_interval_ms": 100,
-            "voice_vad_energy_threshold": 500.0,
+            "voice_vad_mode": 2,
             "voice_max_utterance_seconds": 5.0,
         }
     )
@@ -154,6 +154,9 @@ async def test_scripted_audio_streams_partial_stt_then_sentence_audio(
     )
 
     await session.on_audio(pcm(2_000))
+    # WebRTC VAD has a short built-in speech hangover, so the second silent
+    # frame is the explicit end-of-utterance boundary.
+    await session.on_audio(pcm(0))
     await session.on_audio(pcm(0))
     await wait_for_event(events, "reply_final")
 
@@ -186,6 +189,7 @@ async def test_barge_in_cancels_pending_assistant_audio_inside_target(
     )
 
     await session.on_audio(pcm(2_000))
+    await session.on_audio(pcm(0))
     await session.on_audio(pcm(0))
     await asyncio.sleep(0.02)
     assert session.assistant_speaking
@@ -221,6 +225,7 @@ async def test_high_risk_voice_transcript_uses_cached_crisis_audio_and_never_cal
     )
 
     await session.on_audio(pcm(2_000))
+    await session.on_audio(pcm(0))
     await session.on_audio(pcm(0))
     crisis = await wait_for_event(events, "crisis")
 
@@ -268,6 +273,7 @@ async def test_llm_timeout_uses_the_orchestrator_fallback_and_speaks_it(
 
     await session.on_audio(pcm(2_000))
     await session.on_audio(pcm(0))
+    await session.on_audio(pcm(0))
     fallback = await wait_for_event(events, "fallback")
     final = await wait_for_event(events, "reply_final")
 
@@ -276,10 +282,11 @@ async def test_llm_timeout_uses_the_orchestrator_fallback_and_speaks_it(
     assert any(event.get("type") == "assistant_audio" for event in events)
 
 
-def test_energy_vad_only_finds_speech_and_silence() -> None:
-    vad = PcmEnergyVad(sample_rate_hz=16_000, energy_threshold=500.0, silence_ms=100)
+def test_webrtc_vad_only_exposes_speech_and_silence_boundaries() -> None:
+    vad = WebRtcVad(sample_rate_hz=16_000, mode=2, silence_ms=100)
 
     starts = vad.process(pcm(2_000))
+    vad.process(pcm(0))  # WebRTC's bounded hangover after voiced speech.
     ends = vad.process(pcm(0))
 
     assert starts.speech_started is True

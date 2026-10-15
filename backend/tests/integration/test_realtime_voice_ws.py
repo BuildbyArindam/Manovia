@@ -84,14 +84,16 @@ async def test_realtime_socket_crisis_stops_before_llm_and_returns_crisis_event(
             subprotocols=["manovia.v1", f"bearer.{token}"],
         ) as socket,
     ):
+        assert socket.accepted_subprotocol == "manovia.v1"
         ready = socket.receive_json()
         assert ready["type"] == "ready"
         socket.send_json({"type": "start", "locale": "en", "region": "IN"})
         assert socket.receive_json()["type"] == "started"
         socket.send_json({"type": "audio", "pcm": pcm_b64()})
         silence = base64.b64encode(b"\0" * 3_200).decode("ascii")
-        # Default VAD closes an utterance after 500 ms of silence.
-        for _ in range(5):
+        # WebRTC has a bounded 100 ms voiced-frame hangover, then the default
+        # VAD closes after its 500 ms silence window.
+        for _ in range(6):
             socket.send_json({"type": "audio", "pcm": silence})
 
         events: list[dict[str, object]] = []

@@ -4,8 +4,10 @@ The WebSocket route is intentionally a thin transport around this module.  This
 keeps the safety property visible and testable: decoded words always enter
 ``ChatOrchestrator.admit()`` / ``ChatOrchestrator.stream()``.  There is no
 voice-only LLM route and no audio-derived emotion, health, identity, or affect
-inference.  The only signal operation is short-lived PCM energy used to tell
-speech from silence so the recogniser knows when to listen.
+inference. The only signal operation is short-lived WebRTC VAD used to tell
+speech from silence so the recogniser knows when to listen. It is used only for
+that boundary decision and emits no emotion, health, identity, or speaker
+inference.
 
 All audio bytes, partial transcripts, and assistant text stay in memory for the
 active socket.  They are never written to a database, temporary file, cache, or
@@ -20,11 +22,12 @@ import asyncio
 import base64
 import binascii
 import math
-import struct
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
+
+import webrtcvad  # type: ignore[import-untyped]
 
 from app.content.i18n import RenderedTemplate
 from app.core.config import Settings
@@ -91,18 +94,22 @@ class VadResult:
     processing_ms: float
 
 
-class PcmEnergyVad:
-    """A deterministic short-window energy gate for signed 16-bit mono PCM.
+class WebRtcVad:
+    """Short-window WebRTC VAD for signed 16-bit mono PCM.
 
-    This is deliberately not a classifier: it calculates RMS amplitude solely
-    to decide whether to start/end an utterance.  It never retains samples and
-    exposes no feature vector, preventing accidental future use for emotion,
-    mental-state, or speaker inference.
+    WebRTC VAD answers only whether a 10 ms speech frame is voiced. Its boolean
+    is used to start/end an utterance; no score, embedding, identity, emotion,
+    affect, or health signal is exposed or retained. A partially filled final
+    frame is intentionally discarded for the gate (the original PCM still goes
+    to STT) so arbitrary Web Audio callback sizes remain supported.
     """
 
-    def __init__(self, *, sample_rate_hz: int, energy_threshold: float, silence_ms: int) -> None:
+    _FRAME_MS = 10
+
+    def __init__(self, *, sample_rate_hz: int, mode: int, silence_ms: int) -> None:
         self._sample_rate_hz = sample_rate_hz
-        self._energy_threshold = energy_threshold
+        self._frame_bytes = sample_rate_hz * 2 * self._FRAME_MS // 1000
+        self._vad = webrtcvad.Vad(mode)
         self._silence_ms_limit = silence_ms
         self._speaking = False
         self._silence_ms = 0.0
@@ -116,12 +123,15 @@ class PcmEnergyVad:
             raise VoiceProtocolError("PCM chunks must be non-empty signed 16-bit mono samples")
         started = time.perf_counter()
         sample_count = len(pcm16le) // 2
-        samples = struct.unpack(f"<{sample_count}h", pcm16le)
-        # This one scalar is discarded after the branch.  It is not an affect
-        # score, is not logged, and cannot reveal a word or mental state.
-        mean_square = sum(sample * sample for sample in samples) / sample_count
-        voiced = math.sqrt(mean_square) >= self._energy_threshold
         duration_ms = sample_count * 1000.0 / self._sample_rate_hz
+        # Evaluate *every* complete 10 ms frame. `any(generator)` would stop at
+        # the first voiced frame and leave WebRTC's internal hangover state six
+        # frames behind a 100 ms packet, delaying an end-of-speech boundary.
+        frame_voiced = [
+            self._vad.is_speech(pcm16le[offset : offset + self._frame_bytes], self._sample_rate_hz)
+            for offset in range(0, len(pcm16le) - self._frame_bytes + 1, self._frame_bytes)
+        ]
+        voiced = any(frame_voiced)
         speech_started = False
         speech_ended = False
 
@@ -399,9 +409,9 @@ class RealtimeVoiceSession:
         self._synthesizer = synthesizer
         self._crisis_audio = crisis_audio
         self._clock = clock
-        self._vad = PcmEnergyVad(
+        self._vad = WebRtcVad(
             sample_rate_hz=settings.voice_sample_rate_hz,
-            energy_threshold=settings.voice_vad_energy_threshold,
+            mode=settings.voice_vad_mode,
             silence_ms=settings.voice_vad_silence_ms,
         )
         self._transcriber: IncrementalTranscriber | None = None

@@ -48,7 +48,11 @@ function browserSocket(url: string, protocols: string[]): VoiceSocket {
 }
 
 export interface PcmRecorder {
-  start(onPcm: (pcm: string) => void, onSignal: () => void): Promise<void>;
+  start(
+    targetSampleRateHz: number,
+    onPcm: (pcm: string) => void,
+    onSignal: () => void,
+  ): Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -60,7 +64,11 @@ class BrowserPcmRecorder implements PcmRecorder {
   private processor: ScriptProcessorNode | null = null;
   private sink: GainNode | null = null;
 
-  async start(onPcm: (pcm: string) => void, onSignal: () => void): Promise<void> {
+  async start(
+    targetSampleRateHz: number,
+    onPcm: (pcm: string) => void,
+    onSignal: () => void,
+  ): Promise<void> {
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         channelCount: 1,
@@ -79,7 +87,7 @@ class BrowserPcmRecorder implements PcmRecorder {
     sink.gain.value = 0;
     processor.onaudioprocess = (event) => {
       const input = event.inputBuffer.getChannelData(0);
-      const frame = resampleMono(input, context.sampleRate, VOICE_SAMPLE_RATE_HZ);
+      const frame = resampleMono(input, context.sampleRate, targetSampleRateHz);
       if (pcmHasSignal(frame)) {
         onSignal();
       }
@@ -152,6 +160,10 @@ export function VoiceCompanion({
   const activeRef = useRef(false);
   const endingRef = useRef(false);
   const mutedRef = useRef(false);
+  // The server advertises the session's WebRTC-supported PCM rate before it
+  // accepts Start. Keeping this per-session value avoids assuming 16 kHz when
+  // an operator legitimately configures another supported rate.
+  const sampleRateRef = useRef(VOICE_SAMPLE_RATE_HZ);
   const lineSequence = useRef(0);
 
   const [status, setStatus] = useState<VoiceStatus>("idle");
@@ -279,12 +291,14 @@ export function VoiceCompanion({
       }
       switch (event.type) {
         case "ready":
+          sampleRateRef.current = event.sample_rate_hz;
           return;
         case "started": {
           const recorder = recorderFactory();
           recorderRef.current = recorder;
           void recorder
             .start(
+              sampleRateRef.current,
               (pcm) => {
                 // The first non-silent local frame stops assistant playback
                 // synchronously; the matching PCM packet tells the server to
