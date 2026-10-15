@@ -4,8 +4,8 @@
 
 **Implemented and verified on 2026-10-15** on Arena's pinned branch
 `arena/1829c0a6-manovia` (no branch switch). The research pipeline, API, UI, export,
-docs and tests are on this branch; the active review/PR status will be recorded after
-its one authorized PR is opened. Nothing is to be merged by this task.
+docs and tests are on this branch. [PR #44](https://github.com/BuildbyArindam/Manovia/pull/44)
+is open from this branch and intentionally unmerged; this task does not merge it.
 
 **What shipped:** a deterministic synthetic 72-user × 210-day forecasting experiment
 with user-disjoint and forward-only temporal splits, four baselines, optional GRU/LSTM/
