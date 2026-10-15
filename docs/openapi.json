@@ -668,6 +668,43 @@
         "title": "BandSummary",
         "type": "object"
       },
+      "Body_synthesize_api_v1_voice_synthesize_post": {
+        "properties": {
+          "language": {
+            "default": "en",
+            "title": "Language",
+            "type": "string"
+          },
+          "speed": {
+            "default": 1.0,
+            "title": "Speed",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "Body_synthesize_api_v1_voice_synthesize_post",
+        "type": "object"
+      },
+      "Body_transcribe_api_v1_voice_transcribe_post": {
+        "properties": {
+          "audio": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audio"
+        ],
+        "title": "Body_transcribe_api_v1_voice_transcribe_post",
+        "type": "object"
+      },
       "CadenceView": {
         "description": "The gentle re-screening suggestion. Advice, never a block.",
         "properties": {
@@ -5072,6 +5109,29 @@
         "title": "SubmitResponse",
         "type": "object"
       },
+      "TranscriptionResponse": {
+        "properties": {
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "language_probability": {
+            "title": "Language Probability",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "language",
+          "language_probability"
+        ],
+        "title": "TranscriptionResponse",
+        "type": "object"
+      },
       "TrendOut": {
         "description": "Both measures over the same pair of windows.",
         "properties": {
@@ -8485,6 +8545,109 @@
         "summary": "Put Settings",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/v1/voice/synthesize": {
+      "post": {
+        "operationId": "synthesize_api_v1_voice_synthesize_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_synthesize_api_v1_voice_synthesize_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Synthesize",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/transcribe": {
+      "post": {
+        "operationId": "transcribe_api_v1_voice_transcribe_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transcribe_api_v1_voice_transcribe_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/voices": {
+      "get": {
+        "operationId": "get_voices_api_v1_voice_voices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Voices Api V1 Voice Voices Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Voices",
+        "tags": [
+          "voice"
         ]
       }
     }

@@ -28,6 +28,7 @@ dependencies = [
     "uvicorn-worker==0.4.0",
     "pydantic==2.14.1",
     "pydantic-settings==2.15.0",
+    "python-multipart==0.0.32",
     # [asyncio] pulls in greenlet, which SQLAlchemy's async sessions require.
     "sqlalchemy[asyncio]==2.1.4",
     "alembic==1.20.0",
@@ -113,6 +114,11 @@ rag = [
 serving = [
     "onnxruntime>=1.20.0",
 ]
+voice = [
+    "faster-whisper>=1.0.3",
+    "piper-tts>=1.2.0",
+
+]
 dev = [
     # Pinned deliberately: `python -m venv` seeds whatever setuptools the OS
     # happened to ship, and pip-audit audits *that* too. On this machine the
@@ -196,6 +202,7 @@ known-first-party = ["app"]
 # which is exactly how the retry machinery reads them, and N818's "Error"
 # suffix would make that code noisier for no gain. Domain naming wins here.
 "app/services/llm/base.py" = ["N818"]
+"app/api/**/*.py" = ["B008"]
 # EmbedderUnavailable reads as a condition (the embedder is unavailable
 # here), exactly like the LLM provider errors above; same reasoning, same
 # waiver.
@@ -214,7 +221,7 @@ plugins = ["pydantic.mypy"]
 # transformers/torch are imported lazily inside app/services/nlp/hf.py.
 [[tool.mypy.overrides]]
 module = [
-    "langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*",
+    "langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*", "faster_whisper.*",
     "faiss.*", "sentence_transformers.*", "sklearn.*", "joblib.*",
     # Day 27: gunicorn config/worker and the observability stack below.
     # "manovia_worker.*" is checked here (it subclasses the untyped worker).

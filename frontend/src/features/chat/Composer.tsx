@@ -17,6 +17,7 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 
 import { CHAT_COPY, MAX_MESSAGE_CHARS } from "./copy";
+import { VoiceRecorder } from "./VoiceRecorder";
 
 export interface ComposerProps {
   onSend: (text: string) => void;
@@ -106,15 +107,18 @@ export function Composer({
           {Math.max(text.length, 0)} / {maxLength}
         </p>
       </div>
-      <button
-        type="button"
-        data-testid="send-button"
-        disabled={!canSend}
-        onClick={submit}
-        className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent-bg px-5 py-3 font-semibold text-accent-fg disabled:opacity-50 sm:w-auto"
-      >
-        {sending ? CHAT_COPY.sending : CHAT_COPY.send}
-      </button>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          data-testid="send-button"
+          disabled={!canSend}
+          onClick={submit}
+          className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent-bg px-5 py-3 font-semibold text-accent-fg disabled:opacity-50 sm:w-auto"
+        >
+          {sending ? CHAT_COPY.sending : CHAT_COPY.send}
+        </button>
+        <VoiceRecorder disabled={sending || disabled} onTranscribe={(txt) => setText((prev) => (prev ? prev + " " + txt : txt))} />
+      </div>
     </div>
   );
 }

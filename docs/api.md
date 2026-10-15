@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **1.0.0** · 63 operations across 53 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **1.0.0** · 66 operations across 56 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -36,6 +36,7 @@ Manovia API **1.0.0** · 63 operations across 53 paths. The machine-readable sch
 - [Settings](#settings)
 - [Privacy, export and deletion](#privacy-export-and-deletion)
 - [Development only (not in production)](#development-only-not-in-production)
+- [Voice](#voice)
 
 ## Health and readiness
 
@@ -181,6 +182,14 @@ These routes exist only when `APP_ENV` is not `production`. They are for local d
 | --- | --- | --- | --- | --- | --- |
 | `POST` | `/api/v1/dev/analyze` | Analyze | no | 200, 422 | Analyze one string with the configured emotion chain. |
 | `GET` | `/api/v1/dev/analyze/state` | Analyzer State | no | 200 | Chain health, cache counters and the detected model. No text, no keys. |
+
+## Voice
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `POST` | `/api/v1/voice/transcribe` | Transcribe | yes | 200, 422 |  |
+| `GET` | `/api/v1/voice/voices` | Get Voices | yes | 200 |  |
+| `POST` | `/api/v1/voice/synthesize` | Synthesize | yes | 200, 422 |  |
 
 ## Regenerating
 

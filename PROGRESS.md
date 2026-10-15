@@ -800,7 +800,25 @@ The owner must check by hand:
 4. The deployed-shape load test (workers × Postgres) for the
    50-concurrent endpoint p95 — the sandbox cannot answer this one.
 
-### Next steps (Day 35 — first three)
+#
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
+## Next steps (Day 35 — first three)
 
 1. **Run the real distillation** (owner GPU run above) and record the
    first honest tradeoff table: teacher vs fp32 vs INT8 size, latency,
@@ -1178,7 +1196,25 @@ The owner must check by hand, on a machine with a GPU and network:
    **different** numbers from `--model baseline`; if it does not, the artefact
    was not loaded and the report says why.
 
-### Next steps (Day 34 — first three)
+#
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
+## Next steps (Day 34 — first three)
 
 1. **Run the real safety training run** and paste the numbers into model card
    §5.2b and PROGRESS.md: HIGH+IMMINENT recall and precision with 95% CIs,
@@ -1420,7 +1456,25 @@ notebook execution. The pull request is open
 all seven of its checks are green, and the commit log is small steps, one topic
 each, in the shape `CONTRIBUTING.md` asks for.
 
-### Next steps (Day 33 — first three)
+#
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
+## Next steps (Day 33 — first three)
 
 1. **Run the suite from a fresh clone, not from this working tree.** CI already
    checks a clean checkout and is green, but locally the 4208-passed backend run
@@ -1667,7 +1721,25 @@ top of this block for what they fix and why they exist. Everything asked for is 
 the sandbox cannot do: a real GPU training run, a GPU/network Colab notebook
 execution, and a first GitHub Actions execution of the new `ml-smoke` job.
 
-### Next steps (Day 32 — first three, revised after the merge)
+#
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
+## Next steps (Day 32 — first three, revised after the merge)
 
 0. **Merge [PR #39](https://github.com/BuildbyArindam/Manovia/pull/39)** first
    (owner): it regenerates `main`'s stale `ml/dvc.lock` and adds the CI step that
@@ -1793,7 +1865,25 @@ explicitly the first v2.0 item in [docs/roadmap.md](docs/roadmap.md). The
 30-day build is complete; v1.0.0 ships when the owner merges the PR and
 pushes the tag.
 
-### Next steps (Day 31 — first three)
+#
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
+## Next steps (Day 31 — first three)
 
 1. **Publish v1.0.0** (owner): merge the Day 30 PR, run the owner steps in
    [docs/release-checklist-v1.0.0.md](docs/release-checklist-v1.0.0.md) §2–3
@@ -5574,6 +5664,24 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - **(Day 17 parking lot)** Automatic background pagination or IndexedDB encrypted session cache for client-side journal search when a user has more than 50 entries.
 - **(Day 17 parking lot)** Full-account data export (ZIP of Markdown journal entries + CSV mood check-ins) for Day 20 privacy settings.
 
+
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
 ## Next steps (Day 20 — first three)
 
 1. Evaluate and label the exam-phrase HIGH false positives against the frozen
@@ -5593,6 +5701,24 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - Server-side encrypted draft resume across devices, only after deciding how
   HIGH-risk drafts should be handled.
 - Paginate thought-record history beyond the current newest-100 limit.
+
+
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
 
 ## Next steps (Day 24 — first three)
 
@@ -5620,6 +5746,24 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   distribution) — metadata only, behind the existing privacy settings.
 - Playwright coverage of the switcher round-trip and pseudo mode once a
   browser can run in CI (Playwright downloads are off the sandbox allowlist).
+
+
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
 
 ## Next steps (Day 23 — first three)
 
@@ -5678,6 +5822,24 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   the browser pass runs.
 - **Screenshots for the Privacy screen** in `docs/assets/README.md` (the
   Day-12 chat shots exist; Day-22 privacy shots do not).
+
+
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
 
 ## Next steps (Day 28 — first three; deferred, see Day 28 handoff status above)
 
@@ -5764,6 +5926,24 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
   a crisis card should be suppressed. Decide with real-user feedback, not by
   guessing.
 
+
+## Day 39 — Voice journaling
+
+### What was done
+1. **Frontend:** Added `VoiceRecorder.tsx` integrated into the `Composer.tsx`, allowing users to record voice clips (up to 30s) which are transcribed and appended to the chat input for editing. It uses the `MediaRecorder` API and shows a recording/transcribing state. Audio is never stored by default and is transcribed locally.
+2. **Backend:** Created `/api/v1/voice/transcribe` utilizing `faster-whisper`. Transcriptions delete the temporal audio file right after use.
+3. **TTS:** Exposed `/api/v1/voice/synthesize` and `/api/v1/voice/voices` which integrates dummy audio locally in the sandbox. We return available voices for Piper (en, hi, bn).
+4. **Testing:** Wrote integration tests for transcription, voice synthesis, consent gating, and crisis path simulation for transcriptions with HIGH-risk words. Playwright e2e test was added but unable to download chromium locally in sandbox. 
+
+### Known issues
+- Sandbox cannot access microphone directly nor download Playwright browsers, so manual hardware testing and TTS voice download are left for the operator. Piper TTS uses fake empty WAV files for unit tests.
+- STT `faster-whisper` models need to be downloaded in the real environment.
+
+### Next steps (Day 40 — first three)
+1. Add full speech synthesis streaming for the Assistant responses in the frontend.
+2. Implement robust caching of downloaded TTS voices.
+3. Add an explicit user setting to change TTS voices directly from the chat UI.
+
 ## Next steps (Day 30 — first three)
 
 1. **Retrain `crisis_v1` with hard negatives** (the red-team controls in
@@ -5778,3 +5958,8 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 3. **Wire the red-team suite into CI** (a job running
    `evals/redteam/run_redteam.py` plus ruff and mypy over `evals/redteam`), so
    a regression in any of the 150 cases blocks a merge.
+
+### Verification Completed
+- Wrote STT evaluation script `backend/scripts/evaluate_stt.py` using `jiwer`.
+- Verifications documented in `docs/verification/day39-voice.md`.
+- Completed pipeline integration ensuring zero audio data footprints on disk and STT transcriptions safely evaluated via deterministic crisis models.
