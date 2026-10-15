@@ -46,6 +46,7 @@ entry.
 | [0034](0034-compression-serving-rollout.md) | Compression, serving and safe rollout: distillation into small students, ONNX INT8 with release gates, MLflow alias registry with checksums, shadow mode and one-command rollback | Accepted (Day 34) | 2026-10-14 |
 | [0035](0035-fine-tuned-retrieval.md) | Fine-tuned retrieval: a labelled eval set with frozen splits, contrastive embeddings with mined hard negatives, BM25 + dense rank fusion tuned on dev, a distilled cross-encoder and a calibrated "no good answer" floor, behind `RETRIEVER=baseline\|hybrid\|hybrid_rerank` | Accepted (Day 35) | 2026-10-15 |
 | [0036](0036-mood-forecasting.md) | Mood forecasting: leakage-resistant synthetic sequence research, calibrated held-out intervals, and a separate default-off numeric-only personal-history Outlook with honest uncertainty | Accepted (Day 36) | 2026-10-15 |
+| [0037](0037-personalised-intervention-policy.md) | Personalised intervention policy: contextual bandits behind a deterministic safety boundary | Accepted for offline research; not enabled in the product | 2026-10-15 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number
