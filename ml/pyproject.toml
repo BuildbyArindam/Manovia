@@ -144,9 +144,9 @@ disallow_subclassing_any = false
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
-# Optional, network-only imports used by the Colab notebook path (Hugging Face
-# `datasets` is not installed in this repository, by design — see ground rule 10).
-module = ["datasets.*", "datasets"]
+# Optional, network-only imports used by the Colab/checkpoint paths (Hugging Face
+# `datasets` and `huggingface_hub` are not installed here by design — see ground rule 10).
+module = ["datasets.*", "datasets", "huggingface_hub.*", "huggingface_hub"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

@@ -1,7 +1,8 @@
 """Insights: what somebody's own check-ins can honestly be said to show.
 
-Two routes, both authenticated, both scoped to the caller's own rows, both
-read-only:
+Three routes, all authenticated and scoped to the caller's own rows; the two
+existing reports are read-only, and Mood Outlook additionally requires explicit
+opt-in:
 
 =============================================  ================================
 route                                          what it does
@@ -13,6 +14,8 @@ route                                          what it does
                                                associations, time-of-day and
                                                weekday patterns, a localised
                                                summary and the "about" explainer
+``GET /api/v1/insights/outlook?tz&locale``     an explicit-opt-in, numeric-only,
+                                               three-day personal-history range
 =============================================  ================================
 
 Three rules shape this file, and they are the reason it is boring:
@@ -37,16 +40,17 @@ what happens to their data.
 
 **Locale.** ``locale`` selects the sentence templates (``en``, ``hi``, ``bn``);
 an unknown tag falls back to English and says so with ``locale_fallback_used``.
-The user's account language is *not* the default here on purpose: the insights
-surface is read in the UI's language, which the account row does not track.
+The weekly and patterns routes use the UI's language when the client sends it.
+Mood Outlook also accepts an explicit UI locale and falls back to the account
+language only when that parameter is omitted.
 """
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, timedelta
-from typing import Annotated, Any
+from datetime import UTC, date, datetime, time, timedelta
+from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -60,8 +64,9 @@ from app.content.insights import (
     load_insights,
     resolve_insight_locale,
 )
+from app.content.outlook import load_outlook_copy
 from app.core.errors import ApiError
-from app.db.repos import MoodInsightRow, MoodRepository
+from app.db.repos import MoodInsightRow, MoodRepository, SettingsRepository
 from app.models.enums import ConsentKind
 from app.models.user import User
 from app.services.mood import (
@@ -92,6 +97,12 @@ from app.services.mood import (
     pattern_sentence,
     pattern_sentences,
     weekly_sentences,
+)
+from app.services.mood.outlook import (
+    OUTLOOK_LOOKBACK_DAYS,
+    MoodOutlook,
+    OutlookObservation,
+    build_mood_outlook,
 )
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -348,6 +359,53 @@ class PatternsOut(InsightsMeta):
     #: The localised summary, in reading order.
     summary: list[str]
     about: AboutOut
+
+
+class OutlookPointOut(BaseModel):
+    """One day in the personal-history Outlook range."""
+
+    day: date
+    estimate: float
+    lower: float
+    upper: float
+
+
+class OutlookFactorOut(BaseModel):
+    """A small, non-causal association from closed check-in tags."""
+
+    tag: str
+    label: str
+    tagged_days: int
+    other_days: int
+    tagged_mean: float
+    other_mean: float
+    difference: float
+    sentence: str
+
+
+class MoodOutlookOut(BaseModel):
+    """Authenticated response for the explicitly opted-in Outlook card."""
+
+    status: Literal["ready", "not_enough_data", "stale"]
+    available: bool
+    today: date
+    timezone: str
+    timezone_fallback_used: bool
+    locale: str
+    locale_fallback_used: bool
+    lookback_days: int
+    minimum_checkin_days: int
+    check_ins_used: int
+    distinct_checkin_days: int
+    latest_check_in: date | None
+    summary: str
+    uncertainty_note: str
+    not_health_advice: str
+    forecast: list[OutlookPointOut]
+    top_factors: list[OutlookFactorOut]
+    no_factors_note: str | None
+    small_action: str | None
+    optional_support: str | None
 
 
 # --------------------------------------------------------------------------- #
@@ -743,6 +801,105 @@ async def read_patterns(
         weekday=_pattern_out(report.weekday, strings=strings),
         summary=pattern_sentences(report, strings=strings),
         about=_about(strings, fallback_used=locale_fallback_used),
+    )
+
+
+@router.get("/outlook", response_model=MoodOutlookOut)
+async def read_mood_outlook(
+    user: ConsentedUser,
+    session: SessionDep,
+    tz: str | None = TZ_QUERY,
+    locale: str | None = LOCALE_QUERY,
+) -> MoodOutlookOut:
+    """An explicit-opt-in, numeric-only, three-day personal-history estimate.
+
+    Sequence-model checkpoints are not imported here. The route checks the
+    persisted opt-in before reading mood rows, and the repository projection
+    excludes encrypted notes and all journal/free-text fields.
+    """
+    settings = await SettingsRepository(session).get(user.id)
+    if settings is None or not settings.mood_outlook_enabled:
+        raise ApiError(
+            403,
+            "outlook_opt_in_required",
+            "Mood Outlook is off. Turn it on in Settings if you want to see it.",
+        )
+
+    zone, timezone_fallback_used = _resolve_zone(tz)
+    resolved_locale, locale_fallback_used = resolve_insight_locale(locale or user.language)
+    strings = load_insights(resolved_locale)
+    copy, _resolved_copy_locale, copy_fallback_used = load_outlook_copy(resolved_locale)
+    now = _now()
+    today = now.astimezone(zone).date()
+    since = datetime.combine(
+        today - timedelta(days=OUTLOOK_LOOKBACK_DAYS - 1), time.min, tzinfo=zone
+    ).astimezone(UTC)
+    rows = await MoodRepository(session).insights_rows(user.id, since=since)
+    observations = [
+        OutlookObservation(
+            at=row.created_at,
+            valence=row.valence,
+            energy=row.energy,
+            factors=tuple(row.factors.keys()),
+        )
+        for row in rows
+    ]
+    result: MoodOutlook = build_mood_outlook(
+        observations,
+        now=now,
+        zone=zone,
+        strings=strings,
+        copy=copy,
+        locale_fallback_used=locale_fallback_used or copy_fallback_used,
+    )
+    _log.info(
+        "mood_outlook_read",
+        status=result.status,
+        check_in_days=result.distinct_checkin_days,
+        entries=result.check_ins_used,
+        locale=result.locale,
+    )
+    return MoodOutlookOut(
+        status=result.status,
+        available=result.available,
+        today=result.today,
+        timezone=result.timezone,
+        timezone_fallback_used=timezone_fallback_used,
+        locale=result.locale,
+        locale_fallback_used=result.locale_fallback_used,
+        lookback_days=result.lookback_days,
+        minimum_checkin_days=result.minimum_checkin_days,
+        check_ins_used=result.check_ins_used,
+        distinct_checkin_days=result.distinct_checkin_days,
+        latest_check_in=result.latest_check_in,
+        summary=result.summary,
+        uncertainty_note=result.uncertainty_note,
+        not_health_advice=result.not_health_advice,
+        forecast=[
+            OutlookPointOut(
+                day=point.day,
+                estimate=point.estimate,
+                lower=point.lower,
+                upper=point.upper,
+            )
+            for point in result.forecast
+        ],
+        top_factors=[
+            OutlookFactorOut(
+                tag=factor.tag,
+                label=factor.label,
+                tagged_days=factor.tagged_days,
+                other_days=factor.other_days,
+                tagged_mean=factor.tagged_mean,
+                other_mean=factor.other_mean,
+                difference=factor.difference,
+                sentence=factor.sentence,
+            )
+            for factor in result.top_factors
+        ],
+        no_factors_note=result.no_factors_note,
+        small_action=result.small_action,
+        optional_support=result.optional_support,
     )
 
 

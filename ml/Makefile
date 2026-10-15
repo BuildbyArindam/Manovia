@@ -1,4 +1,4 @@
-.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status retrieval-finetune retrieval-tune retrieval-rerank retrieval-calibrate retrieval-eval retrieval-smoke retrieval-pipeline clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status retrieval-finetune retrieval-tune retrieval-rerank retrieval-calibrate retrieval-eval retrieval-smoke retrieval-pipeline mood-forecast clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
@@ -100,6 +100,8 @@ RETRIEVAL_HYBRID_CONFIG ?= configs/retrieval_hybrid.yaml
 RETRIEVAL_EVAL_CONFIG ?= configs/retrieval_eval.yaml
 RETRIEVAL_SMOKE_CONFIG ?= configs/retrieval_smoke.yaml
 RETRIEVAL_WORKDIR ?= data/retrieval_artifacts/harness
+MOOD_FORECAST_CONFIG ?= configs/mood_forecast.yaml
+MOOD_FORECAST_ARGS ?=
 export MLFLOW_ALLOW_FILE_STORE ?= true
 SAFETY_DATA ?= data/safety_toy/dev.jsonl
 SAFETY_EVAL_DATA ?= data/safety/dev.jsonl
@@ -280,6 +282,11 @@ retrieval-smoke:
 		--stage abstain --workdir $(RETRIEVAL_WORKDIR)
 	$(PYTHON) -m manovia_ml.evaluation.retrieval --config $(RETRIEVAL_SMOKE_CONFIG) \
 		--workdir $(RETRIEVAL_WORKDIR)
+
+# Day 36. Full run needs the optional training extra; use --allow-baselines-only
+# only to produce an explicitly labelled baseline report when torch is absent.
+mood-forecast:
+	$(PYTHON) -m manovia_ml.mood_forecast.cli --config $(MOOD_FORECAST_CONFIG) $(MOOD_FORECAST_ARGS)
 
 test:
 	$(PYTHON) -m pytest

@@ -85,10 +85,10 @@ Local development works with no configuration at all: `DATABASE_URL` defaults to
   …/{id}/stream` (SSE). Try the stream with
   `curl -N -X POST $API/api/v1/chat/sessions/$ID/stream -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"message":"hi"}'`
   (`LLM_PROVIDER=fake` for an offline demo). Settings: `CHAT_*` in `.env.example`.
-- `app/content/` — the two shipped content files and their loaders:
-  `consent_documents.json` (+ `documents.py`) and `helplines.json` (+ `crisis.py`)
+- `app/content/` — versioned, package-shipped copy and catalogues for consent,
+  crisis support, insights and Outlook, exercises, journal prompts, knowledge and safety
 - `alembic/` — migration environment (`env.py` reads `DATABASE_URL` through
-  `Settings`) and `versions/0001_initial_schema.py`
+  `Settings`) and the ordered schema history (latest: `0011_mood_outlook_opt_in.py`)
 - `tests/unit`, `tests/integration` — pytest suites; integration tests run against a
   real SQLite file, fully offline
 
@@ -125,6 +125,25 @@ the threshold). Environment overrides (`RAG_HYBRID_DENSE_WEIGHT`,
 Decisions and measured numbers: [ADR 0035](../docs/adr/0035-fine-tuned-retrieval.md),
 [docs/verification/day35-retrieval.md](../docs/verification/day35-retrieval.md),
 model card §5.5.
+
+## Insights and Mood Outlook (Day 36)
+
+`GET /api/v1/insights/weekly` and `/patterns` summarize the caller's own check-ins.
+`GET /api/v1/insights/outlook` is separate: it needs the same terms/privacy consents
+and the persisted `mood_outlook_enabled=true` opt-in. Its check happens before any mood
+rows are read. The `insights_rows` projection supplies only timestamps, numeric valence
+and energy, and closed tags; encrypted notes and journal text are not loaded.
+
+Eligibility is **14 distinct check-in days within the most recent 28 local calendar
+days**, with the newest check-in at most seven days old. The service produces a simple
+three-day personal-history estimate and a range based on observed variability. That
+range is not a calibrated confidence interval or a probability; the copy says so in
+English, Hindi and Bengali. GRU/LSTM/Transformer research models in `ml/` are not loaded
+or served by this endpoint. The new opt-in preference is included in
+`GET /api/v1/privacy/export` as `user-settings.json` (export format v2).
+
+See [ADR 0036](../docs/adr/0036-mood-forecasting.md) and
+[the verified run and limits](../docs/verification/day36-mood-forecasting.md).
 
 ## NLP service (Day 6)
 

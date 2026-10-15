@@ -1,10 +1,11 @@
-"""Planner preferences: ``GET`` and ``PUT /settings``.
+"""User preferences: ``GET`` and ``PUT /settings``.
 
-The two knobs the daily planner reads — preferred exercise types and quiet
-hours — live here. Values are validated on write against facts the server owns:
-exercise tags against the shipped catalogue, quiet-hour bounds against a strict
-``HH:MM`` shape. A ``GET`` for a person who never saved returns the defaults
-rather than a 404, so the settings screen always has something true to show.
+The daily planner reads preferred exercise types and quiet hours; Mood Outlook
+has its own explicit, default-off switch. Values are validated on write against
+facts the server owns: exercise tags against the shipped catalogue, quiet-hour
+bounds against a strict ``HH:MM`` shape. A ``GET`` for a person who never saved
+returns the defaults rather than a 404, so the settings screen always has
+something true to show.
 """
 
 from __future__ import annotations
@@ -50,6 +51,8 @@ class SettingsOut(BaseModel):
     quiet_hours_enabled: bool
     quiet_start: str
     quiet_end: str
+    #: Explicitly enabled only after a user chooses the opt-in switch.
+    mood_outlook_enabled: bool
     #: The catalogue's tags, so a client can offer exactly the valid choices.
     known_exercise_tags: list[str]
 
@@ -61,6 +64,7 @@ class SettingsIn(BaseModel):
     quiet_hours_enabled: bool = False
     quiet_start: str = Field(default="22:00", max_length=5)
     quiet_end: str = Field(default="07:00", max_length=5)
+    mood_outlook_enabled: bool = False
 
     @field_validator("preferred_exercise_tags")
     @classmethod
@@ -94,6 +98,7 @@ def _out(row: UserSettings | None) -> SettingsOut:
             quiet_hours_enabled=False,
             quiet_start=DEFAULT_QUIET_START.strftime("%H:%M"),
             quiet_end=DEFAULT_QUIET_END.strftime("%H:%M"),
+            mood_outlook_enabled=False,
             known_exercise_tags=known_exercise_tags(),
         )
     return SettingsOut(
@@ -101,6 +106,7 @@ def _out(row: UserSettings | None) -> SettingsOut:
         quiet_hours_enabled=row.quiet_hours_enabled,
         quiet_start=row.quiet_start,
         quiet_end=row.quiet_end,
+        mood_outlook_enabled=row.mood_outlook_enabled,
         known_exercise_tags=known_exercise_tags(),
     )
 
@@ -120,6 +126,7 @@ async def put_settings(payload: SettingsIn, user: SettingsUser, session: Session
         quiet_hours_enabled=payload.quiet_hours_enabled,
         quiet_start=payload.quiet_start,
         quiet_end=payload.quiet_end,
+        mood_outlook_enabled=payload.mood_outlook_enabled,
     )
     await session.commit()
     await session.refresh(row)

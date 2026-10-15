@@ -34,6 +34,22 @@ describe("PlanSettingsSection", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Saved");
   });
 
+  it("keeps Mood Outlook off by default and saves only after explicit opt-in", async () => {
+    const fake = makePlanFake();
+    const user = userEvent.setup();
+    renderWithProviders(<PlanSettingsSection client={fake.client} />);
+
+    const toggle = await screen.findByRole("switch", { name: /show mood outlook on insights/i });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: "Save plan choices" }));
+
+    await waitFor(() => {
+      expect(fake.settings.mood_outlook_enabled).toBe(true);
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved");
+  });
+
   it("turns quiet hours on and saves a midnight-crossing window", async () => {
     const fake = makePlanFake();
     const user = userEvent.setup();

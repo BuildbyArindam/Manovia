@@ -15,11 +15,12 @@
 import { api as defaultClient, type ApiClient } from "@/lib/api";
 import { deviceTimezone } from "@/lib/timezone";
 
-import type { PatternInsights, WeeklyInsights } from "./types";
+import type { MoodOutlook, PatternInsights, WeeklyInsights } from "./types";
 
 export const INSIGHTS_ENDPOINTS = {
   weekly: "/insights/weekly",
   patterns: "/insights/patterns",
+  outlook: "/insights/outlook",
 } as const;
 
 export interface InsightsQuery {
@@ -62,4 +63,12 @@ export async function fetchWeeklyInsights(
   client: ApiClient = defaultClient,
 ): Promise<WeeklyInsights> {
   return client.get<WeeklyInsights>(`${INSIGHTS_ENDPOINTS.weekly}?${insightsQuery(query)}`);
+}
+
+/** Three-day, numeric-only estimate; backend authorization still enforces opt-in. */
+export async function fetchMoodOutlook(
+  query: InsightsQuery = {},
+  client: ApiClient = defaultClient,
+): Promise<MoodOutlook> {
+  return client.get<MoodOutlook>(`${INSIGHTS_ENDPOINTS.outlook}?${insightsQuery(query)}`);
 }

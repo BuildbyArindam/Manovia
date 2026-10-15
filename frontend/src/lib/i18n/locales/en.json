@@ -616,7 +616,27 @@
     "windowLine": "Looking back {{days}} days.",
     "weeksLine": "Looking back {{weeks}} weeks.",
     "timezoneFallback": "Your browser would not name its timezone, so these are counted in UTC.",
-    "localeFallback": "These insights are not translated into your language yet, so they are shown in {{locale}}."
+    "localeFallback": "These insights are not translated into your language yet, so they are shown in {{locale}}.",
+    "outlookTitle": "Mood Outlook",
+    "outlookIntro": "A personal three-day estimate from your recent numeric check-ins. It can be wrong.",
+    "outlookOptInBody": "Mood Outlook stays off until you choose to turn it on. If enabled, it uses recent mood scores—not notes—to show a rough, uncertain estimate. You can turn it off at any time.",
+    "outlookOpenSettings": "Choose in Settings",
+    "outlookCheckingSetting": "Checking your Mood Outlook setting…",
+    "outlookLoading": "Preparing your estimate…",
+    "outlookSettingsError": "The Mood Outlook setting could not be checked. No estimate is shown.",
+    "outlookFetchError": "The estimate could not be loaded. Your check-ins are unchanged.",
+    "outlookRetry": "Try again",
+    "outlookForecastHeading": "Three-day estimate",
+    "outlookTableCaption": "Three-day mood estimates and personal variation ranges",
+    "outlookDay": "Day",
+    "outlookEstimate": "Estimate (1–5)",
+    "outlookPossibleRange": "Personal variation range (1–5)",
+    "outlookRangeValue": "{{lower}} to {{upper}}",
+    "outlookFactorsHeading": "Repeated tag patterns",
+    "outlookSmallActionHeading": "A small option",
+    "outlookSupportHeading": "If you want support",
+    "outlookTimezoneFallback": "Your timezone could not be identified, so days are counted in UTC.",
+    "outlookLocaleFallback": "Mood Outlook copy is shown in {{locale}}."
   },
   "plan": {
     "cardHeading": "Today’s plan",
@@ -653,7 +673,10 @@
     "settingsSaving": "Saving…",
     "settingsSaved": "Saved. The plan will follow these choices from now on.",
     "settingsErrorApi": "Those choices could not be saved. Please check them and try again.",
-    "settingsErrorGeneric": "Those choices could not be saved right now. Please try again."
+    "settingsErrorGeneric": "Those choices could not be saved right now. Please try again.",
+    "settingsOutlookLegend": "Mood Outlook",
+    "settingsOutlookToggle": "Show Mood Outlook on Insights",
+    "settingsOutlookHelp": "Off by default. If enabled, Insights shows a rough three-day estimate from recent mood scores. It needs at least 14 distinct check-in days in the last 28 days and a check-in within the past seven days. It never reads your notes. The range is not a calibrated confidence interval or a promise, and it is not medical advice. You can turn it off at any time."
   },
   "settings": {
     "title": "Settings",

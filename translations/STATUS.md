@@ -23,10 +23,10 @@ Legend:
 | `mood` (form, scales, tags, streaks, actions) | ✅ source | 🤖 | 🤖 | Stored tag/emotion *values* stay the English literals the backend validates; only display labels translate. |
 | `exercises` | ✅ source | 🤖 | 🤖 | Exercise *instructions* arrive from the backend and remain English (see Backend content); the `framing` string says so in-app. |
 | `assessments` | ✅ source | 🤖 | 🤖 | **Instrument items stay English-only** (⛔ for the questionnaire text itself) — see Clinical instruments below. UI chrome around them translates. |
-| `insights` | ✅ source | 🤖 | 🤖 | Insight sentences arrive localised from the backend when templates exist; `localeFallback` covers the rest. |
+| `insights` | ✅ source | 🤖 | 🤖 | Insight sentences arrive localised from the backend when templates exist; `localeFallback` covers the rest. Day 36 adds Outlook summary, uncertainty, eligibility and gentle-action copy; the numerical terms and non-medical caveat need native review. |
 | `journal` | ✅ source | 🤖 | 🤖 | Fallback templates translate; backend-served prompts are English for now. |
 | `cbt` | ✅ source | 🤖 | 🤖 | Step labels, traps panel, record list. |
-| `plan`, `settings`, `privacy`, `onboarding`, `notFound` | ✅ source | 🤖 | 🤖 | Includes onboarding agreements and the AI disclosure wording. |
+| `plan`, `settings`, `privacy`, `onboarding`, `notFound` | ✅ source | 🤖 | 🤖 | Includes onboarding agreements and the AI disclosure wording; Day 36 adds the Mood Outlook opt-in and its uncertainty/eligibility explanation. |
 | `pwa` (Day 25: offline banner, update notice, install offer, offline sync, page-load errors) | ✅ source | 🤖 | 🤖 | Offline copy must stay literally true: "kept on this device", and "sent once you're back online **with Manovia open**" (there is no background sync). `src/pwa/offlineCopy.test.ts` checks that hi/bn keep the "Manovia open" condition. Review against the behaviour in ADR 0025, not just the English. |
 | `a11y` (Day 25: accessibility statement) | ✅ source | 🤖 | 🤖 | `limit1` says the hi/bn text awaits native review — update it in all three languages when this ledger changes. |
 | Day 25 additions inside `mood`, `journal`, `crisis.modal`, `home`, `exercises`, `settings` (offline queue, local drafts, offline helpline notes, contrast switch) | ✅ source | 🤖 | 🤖 | Same review discipline as their groups; `exercises.offline` was *changed* (offline reloads now work) in all three languages. |
@@ -42,6 +42,7 @@ enforced by `frontend/src/lib/i18n/locales/parity.test.ts`.
 | Check-in lines / suggested actions | ✅ source | 🤖 | 🤖 | Same loader. |
 | Plan text (titles, reasons) | ✅ source | 🤖 | 🤖 | First request's language sticks per local day. |
 | Insight templates | ✅ source | 🤖 | 🤖 | Rendered server-side in the requested locale. |
+| Mood Outlook copy (`backend/app/content/outlook_copy.json`) | ✅ source | 🤖 | 🤖 | Day 36: placeholder-checked summary, uncertainty, eligibility, non-medical and gentle-action copy; no native-speaker sign-off yet. |
 
 ### Deliberately English-only (⛔ — do not translate until sourced properly)
 

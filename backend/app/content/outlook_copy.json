@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "locales": {
+    "en": {
+      "summary": "Your recent check-ins average {mean} on the 1–5 mood scale. If a similar pattern continues, the next three days may be around {low}–{high}.",
+      "uncertainty_note": "This is a rough estimate from your recent check-ins. The range shows personal variation; it is not a calibrated confidence interval or a probability. It can be wrong, and you may feel differently on any day.",
+      "not_health_advice": "This personal reflection is not health advice or a medical assessment.",
+      "not_enough_data": "Mood Outlook needs at least {minimum} different check-in days within the last {window} days, plus a recent check-in. Your estimate is not shown yet. You can keep checking in, or turn Outlook off at any time.",
+      "stale_data": "There has not been a recent check-in, so this estimate is paused. Add a check-in when it suits you; taking a break is okay too.",
+      "factor_line": "In your recent check-ins, days tagged {factor} averaged {tagged_mean}; other days averaged {other_mean} ({tagged_n} and {untagged_n} days). This is a pattern in these entries, not an explanation.",
+      "no_factors": "No repeated tag pattern had enough check-ins to summarize.",
+      "action": "If it feels manageable, you might choose one small next step—perhaps a short pause, some water, or a message to someone you trust.",
+      "support": "If things have felt hard lately, talking with someone you trust is one option. You can leave this suggestion aside."
+    },
+    "hi": {
+      "summary": "आपके हाल के चेक-इन में मूड का औसत {mean} रहा (1–5 पैमाने पर)। अगर ऐसा ही ढंग बना रहा, तो अगले तीन दिन लगभग {low}–{high} के बीच हो सकते हैं।",
+      "uncertainty_note": "यह हाल के चेक-इन से निकला एक मोटा अनुमान है। सीमा आपके अनुभव में दिखे उतार-चढ़ाव को बताती है; यह अंशांकित विश्वास-अंतराल या संभावना नहीं है। यह गलत हो सकता है; किसी भी दिन आपका अनुभव अलग हो सकता है।",
+      "not_health_advice": "यह आत्म-चिंतन का एक तरीका है, स्वास्थ्य-सलाह या चिकित्सकीय आकलन नहीं।",
+      "not_enough_data": "Mood Outlook के लिए पिछले {window} दिनों में कम-से-कम {minimum} अलग-अलग दिनों के चेक-इन और हाल का एक चेक-इन चाहिए। अभी अनुमान नहीं दिखाया जा रहा। आप चाहें तो चेक-इन जारी रखें, या Outlook कभी भी बंद कर दें।",
+      "stale_data": "हाल का चेक-इन न होने से यह अनुमान रुका हुआ है। जब ठीक लगे तब चेक-इन जोड़ें; विराम लेना भी ठीक है।",
+      "factor_line": "हाल के चेक-इन में, {factor} टैग वाले दिनों का औसत {tagged_mean} था; बाकी दिनों का {other_mean} ({tagged_n} और {untagged_n} दिन)। यह इन दर्ज बातों का एक ढंग है, कोई व्याख्या नहीं।",
+      "no_factors": "किसी टैग का ऐसा दोहराता ढंग नहीं मिला जिसे इन चेक-इन से बताना ठीक हो।",
+      "action": "अगर आसान लगे, तो आज एक छोटा कदम चुन सकते हैं—थोड़ा रुकना, पानी पीना, या किसी भरोसेमंद व्यक्ति को संदेश देना।",
+      "support": "अगर हाल में चीज़ें भारी लगी हों, तो किसी भरोसेमंद व्यक्ति से बात करना एक विकल्प है। इस सुझाव को छोड़ना भी ठीक है।"
+    },
+    "bn": {
+      "summary": "আপনার সাম্প্রতিক চেক-ইনগুলিতে মুডের গড় {mean} (১–৫ মাপনীতে)। একই ধরনের ধারা চললে, আগামী তিন দিনে মানটি প্রায় {low}–{high} হতে পারে।",
+      "uncertainty_note": "এটি সাম্প্রতিক চেক-ইন থেকে করা একটি মোটামুটি অনুমান। পরিসরটি আপনার নিজের চেক-ইনগুলিতে দেখা ওঠানামা বোঝায়; এটি ক্যালিব্রেট করা confidence interval বা কোনো সম্ভাবনা নয়। এটি ভুল হতে পারে; যেকোনো দিনে আপনার অনুভব আলাদা হতে পারে।",
+      "not_health_advice": "এটি নিজের দিকে ফিরে দেখার একটি উপায়, স্বাস্থ্য-পরামর্শ বা চিকিৎসাগত মূল্যায়ন নয়।",
+      "not_enough_data": "Mood Outlook-এর জন্য গত {window} দিনের মধ্যে অন্তত {minimum}টি আলাদা দিনের চেক-ইন এবং সাম্প্রতিক একটি চেক-ইন দরকার। আপাতত অনুমান দেখানো হচ্ছে না। চাইলে চেক-ইন চালিয়ে যেতে পারেন, অথবা যেকোনো সময় Outlook বন্ধ করতে পারেন।",
+      "stale_data": "সাম্প্রতিক চেক-ইন না থাকায় এই অনুমানটি থেমে আছে। সুবিধামতো একটি চেক-ইন যোগ করুন; বিরতি নিলেও ঠিক আছে।",
+      "factor_line": "সাম্প্রতিক চেক-ইনগুলিতে, {factor} ট্যাগ থাকা দিনগুলির গড় ছিল {tagged_mean}; অন্য দিনগুলির {other_mean} ({tagged_n} ও {untagged_n} দিন)। এটি এন্ট্রিগুলির একটি ধারা, কোনো ব্যাখ্যা নয়।",
+      "no_factors": "কোনও ট্যাগের পুনরাবৃত্ত ধারা বোঝানোর মতো যথেষ্ট চেক-ইন নেই।",
+      "action": "সহজ মনে হলে, আজ একটি ছোট পদক্ষেপ বেছে নিতে পারেন—একটু থামা, জল খাওয়া, বা ভরসার কাউকে বার্তা দেওয়া।",
+      "support": "ইদানীং সময়টা কঠিন লাগলে, ভরসার কারও সঙ্গে কথা বলা একটি বিকল্প। এই পরামর্শটি না নিলেও চলে।"
+    }
+  }
+}

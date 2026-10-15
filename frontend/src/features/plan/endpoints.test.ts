@@ -96,6 +96,7 @@ describe("plan endpoints", () => {
         quiet_hours_enabled: true,
         quiet_start: "21:00",
         quiet_end: "06:30",
+        mood_outlook_enabled: true,
       },
       client,
     );
@@ -105,6 +106,7 @@ describe("plan endpoints", () => {
       quiet_hours_enabled: true,
       quiet_start: "21:00",
       quiet_end: "06:30",
+      mood_outlook_enabled: true,
     });
   });
 });

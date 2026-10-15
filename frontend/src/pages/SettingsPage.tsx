@@ -4,7 +4,8 @@
  * It carries the controls the accessibility work needs somewhere to live:
  * palette choice, an honest statement of the reduced-motion setting, the AI
  * disclosure (AGENTS.md rule 3 requires it to be reachable, not just shown once
- * during onboarding), and a way back through onboarding.
+ * during onboarding), a default-off Mood Outlook opt-in in the plan settings,
+ * and a way back through onboarding.
  */
 
 import { useState, type FormEvent, type ReactElement } from "react";

@@ -49,6 +49,8 @@ export interface PlanSettings {
   quiet_start: string;
   /** 24-hour `HH:MM`. */
   quiet_end: string;
+  /** Separate explicit opt-in for the numeric-only Mood Outlook. */
+  mood_outlook_enabled: boolean;
   /** The exercise catalogue's tags — the only valid preference choices. */
   known_exercise_tags: string[];
 }
@@ -59,4 +61,5 @@ export interface PlanSettingsPayload {
   quiet_hours_enabled: boolean;
   quiet_start: string;
   quiet_end: string;
+  mood_outlook_enabled: boolean;
 }

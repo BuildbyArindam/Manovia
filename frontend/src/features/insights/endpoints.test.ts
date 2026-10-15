@@ -11,10 +11,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ApiClient } from "@/lib/api";
-import { patternInsights, weeklyInsights } from "@/test/insightsFakes";
+import { moodOutlook, patternInsights, weeklyInsights } from "@/test/insightsFakes";
 
 import {
   INSIGHTS_ENDPOINTS,
+  fetchMoodOutlook,
   fetchPatternInsights,
   fetchWeeklyInsights,
   insightsQuery,
@@ -86,5 +87,16 @@ describe("fetchWeeklyInsights", () => {
 
     expect(calls[0]).toBe(`${INSIGHTS_ENDPOINTS.weekly}?tz=Asia%2FKolkata&weeks=4`);
     expect(result.weekly).toHaveLength(4);
+  });
+});
+
+describe("fetchMoodOutlook", () => {
+  it("sends the device timezone and interface locale", async () => {
+    const { client, calls } = recordingClient(moodOutlook());
+
+    const result = await fetchMoodOutlook({ locale: "bn" }, client);
+
+    expect(calls[0]).toBe(`${INSIGHTS_ENDPOINTS.outlook}?tz=Asia%2FKolkata&locale=bn`);
+    expect(result.forecast).toHaveLength(3);
   });
 });

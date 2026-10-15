@@ -15,6 +15,10 @@ import type { PlanItem, PlanSettings, PlanSettingsPayload, PlanTodayResponse } f
 
 export { deviceTimezone };
 
+export const planSettingsKeys = {
+  current: ["plan", "settings"] as const,
+};
+
 export const PLAN_ENDPOINTS = {
   today: "/plan/today",
   done: (id: string): string => `/plan/${id}/done`,

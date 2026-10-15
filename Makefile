@@ -1,4 +1,7 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline
+.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline ml-mood-forecast
+
+MOOD_FORECAST_CONFIG ?= configs/mood_forecast.yaml
+MOOD_FORECAST_ARGS ?=
 
 # Backend targets delegate to backend/; frontend targets to frontend/. Docker
 # targets (up/down/smoke) drive the compose stack and were wired on Day 7;
@@ -174,6 +177,11 @@ ml-retrieval-pipeline:
 
 ml-retrieval-smoke:
 	$(MAKE) -C ml retrieval-smoke
+
+# Day 36: run the synthetic mood-forecast experiment. A baseline-only result
+# requires the explicit `MOOD_FORECAST_ARGS=--allow-baselines-only` opt-in.
+ml-mood-forecast:
+	$(MAKE) -C ml mood-forecast MOOD_FORECAST_CONFIG=$(MOOD_FORECAST_CONFIG) MOOD_FORECAST_ARGS="$(MOOD_FORECAST_ARGS)"
 
 ml-test:
 	$(MAKE) -C ml test

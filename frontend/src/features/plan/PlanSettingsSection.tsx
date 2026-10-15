@@ -16,12 +16,8 @@ import { isApiError, type ApiClient } from "@/lib/api";
 import { t } from "@/lib/i18n/i18n";
 import { api as defaultClient } from "@/lib/api";
 
-import { fetchPlanSettings, savePlanSettings } from "./endpoints";
+import { fetchPlanSettings, planSettingsKeys, savePlanSettings } from "./endpoints";
 import type { PlanSettings } from "./types";
-
-export const planSettingsKeys = {
-  current: ["plan", "settings"] as const,
-};
 
 /** `HH:MM` from a time input, or a valid default when the field is empty. */
 function cleanTime(value: string, fallback: string): string {
@@ -60,6 +56,7 @@ export function PlanSettingsSection({
           quiet_hours_enabled: next.quiet_hours_enabled,
           quiet_start: cleanTime(next.quiet_start, "22:00"),
           quiet_end: cleanTime(next.quiet_end, "07:00"),
+          mood_outlook_enabled: next.mood_outlook_enabled,
         },
         client,
       ),
@@ -199,6 +196,24 @@ export function PlanSettingsSection({
           </label>
         </div>
         <p className="mt-2 text-sm text-ink-muted">{t("plan.settingsMidnight")}</p>
+      </fieldset>
+
+      <fieldset className="mt-5">
+        <legend className="font-semibold">{t("plan.settingsOutlookLegend")}</legend>
+        <label className="mt-2 inline-flex cursor-pointer items-start gap-3 rounded-xl border border-border-strong px-4 py-3">
+          <input
+            type="checkbox"
+            role="switch"
+            data-testid="mood-outlook-toggle"
+            checked={draft.mood_outlook_enabled}
+            onChange={(event) => setDraft({ ...draft, mood_outlook_enabled: event.target.checked })}
+            className="mt-1 h-5 w-5 accent-accent-bg"
+          />
+          <span>
+            <span className="block font-semibold">{t("plan.settingsOutlookToggle")}</span>
+            <span className="block text-sm text-ink-muted">{t("plan.settingsOutlookHelp")}</span>
+          </span>
+        </label>
       </fieldset>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">

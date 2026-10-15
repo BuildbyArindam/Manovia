@@ -31,6 +31,7 @@ import { formatLocalDay } from "@/lib/dates";
 
 import { BucketChart } from "./components/BucketChart";
 import { DifferenceChart } from "./components/DifferenceChart";
+import { MoodOutlookCard } from "./components/MoodOutlookCard";
 import { InsightPanel } from "./components/InsightPanel";
 import { InsightsExplainer } from "./components/InsightsExplainer";
 import { DataTableView } from "./components/DataTableView";
@@ -74,6 +75,7 @@ export function InsightsView({ client }: InsightsViewProps): ReactElement {
     <div className="space-y-6" data-testid="insights-page">
       <PageHeader title={INSIGHTS_COPY.heading} lede={INSIGHTS_COPY.lede} />
 
+      <MoodOutlookCard client={client} locale={language} />
       <PatternsSection query={patterns} />
       <WeeklySection query={weekly} />
 

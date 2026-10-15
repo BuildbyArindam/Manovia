@@ -1,0 +1,69 @@
+# Day 36 research run. This config generates a deterministic synthetic panel;
+# it never reads production/user mood records. No checkpoints are deployable.
+name: mood_forecast_sequence_models
+seed: 20261015
+notes: >-
+  Research only. Synthetic state-space cohort with user-disjoint and chronological
+  splits. Neural models require the optional training extra; a baseline-only report
+  requires the explicit --allow-baselines-only command-line override.
+
+data:
+  users: 72
+  days: 210
+  start_date: "2025-01-06"
+  logging_probability: 0.82
+
+split:
+  train_users_fraction: 0.6
+  calibration_users_fraction: 0.2
+  train_time_fraction: 0.62
+  calibration_time_fraction: 0.82
+  train_fit_fraction: 0.78
+
+model:
+  lookback_days: 28
+  horizon_days: 3
+  hidden_size: 32
+  transformer_heads: 4
+  transformer_layers: 1
+  dropout: 0.1
+  quantiles: [0.1, 0.5, 0.9]
+  kinds: [gru, lstm, transformer]
+
+training:
+  epochs: 10
+  batch_size: 128
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  gradient_clip: 1.0
+  require_torch: true
+  few_shot_steps: 30
+  few_shot_learning_rate: 0.005
+  few_shot_l2: 0.1
+  few_shot_max_update_norm: 0.25
+  few_shot_max_validation_loss_increase: 0.1
+  few_shot_min_support: 3
+
+evaluation:
+  nominal_coverage: 0.8
+  smoothing_alpha: 0.35
+  run_ablation: true
+  ablation_groups: [context, day_of_week, energy]
+
+run:
+  phase: evaluation
+
+report:
+  output: reports/day36-mood-forecasting.md
+
+tracking:
+  experiment: manovia-mood-forecasting
+  tracking_uri: null
+  log_environment: true
+  run_name: null
+  tags:
+    purpose: research-only
+    day: "36"
+    data: synthetic
+
+threads: 1

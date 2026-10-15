@@ -45,6 +45,7 @@ export function planSettings(overrides: Partial<PlanSettings> = {}): PlanSetting
     quiet_hours_enabled: false,
     quiet_start: "22:00",
     quiet_end: "07:00",
+    mood_outlook_enabled: false,
     known_exercise_tags: ["breathing", "grounding", "mindfulness", "worry"],
     ...overrides,
   };
@@ -156,6 +157,7 @@ export function makePlanFake(
           quiet_hours_enabled: payload.quiet_hours_enabled,
           quiet_start: payload.quiet_start,
           quiet_end: payload.quiet_end,
+          mood_outlook_enabled: payload.mood_outlook_enabled,
         };
         return fake.settings;
       }

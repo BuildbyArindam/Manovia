@@ -209,3 +209,47 @@ export interface PatternInsights extends InsightsMeta {
   summary: string[];
   about: AboutInsights;
 }
+
+/** One day in the Mood Outlook's personal-history range. */
+export interface MoodOutlookPoint {
+  day: string;
+  estimate: number;
+  lower: number;
+  upper: number;
+}
+
+/** A small, descriptive association between closed check-in tags and mood. */
+export interface MoodOutlookFactor {
+  tag: string;
+  label: string;
+  tagged_days: number;
+  other_days: number;
+  tagged_mean: number;
+  other_mean: number;
+  difference: number;
+  sentence: string;
+}
+
+/** `GET /api/v1/insights/outlook`; every sentence is server-reviewed copy. */
+export interface MoodOutlook {
+  status: "ready" | "not_enough_data" | "stale";
+  available: boolean;
+  today: string;
+  timezone: string;
+  timezone_fallback_used: boolean;
+  locale: string;
+  locale_fallback_used: boolean;
+  lookback_days: number;
+  minimum_checkin_days: number;
+  check_ins_used: number;
+  distinct_checkin_days: number;
+  latest_check_in: string | null;
+  summary: string;
+  uncertainty_note: string;
+  not_health_advice: string;
+  forecast: MoodOutlookPoint[];
+  top_factors: MoodOutlookFactor[];
+  no_factors_note: string | null;
+  small_action: string | null;
+  optional_support: string | null;
+}
