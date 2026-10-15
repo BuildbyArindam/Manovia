@@ -1,12 +1,15 @@
 # Manovia ML platform (`ml/`)
 
-Days 31–32. This directory is the foundation for every model Manovia might ever
+Days 31–36. This directory is the foundation for every model Manovia might ever
 put near a user: a **data catalogue** with licences and verdicts, **experiment
 tracking** where every run records enough to be reproduced, **configs** that are
 validated rather than convention, and **cards** that have to exist before a
 number is quoted. Day 32 added the first real model: a **LoRA fine-tune of
 `xlm-roberta-base` into Manovia's nine emotions** (ADR 0032), packaged as an
-artefact the backend can load with `EMOTION_ANALYZER=trained`.
+artefact the backend can load with `EMOTION_ANALYZER=trained`. Day 36 adds a
+synthetic mood-forecast research pipeline; its sequence-model scores are blocked
+in this sandbox because PyTorch is not installed, so only transparent baselines
+are reported.
 
 Nothing here is wired into the API's *safety* path, and the crisis gate is
 untouched (AGENTS.md, ML ground rule 1): the emotion model is a tone hint, it
@@ -109,6 +112,7 @@ a run cannot forget:
 | `make retrieval-eval` | measure all eight settings on the configured split and write the report |
 | `make retrieval-pipeline` | the five above, in order |
 | `make retrieval-smoke` | every stage on toy settings in ~30 s; its report is titled SMOKE (plumbing, not a result) |
+| `make mood-forecast` | Day 36: generate synthetic data, compare baselines and (with the optional training extra) GRU/LSTM/Transformer quantiles; logs to MLflow and writes `reports/day36-mood-forecasting.md` |
 
 ## Day 34: compression, serving and safe rollout
 
@@ -183,6 +187,34 @@ hand-setting it is +0.040 MRR at no latency cost. Decisions:
 [ADR 0035](../docs/adr/0035-fine-tuned-retrieval.md); method, failure cases and the
 end-to-end chat turns:
 [docs/verification/day35-retrieval.md](../docs/verification/day35-retrieval.md).
+
+## Day 36: mood forecasting with sequence models and honest uncertainty
+
+`src/manovia_ml/mood_forecast/` is a research-only pipeline over a deterministic,
+synthetic 72-user × 210-day panel. It has four transparent baselines, optional GRU,
+LSTM and Transformer models with ordered next-three-day 10/50/90 quantiles, user- and
+time-disjoint splits, 80% split-conformal interval expansion on calibration users,
+feature-ablation hooks, guarded few-shot last-layer adaptation, and an MLflow report.
+The frozen report is [`reports/day36-mood-forecasting.md`](reports/day36-mood-forecasting.md);
+the run's data hash and split boundaries are in that report.
+
+Run it with `make mood-forecast` (or `make ml-mood-forecast` from the repository root).
+The optional `[training]` extra is required for neural fitting. In a CPU-only checkout
+without PyTorch, pass `MOOD_FORECAST_ARGS=--allow-baselines-only` explicitly; the CLI
+otherwise refuses to mislabel a baseline run as a complete sequence-model experiment.
+
+**Sandbox result: baselines only.** PyTorch is absent, so GRU/LSTM/Transformer scores,
+feature ablations and few-shot adaptation were not measured. The best baseline in this
+synthetic run was the 7-day moving average (MAE 0.554, MASE 0.915, 78.3% empirical
+coverage at nominal 80%); this is not a neural win or a claim about real users. No model
+weights are served. The product's separate Outlook endpoint is a default-off,
+explicit-opt-in arithmetic summary of a user's numeric history; its displayed range is
+an empirical variability description, explicitly **not** a calibrated confidence
+interval or a probability. It never reads mood notes or journal text.
+
+Decisions and limitations: [ADR 0036](../docs/adr/0036-mood-forecasting.md); code and
+API/UI verification:
+[docs/verification/day36-mood-forecasting.md](../docs/verification/day36-mood-forecasting.md).
 
 ## How the pieces fit together
 
