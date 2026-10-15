@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Card version | 1.2 (Day 33, 2026-10-14) — adds the trained safety classifier (C2b alternate) behind the unchanged ensemble, and states plainly that no trained number exists yet |
+| Card version | 1.3 (Day 35, 2026-10-15) — C8 becomes a measured retrieval stack (hybrid BM25 + dense, a cross-encoder and a calibrated "no good answer" floor) with a frozen test split, and §5.5 reports its numbers, including the ones that did not improve |
 | Product | Manovia, a privacy-first mental wellbeing **self-help** companion |
 | Status | Pre-launch. **Not clinically reviewed.** Clinical review is a precondition of public launch ([docs/clinical-review.md](clinical-review.md)). |
 | Not | A medical device, a diagnostic tool, therapy, or a crisis service. It cannot send help to anyone. |
@@ -31,7 +31,7 @@ Architecture context: [docs/architecture.md](architecture.md). Safety design:
 | C5 | **Lexicon fallbacks** | Keyword lexicon and a polarity sentiment scorer, `backend/app/services/nlp/` | Fallback for C4, and the path measured by the emotion evaluation | No | In process | Always attached |
 | C6 | **Language-model provider** | One of: `anthropic` (hosted, `anthropic` extra), `ollama` (local), `fake` (scripted, for tests and development), plus the canned local reply as the last link of the chain | Writes replies for NONE, LOW and MEDIUM turns. **Never called at HIGH or IMMINENT** | No. Its output must pass C7 | Anthropic: provider's cloud. Ollama: your own host | `LLM_PROVIDER` must be set; config default is `fake` |
 | C7 | **Output guard** | Deterministic checks on the whole reply: YAML categories in `backend/app/content/safety/output_patterns.yaml` (diagnosis, medication, identity claims, isolation or dependence, outcome promises, self-harm method language), plus length, language and question-count checks in `backend/app/services/safety/output_guard.py`. One strict regeneration, then a safe local reply | Blocks the categories above and replies in the wrong language or too long | It is a filter, so it can only block | In process | On |
-| C8 | **Retrieval embedder** | Offline TF-IDF (default), or `paraphrase-multilingual-MiniLM-L12-v2` through sentence-transformers with the `rag` extra | Picks curated self-help passages for a reply | No | In process | TF-IDF unless the `rag` extra is installed |
+| C8 | **Retrieval stack** (embedder + BM25 + fusion + cross-encoder + abstain floor) | Embedder: offline TF-IDF (default), or `paraphrase-multilingual-MiniLM-L12-v2` through sentence-transformers with the `rag` extra. Day 35 adds, behind `RETRIEVER=baseline\|hybrid\|hybrid_rerank`: in-house Okapi BM25, reciprocal-rank fusion of the two ranked lists (`dense_weight` 0.20, fitted on the dev split), a 12-feature cross-encoder over the top 20 candidates (coefficients fitted on the train split, served from JSON), and one calibrated score floor per setting below which the retriever returns nothing ([ADR 0035](adr/0035-fine-tuned-retrieval.md)). A contrastive fine-tune of the embedder (MNRL + mined hard negatives) exists and is measured, but **no checkpoint was trained here** — torch and the hub are unreachable in the build sandbox, so the fine-tuned rows are an offline projection and the notebook that trains a real one is unrun | Picks curated self-help passages for a reply, and decides when to show none | No | In process, no network at query time | `RETRIEVER=baseline` (the Day-13 dense-only retriever); `hybrid_rerank` is the measured recommendation and ships its calibration in `backend/app/ml_artifacts/retrieval_v1/tuning.json` |
 | C9 | **Optional name redaction** | spaCy named-entity recognition through the `ner` extra | Removes person names from text sent to an LLM | n/a | In process | **Off** (`LLM_REDACT_NAMES=false`) |
 | C10 | **Screening instruments** | PHQ-9 and GAD-7: official item wording and published scoring. Not machine learning | Self-screening, with support shown before any PHQ-9 score when item 9 is positive | n/a | Deterministic | On |
 
@@ -247,6 +247,71 @@ model would say.
 The LLM-as-judge rubric (`evals/prompts/response_judge_v1.md`) is opt-in and
 advisory. Its offline scores (5.00 / 5) are not evidence of quality.
 
+### 5.5 Retrieval (C8, Day 35)
+
+Measured by `make ml-retrieval-eval` on the **frozen test split**: 52 hand-written
+queries of the 254-row eval set (154 hand-written + 100 template paraphrases flagged
+`synthetic`), against the real 40-document / 59-passage corpus. Ranking is scored
+with the abstain floor *not* applied, so the rows compare systems rather than
+decisions. Full report, bootstrap CIs and the ten analysed failure cases:
+[`ml/reports/day35-retrieval.md`](../ml/reports/day35-retrieval.md); method and the
+end-to-end chat turns: [`docs/verification/day35-retrieval.md`](verification/day35-retrieval.md).
+
+| setting | what it is | Recall@1 | Recall@3 | Recall@5 | MRR | p95 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `baseline` | Day-13: dense only, off-the-shelf TF-IDF | 0.292 | 0.500 | 0.592 | 0.639 | 3.1 ms |
+| `dense_finetuned` | contrastive projection only (offline, **not servable**) | 0.317 | 0.433 | 0.487 | 0.629 | 2.8 ms |
+| `bm25` | BM25 only | 0.308 | 0.463 | 0.496 | 0.626 | 2.8 ms |
+| `hybrid` | BM25 + off-the-shelf dense, rank fusion | 0.296 | 0.483 | 0.517 | 0.622 | 3.3 ms |
+| `hybrid_rerank` | **hybrid + fitted cross-encoder (recommended)** | **0.354** | 0.467 | 0.529 | **0.658** | 8.5 ms |
+| `hybrid_finetuned_rerank` | fine-tuned dense + fitted cross-encoder (offline) | 0.338 | 0.500 | 0.571 | 0.707 | 8.3 ms |
+
+What this says, and what it does not:
+
+- The recommended setting improves **the top of the list** (Recall@1 0.292 → 0.354,
+  MRR 0.639 → 0.658) for +5.4 ms p95 against a turn whose LLM call is measured in
+  seconds. **Recall@3 and Recall@5 did not improve** (0.500 → 0.467, 0.592 → 0.529)
+  and both differences sit inside their bootstrap intervals (±0.13 on MRR over 52
+  rows). The honest claim is "a better first card", not "a better top five".
+- Plain `hybrid` is *not* better than the baseline on this corpus (MRR −0.018): BM25
+  and TF-IDF dense agree closely enough that fusion mostly reshuffles. The
+  cross-encoder is what pays for the hybrid, so they ship together.
+- Fitting the cross-encoder instead of hand-setting its coefficients is worth
+  **+0.040 MRR at no latency cost** (−1.1 ms p95) — the cheapest gain measured.
+- The `*_finetuned` rows are an **offline contrastive projection**, not a servable
+  model: the backend's embedder factory builds `tfidf`, `hashing` or
+  `sentence_transformers`, not an ml matrix. They are the ablation a real checkpoint
+  fine-tune is compared against, and no number here comes from a multilingual
+  transformer.
+- Per language the picture is uneven and the counts are tiny: en (n = 21) MRR 0.702 →
+  0.706, hi-Latn (n = 10) 0.683 → 0.750, but **hi (n = 4) and bn (n = 3) do not move
+  at all** (0.500 and 0.333), because only 3 of 40 documents are Hindi and 3 are
+  Bengali. The contrastive projection is the one setting that clearly helps those
+  slices (hi 0.500 → 0.750, bn 0.333 → 0.733) — a direction on n = 4 and n = 3, not a
+  result.
+
+**"No good answer" (the abstain decision).** One score floor per served setting,
+fitted on a 20-row **calibration** split (never dev, never test) as the lowest
+threshold whose answer precision — of the turns that got a card, how many had a
+relevant document in the top 3 — is at or above 0.70. Fitted: `hybrid` 0.6578,
+`hybrid_rerank` 0.7198. On the test split (12 of 52 rows have no relevant document):
+
+| setting | threshold | abstain P | abstain R | answer P | answer R | false abstain |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `hybrid` | 0.6578 | 0.400 | 1.000 | 0.818 | 0.550 | 18 |
+| `hybrid_rerank` | 0.7198 | 0.417 | 0.833 | 0.786 | 0.650 | 14 |
+
+`hybrid_rerank` correctly refused 10 of the 12 no-answer queries and wrongly showed a
+card for 2, both within 0.04 of the floor. `hybrid` refused all 12 and paid for it
+with 18 **false abstains** — answerable questions met with silence, the expensive
+cell. Live, through the served retriever over the same 52 queries, 18 turns showed a
+card (16 containing a labelled document) and **all 12 no-answer turns showed none**.
+The floor was originally 0.90; the calibration split rejected it (it answered 2 of 13
+answerable calibration queries), and the config records that reasoning next to the
+value. Measured precision is a **lower bound**: the labels are incomplete
+([`ml/data/retrieval/DATASET_CARD.md`](../ml/data/retrieval/DATASET_CARD.md) §8) and no
+test row was relabelled to improve a number.
+
 ## 6. Screening instruments (Day 20)
 
 The instruments are reproduced exactly as published. The band copy, the phrase
@@ -319,6 +384,8 @@ Each failure below is measured or traced to a file. None is hidden by a headline
 | F10 | **Single-message view.** Risk is judged per message. Saved chats carry a bounded summary, and ephemeral chats carry no memory | `docs/architecture.md`, "Where a conversation lives" | A risk that builds slowly over many turns can be judged low at each step | Memory summaries are in the prompt as untrusted context; the crisis check runs on every message | Yes. Long-horizon evaluation is parked |
 | F11 | **Model library drift.** The classifier was trained on scikit-learn 1.9.1 but the environment has warned on version mismatch | PROGRESS.md "Known issues" | A retrain or a library change could move thresholds silently | Metadata records the hashes and the training split; thresholds are gated by `make eval` | Yes |
 | F13 | **Domain shift from social-media text.** The fine-tuned model (C4 alternate) is trained on GoEmotions, i.e. Reddit comments | [ADR 0032](adr/0032-emotion-lora-finetune.md) §2; `ml/data/CATALOGUE.md` § GoEmotions; the card the run writes always contains this sentence | Every number for the fine-tuned model comes from that distribution. Ordinary, short, everyday text — and Hindi/Bengali text — is out of distribution, so a good score here does not transfer by itself | Domain-shift items are separate in the Day-6 evaluation set; the held-out hi/bn rows are hand-written, not scraped, and the report names the languages where a baseline wins | Yes. Waiting on the natively reviewed hi/bn corpus (`ml/data/planned/hi_bn_emotion/`) |
+| F14 | **Retrieval shows a card that does not answer the question.** A three-word vague query ("nobody to talk to") shares no content token with any of its labelled documents, so the retriever answers confidently (score 0.91) with three wrong cards | `ml/reports/day35-retrieval.md` failure case 7; test answer precision 0.786 for `hybrid_rerank`, i.e. roughly one turn in five that shows a card shows one that is not labelled relevant | A person reading a "Learn more" card that is about something else. Cards are reference material, never the reply itself, and the reply is written by C6 under C7 | The abstain floor refuses the clear no-answer cases (10 of 12 on test, 12 of 12 live); failure causes are classified from evidence in every report | Yes. Query expansion is parked (PROGRESS.md) |
+| F15 | **Non-English locales get few or no cards.** Only 3 of 40 documents are Hindi and 3 are Bengali, so with `locale=bn` a query whose answer exists only in English returns nothing above the floor at all | `docs/verification/day35-retrieval.md` §5 (a Bengali query about counselling, live: `retrieved_ids: []`); per-language table in §5.5 (hi n = 4 MRR 0.500, bn n = 3 MRR 0.333, unmoved by the reranker) | Hindi- and Bengali-locale users see the chat reply without supporting cards, while English-locale users see them. The reply itself is unaffected | The language fallback broadens to English and logs `rag_language_fallback`; the cross-encoder has a `script_match` feature so a script mismatch can only lower a score | Yes. More hi/bn documents before more retrieval engineering, and per-language floors (both parked) |
 | F12 | **Code-mixed language.** Hinglish and Banglish mix scripts and spellings, and the emotion lexicon was not measured on them separately | `evals/datasets/README.md` (emotion `hi` and `bn` slices include romanised text); `evals/reports/2026-10-13/emotion.md` reports per-language F1 only | Emotion tags on code-mixed text may be wrong | Crisis recall is gated per language, including `hi-Latn`, at 0.950 or above (`evals/thresholds.yaml`). Emotion is a tone hint, not a risk input | Yes. Each emotion-language cell has only 5–8 items (27 cells), too few for per-cell error rates |
 
 ## 8. Ethical considerations

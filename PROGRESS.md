@@ -1,3 +1,300 @@
+**Day 35 — fine-tuned retrieval: embeddings, hybrid search and reranking — is
+built, measured on a frozen test split and ready for review (2026-10-15).** The
+brief asked for a new branch `day-35-fine-tuned-retrieval-embeddings` created from
+`main`; this session is pinned to its Arena branch (`arena/9f7e5c76-manovia`), as on
+Days 19–34, so the work is committed there and the PR comes from it. Nothing was
+pushed to `main`.
+
+**What exists now:** a labelled retrieval eval set (154 hand-written queries + 59
+no-answer rows, expanded to 254 with flagged template paraphrases) cut into four
+fingerprinted splits; hybrid retrieval in the backend (in-house Okapi BM25 +
+dense with reciprocal-rank fusion, a 12-feature cross-encoder over the top 20
+candidates, `RETRIEVER=baseline|hybrid|hybrid_rerank` behind the unchanged
+`Retriever` seam); a contrastive training stack in `ml/` (hard-negative mining +
+`MultipleNegativesRankingLoss`); five MLflow-logged pipeline stages behind make
+targets; a **calibrated "no good answer" floor** per served setting, committed with
+the fingerprints of the splits it was fitted on; a generated evaluation report;
+ADR 0035; a verification note with ten analysed failure cases and five end-to-end
+chat turns; model card v1.3; a Colab notebook for the real checkpoint run; and
+**138 new ml tests + four new backend test files**.
+
+**What does not exist, and why:** a fine-tuned multilingual checkpoint. torch,
+transformers and sentence-transformers cannot be installed here (the wheel index and
+the hub are unreachable), so what was trained in the sandbox is a 128-dim
+**contrastive projection** over frozen lexical features — real training, real dev
+selection (MRR 0.5274 → 0.5642, best epoch 9), and *not servable*, because the
+backend's embedder factory builds `tfidf`, `hashing` or `sentence_transformers`, not
+an ml matrix. Those rows are measured and reported as the ablation a checkpoint run
+is compared against; the recommendation is always chosen among settings that have
+both a calibrated threshold and a servable encoder. The real run is
+`ml/notebooks/colab_retrieval_finetune.ipynb`, which checks the four split
+fingerprints before it trains anything.
+
+### Completed (Day 35)
+
+- **Eval set** (`ml/data/retrieval/`): 154 hand-written queries labelled with the
+  document ids that answer them, 59 no-answer rows (42 out of scope — crypto,
+  parenting, medication dosing — and 17 the corpus genuinely lacks). Languages en
+  138 / hi-Latn 42 / hi 35 / bn-Latn 20 / bn 19; styles no-answer 55, direct 53,
+  keyword 50, scenario 32, hinglish 28, vague 25, romanised 11. All 40 documents are
+  labelled by at least one query. **No crisis query is in the set**: retrieval is
+  step 5 and a HIGH turn never reaches it, so a crisis row would measure a path that
+  does not exist. Dataset card + catalogue entry 16.
+- **Augmentation** (`retrieval/augment.py`): 100 template-paraphrase rows, each
+  flagged `synthetic` with its template id, screened for label drift (12 candidates
+  dropped). Offline, seeded, no LLM call — so "spot-checked" means checked by a rule,
+  and the card says which.
+- **Splits** (`retrieval/data.py`, DVC `retrieval_split`): train 97, dev 85,
+  calibration 20, test 52, by `sha256(f"{seed}:{id}")[:8] % 100`. Hand-written rows
+  never enter train; synthetic rows never enter test or calibration. Re-running
+  `make -C ml data` from scratch after a sandbox reset reproduced all four
+  fingerprints byte-identically.
+- **Metrics** (`retrieval/metrics.py`): Recall@k, MRR, hit@k with per-language and
+  per-style slices, row-bootstrap CIs, and the abstain confusion matrix
+  (abstain precision/recall/F1, answer precision/recall) with
+  `fit_abstain_threshold` under three objectives.
+- **Backend hybrid retrieval**: `rag/bm25.py` (Okapi, k1 1.2, b 0.75, title boost
+  2.0, IDF floor 0.5 — in house, because `rank-bm25` is not a dependency and adding
+  one to score 59 documents was not the trade), `rag/fusion.py` (RRF, k 60, both
+  source scores carried through as `fused_evidence`), `rag/rerank.py` (12 features
+  under `FEATURE_VERSION 1`, BM25 saturation pivot 5.0, JSON weights, loader that
+  refuses a feature/version/pivot mismatch), `rag/hybrid.py`
+  (`HybridKnowledgeRetriever`, `HybridTuning`, public `candidates()`,
+  `rank(apply_floor=…)`), `ScoredChunk` in `rag/base.py`, and the same `rank()` on
+  the Day-13 retriever so both are measured identically.
+- **Factory + config**: `RETRIEVER=baseline|hybrid|hybrid_rerank`, six logged
+  degradation paths (`rag_tuning_missing`, `rag_tuning_embedder_mismatch`,
+  `rag_tuning_unknown_keys`, `rag_tuning_no_abstain_for_setting`,
+  `rag_tuning_env_override`, `rag_retriever_downgraded`), env overrides that win and
+  say so, and `dense_scale = 2 × the served embedder's floor`, derived at build time
+  and deliberately never persisted.
+- **Training stack** (`retrieval/{embeddings,pairs,contrastive}.py`): four encoders
+  behind one protocol (hashing/TF-IDF offline, trained projection, lazily imported
+  checkpoint), hard-negative mining over the top-N near misses preferring same-tag
+  passages (588 negatives, 232 tag-preferring, no pair left empty), and MNRL exactly
+  as sentence-transformers defines it — in-batch negatives, labels on the diagonal,
+  temperature-scaled softmax cross-entropy — with epoch selection on dev, never on
+  train loss.
+- **Harness** (`retrieval/harness.py`): the eight measured settings built on the
+  backend's *own* retrievers over the real corpus, ingesting once per encoder kind.
+  A missing artefact yields a row that says why, never a silently absent row.
+- **Pipeline stages**: `train_embedding.py`, `tuning.py` (`--stage fusion|abstain`,
+  `--install-backend`), `reranker.py` (fits on what the first stage really produced,
+  installs the coefficients), `evaluation/retrieval.py` (the report). Configs are data
+  (`ml/configs/retrieval_{finetune,hybrid,eval,smoke}.yaml`, pydantic `extra=forbid`,
+  unknown keys are errors); make targets `ml-retrieval-*` delegate from the root.
+- **Committed calibration**: `backend/app/ml_artifacts/retrieval_v1/tuning.json`
+  (`dense_weight` 0.20 from dev, floors 0.657762 / 0.719844 from calibration, the
+  four split fingerprints, `_smoke: false`, alternatives under `_alternatives`) plus
+  package-data so it ships in a wheel. Fitted cross-encoder coefficients are weights:
+  gitignored, regenerated by `make ml-retrieval-rerank`.
+- **Docs**: ADR 0035 (+ index), `docs/verification/day35-retrieval.md`,
+  `ml/reports/day35-retrieval.md`, model card v1.3 (C8 rewritten, §5.5 added, F14/F15
+  failure modes), README / backend README / ml README / notebooks README, CHANGELOG
+  (an `Unreleased` section, which also records that Days 28–34 were never added to
+  that file).
+
+### Verification (Day 35, every command run in this sandbox)
+
+Test split, 52 hand-written rows, k = [1, 3, 5], 3 latency repeats, 2000 bootstrap
+resamples (`make ml-retrieval-eval`):
+
+| setting | R@1 | R@3 | R@5 | MRR | p95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `baseline` (Day 13) | 0.292 | 0.500 | 0.592 | 0.639 | 3.1 ms |
+| `dense_finetuned` (offline projection, not servable) | 0.317 | 0.433 | 0.487 | 0.629 | 2.8 ms |
+| `bm25` | 0.308 | 0.463 | 0.496 | 0.626 | 2.8 ms |
+| `hybrid` | 0.296 | 0.483 | 0.517 | 0.622 | 3.3 ms |
+| **`hybrid_rerank` (recommended)** | **0.354** | 0.467 | 0.529 | **0.658** | 8.5 ms |
+| `hybrid_finetuned_rerank` (offline) | 0.338 | 0.500 | 0.571 | 0.707 | 8.3 ms |
+
+- **Recommended: `RETRIEVER=hybrid_rerank`** (with `RAG_EMBEDDER=tfidf`). It wins at
+  the top of the list — R@1 0.292 → 0.354, MRR 0.639 → 0.658 — for +5.4 ms p95
+  against a turn whose LLM call is measured in seconds, and it is the best setting
+  that a wheel can serve *and* whose abstain decision is calibrated.
+  `hybrid_finetuned_rerank` measured higher (MRR 0.707) and is **not recommendable**:
+  its dense half is the offline projection. The report says so in the recommendation
+  line rather than leaving the table to imply the winner was the best number.
+- **What did not improve, stated plainly:** R@3 0.500 → 0.467 and R@5 0.592 → 0.529,
+  both inside their bootstrap intervals (±0.13 on MRR over 52 rows). Plain `hybrid`
+  is *worse* than the baseline here (MRR −0.018): on this corpus BM25 and TF-IDF
+  dense agree closely enough that fusion mostly reshuffles, and the cross-encoder is
+  what pays for the hybrid. Fitting it instead of hand-setting it is **+0.040 MRR at
+  −1.1 ms p95** — the cheapest gain measured.
+- **Abstain decision** (fitted on the 20-row calibration split, scored on test, 12 of
+  52 rows no-answer): `hybrid_rerank` threshold 0.7198 — abstain recall **0.833**,
+  abstain precision 0.417, answer precision **0.786**, answer recall 0.650, 14 false
+  abstains. `hybrid` threshold 0.6578 — abstain recall 1.000, answer recall 0.550, 18
+  false abstains. Both wrongly-answered no-answer cases were within 0.04 of the floor.
+  The floor was originally 0.90 and the *calibration* split rejected it (it answered 2
+  of 13 answerable calibration queries), so the config ships 0.70 with that reasoning
+  recorded next to the value and both alternative objectives fitted beside it.
+- **Live, through the served retriever** on the same 52 queries: 18 turns showed a
+  card, 16 of them containing a labelled document, and **all 12 no-answer turns showed
+  none**. Five full chat turns through the real orchestrator (ingest → factory →
+  `ChatOrchestrator.respond`) with their `metadata.retrieved_ids` are transcribed in
+  the verification note §5, plus a crisis turn that never reaches retrieval and two
+  non-English-locale turns that expose the locale gate.
+- **Splits were not tuned on:** the fusion weight came from dev (`b9dc4cbb…`), the
+  floors from calibration (`1ce6ecf9…`), the cross-encoder from train (`c186b664…`,
+  scored on dev), the reported numbers from test (`091a469c…`) — all four fingerprints
+  printed in the report and committed in `tuning.json`.
+- **Backend:** `make test` on the final tree → **4491 passed, 3 skipped** (423 s) with
+  `onnx` + `onnxruntime` installed from PyPI; **4486 passed, 4 skipped** without them.
+  Overall coverage 95.79% statements / 88.79% branches (floor 85%) — **PASS**. The
+  Day-26 safety-group gate is **FAIL** and was not touched today (see Known issues).
+  `ruff check`, `ruff format --check` and `mypy app tests` (322 files) all clean.
+- **ml:** `ruff check src tests` and `ruff format --check` clean; `mypy src tests`
+  clean except the pre-existing `training/emotion/baselines.py:131`
+  `huggingface_hub` import; `pytest -q` → **452 passed, 7 skipped, 2 failed**, the two
+  failures being Day-32 emotion tests that assert on a transformers checkpoint's
+  availability string (no transformers here). Retrieval tests: 30 + 27 + 47 + 34 =
+  **138 passed**.
+- **Smoke:** `make ml-retrieval-smoke` runs all five stages end to end in ~30 s and
+  writes `ml/reports/smoke/<date>-retrieval-smoke.md`, titled **SMOKE (plumbing, not a
+  result)** so a smoke number cannot be quoted as a finding.
+- **Frontend:** untouched (`git diff --stat` over `frontend/` is empty) — the retriever
+  sits behind the existing protocol and the metadata contract is unchanged, so
+  `retrieved_ids` reaches the same "Learn more" cards the UI already renders — but the
+  checks were run anyway after `npm ci` (743 packages): `npm run lint` clean,
+  `npm run typecheck` clean, `npm run test:run` **608 passed / 3 skipped (74 files)** in
+  95 s, and `npm run format:check` flags two files Day 35 does not touch
+  (`e2e/day25/keyboard.spec.ts`, `src/scripts/playwrightFailures.test.ts`), left alone
+  rather than reformatted inside a retrieval change.
+
+### Decisions (Day 35)
+
+All in [ADR 0035](docs/adr/0035-fine-tuned-retrieval.md); the short form:
+
+1. **Eval set before model, splits before knobs.** Nothing was fitted until the four
+   splits existed and were fingerprinted, and the test split is hand-written rows only.
+2. **The sandbox trains the loss, not the checkpoint.** MNRL + hard-negative mining
+   implemented over frozen lexical features with a trained projection; the same config
+   and pairs train a real checkpoint in the notebook. A fake checkpoint with a metric
+   attached would have been a lie.
+3. **BM25 in house.** 59 documents did not justify a new dependency.
+4. **The cross-encoder is distilled, not downloaded** — 12 interpretable features and
+   one balanced logistic regression, fitted on the candidates the first stage really
+   produced, served from JSON a reviewer can read. `load_cross_encoder` is written to
+   accept a transformer behind the same seam later.
+5. **A threshold is a trade-off, so the alternatives ship with it.** `_alternatives`
+   in `tuning.json` records what `f1` and `abstain_recall` would have chosen.
+6. **Calibration data is committed; weights are not.** `tuning.json` in Git (numbers +
+   provenance + fingerprints), fitted coefficients gitignored and regenerable.
+7. **Downgrade the setting, never the threshold.** `hybrid_rerank` without loadable
+   coefficients serves plain `hybrid` and logs it: hand-set coefficients under a floor
+   calibrated on fitted ones would put an uncalibrated number where a calibrated one is
+   promised.
+8. **`dense_scale` is derived, not persisted** — 2 × the served embedder's floor, so a
+   configuration change cannot be silently overridden by a stale JSON number.
+9. **Recommendations come only from servable, calibrated settings**, and the report
+   names any row that measured better and why it was not chosen.
+
+### Known issues (as of Day 35)
+
+- **The Day-26 coverage gate is red, and CI never runs it.** `make test` passes every
+  test but the gate fails the `services/safety` group (rule: *every* module ≥ 95%):
+  `trained.py` 91.3% statements / 82.4% branches — its `_default_loader` (lines
+  328–337) imports torch and transformers, uninstallable here — and `ml_classifier.py`
+  93.3% / 86.1%, whose remaining lines (310, 314–317, 324–325, 280–281) are the
+  `SAFETY_ML=onnx` success path and its fallback, which need a checksum-verified
+  student in a materialised registry. Installing `onnx`/`onnxruntime` from PyPI moved
+  `ml_classifier.py` from 87.4% to 93.3% and un-skipped `tests/ml_runtime`; torch is
+  not installable at all. **No safety file or safety test changed on Day 35** (`git
+  diff --stat HEAD -- backend/app/services/safety backend/tests/safety` is empty), and
+  neither the gate nor a test was weakened. CI's backend job runs
+  `pytest --cov-fail-under=80` and does not call `scripts/coverage_gate.py`, so this
+  has been invisible since Day 33/34 — the README's Quality section now says so.
+- **Two ml tests fail in this sandbox** (`tests/test_emotion_baselines_report.py`):
+  they assert on the availability string of an off-the-shelf transformers checkpoint,
+  and transformers is not installed, so the reason the code reports is not the one the
+  test expects. Day-32 code, untouched today, same two failures before this session's
+  work.
+- **52 test rows is small.** Every difference except Recall@1 is inside its bootstrap
+  interval. The per-language cells are tinier still (bn n = 3, bn-Latn n = 2, hi n = 4)
+  and are reported as directions, not results.
+- **Non-English locales get few or no cards, and it is a corpus problem.** 3 of 40
+  documents are Hindi and 3 are Bengali. A Bengali query about what counselling is
+  like returns `[]` live: nothing clears the floor when the answer exists only in
+  English. Model card F15.
+- **The offline harness and the served pipeline measure different things.** The harness
+  ranks with `apply_floor=False` and without the orchestrator's locale gate (answer
+  recall 0.650); serving applies both (18 of 52 turns showed a card). Both numbers are
+  reported; neither is adjusted to match the other.
+- **Labels are incomplete**, so measured precision is a lower bound
+  (`ml/data/retrieval/DATASET_CARD.md` §8 records the known gaps; failure case 6 in the
+  report is arguably a correct card the labels do not list). No test row was relabelled
+  to improve a number.
+- **A template reply suppresses cards by design**, so a non-English locale whose LLM
+  reply is rejected by the output guard shows no `retrieved_ids` even when the
+  retriever found cards (`rt-hl-004` in the verification note). Day-13/14 behaviour,
+  not a Day-35 regression, but it reads like one in a demo.
+
+### Parking lot (Day 35)
+
+- Run `ml/notebooks/colab_retrieval_finetune.ipynb` (owner, Colab/Kaggle): the real
+  checkpoint fine-tune, the real cross-encoder, then re-fit fusion + floors for
+  `embedder_kind: sentence_transformers` and paste the side-by-side into the report and
+  model card §5.5.
+- **More Hindi and Bengali documents before more retrieval engineering.** The
+  per-language numbers say the corpus, not the model, is the binding constraint.
+- **Per-language abstain floors.** One global floor cannot be right when a bn query has
+  three candidate documents and an en query has fifty.
+- Serve a transformer cross-encoder: ONNX export behind `load_cross_encoder` (the
+  Day-34 path) plus a re-calibrated floor, since a threshold fitted on lexical scores
+  means nothing on transformer scores.
+- Query expansion or a synonym layer for the vocabulary-gap failures (case 7: "nobody
+  to talk to" shares no content token with any of its answers and is answered
+  confidently wrong).
+- Grow the eval set past 254 rows — especially no-answer rows and hi/bn rows — and
+  re-cut the splits with a new seed, keeping the old fingerprints in the report so the
+  two test sets are not confused.
+- Run the Day-26 coverage gate in CI, in a job that has the serving extras and a
+  registry fixture, so a red gate cannot hide behind a green `--cov-fail-under=80`.
+- Add retrieval metrics to the chat turn telemetry (cards shown, abstain rate) so the
+  live numbers stop being a one-off transcript.
+
+### Day 35 handoff status
+
+Branch `arena/9f7e5c76-manovia` (the brief's `day-35-fine-tuned-retrieval-embeddings`
+name is the PR's source intent; the session branch is pinned, as on Days 19–34).
+Nothing pushed to `main`. Everything asked for is on disk and measured **except the
+things this sandbox cannot do**: a multilingual checkpoint fine-tune, a real
+cross-encoder, and a green safety-coverage gate that needs torch.
+
+The owner must check by hand:
+
+1. `ml/notebooks/colab_retrieval_finetune.ipynb` on Colab/Kaggle — cell 2 must report
+   four MATCH fingerprints before anything trains, and the side-by-side with
+   `ml/reports/day35-retrieval.md` is the point of the run.
+2. `RETRIEVER=hybrid_rerank` against a real deployment: `make ingest` first (the store
+   keeps the vectors it was built with), then read the `rag_retriever_built` log line —
+   it names the retriever, embedder, `dense_weight`, `abstain_score` and reranker that
+   are actually serving. A `rag_retriever_downgraded` line means the coefficients are
+   missing: run `make ml-retrieval-rerank`.
+3. The abstain floor as a product decision, not a metric: at 0.7198 the system stays
+   silent on roughly a third of answerable questions (answer recall 0.650 on test, 18
+   of 52 turns live). If that is too quiet, `_alternatives` in `tuning.json` has the
+   `f1` operating point (0.5956 for `hybrid`) already measured.
+4. The two safety-coverage failures above, on a machine with torch and a registry —
+   they are the only thing between `make test` and green.
+
+### Next steps (Day 36 — first three)
+
+1. **Run the notebook** (owner GPU/Colab step) and record the first honest
+   checkpoint-vs-projection table: off-the-shelf MiniLM vs fine-tuned MiniLM vs the
+   sandbox projection, on the same 52 test rows, with the fusion weight and floors
+   re-fitted for `sentence_transformers`. If the checkpoint does not beat the
+   projection, that is the finding and the recommendation stays where it is.
+2. **Fix the language gap where it actually is** — add Hindi and Bengali knowledge
+   documents (natively written, not machine-translated), re-ingest, and re-measure the
+   hi/bn slices, which are currently n = 4 and n = 3. Then decide whether per-language
+   abstain floors are worth the complexity.
+3. **Close the coverage-gate question**: run the gate where torch and a registry
+   fixture exist, add the missing `trained.py` / `ml_classifier.py` tests or record
+   precisely why those lines cannot be covered, and put the gate in CI so it cannot be
+   red and invisible again.
+
 # Manovia — Progress
 
 **Day 34 — compression, serving and safe model rollout — is built, verified in

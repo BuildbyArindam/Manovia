@@ -9,7 +9,7 @@ A privacy-first, safety-first self-help companion for mental wellbeing. It is no
 [![CI](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml/badge.svg)](https://github.com/BuildbyArindam/Manovia/actions/workflows/ci.yml)
 ![Backend statement coverage 96.6%, branch coverage 89.9%, safety branch gate passing](https://img.shields.io/badge/backend%20statements%2096.6%25%20%C2%B7%20branches%2089.9%25-brightgreen.svg)
 
-The coverage badge is a static figure from the Day 28 run (2026-10-13). It is updated by hand when the numbers change. The safety-module branch gate passes in that run. CI does not run that gate yet. See [Quality](#quality) and the [known issues](PROGRESS.md).
+The coverage badge is a static figure from the Day 28 run (2026-10-13). It is updated by hand when the numbers change. The Day-35 run of `make test` (2026-10-15) passed 4491 tests at 95.8% statements / 88.8% branches overall, but the safety-module gate was **red** on two Day-33/34 modules whose uncovered lines need torch/transformers and an ONNX registry artefact — neither installable in the build sandbox. CI does not run that gate at all. See [Quality](#quality) and the [known issues](PROGRESS.md).
 
 ## What it is
 
@@ -22,6 +22,7 @@ Manovia is a self-help companion. It has not been reviewed by a licensed clinici
 ## Features
 
 - **Supportive chat.** Deterministic crisis rules run before any model call. Everything else goes through PII redaction, curated retrieval, a provider chain (Anthropic, Ollama, or a canned local fallback), and a whole-reply output guard ([ADR 0011](docs/adr/0011-chat-orchestrator.md), [ADR 0014](docs/adr/0014-output-guard-and-conversation-memory.md)).
+- **Retrieval you can measure.** `RETRIEVER=baseline|hybrid|hybrid_rerank` selects the Day-13 dense retriever, BM25 + dense with reciprocal-rank fusion, or that plus a cross-encoder over the top 20 candidates. Each hybrid setting carries a **calibrated "no good answer" floor** fitted on its own calibration split, so a turn can legitimately show no card. Scored on a frozen 52-query test split from a 254-query labelled eval set: Recall@1 0.292 → 0.354 and MRR 0.639 → 0.658 for +5.4 ms p95 ([ADR 0035](docs/adr/0035-fine-tuned-retrieval.md), [the numbers and the ten failure cases](docs/verification/day35-retrieval.md)).
 - **Safety detection.** A rules engine plus a one-way ML backstop. The ML model can raise a risk level but never lower it ([ADR 0008](docs/adr/0008-crisis-detection-rules-engine.md), [ADR 0009](docs/adr/0009-safety-ml-ensemble.md)).
 - **Mood check-ins.** A five-point valence and energy form, tags, streaks and encrypted notes ([ADR 0015](docs/adr/0015-mood-check-ins.md)).
 - **Encrypted journal.** AES-256-GCM envelope encryption with per-entry keys ([ADR 0017](docs/adr/0017-encrypted-journal-and-envelope-encryption.md)).
@@ -105,7 +106,7 @@ Manovia is a monorepo: a FastAPI backend, a React, Vite and TypeScript frontend,
 ## Quality
 
 - **Tests.** The backend suite (pytest) and the frontend suite (Vitest) run in CI. The Day 28 run is recorded in the [verification note](docs/verification/day28-documentation-and-portfolio.md).
-- **Coverage.** Measured on 2026-10-13: statements 96.6%, branches 89.9%. The branch gate in `backend/scripts/coverage_gate.py` (run by `make test`) requires overall branch coverage of 85%, branch coverage of 95% for every `app/services/safety` module, and 100% for the crypto and scoring modules. In that run every safety module was at 100% branches, after two tests were added for the gaps that had failed the gate. CI runs pytest with an 80% statement floor and does not run the branch gate yet.
+- **Coverage.** Measured on 2026-10-13: statements 96.6%, branches 89.9%. The gate in `backend/scripts/coverage_gate.py` (run by `make test`) requires 85% overall and **95% for every `app/services/safety` module**, plus 100% for the crypto and scoring modules. Re-measured on 2026-10-15 (Day 35): 4491 passed, 3 skipped, overall statements 95.84% and branches 88.82% — the overall floor passes, and the safety group does **not**: `trained.py` 91.3%/82.4% (its `_default_loader` imports torch and transformers, which the sandbox cannot install) and `ml_classifier.py` 93.3%/86.1% (its `SAFETY_ML=onnx` success path needs a checksum-verified student in a materialised registry, an artefact deliberately not in Git). No safety file changed on Day 35 and nothing was weakened to make it green; the gate is recorded as a known issue. CI runs pytest with an 80% statement floor and does not run this gate at all.
 - **Evaluation.** [docs/evaluation-report.md](docs/evaluation-report.md) gives the full numbers, the methods and the limits. In brief, on the frozen test split (51 high-risk and imminent cases), the ensemble caught all 51 (exact 95% lower bound 0.930). Precision was 0.567. The test split has been scored at least once, so these figures are not a clean held-out result.
 
 ## Safety
@@ -142,7 +143,7 @@ The production compose file refuses to start without `SECRET_KEY` and `FIELD_ENC
 ## Known limitations and open decisions
 
 - **Not clinically reviewed.** The crisis copy, helplines, knowledge base and screening presentation need review by a licensed clinician and by native speakers of Hindi and Bengali. See [docs/clinical-review.md](docs/clinical-review.md) and [translations/STATUS.md](translations/STATUS.md).
-- **CI does not run the branch gate.** The gate passes locally under `make test`. Adding it to the CI workflow is the next step.
+- **CI does not run the coverage gate.** `make test` runs it locally, and on 2026-10-15 it was **red** on two safety modules whose uncovered lines need torch/transformers and an ONNX registry artefact (see [Quality](#quality)). Adding the gate to CI — in a job that has the serving extras — is parked in [PROGRESS.md](PROGRESS.md).
 - **Open decisions:** the copyright line in `LICENSE` is still a placeholder, private vulnerability reporting is disabled on GitHub, and the product has no age policy or age gate.
 - **Model versions:** no model identifier is hard-coded, so the production model version is not recorded in the repository.
 

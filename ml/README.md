@@ -102,6 +102,13 @@ a run cannot forget:
 | `make distill-smoke` (in `ml/`) | Day 34 offline path: distil → ONNX → INT8 → gates → report (stand-in teacher, linear student) |
 | `make distill-gates METRICS=<pipeline_metrics.json>` | release-gate check; exit 1 rejects the candidate |
 | `make registry-status` | MLflow alias + materialised registry state |
+| `make retrieval-finetune` | Day 35: mine pairs + hard negatives, fit the contrastive encoder, select the epoch on dev |
+| `make retrieval-tune` | sweep the fusion weight on **dev** and install `tuning.json` into the backend |
+| `make retrieval-rerank` | fit the 12-feature cross-encoder on **train** candidates and install the coefficients |
+| `make retrieval-calibrate` | fit the "no good answer" floors on **calibration** and install `tuning.json` |
+| `make retrieval-eval` | measure all eight settings on the configured split and write the report |
+| `make retrieval-pipeline` | the five above, in order |
+| `make retrieval-smoke` | every stage on toy settings in ~30 s; its report is titled SMOKE (plumbing, not a result) |
 
 ## Day 34: compression, serving and safe rollout
 
@@ -125,6 +132,57 @@ with `configs/distill_*_student.yaml`: upload the Day-32/33 artefacts,
 fill the null `sha256`/`rows` pins from your corpus build, distil, export,
 gate, register, promote with `--gates-passed` only on a PASS, then shadow
 before serving. Exact owner steps are in PROGRESS.md (Day 34).
+
+## Day 35: fine-tuned retrieval
+
+`src/manovia_ml/retrieval/` is the retrieval half of the ML platform, and
+`src/manovia_ml/evaluation/retrieval.py` is the report. The order matters: an eval
+set before a model, a frozen split before a knob, a calibration split before a
+threshold.
+
+* **`corpus.py`** reads the backend's 40 knowledge documents into 59 passages and
+  fingerprints the corpus, so a report says which passages it scored.
+* **`data.py`** owns the eval set (154 hand-written queries + 59 no-answer rows) and
+  the four-way split — train 97, dev 85, calibration 20, test 52 — cut by hashed
+  bucket so the cut cannot depend on a score. Hand-written rows never enter train;
+  synthetic rows never enter test or calibration.
+* **`augment.py`** paraphrases the hand-written rows into 100 `synthetic` rows
+  (template id recorded, label drift screened, 12 candidates dropped). Offline, seeded,
+  no LLM call.
+* **`metrics.py`** is Recall@k / MRR / hit@k with per-language and per-style slices,
+  row-bootstrap CIs, and the abstain confusion matrix plus `fit_abstain_threshold`
+  under three objectives.
+* **`embeddings.py` / `pairs.py` / `contrastive.py`** are the training stack: four
+  encoders behind one protocol (hashing and TF-IDF offline, a trained projection, and a
+  lazily imported `sentence_transformers` checkpoint), hard-negative mining over the
+  top-N near misses preferring same-tag passages, and
+  `MultipleNegativesRankingLoss` implemented over a frozen feature matrix — the same
+  loss, config and pairs the notebook feeds a real multilingual checkpoint.
+* **`harness.py`** measures eight settings on the **backend's own retrievers**
+  (`RETRIEVER=baseline|hybrid|hybrid_rerank`, plus the fine-tuned and untrained
+  ablations), ingesting the real corpus once per encoder kind. A missing artefact
+  produces a row that says why, never a silently absent row.
+* **`train_embedding.py` / `reranker.py` / `tuning.py`** are the run stages; each logs
+  to MLflow with the resolved config, the dataset refs, the seed and the split
+  fingerprints.
+
+Sandbox honesty: torch, transformers and sentence-transformers cannot be installed
+here, so **no multilingual checkpoint was trained**. What was trained is a 128-dim
+contrastive projection over lexical features (dev MRR 0.5274 → 0.5642, best epoch 9 on
+dev), and it is *not servable* — the backend's embedder factory builds `tfidf`,
+`hashing` or `sentence_transformers`, not an ml matrix. Those rows are the ablation a
+checkpoint run is compared against, which is why the recommendation is always chosen
+among settings that have both a calibrated threshold and a servable encoder. The real
+fine-tune is `notebooks/colab_retrieval_finetune.ipynb`.
+
+Measured on the frozen 52-query test split (`ml/reports/day35-retrieval.md`):
+`baseline` MRR 0.639 / R@1 0.292 / p95 3.1 ms → **`hybrid_rerank` MRR 0.658 / R@1
+0.354 / p95 8.5 ms**, with R@3 and R@5 slightly *lower* than the baseline and both
+differences inside their bootstrap intervals. Fitting the cross-encoder instead of
+hand-setting it is +0.040 MRR at no latency cost. Decisions:
+[ADR 0035](../docs/adr/0035-fine-tuned-retrieval.md); method, failure cases and the
+end-to-end chat turns:
+[docs/verification/day35-retrieval.md](../docs/verification/day35-retrieval.md).
 
 ## How the pieces fit together
 
