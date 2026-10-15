@@ -5958,3 +5958,8 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 3. **Wire the red-team suite into CI** (a job running
    `evals/redteam/run_redteam.py` plus ruff and mypy over `evals/redteam`), so
    a regression in any of the 150 cases blocks a merge.
+
+### Verification Completed
+- Wrote STT evaluation script `backend/scripts/evaluate_stt.py` using `jiwer`.
+- Verifications documented in `docs/verification/day39-voice.md`.
+- Completed pipeline integration ensuring zero audio data footprints on disk and STT transcriptions safely evaluated via deterministic crisis models.
