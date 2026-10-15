@@ -730,8 +730,16 @@ def test_the_abstention_level_can_never_lower_a_rules_result() -> None:
 @pytest.mark.parametrize("values", [{"max_length": 7}, {"batch_size": 0}])
 def test_invalid_dimensions_fail_closed(tmp_path: Path, values: dict[str, int]) -> None:
     with pytest.raises(ValueError):
-        TrainedSafetyClassifier(tmp_path, **values)
-    result = build_trained_safety_classifier(artifact_dir=str(tmp_path), **values)
+        TrainedSafetyClassifier(
+            tmp_path,
+            max_length=values.get("max_length", 96),
+            batch_size=values.get("batch_size", 8),
+        )
+    result = build_trained_safety_classifier(
+        artifact_dir=str(tmp_path),
+        max_length=values.get("max_length", 96),
+        batch_size=values.get("batch_size", 8),
+    )
     assert isinstance(result, NullClassifier)
     assert result.reason == "artifact_invalid"
 
