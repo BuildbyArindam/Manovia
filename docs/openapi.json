@@ -8550,6 +8550,7 @@
     },
     "/api/v1/voice/synthesize": {
       "post": {
+        "description": "Legacy local TTS endpoint; sentence streaming uses the WebSocket runtime.",
         "operationId": "synthesize_api_v1_voice_synthesize_post",
         "requestBody": {
           "content": {
@@ -8589,6 +8590,7 @@
     },
     "/api/v1/voice/transcribe": {
       "post": {
+        "description": "Day 39 compatibility endpoint; live audio uses the documented WebSocket runtime.",
         "operationId": "transcribe_api_v1_voice_transcribe_post",
         "requestBody": {
           "content": {
@@ -8630,6 +8632,7 @@
     },
     "/api/v1/voice/voices": {
       "get": {
+        "description": "List reviewed local language choices without exposing model paths.",
         "operationId": "get_voices_api_v1_voice_voices_get",
         "responses": {
           "200": {

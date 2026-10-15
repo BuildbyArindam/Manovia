@@ -253,9 +253,10 @@ describe("VoiceCompanion", () => {
     await waitFor(() => expect(screen.getByTestId("voice-status")).toHaveTextContent("Listening"));
   });
 
-  it("falls back to typing on a socket error before the browser closes it", async () => {
+  it("stops in-progress audio and falls back to typing on a socket error before close", async () => {
     const user = userEvent.setup();
     const socket = new FakeSocket();
+    const context = new FakeAudioContext();
     render(
       <VoiceCompanion
         client={signedInClient()}
@@ -263,6 +264,7 @@ describe("VoiceCompanion", () => {
         onOpenSession={async () => "session-1"}
         socketFactory={() => socket}
         recorderFactory={() => new FakeRecorder()}
+        player={new AssistantAudioPlayer(() => context)}
       />,
     );
 
@@ -270,9 +272,19 @@ describe("VoiceCompanion", () => {
     act(() => socket.open());
     await act(async () => socket.message({ type: "started", storage: "memory_only" }));
     await waitFor(() => expect(screen.getByTestId("voice-status")).toHaveTextContent("Listening"));
+    await act(async () => {
+      socket.message({
+        type: "assistant_audio",
+        audio: btoa("wav"),
+        mime_type: "audio/wav",
+        text: "Hi.",
+      });
+    });
+    await waitFor(() => expect(context.sources).toHaveLength(1));
 
     act(() => socket.onerror?.(new Event("error")));
 
+    expect(context.sources[0]?.stops).toBe(1);
     expect(await screen.findByTestId("voice-fallback")).toHaveTextContent("connection dropped");
     expect(screen.getByTestId("voice-status")).toHaveTextContent("needs attention");
   });

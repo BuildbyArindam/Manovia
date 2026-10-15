@@ -55,7 +55,7 @@ async def transcribe(
     audio: UploadFile = File(...),
     settings: Settings = Depends(get_settings),
 ) -> TranscriptionResponse:
-    """Day 39 compatibility endpoint; real-time audio uses the WebSocket below."""
+    """Day 39 compatibility endpoint; live audio uses the documented WebSocket runtime."""
     del settings, user
     from app.services.voice.stt import transcribe_audio
 

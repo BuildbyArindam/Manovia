@@ -1,6 +1,6 @@
 # Verification — Day 40 real-time voice companion
 
-**Date:** 2026-10-15  
+**Date:** 2026-10-16
 **Scope:** authenticated PCM WebSocket streaming, WebRTC VAD, incremental STT →
 existing chat orchestration → sentence TTS, local barge-in, crisis safety and
 browser controls. This record distinguishes executed sandbox evidence from the
@@ -27,9 +27,11 @@ manual-device checks that the sandbox cannot perform.
    visible helplines/continue/end controls. It does not call the LLM or emit a
    generic pre-crisis TTS chunk.
 6. PCM, recognition state, rendered live transcript, playback queue and latency
-   state stay in RAM for the open session. The feature adds no database table,
-   temporary audio file, browser local storage, IndexedDB or upload route. The
-   existing explicit chat-history choice is the only persistence choice.
+   state stay in RAM for the open session. The feature adds no audio/transcript
+   database storage, temporary audio file, browser local storage, IndexedDB or
+   upload route. The existing chat-history choice is the only transcript
+   persistence choice. A HIGH/IMMINENT ephemeral turn retains the pre-existing
+   anonymous, text-free safety-event audit (no user/session id, PCM or words).
 
 The implementation decision and trade-offs are in
 [ADR 0039](../adr/0039-realtime-voice-companion.md).
@@ -69,6 +71,24 @@ not a production SLO claim.
 | TTS first chunk | 31.344 | 33.323 |
 | **time to first audio** | **96.443** | **98.614** |
 
+## Barge-in simulation — executed
+
+The scripted `RealtimeVoiceSession` barge-in fixture was run with a deliberately
+slow first-token fake (1,000 ms) so cancellation, rather than normal completion,
+was measured. The second voiced PCM packet runs the same code covered by
+`test_barge_in_cancels_pending_assistant_audio_inside_target`:
+
+```console
+BARGE-IN simulated elapsed: 0.165 ms
+BARGE-IN server acknowledgement: 0.009 ms
+BARGE-IN target: 300 ms
+```
+
+Both values are below the configured target. This measures server cancellation;
+the browser unit test independently proves the local `AudioBufferSourceNode`
+stop is synchronous on the first signal frame, without waiting for this packet's
+round trip.
+
 ## Automated scripted coverage — executed
 
 The focused Day 40 backend command was run after replacing the temporary energy
@@ -96,6 +116,7 @@ Coverage includes:
 | STT failure | a spoken, visible type-instead fallback |
 | LLM timeout | orchestrator fallback plus synthesized spoken reply/type option |
 | WebSocket auth | selected public subprotocol only; missing/URL-only credential, malformed ID and cross-user session rejection |
+| default storage | actual SQLite inspection after a high-risk ephemeral voice turn: 0 `chat_sessions`, 0 `messages`; no new temp file/logged transcript; exactly one anonymous, text-free safety-event row |
 | browser protocol | same-origin URL, PCM conversion/parser validation, synchronous queued-audio stop, microphone retry and network type fallback |
 
 Frontend targeted Vitest executed before the WebRTC backend change:
@@ -109,8 +130,57 @@ $ cd frontend && npm run lint && npm run typecheck && \
 
 It includes a fake socket/recorder/player: PCM forwarding, local barge-in stop,
 crisis card + helpline + continue event, muted playback, denied-microphone
-cleanup/retry, and an `error` without a matching `close` event. The full
-frontend suite, production build and browser run remain release checks.
+cleanup/retry, and an `error` without a matching `close` event. The last case
+injects assistant audio first, then a socket error, and asserts that playback is
+stopped before the visible type fallback — a simulated **mid-response** network
+drop.
+
+## Full regression verification — executed
+
+The first full backend run exposed stale generated API documentation after the
+Day 40 compatibility-route descriptions changed. This was root-fixed by running
+`cd backend && ../.venv/bin/python scripts/export_openapi.py`; the generated
+`docs/openapi.json` and `docs/api.md` are committed. No test or gate was
+weakened. The re-run then passed:
+
+```console
+$ PATH="$PWD/.venv/bin:$PATH" make -C backend test
+4651 passed, 4 skipped, 50 warnings
+coverage gate: all rules satisfied
+# overall coverage: 94.13% statements / 86.11% branches
+```
+
+`PATH` names this sandbox's project virtual environment; in a normally activated
+backend virtual environment, plain `make -C backend test` is equivalent. Root
+`make lint` was also rerun with that virtual environment and passed: Ruff,
+formatting, mypy (342 source files) and frontend ESLint.
+
+```console
+$ cd frontend && npm run test:run && npm run build
+77 files passed, 1 skipped; 624 tests passed, 3 skipped
+vite production build: PASS
+```
+
+The full Vitest run emits existing React `act(...)`, jsdom `scrollTo`, and React
+Router future-flag warnings but exits zero. `npm run format:check` still reports
+four files outside Day 40 (`e2e/day25/keyboard.spec.ts`,
+`src/features/chat/Composer.tsx`, `src/features/chat/VoiceRecorder.tsx`, and
+`src/scripts/playwrightFailures.test.ts`); every Day 40 changed frontend path
+passes Prettier. The sandbox has no downloaded Playwright browser, so the updated
+voice Playwright specification is source/type checked but must run in the
+manual-device/browser environment below.
+
+## No-acoustic-inference source audit — executed
+
+```console
+$ grep -RniE 'emotion[_ -]?(score|classif|infer)|health[_ -]?(score|classif|infer)|speaker[_ -]?(embedding|identif)|voice[_ -]?(emotion|health)|prosody|pitch[[:space:]_-]*(feature|analys)' \
+    backend/app/services/voice frontend/src/features/chat --exclude='*.test.*'
+PASS: no voice-feature emotion/health/identity inference implementation terms found.
+```
+
+A companion storage-token scan finds only the explicit frontend comment that
+forbids `localStorage`, `IndexedDB` and upload use; the actual default-storage
+regression is the SQLite/temp/log inspection in the coverage table above.
 
 ## Failure behaviour
 

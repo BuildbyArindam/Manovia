@@ -2,11 +2,12 @@
 
 ## Day 40 — Real-time voice companion (streaming, barge-in, crisis-safe)
 
-**Implementation milestone in progress on 2026-10-15** on the Arena-pinned
+**Implemented and fully regression-verified on 2026-10-16** on the Arena-pinned
 branch `arena/5a28a810-manovia`. The requested descriptive branch name cannot
 replace the pinned session branch. The Day 40 backend transport is committed as
-`00707da`; the browser companion is committed as `4325d11`. No pull request has
-been opened and nothing has been merged.
+`00707da`; the browser companion is committed as `4325d11`; the WebRTC
+VAD/docs milestone is `f5c56b4`. No pull request has been opened and nothing
+has been merged.
 
 ### Completed
 
@@ -31,9 +32,11 @@ been opened and nothing has been merged.
 - Browser controls provide prominent Stop, assistant mute, show/hide live
   transcript, latency display, silence timeout, and spoken/visible type
   fallback for microphone, network, STT and LLM failures. Audio/transcript UI
-  data is in session memory only; no Day 40 local storage, IndexedDB, upload or
-  persistence mechanism was added. Existing explicit chat-history choice remains
-  the only persistence choice.
+  data is in session memory only; no audio/transcript local storage, IndexedDB,
+  upload or database persistence mechanism was added. Existing explicit
+  chat-history choice remains the only transcript-persistence choice. A
+  HIGH/IMMINENT ephemeral turn retains only the pre-existing anonymous,
+  text-free safety-event metadata audit.
 - Dev/preview and nginx proxy WebSocket upgrades; production
   `Permissions-Policy` permits microphone only for the same origin. Browser
   protocol/player/component tests use fake sockets, recorders and audio contexts;
@@ -49,14 +52,22 @@ been opened and nothing has been merged.
 - `make voice-sim` passed: **25** deterministic warm-local fake turns; p95 time
   to first audio **98.614 ms**, below the **1,500 ms** target. The p50/p95 stage
   table and SVG chart are in the verification record.
-- After switching to WebRTC VAD, focused backend config/timing/crisis/transport
-  and rejection tests passed (**94 passed, 1 warning**). Backend Ruff,
-  formatting and mypy passed at that checkpoint (342 typed source files).
-- Frontend lint and TypeScript checks passed. Targeted Day 40/API Vitest passed:
-  **4 files, 26 tests**. An earlier full frontend Vitest run passed **621 tests,
-  3 skipped** (77 files passed, 1 skipped) and an earlier production build
-  passed; a final whole-tree re-run is intentionally pending the requested
-  separate verification pass.
+- After switching to WebRTC VAD, focused backend config/timing/crisis/transport,
+  rejection and actual SQLite/temp/log default-storage inspection passed
+  (**94 passed, 1 warning**). The high-risk integration path pins prewarmed
+  cache use, LLM `call_count == 0`, stream calls `== 0`, no transcript rows and
+  one anonymous text-free safety-event row. Backend Ruff, formatting and mypy
+  passed at that checkpoint (342 typed source files).
+- A direct scripted barge-in measurement was **0.165 ms** elapsed / **0.009 ms**
+  server acknowledgement against the 300 ms target. A source grep found no
+  voice-feature emotion/health/identity inference implementation terms.
+- Full backend regression initially found stale generated API documentation;
+  `scripts/export_openapi.py` root-fixed it. Re-run: **4,651 passed, 4 skipped**,
+  all coverage gates satisfied (**94.13%** statements / **86.11%** branches).
+  Full frontend regression: **624 passed, 3 skipped** (77 files passed, one
+  skipped), production build, ESLint and TypeScript all passed. Existing React
+  act/jsdom scroll warnings remain non-fatal. The full frontend Prettier check
+  still reports four unchanged non-Day-40 files; all Day 40 paths are formatted.
 
 ### Known boundaries / required manual checks
 

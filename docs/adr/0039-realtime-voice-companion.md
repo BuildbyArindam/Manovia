@@ -43,9 +43,12 @@ storage, cache, or application log merely to operate a live session.
   high/imminent transcript tests pin LLM calls and streams at zero.
 - Keep all live PCM, transcript rows, playback queue and latency display in
   process/React/Web Audio memory for the open session. The existing chat-history
-  choice remains the only explicit route by which the user can elect to save a
-  chat. A browser-native spoken fallback covers a dropped connection; STT and
-  LLM failures receive server-synthesized type-instead speech.
+  choice remains the only explicit route by which the user can elect to save
+  transcript text. The existing anonymous, text-free crisis safety-event audit
+  is retained for an ephemeral HIGH/IMMINENT turn; it carries no PCM, transcript,
+  user id or session id. A browser-native spoken fallback covers a dropped
+  connection; STT and LLM failures receive server-synthesized type-instead
+  speech.
 
 ## Consequences
 
