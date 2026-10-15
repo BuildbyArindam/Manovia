@@ -112,3 +112,54 @@ stages:
       - data/safety/calibration.jsonl
       - data/safety/dropped.jsonl
       - data/safety/manifest.json
+
+  # Day 35: the retrieval eval set. The hand-written, hand-labelled rows in
+  # data/retrieval/retrieval_queries.jsonl are committed ground truth; these two
+  # stages derive everything else from them — the label-preserving paraphrases,
+  # and the four-way split the eval, the fusion tuning and the abstain
+  # thresholds are each allowed to read. Deterministic given (bytes, seed,
+  # code), so `dvc repro` reproduces the hashes in dvc.lock or fails.
+  retrieval_expand:
+    desc: >-
+      Paraphrase the hand-written retrieval queries into the `synthetic` rows
+      (template transforms, screened for label drift), producing the full
+      250+ query eval set. Offline and seeded; no LLM call, no network.
+    cmd: >-
+      python -m manovia_ml.retrieval.augment
+      --src data/retrieval/retrieval_queries.jsonl
+      --out-dir data/retrieval --target 100 --seed 20261013
+    deps:
+      - data/retrieval/retrieval_queries.jsonl
+      - src/manovia_ml/retrieval/augment.py
+      - src/manovia_ml/retrieval/data.py
+      - src/manovia_ml/retrieval/corpus.py
+      - src/manovia_ml/hashing.py
+      - src/manovia_ml/paths.py
+      - src/manovia_ml/seeds.py
+      - ../backend/app/content/knowledge
+    outs:
+      - data/retrieval/expanded.jsonl
+      - data/retrieval/dropped.jsonl
+      - data/retrieval/expand_manifest.json
+
+  retrieval_split:
+    desc: >-
+      Four-way split of the expanded eval set: train (contrastive pairs and
+      hard negatives), dev (fusion weight), calibration (abstain thresholds),
+      test (frozen, hand-written rows only, scored and never tuned on). The
+      manifest records a sha256 and a content fingerprint per split.
+    cmd: >-
+      python -m manovia_ml.retrieval.data
+      --src data/retrieval/expanded.jsonl
+      --out-dir data/retrieval_splits --seed 20261013
+    deps:
+      - data/retrieval/expanded.jsonl
+      - src/manovia_ml/retrieval/data.py
+      - src/manovia_ml/hashing.py
+      - src/manovia_ml/paths.py
+    outs:
+      - data/retrieval_splits/train.jsonl
+      - data/retrieval_splits/dev.jsonl
+      - data/retrieval_splits/calibration.jsonl
+      - data/retrieval_splits/test.jsonl
+      - data/retrieval_splits/manifest.json

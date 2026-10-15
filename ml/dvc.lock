@@ -113,7 +113,7 @@ stages:
       size: 3937
     - path: data/safety_toy/manifest.json
       hash: md5
-      md5: b6014e5cf9d8ade23b7ac9e0b7c95819
+      md5: f4285e7b0b311662aab781b4a705ab8a
       size: 4761
     - path: data/safety_toy/test.jsonl
       hash: md5
@@ -180,9 +180,101 @@ stages:
       size: 6638
     - path: data/safety/manifest.json
       hash: md5
-      md5: 1c62d2537a6709bf27ab2fdd7a1bce80
+      md5: 833ac29f427fc7f2a5149a014f972a53
       size: 4376
     - path: data/safety/train.jsonl
       hash: md5
       md5: 63d3a8a1730e1d26e0dbb4d363a2c0fb
       size: 1274234
+  retrieval_expand:
+    cmd: python -m manovia_ml.retrieval.augment --src 
+      data/retrieval/retrieval_queries.jsonl --out-dir data/retrieval --target 
+      100 --seed 20261013
+    deps:
+    - path: ../backend/app/content/knowledge
+      hash: md5
+      md5: 10c27293cd2aae7bde312f71838cc6a0.dir
+      size: 66727
+      nfiles: 40
+    - path: data/retrieval/retrieval_queries.jsonl
+      hash: md5
+      md5: 44d1c8d9c765145efc3cda4b6f5ef50e
+      size: 36535
+    - path: src/manovia_ml/hashing.py
+      hash: md5
+      md5: 5a39c2e354b4641dbe52a96f7c1a15a2
+      size: 6699
+    - path: src/manovia_ml/paths.py
+      hash: md5
+      md5: 86df4e75c8c25480c95d7640c96aa3fb
+      size: 3774
+    - path: src/manovia_ml/retrieval/augment.py
+      hash: md5
+      md5: c0d2a35bbdec6727ce2f4fd5597be48a
+      size: 26167
+    - path: src/manovia_ml/retrieval/corpus.py
+      hash: md5
+      md5: 32a62d3a25e7c4b6898301309b85260b
+      size: 10374
+    - path: src/manovia_ml/retrieval/data.py
+      hash: md5
+      md5: 197dd987f3a8b57d6f42ca02d76f2c7d
+      size: 17858
+    - path: src/manovia_ml/seeds.py
+      hash: md5
+      md5: f5af30e497de0ad8f1a76801211a4e54
+      size: 5888
+    outs:
+    - path: data/retrieval/dropped.jsonl
+      hash: md5
+      md5: f83d06113127716ece5962b3a56a5df0
+      size: 1044
+    - path: data/retrieval/expand_manifest.json
+      hash: md5
+      md5: c6672c14efed615c7d828e0a4406498e
+      size: 446
+    - path: data/retrieval/expanded.jsonl
+      hash: md5
+      md5: 7364882febfa0993dc67d310ce830d03
+      size: 94385
+  retrieval_split:
+    cmd: python -m manovia_ml.retrieval.data --src data/retrieval/expanded.jsonl
+      --out-dir data/retrieval_splits --seed 20261013
+    deps:
+    - path: data/retrieval/expanded.jsonl
+      hash: md5
+      md5: 7364882febfa0993dc67d310ce830d03
+      size: 94385
+    - path: src/manovia_ml/hashing.py
+      hash: md5
+      md5: 5a39c2e354b4641dbe52a96f7c1a15a2
+      size: 6699
+    - path: src/manovia_ml/paths.py
+      hash: md5
+      md5: 86df4e75c8c25480c95d7640c96aa3fb
+      size: 3774
+    - path: src/manovia_ml/retrieval/data.py
+      hash: md5
+      md5: 197dd987f3a8b57d6f42ca02d76f2c7d
+      size: 17858
+    outs:
+    - path: data/retrieval_splits/calibration.jsonl
+      hash: md5
+      md5: bb1c1f3ae0306091e69567cb3314c852
+      size: 6973
+    - path: data/retrieval_splits/dev.jsonl
+      hash: md5
+      md5: 9d2598cd0fa44b0cfcacbd992433f133
+      size: 32743
+    - path: data/retrieval_splits/manifest.json
+      hash: md5
+      md5: fea13b7176dabfa8698e7eedc12afad7
+      size: 8913
+    - path: data/retrieval_splits/test.jsonl
+      hash: md5
+      md5: 59e72446214431b4be2649b83b342623
+      size: 17825
+    - path: data/retrieval_splits/train.jsonl
+      hash: md5
+      md5: ec86f689bc0ab427a6b3e1aa93e565b2
+      size: 36844
