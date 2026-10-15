@@ -28,6 +28,7 @@ dependencies = [
     "uvicorn-worker==0.4.0",
     "pydantic==2.14.1",
     "pydantic-settings==2.15.0",
+    "python-multipart==0.0.17",
     # [asyncio] pulls in greenlet, which SQLAlchemy's async sessions require.
     "sqlalchemy[asyncio]==2.1.4",
     "alembic==1.20.0",
@@ -116,7 +117,7 @@ serving = [
 voice = [
     "faster-whisper>=1.0.3",
     "piper-tts>=1.2.0",
-    "python-multipart>=0.0.17",
+
 ]
 dev = [
     # Pinned deliberately: `python -m venv` seeds whatever setuptools the OS
@@ -134,7 +135,6 @@ dev = [
     "hypothesis==6.169.0",
     # mypy --strict needs stubs for the YAML loader.
     "types-PyYAML==6.0.12.20260906",
-    "faster_whisper",
 ]
 
 [tool.setuptools.packages.find]
