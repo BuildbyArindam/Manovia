@@ -5,7 +5,8 @@
 **Implemented and verified on 2026-10-15**, on Arena's pinned branch
 `arena/e17d4e5d-manovia` (the requested `day-38-privacy-preserving-ml-federated`
 name could not replace the session branch). No push to main, branch switch or
-merge. Work was committed/pushed in milestones. This is **offline synthetic
+merge. [PR #46](https://github.com/BuildbyArindam/Manovia/pull/46) is open and
+intentionally unmerged. Work was committed/pushed in milestones. This is **offline synthetic
 research only**, with no product integration, GPU run, real dataset or weights.
 
 ### Completed
