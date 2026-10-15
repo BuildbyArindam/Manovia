@@ -114,7 +114,7 @@ export function VoiceRecorder({ onTranscribe, disabled = false }: VoiceRecorderP
         <p className="text-sm text-ink-muted">Transcribing audio...</p>
       ) : recording ? (
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-danger animate-pulse" aria-label="Recording indicator" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-danger animate-pulse" role="status" aria-label="Recording indicator" />
           <button
             type="button"
             onClick={stopRecording}
