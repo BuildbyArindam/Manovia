@@ -118,6 +118,22 @@ _ENV_KEYS = (
     "CHAT_EPHEMERAL_MAX_TURNS",
     # Day 29 red team.
     "PRIVACY_EXPORT_PER_HOUR",
+    # Day 40 real-time voice. A developer's local Piper path or relaxed VAD
+    # value must never change offline simulation/integration tests.
+    "VOICE_REALTIME_ENABLED",
+    "VOICE_SAMPLE_RATE_HZ",
+    "VOICE_MAX_CHUNK_BYTES",
+    "VOICE_MAX_UTTERANCE_SECONDS",
+    "VOICE_VAD_ENERGY_THRESHOLD",
+    "VOICE_VAD_SILENCE_MS",
+    "VOICE_STT_PARTIAL_INTERVAL_MS",
+    "VOICE_SILENCE_TIMEOUT_SECONDS",
+    "VOICE_BARGE_IN_TARGET_MS",
+    "VOICE_FIRST_AUDIO_BUDGET_MS",
+    "VOICE_TTS_PROVIDER",
+    "VOICE_PIPER_MODEL_EN",
+    "VOICE_PIPER_MODEL_HI",
+    "VOICE_PIPER_MODEL_BN",
 )
 
 

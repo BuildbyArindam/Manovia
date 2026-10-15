@@ -305,7 +305,7 @@ class ChatOrchestrator:
         if not plan.allow_llm:
             reply = await self._crisis_reply(message, conversation, plan, decision)
             self._log_turn(message, plan, reply, started, streamed=True)
-            yield TokenEvent(reply.reply)
+            yield TokenEvent(reply.reply, crisis=True)
             yield FinalEvent(reply=reply, replaced=False)
             return
 

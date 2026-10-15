@@ -222,6 +222,14 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.state.chat_sessions = build_session_service(app_settings, app.state.db)
     app.state.chat_orchestrator = None
 
+    # Day 40: one process-wide, local-only voice runtime. It holds only model
+    # handles and deterministic crisis assistant audio; each participant's PCM
+    # and transcript are owned by an in-memory WebSocket session and discarded
+    # on close. Building it does not load a STT model or make a network call.
+    from app.services.voice.realtime import VoiceRuntime
+
+    app.state.voice_runtime = VoiceRuntime.build(app_settings)
+
     # Middleware added last runs first (outermost), so the request ID wraps
     # every response, including error responses. Rate limiting sits just inside
     # the security headers so even a 429 is fully dressed; it is skipped when
