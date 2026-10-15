@@ -5,9 +5,11 @@
 **Implemented and verified on 2026-10-15** on Arena's pinned branch
 `arena/ee484020-manovia`; no branch switch was made. The task uses an offline
 research seam and is **not wired into `GET /plan/today`**. ADR 0037 records the
-scope and the existing ADR-0011 filename conflict. The branch is pushed;
-[PR #45](https://github.com/BuildbyArindam/Manovia/pull/45) is open and intentionally
-left unmerged.
+scope and the existing ADR-0011 filename conflict. All seven PR checks passed
+on code/config commit `50c9f06`; the report links to the exact workflow runs.
+PR [#45](https://github.com/BuildbyArindam/Manovia/pull/45) was later merged by
+`BuildbyArindam` at `2026-10-15T11:36:23Z` as `b3deb95`. I did not issue a merge
+command; the merge occurred externally after the checks passed.
 
 **What shipped:** an explicit allow-list of eight reviewed exercises and three
 daily-plan actions, with deterministic `support-options` excluded from learning;
@@ -62,24 +64,32 @@ fairness or clinical certification. Full-run MLflow id:
   11 skipped**. The skips are optional ONNX/training/PyTorch paths. Smoke: 20
   tiny seeds, 4,800 generated interactions, passed. Full run: 20 seeds,
   108,800 generated interactions, passed. No GPU or real dataset was needed.
+- **PR CI:** all seven checks passed at code/config commit `50c9f06`—backend,
+  frontend, ML, dependency audit, gitleaks, safety/evaluation, and accessibility.
+  CI's ML import setup is explicit now: `PYTHONPATH=src:../backend` and the
+  backend-pinned `structlog==26.1.0`; see the verification note for run links.
 - **Frontend:** full lint, TypeScript type-check and tests passed; Vitest reports
   **613 passed, 3 skipped** (74 files passed; one skipped). No frontend product
   code changed. An optional Prettier check still finds two unrelated Day-25
-  files; `npm ci` also reported 9 existing audit findings (4 moderate, 5 high).
+  files. Local full `npm ci` reported 9 audit findings (4 moderate, 5 high);
+  the separate blocking PR audit of production dependencies passed.
 - **Branch/commit:** the Arena-pinned task branch is `arena/ee484020-manovia`;
-  `ed1a748` is the pushed backend/ADR milestone, `02bd2d0` the simulation
-  milestone, and `c528cba` the results/verification milestone. No work was
-  pushed to `main`; [PR #45](https://github.com/BuildbyArindam/Manovia/pull/45)
-  is open and intentionally unmerged.
+  `ed1a748` is the backend/ADR milestone, `02bd2d0` the simulation milestone,
+  and `c528cba` the results/verification milestone. CI setup fixes are
+  `6aa1490` (backend source path for ML tests) and `50c9f06` (explicit
+  `structlog` dependency). No work was pushed directly to `main`; PR #45 was
+  merged externally as `b3deb95` after all checks passed. The agent did not
+  merge the PR.
 
 ### Known issues / sandbox limitations (Day 37)
 
 1. The complete backend coverage gate is still red on the unchanged safety
    classifier modules despite every backend test passing; see above and
    `docs/verification/day37-jitai.md`.
-2. The optional ML training/ONNX extras and GPU are absent, so their 11 ML tests
-   are skipped. The contextual-bandit experiment itself uses the real backend
-   policy implementation and CPU-only synthetic data.
+2. In the local sandbox the optional ML training/ONNX extras and GPU are absent,
+   so 11 ML tests are skipped. The PR's ML CI job installs those extras and
+   passes; the contextual-bandit experiment itself uses the real backend policy
+   implementation and CPU-only synthetic data.
 3. The frontend Prettier check flags only
    `frontend/e2e/day25/keyboard.spec.ts` and
    `frontend/src/scripts/playwrightFailures.test.ts`; neither was changed just

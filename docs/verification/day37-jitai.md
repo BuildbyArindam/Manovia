@@ -48,9 +48,27 @@ Result: no matches (expected). The reward is the bounded normalized pre/post sel
 | Full frontend tests | `npm run test:run` | **613 passed, 3 skipped** across 74 passing files; one file skipped (89.73s) |
 | Full backend tests | `make test` | **4,566 passed, 4 skipped** (501.03s; 49 warnings); the pytest portion passed, then the repository coverage gate returned non-zero |
 
-The backend coverage gate failure is outside this task's changed files: overall coverage passed at 94.59% statements / 86.95% branches (85% floor), but the pre-existing `app/services/safety` group floor is 95% and the unchanged `ml_classifier.py` (87.39% statements / 77.78% branches) and `trained.py` (91.29% / 82.35%) remain below it. `make test` therefore exits `1` after the successful pytest run. No unrelated safety-classifier changes were made.
+The backend coverage gate failure is outside this task's changed files: overall coverage passed at 94.59% statements / 86.95% branches (85% floor), but the pre-existing `app/services/safety` group floor is 95% and the unchanged `ml_classifier.py` (87.39% statements / 77.78% branches) and `trained.py` (91.29% / 82.35%) remain below it. `make test` therefore exits `1` after the successful pytest run. No unrelated safety-classifier changes were made. The separate PR backend CI job passed; it uses the workflow's existing `pytest --cov=app --cov-fail-under=80` command and does not replace or alter the stricter local `make test` gate.
 
-Additional environment checks: `npm ci` installed the existing lockfile (743 packages) and reported 9 audit findings (4 moderate, 5 high); no frontend dependency files changed. An optional `npm run format:check` reports pre-existing formatting drift in `frontend/e2e/day25/keyboard.spec.ts` and `frontend/src/scripts/playwrightFailures.test.ts`; neither file is part of this task and neither was reformatted. The suite also emits existing React `act(...)` and jsdom `window.scrollTo` warnings despite passing.
+Additional environment checks: `npm ci` installed the existing lockfile (743 packages) and reported 9 audit findings (4 moderate, 5 high); no frontend dependency files changed. The PR production-dependency audit passed. An optional `npm run format:check` reports pre-existing formatting drift in `frontend/e2e/day25/keyboard.spec.ts` and `frontend/src/scripts/playwrightFailures.test.ts`; neither file is part of this task and neither was reformatted. The suite also emits existing React `act(...)` and jsdom `window.scrollTo` warnings despite passing.
+
+## Pull-request CI verification
+
+The ML tests import the backend policy seam from the checked-out source. The CI job now sets `PYTHONPATH=src:../backend`, matching `ml/Makefile`, rather than depending on the local editable backend install. That import path also loads the backend NLP package initializer, so `structlog==26.1.0` is declared in the ML extra at the same version pinned by the backend. A CI-shaped local run with the editable backend import removed and this explicit path passed the complete ML suite: **473 passed, 11 skipped**.
+
+At code/config commit `50c9f06`, all seven PR checks passed:
+
+| Check | Result |
+| --- | --- |
+| Backend — Ruff, mypy, pytest | **Passed** (10m28s) |
+| Frontend — lint, type-check, Vitest, build | **Passed** (1m41s) |
+| ML — smoke, reproducibility, catalogue | **Passed** (5m14s) |
+| Dependency audit | **Passed** (1m28s) |
+| Secrets scan — gitleaks | **Passed** (6s) |
+| Safety, emotion & response evaluations | **Passed** (1m21s) |
+| axe, keyboard, zoom, offline & Lighthouse | **Passed** (11m05s) |
+
+Workflow runs: [CI](https://github.com/BuildbyArindam/Manovia/actions/runs/38727167074), [evaluation harness](https://github.com/BuildbyArindam/Manovia/actions/runs/38727167079), and [accessibility/Lighthouse](https://github.com/BuildbyArindam/Manovia/actions/runs/38727167076). PR [#45](https://github.com/BuildbyArindam/Manovia/pull/45) was subsequently merged by `BuildbyArindam` at `2026-10-15T11:36:23Z` as `b3deb95`; this agent did not issue a merge command.
 
 ## Research boundary and next checks
 
