@@ -12,7 +12,7 @@ def transcribe_audio(audio_file: UploadFile) -> dict[str, Any]:
     model_size = os.getenv("VOICE_STT_MODEL", "tiny")
 
     # Use Fake STT if set or in tests
-    if os.getenv("APP_ENV") == "test" or os.getenv("VOICE_STT_FAKE", "false").lower() == "true":
+    if os.getenv("VOICE_STT_FAKE", "false").lower() == "true":
         return {
             "text": "This is a fake transcription of short audio.",
             "language": "en",
