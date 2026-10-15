@@ -139,11 +139,14 @@ resamples (`make ml-retrieval-eval`):
   floors from calibration (`1ce6ecf9…`), the cross-encoder from train (`c186b664…`,
   scored on dev), the reported numbers from test (`091a469c…`) — all four fingerprints
   printed in the report and committed in `tuning.json`.
-- **Backend:** `make test` on the final tree → **4491 passed, 3 skipped** (423 s) with
+- **Backend:** `make test` on the final tree → **4491 passed, 3 skipped** (377.58 s on
+  the post-fix re-run, 423.46 s the first time — same suite, same counts) with
   `onnx` + `onnxruntime` installed from PyPI; **4486 passed, 4 skipped** without them.
   Overall coverage 95.79% statements / 88.79% branches (floor 85%) — **PASS**. The
   Day-26 safety-group gate is **FAIL** and was not touched today (see Known issues).
-  `ruff check`, `ruff format --check` and `mypy app tests` (322 files) all clean.
+  `ruff check`, `ruff format --check` (383 files — ruff 0.17 counts tracked Markdown
+  as well as Python, so 338 `.py` + 45 `.md`) and `mypy app tests` (322 files) all
+  clean. CI's own backend job passed on `434232e` in 12m54s.
 - **ml:** `ruff check src tests` and `ruff format --check` clean; `mypy src tests`
   clean except the pre-existing `training/emotion/baselines.py:131`
   `huggingface_hub` import; `pytest -q` → **461 passed, 7 skipped, 2 failed**, the two
@@ -199,6 +202,13 @@ resamples (`make ml-retrieval-eval`):
   tracked. Only `make emotion-smoke` could not run (`ModuleNotFoundError: torch`).
   Details, including a reproducibility wart the rehearsal found, in
   [the verification note §10](docs/verification/day35-retrieval.md).
+  **CI on `434232e` is green — all seven checks pass** (run `38698715042`): ML 4m49s
+  with all thirteen steps green for the first time on this branch, Backend 12m54s,
+  Frontend 1m41s, dependency audit 1m18s, safety/emotion/response evaluations 1m32s,
+  axe + keyboard + zoom + offline + Lighthouse 11m34s, secrets scan 7s. The green ML
+  job also settles two sandbox-only gaps: `make emotion-smoke` (step 9) and the two
+  `test_emotion_baselines_report.py` tests pass where torch and `huggingface_hub` are
+  installed, and so does the `mypy` line about them.
 
 ### Decisions (Day 35)
 

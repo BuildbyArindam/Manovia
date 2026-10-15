@@ -407,12 +407,22 @@ Every command below was run on the final tree, in this sandbox, on 2026-10-15.
 
 ```
 ruff check .                     All checks passed!
-ruff format --check .            382 files already formatted
+ruff format --check .            383 files already formatted
 mypy app tests                   Success: no issues found in 322 source files
-make test                        4491 passed, 3 skipped in 423.46s
+make test                        4491 passed, 3 skipped in 377.58s
                                  TOTAL statements 95.79%  branches 88.79%   (floor 85%) PASS
                                  coverage gate (Day 26): 2 rule(s) violated  FAIL  (§6)
 ```
+
+Two of these lines are a re-run on the truly final tree, after the `dvc.lock`
+fixes in §10 — the backend itself was untouched by them (`git diff 11f736b HEAD --
+backend/ frontend/` is empty), and the numbers moved only where a count or a clock
+could: 382 → 383 formatted files, because ruff 0.17 checks tracked Markdown as
+well as Python and `app/ml_artifacts/retrieval_v1/__init__.py` was added after the
+first measurement (338 `.py` + 45 tracked `.md` = 383, which is why the figure is
+higher than a `find -name '*.py'` count); and 423.46 s → 377.58 s, which is the
+same suite running faster. The ml `pytest -q` line is likewise the re-run: 461
+passed, up from 452 by exactly the nine `test_dvc_lock.py` tests §10 added.
 
 The three skips are the `nlp` extra (2 files) and the optional `llm` extra
 (1 test); `tests/ml_runtime/test_runtime.py` runs because `onnx` and `onnxruntime`
