@@ -332,6 +332,8 @@ cd ml && ../.venv/bin/python -m ruff check src tests        All checks passed!
          src/manovia_ml/training/emotion/baselines.py:131: Cannot find implementation or
          library stub for module named "huggingface_hub"   (pre-existing, Day 32)
        ../.venv/bin/python -m pytest -q                     2 failed, 452 passed, 7 skipped
+                                                           (454 passed once §10's two
+                                                            lock regression tests were added)
 ```
 
 The retrieval tests all pass with stub encoders and no network —
@@ -361,7 +363,7 @@ result)** so a smoke number cannot be quoted as a finding.
 | 8 | Reranker latency cost and gain measured | **PASS** | +5.4 ms p95 (3.3 → 8.5 ms), +4.6 ms p50, for +0.037 MRR and +0.058 R@1; fitting vs hand-setting: +0.040 MRR at −1.1 ms (§1) |
 | 9 | "No good answer" calibration + precision/recall of the abstain decision | **PASS** | floors 0.657762 / 0.719844 fitted on the 20-row calibration split; test abstain R 0.833, abstain P 0.417, answer P 0.786, answer R 0.650; live 12/12 no-answer turns refused (§3) |
 | 10 | Integrated behind the existing retriever interface, `RETRIEVER=baseline\|hybrid\|hybrid_rerank` | **PASS** | `Retriever` protocol unchanged; factory dispatch + six logged degradation paths (ADR 0035 §6); `backend/tests/unit/test_rag_factory.py` 34 tests |
-| 11 | Tests with stub embedders | **PASS** | backend 4486 passed / 4 skipped; ml retrieval 141 tests across 4 files, all offline, no network, no weights |
+| 11 | Tests with stub embedders | **PASS** | backend 4486 passed / 4 skipped; ml retrieval 138 tests across 4 files (30 + 27 + 47 + 34), all offline, no network, no weights |
 | 12 | Eval script writes a report; MLflow logging; model card updated | **PASS** | `ml/evaluation/retrieval.py` → `ml/reports/day35-retrieval.md` (+ gitignored `evaluation.json`); one MLflow run per stage, tagged `day: "35"`, with resolved config, dataset refs, split fingerprints and seed; `docs/model-card.md` C8 |
 | 13 | Comparison table with per-language and p95 latency + a recommended setting and why | **PASS** | §1, recommendation `RETRIEVER=hybrid_rerank` with four reasons including why the higher-measuring rows are not recommendable |
 | 14 | Ten failure cases with likely cause | **PASS** | §2, causes computed from evidence (`missed-relevant` / `vocabulary` / `cross-lingual` / `abstain-miss`), each with the scores and token overlaps behind it |
@@ -370,6 +372,7 @@ result)** so a smoke number cannot be quoted as a finding.
 | 17 | `make test` offline passes | **FAIL (pre-existing, not Day 35)** | Tests: **4486 passed / 4 skipped** (run A) and **4491 passed / 3 skipped** (run B, with onnx installed); overall coverage gate PASS (94.87% → 95.84% statements). The Day-26 *safety-group* gate is red on `trained.py` (91.3%, its `_default_loader` imports torch/transformers) and `ml_classifier.py` (93.3%, its ONNX success path needs a registry artefact that is not in Git). No safety file or safety test changed today; CI never runs the gate. Nothing was weakened or deleted — recorded as a known issue (§6) |
 | 18 | Full lint + type checks, backend and ml | **PASS** | backend `ruff check`, `ruff format --check`, `mypy app tests` clean; ml `ruff check`, `ruff format --check`, `mypy src tests` clean except the pre-existing `huggingface_hub` line |
 | 19 | Frontend lint, typecheck and tests | **PASS** (2 pre-existing prettier warnings) | Day 35 changes no frontend file (`git diff --stat` over `frontend/` is empty) — the retriever sits behind the existing `Retriever` protocol and the metadata contract is unchanged — but the checks were run anyway: `npm run lint` clean, `npm run typecheck` clean, `npm run test:run` **608 passed / 3 skipped (74 files)**, `npm run format:check` flags `e2e/day25/keyboard.spec.ts` and `src/scripts/playwrightFailures.test.ts`, both untouched today (§9) |
+| 20 | `dvc.lock` matches the code in this commit (CI `ml-smoke` step 4) | **FAIL → FIXED** | The first push was red: the lock recorded md5 `197dd987…`/17858 bytes for `retrieval/data.py`, which had grown `eval_set_ref` to `7bcaa72b…`/18647 bytes after `dvc repro` wrote it. `make -C ml data` regenerated the lock (4 lines); `expanded.jsonl` and all four split fingerprints and sha256s are byte-identical, so §1–§5 are unaffected. Two regression tests added to `ml/tests/test_dvc_lock.py` (verified red on the stale lock, green after) — the whole job mirrored locally in §10 |
 
 ## 8. What could not be run here
 
@@ -427,15 +430,17 @@ mypy src tests                   Found 1 error in 1 file (checked 107 source fil
                                    training/emotion/baselines.py:131: Cannot find
                                    implementation or library stub for module named
                                    "huggingface_hub"   (pre-existing, Day 32)
-pytest -q                        2 failed, 452 passed, 7 skipped in 12.98s
-pytest tests/test_retrieval_*.py 138 passed                 (30 + 27 + 47 + 34)
+pytest -q                        2 failed, 454 passed, 7 skipped in 17.02s
+pytest tests/test_retrieval_*.py tests/test_dvc_lock.py
+                                 145 passed                 (138 retrieval + 7 lock)
 make retrieval-smoke             all five stages, ~30 s, report titled SMOKE
 make retrieval-pipeline          encoder 70.6 s -> fusion sweep -> reranker 2.0 s
                                  -> calibration -> evaluation, 4 MLflow runs
 ```
 
 The two failures are `tests/test_emotion_baselines_report.py` (Day 32, transformers
-not installed — §6).
+not installed — §6). The 454 includes the two lock regression tests added in §10;
+before them the count was 452.
 
 **Frontend** (`cd frontend`, after `npm ci`: 743 packages):
 
@@ -453,3 +458,83 @@ The two prettier warnings are in files Day 35 does not touch (a Day-25 e2e spec 
 Day-28-era script test); they were left alone rather than reformatted inside a
 retrieval change, and are noted here so the output is not mistaken for a clean run.
 
+## 10. The one CI failure this branch produced, and its root cause
+
+The first push of this branch went red in the `ml-smoke` job (run `38693272190`,
+job `116283972234`) at step 5, `DVC lock matches the code (before repro rewrites
+it)` — `python -m manovia_ml.data.dvc_lock`. Steps 6–13 were skipped, so nothing
+after the lock check had been verified in CI at all.
+
+**Root cause.** `ml/dvc.lock` recorded
+
+```
+- path: src/manovia_ml/retrieval/data.py
+  hash: md5
+  md5: 197dd987f3a8b57d6f42ca02d76f2c7d
+  size: 17858
+```
+
+while the committed file hashed to `7bcaa72b0aba5d3e3aedb8ed45a924fe` at 18647
+bytes. `retrieval/data.py` gained `eval_set_ref` *after* `dvc repro` had written
+the lock, and the lock was never regenerated — so it was already stale inside the
+commit that introduced it (`7486834`). The two retrieval stages
+(`retrieval_expand`, `retrieval_split`) both depend on that module, hence two
+reports of one cause.
+
+**Why the local suite did not catch it.** `ml/tests/test_dvc_lock.py` tested
+`changed_deps` as a pure function over hand-written status dictionaries, which is
+the right unit test but never reads the repository's actual lock. `make -C ml
+test` was green; only the CI step, which shells out to `dvc status --json`
+against the real files, could see the drift.
+
+**Fix.** `make -C ml data` regenerated the lock. The diff is four lines — the two
+`(md5, size)` pairs for `retrieval/data.py`. No output hash moved:
+
+```
+data/retrieval/expanded.jsonl   sha256 455b5075ea6d2614fbd4f781c24a544223ba0e0d5e30ddd2890581a083d2c1e4  (unchanged)
+train       fingerprint c186b664c8f13716…  sha256 bf007809790053c5…  (unchanged)
+dev         fingerprint b9dc4cbbf98b10e9…  sha256 818abb3e3d03539d…  (unchanged)
+calibration fingerprint 1ce6ecf9c07afeeb…  sha256 3b3643dca5c914b2…  (unchanged)
+test        fingerprint 091a469c94b47c6b…  sha256 0dfb49d8f2304ce1…  (unchanged)
+```
+
+The splits were rebuilt byte-for-byte identically, so every number in §1–§5 still
+describes the same data and the same split boundaries as §4 attests to.
+
+**Regression test.** Two tests were added to `ml/tests/test_dvc_lock.py`, so the
+class of mistake now fails `make -C ml test` in ~0.1 s instead of failing CI in
+~3 min:
+
+* `test_the_committed_lock_re_hashes_to_the_code_in_this_commit` — parses the real
+  `ml/dvc.lock`, recomputes md5 and size for every plain-file dependency and
+  fails on any mismatch. Directory deps (`.dir` hashes) and files absent from
+  disk (gitignored inputs on a fresh clone) are skipped, preserving the
+  "missing outputs are fine, moved deps are not" distinction. It asserts the
+  canary `retrieval/data.py` and at least ten dependencies were checked, so a
+  path bug cannot make it pass vacuously.
+* `test_every_pipeline_stage_is_recorded_in_the_lock` — every stage in
+  `ml/dvc.yaml` must have an entry in the lock. `changed_deps` cannot see this
+  one at all: DVC reports a never-run stage as missing *outputs*, which the CI
+  check deliberately tolerates, and `dvc repro` would then add the entry and hide
+  the drift.
+
+Both were verified in both states: against the stale lock the first fails naming
+both stages and both hashes, and after the fix all 7 tests in the file pass.
+
+**Local mirror of the whole `ml-smoke` job**, because CI skipped steps 6–13 and
+they had therefore never run on this tree (2026-10-15, venv on `PATH`):
+
+| CI step | command | result here |
+| --- | --- | --- |
+| 4 DVC lock | `python -m manovia_ml.data.dvc_lock` | **PASS** after the fix (`dvc.lock is consistent with the code`) |
+| 5 Data pipeline | `python -m dvc repro && python -m dvc status` | **PASS** — all six stages "didn't change, skipping"; `Data and pipelines are up to date.` |
+| 6 Catalogue | `python -m manovia_ml.data.catalogue --check` | **PASS** — `catalogue ok: 16 entries, table current, 10 restricted` |
+| 7 Smoke run | `make smoke PYTHON=python` | **PASS** — exit 0, `expected_problems: []`, accuracy 0.375 / macro_f1 0.273 |
+| 8 Emotion smoke | `make emotion-smoke PYTHON=python` | **CANNOT RUN** — `ModuleNotFoundError: No module named 'torch'`. CI installs the CPU torch wheel first; this sandbox cannot reach `download.pytorch.org` (§8). |
+| 9 Tests | `python -m pytest -q` | **454 passed, 7 skipped, 2 failed** — the 2 are the pre-existing `test_emotion_baselines_report.py` failures that need `huggingface_hub` (§6); `git diff a410bc7 HEAD` over those files is empty. |
+| 10 Lint and types | `ruff check .` / `ruff format --check .` / `mypy src tests` | **PASS** / **PASS** (133 files) / 1 pre-existing `huggingface_hub` error |
+| 11 Tree complete | `find` vs `git ls-files` | **PASS** — all 110 Python files under `ml/` are tracked |
+| 12 No weights | `git ls-files \| grep -E '\.(bin\|pt\|…)$'` | **PASS** — none tracked |
+
+Retrieval-specific suites after the change: `pytest tests/test_retrieval_*.py
+tests/test_dvc_lock.py` → **145 passed** (138 retrieval + 7 lock).

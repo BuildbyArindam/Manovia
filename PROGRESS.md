@@ -146,10 +146,10 @@ resamples (`make ml-retrieval-eval`):
   `ruff check`, `ruff format --check` and `mypy app tests` (322 files) all clean.
 - **ml:** `ruff check src tests` and `ruff format --check` clean; `mypy src tests`
   clean except the pre-existing `training/emotion/baselines.py:131`
-  `huggingface_hub` import; `pytest -q` → **452 passed, 7 skipped, 2 failed**, the two
+  `huggingface_hub` import; `pytest -q` → **454 passed, 7 skipped, 2 failed**, the two
   failures being Day-32 emotion tests that assert on a transformers checkpoint's
   availability string (no transformers here). Retrieval tests: 30 + 27 + 47 + 34 =
-  **138 passed**.
+  **138 passed**, plus the 7 in `test_dvc_lock.py` — 145 together.
 - **Smoke:** `make ml-retrieval-smoke` runs all five stages end to end in ~30 s and
   writes `ml/reports/smoke/<date>-retrieval-smoke.md`, titled **SMOKE (plumbing, not a
   result)** so a smoke number cannot be quoted as a finding.
@@ -161,6 +161,28 @@ resamples (`make ml-retrieval-eval`):
   95 s, and `npm run format:check` flags two files Day 35 does not touch
   (`e2e/day25/keyboard.spec.ts`, `src/scripts/playwrightFailures.test.ts`), left alone
   rather than reformatted inside a retrieval change.
+- **CI on this branch: one real failure, found and fixed.** The first push went red in
+  `ml-smoke` (run `38693272190`) at step 5, `python -m manovia_ml.data.dvc_lock`, which
+  skipped every later step. `ml/dvc.lock` recorded md5 `197dd987…`/17858 bytes for
+  `retrieval/data.py`; the committed file is `7bcaa72b…`/18647 bytes, because
+  `eval_set_ref` was added after `dvc repro` wrote the lock and the lock was never
+  regenerated — it was stale inside the commit that introduced it. This is the *same*
+  class as Day 31's `toy.py`, and the gate Day 31 added is what caught it.
+  `make -C ml data` regenerated the lock (four lines, the two `(md5, size)` pairs); no
+  output moved — `expanded.jsonl` and all four split fingerprints and sha256s are
+  byte-identical, so every number above still describes the same data. Two regression
+  tests were added to `ml/tests/test_dvc_lock.py`, which until then tested `changed_deps`
+  only as a pure function over synthetic dicts and so could not see the real lock: one
+  re-hashes every plain-file dependency in the committed lock, one requires every
+  `dvc.yaml` stage to have a lock entry (a case `changed_deps` structurally cannot see,
+  since DVC reports a never-run stage as missing *outputs*). Verified red against the
+  stale lock and green after. Because CI had skipped steps 6–13, the whole job was then
+  mirrored locally: `dvc repro` + `dvc status` up to date, `catalogue --check` ok (16
+  entries), `make smoke` exit 0 with `expected_problems: []`, `pytest -q` 454 passed,
+  ruff/format clean, mypy at the one pre-existing line, all 110 `ml/**/*.py` tracked, no
+  weights or datasets tracked. Only `make emotion-smoke` could not run
+  (`ModuleNotFoundError: torch`). Details in
+  [the verification note §10](docs/verification/day35-retrieval.md).
 
 ### Decisions (Day 35)
 
