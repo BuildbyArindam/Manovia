@@ -146,10 +146,10 @@ resamples (`make ml-retrieval-eval`):
   `ruff check`, `ruff format --check` and `mypy app tests` (322 files) all clean.
 - **ml:** `ruff check src tests` and `ruff format --check` clean; `mypy src tests`
   clean except the pre-existing `training/emotion/baselines.py:131`
-  `huggingface_hub` import; `pytest -q` → **454 passed, 7 skipped, 2 failed**, the two
+  `huggingface_hub` import; `pytest -q` → **461 passed, 7 skipped, 2 failed**, the two
   failures being Day-32 emotion tests that assert on a transformers checkpoint's
   availability string (no transformers here). Retrieval tests: 30 + 27 + 47 + 34 =
-  **138 passed**, plus the 7 in `test_dvc_lock.py` — 145 together.
+  **138 passed**, plus the 14 in `test_dvc_lock.py` — 152 together.
 - **Smoke:** `make ml-retrieval-smoke` runs all five stages end to end in ~30 s and
   writes `ml/reports/smoke/<date>-retrieval-smoke.md`, titled **SMOKE (plumbing, not a
   result)** so a smoke number cannot be quoted as a finding.
@@ -161,27 +161,43 @@ resamples (`make ml-retrieval-eval`):
   95 s, and `npm run format:check` flags two files Day 35 does not touch
   (`e2e/day25/keyboard.spec.ts`, `src/scripts/playwrightFailures.test.ts`), left alone
   rather than reformatted inside a retrieval change.
-- **CI on this branch: one real failure, found and fixed.** The first push went red in
-  `ml-smoke` (run `38693272190`) at step 5, `python -m manovia_ml.data.dvc_lock`, which
-  skipped every later step. `ml/dvc.lock` recorded md5 `197dd987…`/17858 bytes for
-  `retrieval/data.py`; the committed file is `7bcaa72b…`/18647 bytes, because
-  `eval_set_ref` was added after `dvc repro` wrote the lock and the lock was never
-  regenerated — it was stale inside the commit that introduced it. This is the *same*
-  class as Day 31's `toy.py`, and the gate Day 31 added is what caught it.
-  `make -C ml data` regenerated the lock (four lines, the two `(md5, size)` pairs); no
-  output moved — `expanded.jsonl` and all four split fingerprints and sha256s are
-  byte-identical, so every number above still describes the same data. Two regression
-  tests were added to `ml/tests/test_dvc_lock.py`, which until then tested `changed_deps`
-  only as a pure function over synthetic dicts and so could not see the real lock: one
-  re-hashes every plain-file dependency in the committed lock, one requires every
-  `dvc.yaml` stage to have a lock entry (a case `changed_deps` structurally cannot see,
-  since DVC reports a never-run stage as missing *outputs*). Verified red against the
-  stale lock and green after. Because CI had skipped steps 6–13, the whole job was then
-  mirrored locally: `dvc repro` + `dvc status` up to date, `catalogue --check` ok (16
-  entries), `make smoke` exit 0 with `expected_problems: []`, `pytest -q` 454 passed,
-  ruff/format clean, mypy at the one pre-existing line, all 110 `ml/**/*.py` tracked, no
-  weights or datasets tracked. Only `make emotion-smoke` could not run
-  (`ModuleNotFoundError: torch`). Details in
+- **CI on this branch: two real failures at the same step, both found and fixed.**
+  `ml-smoke` went red twice at step 5, `python -m manovia_ml.data.dvc_lock` (runs
+  `38693272190`, `38696707618`), skipping steps 6–13 both times — and the two failures
+  had different causes.
+  **(A)** `ml/dvc.lock` recorded md5 `197dd987…`/17858 bytes for `retrieval/data.py`;
+  the committed file is `7bcaa72b…`/18647 bytes, because `eval_set_ref` was added after
+  `dvc repro` wrote the lock and the lock was never regenerated — it was stale inside the
+  commit that introduced it. This is the same class as Day 31's `toy.py`, and the gate
+  Day 31 added is what caught it. `make -C ml data` regenerated it (four lines); no
+  output moved, so every number above still describes the same data.
+  **(B)** Fixing (A) did *not* turn CI green. Day 35 added this pipeline's first
+  **chained** stages — `retrieval_split` consumes `data/retrieval/expanded.jsonl`, which
+  `retrieval_expand` produces and which is gitignored — so on a fresh clone, which is
+  what CI checks out, that dependency is legitimately absent and `dvc status` reports it
+  as a changed dep: `retrieval_split: data/retrieval/expanded.jsonl (deleted)`. That is
+  not a stale lock, and the module's own premise ("on a fresh clone a changed dep can
+  only mean the lock is stale") had been true only while every stage read committed
+  inputs. Left alone it would have failed every clone of every future branch.
+  `pipeline_outputs()` now reads the `outs` of every stage in `dvc.yaml` — from the
+  pipeline, not from the lock, which is the artefact under test — and `changed_deps`
+  exempts a dependency in that set **only while its state is `deleted`**; one that exists
+  but differs still fails, so the exemption is not a hole. The CLI prints what it
+  tolerated.
+  Verified in the states that failed rather than only the state that passes: four CLI
+  states by hand (fresh clone → pass naming the skipped output; fresh clone with a
+  perturbed source dep → fail; built tree → pass; built tree with a row appended to
+  `expanded.jsonl` → fail), nine tests in `test_dvc_lock.py`, and — per the Day-31
+  lesson *"rehearse from a clone, never from the working tree"* — a full `git clone`
+  rehearsal in which steps 5, 6, 7 and the lock tests all passed and `dvc repro` rebuilt
+  both retrieval stages from scratch, reproducing `expanded.jsonl` (md5 `7364882f…`) and
+  all four split fingerprints and sha256s byte-identically.
+  Because CI had skipped steps 6–13, the rest of the job was mirrored locally: `dvc
+  repro` + `dvc status` up to date, `catalogue --check` ok (16 entries), `make smoke`
+  exit 0 with `expected_problems: []`, `pytest -q` 461 passed, ruff/format clean, mypy at
+  the one pre-existing line, all 110 `ml/**/*.py` tracked, no weights or datasets
+  tracked. Only `make emotion-smoke` could not run (`ModuleNotFoundError: torch`).
+  Details, including a reproducibility wart the rehearsal found, in
   [the verification note §10](docs/verification/day35-retrieval.md).
 
 ### Decisions (Day 35)
@@ -275,6 +291,19 @@ All in [ADR 0035](docs/adr/0035-fine-tuned-retrieval.md); the short form:
   registry fixture, so a red gate cannot hide behind a green `--cov-fail-under=80`.
 - Add retrieval metrics to the chat turn telemetry (cards shown, abstain rate) so the
   live numbers stop being a one-off transcript.
+- **Make the DVC manifest outputs location-independent.** The fresh-clone rehearsal in
+  [verification §10](docs/verification/day35-retrieval.md) found that `dvc repro`
+  rewrites four lock entries — `data/safety_toy/manifest.json`, `data/safety/manifest.json`,
+  `data/retrieval/expand_manifest.json`, `data/retrieval_splits/manifest.json` — and only
+  those, because each embeds the **absolute** path of its input: 446 bytes at
+  `/home/user/Manovia/ml/…`, 444 at `/tmp/fresh-clone/ml/…`, the difference being exactly
+  the path length. Two of the four are Day-33 outputs, so this predates Day 35. It fails
+  nothing (the lock check runs before `repro` and reads only *dependencies*, no manifest
+  is a dependency, `dvc status` exits 0 either way, and every data output is
+  byte-identical), but it means the committed lock's output hashes for those four files
+  are exact only at the original checkout path, which quietly weakens "reproduces the
+  recorded md5 or fails". Fix: write paths relative to the ML root in the three
+  manifest writers, then regenerate. Deliberately not done inside a retrieval change.
 
 ### Day 35 handoff status
 

@@ -332,8 +332,8 @@ cd ml && ../.venv/bin/python -m ruff check src tests        All checks passed!
          src/manovia_ml/training/emotion/baselines.py:131: Cannot find implementation or
          library stub for module named "huggingface_hub"   (pre-existing, Day 32)
        ../.venv/bin/python -m pytest -q                     2 failed, 452 passed, 7 skipped
-                                                           (454 passed once §10's two
-                                                            lock regression tests were added)
+                                                           (461 passed once §10's nine
+                                                            dvc.lock tests were added)
 ```
 
 The retrieval tests all pass with stub encoders and no network —
@@ -372,7 +372,7 @@ result)** so a smoke number cannot be quoted as a finding.
 | 17 | `make test` offline passes | **FAIL (pre-existing, not Day 35)** | Tests: **4486 passed / 4 skipped** (run A) and **4491 passed / 3 skipped** (run B, with onnx installed); overall coverage gate PASS (94.87% → 95.84% statements). The Day-26 *safety-group* gate is red on `trained.py` (91.3%, its `_default_loader` imports torch/transformers) and `ml_classifier.py` (93.3%, its ONNX success path needs a registry artefact that is not in Git). No safety file or safety test changed today; CI never runs the gate. Nothing was weakened or deleted — recorded as a known issue (§6) |
 | 18 | Full lint + type checks, backend and ml | **PASS** | backend `ruff check`, `ruff format --check`, `mypy app tests` clean; ml `ruff check`, `ruff format --check`, `mypy src tests` clean except the pre-existing `huggingface_hub` line |
 | 19 | Frontend lint, typecheck and tests | **PASS** (2 pre-existing prettier warnings) | Day 35 changes no frontend file (`git diff --stat` over `frontend/` is empty) — the retriever sits behind the existing `Retriever` protocol and the metadata contract is unchanged — but the checks were run anyway: `npm run lint` clean, `npm run typecheck` clean, `npm run test:run` **608 passed / 3 skipped (74 files)**, `npm run format:check` flags `e2e/day25/keyboard.spec.ts` and `src/scripts/playwrightFailures.test.ts`, both untouched today (§9) |
-| 20 | `dvc.lock` matches the code in this commit (CI `ml-smoke` step 4) | **FAIL → FIXED** | The first push was red: the lock recorded md5 `197dd987…`/17858 bytes for `retrieval/data.py`, which had grown `eval_set_ref` to `7bcaa72b…`/18647 bytes after `dvc repro` wrote it. `make -C ml data` regenerated the lock (4 lines); `expanded.jsonl` and all four split fingerprints and sha256s are byte-identical, so §1–§5 are unaffected. Two regression tests added to `ml/tests/test_dvc_lock.py` (verified red on the stale lock, green after) — the whole job mirrored locally in §10 |
+| 20 | `dvc.lock` matches the code in this commit (CI `ml-smoke` step 5) | **FAIL ×2 → FIXED** | This branch was red at that step twice, for two different reasons. **A:** the lock recorded md5 `197dd987…`/17858 bytes for `retrieval/data.py`, which had grown `eval_set_ref` to `7bcaa72b…`/18647 bytes after `dvc repro` wrote it — regenerated with `make -C ml data` (four lines). **B:** the gate could not distinguish an *unbuilt upstream output* from drift — Day 35 added the pipeline's first chained stages, so a fresh clone reports `retrieval_split: data/retrieval/expanded.jsonl (deleted)`, which is not a stale lock; `changed_deps` now exempts a dependency another stage produces **only while it is missing**, never when it differs. Both verified in the state that failed: four CLI states by hand, nine tests, and a full `git clone` rehearsal that rebuilt both stages from scratch and reproduced every fingerprint and sha256 byte-identically. No measured number changed (§10) |
 
 ## 8. What could not be run here
 
@@ -430,16 +430,16 @@ mypy src tests                   Found 1 error in 1 file (checked 107 source fil
                                    training/emotion/baselines.py:131: Cannot find
                                    implementation or library stub for module named
                                    "huggingface_hub"   (pre-existing, Day 32)
-pytest -q                        2 failed, 454 passed, 7 skipped in 17.02s
+pytest -q                        2 failed, 461 passed, 7 skipped in 12.07s
 pytest tests/test_retrieval_*.py tests/test_dvc_lock.py
-                                 145 passed                 (138 retrieval + 7 lock)
+                                 152 passed                 (138 retrieval + 14 lock)
 make retrieval-smoke             all five stages, ~30 s, report titled SMOKE
 make retrieval-pipeline          encoder 70.6 s -> fusion sweep -> reranker 2.0 s
                                  -> calibration -> evaluation, 4 MLflow runs
 ```
 
 The two failures are `tests/test_emotion_baselines_report.py` (Day 32, transformers
-not installed — §6). The 454 includes the two lock regression tests added in §10;
+not installed — §6). The 461 includes the nine `test_dvc_lock.py` tests added in §10;
 before them the count was 452.
 
 **Frontend** (`cd frontend`, after `npm ci`: 743 packages):
@@ -458,14 +458,19 @@ The two prettier warnings are in files Day 35 does not touch (a Day-25 e2e spec 
 Day-28-era script test); they were left alone rather than reformatted inside a
 retrieval change, and are noted here so the output is not mistaken for a clean run.
 
-## 10. The one CI failure this branch produced, and its root cause
+## 10. The two CI failures this branch produced, and their root causes
 
-The first push of this branch went red in the `ml-smoke` job (run `38693272190`,
-job `116283972234`) at step 5, `DVC lock matches the code (before repro rewrites
-it)` — `python -m manovia_ml.data.dvc_lock`. Steps 6–13 were skipped, so nothing
-after the lock check had been verified in CI at all.
+This branch went red twice in the `ml-smoke` job, at the same step both times
+(step 5, `DVC lock matches the code (before repro rewrites it)` —
+`python -m manovia_ml.data.dvc_lock`, runs `38693272190` and `38696707618`), and
+the two failures had **different causes**. Steps 6–13 were skipped on both
+occasions, so nothing after the lock check had ever been verified in CI against
+this tree. Both are fixed below; both fixes were verified by hand in the state
+that failed, not just in the state that passes.
 
-**Root cause.** `ml/dvc.lock` recorded
+### Failure A — the committed lock was genuinely stale
+
+`ml/dvc.lock` recorded
 
 ```
 - path: src/manovia_ml/retrieval/data.py
@@ -477,64 +482,154 @@ after the lock check had been verified in CI at all.
 while the committed file hashed to `7bcaa72b0aba5d3e3aedb8ed45a924fe` at 18647
 bytes. `retrieval/data.py` gained `eval_set_ref` *after* `dvc repro` had written
 the lock, and the lock was never regenerated — so it was already stale inside the
-commit that introduced it (`7486834`). The two retrieval stages
-(`retrieval_expand`, `retrieval_split`) both depend on that module, hence two
-reports of one cause.
+commit that introduced it (`7486834`). Both retrieval stages depend on that
+module, hence two reports of one cause.
 
-**Why the local suite did not catch it.** `ml/tests/test_dvc_lock.py` tested
-`changed_deps` as a pure function over hand-written status dictionaries, which is
-the right unit test but never reads the repository's actual lock. `make -C ml
-test` was green; only the CI step, which shells out to `dvc status --json`
-against the real files, could see the drift.
+**Why the local suite did not catch it.** `ml/tests/test_dvc_lock.py` exercised
+`changed_deps` purely as a function over hand-written status dictionaries — the
+right unit test, but it never read the repository's actual lock, so `make -C ml
+test` was green and only CI, which shells out to `dvc status --json` against real
+files, could see the drift.
 
-**Fix.** `make -C ml data` regenerated the lock. The diff is four lines — the two
-`(md5, size)` pairs for `retrieval/data.py`. No output hash moved:
+**Fix.** `make -C ml data` regenerated the lock; the diff is four lines, the two
+`(md5, size)` pairs for `retrieval/data.py`.
 
-```
-data/retrieval/expanded.jsonl   sha256 455b5075ea6d2614fbd4f781c24a544223ba0e0d5e30ddd2890581a083d2c1e4  (unchanged)
-train       fingerprint c186b664c8f13716…  sha256 bf007809790053c5…  (unchanged)
-dev         fingerprint b9dc4cbbf98b10e9…  sha256 818abb3e3d03539d…  (unchanged)
-calibration fingerprint 1ce6ecf9c07afeeb…  sha256 3b3643dca5c914b2…  (unchanged)
-test        fingerprint 091a469c94b47c6b…  sha256 0dfb49d8f2304ce1…  (unchanged)
-```
-
-The splits were rebuilt byte-for-byte identically, so every number in §1–§5 still
-describes the same data and the same split boundaries as §4 attests to.
-
-**Regression test.** Two tests were added to `ml/tests/test_dvc_lock.py`, so the
-class of mistake now fails `make -C ml test` in ~0.1 s instead of failing CI in
-~3 min:
+**Regression test.** Two tests were added so the class of mistake now fails
+`make -C ml test` in ~0.1 s instead of failing CI in ~3 min:
 
 * `test_the_committed_lock_re_hashes_to_the_code_in_this_commit` — parses the real
-  `ml/dvc.lock`, recomputes md5 and size for every plain-file dependency and
-  fails on any mismatch. Directory deps (`.dir` hashes) and files absent from
-  disk (gitignored inputs on a fresh clone) are skipped, preserving the
-  "missing outputs are fine, moved deps are not" distinction. It asserts the
-  canary `retrieval/data.py` and at least ten dependencies were checked, so a
-  path bug cannot make it pass vacuously.
-* `test_every_pipeline_stage_is_recorded_in_the_lock` — every stage in
-  `ml/dvc.yaml` must have an entry in the lock. `changed_deps` cannot see this
-  one at all: DVC reports a never-run stage as missing *outputs*, which the CI
-  check deliberately tolerates, and `dvc repro` would then add the entry and hide
-  the drift.
+  lock and recomputes md5 and size for every plain-file dependency. Directory deps
+  (`.dir` hashes) and files absent from disk are skipped, preserving the "missing
+  outputs are fine, moved deps are not" distinction. It asserts the canary
+  `retrieval/data.py` and at least ten dependencies were hashed, so a path bug
+  cannot make it pass vacuously.
+* `test_every_pipeline_stage_is_recorded_in_the_lock` — every stage in `dvc.yaml`
+  must have a lock entry. `changed_deps` cannot see this case at all: DVC reports a
+  never-run stage as missing *outputs*, which the check deliberately tolerates for a
+  clone, and `dvc repro` would then add the entry and erase the evidence.
 
-Both were verified in both states: against the stale lock the first fails naming
-both stages and both hashes, and after the fix all 7 tests in the file pass.
+Verified in both states: with the stale lock restored the first test fails naming
+both stages and both hashes, and after the regeneration all 7 tests passed.
 
-**Local mirror of the whole `ml-smoke` job**, because CI skipped steps 6–13 and
-they had therefore never run on this tree (2026-10-15, venv on `PATH`):
+### Failure B — the gate could not tell an unbuilt upstream output from drift
 
-| CI step | command | result here |
+Regenerating the lock did **not** turn CI green, and this is the more interesting
+half. Day 35 added the pipeline's first *chained* stages: `retrieval_split`
+consumes `data/retrieval/expanded.jsonl`, which `retrieval_expand` produces and
+which is gitignored. On a fresh clone — which is what CI checks out — that
+dependency is legitimately absent, `dvc status` reports it under `changed deps`,
+and the gate failed with:
+
+```
+retrieval_split: data/retrieval/expanded.jsonl (deleted)
+```
+
+That is not a lock disagreeing with the code. `dvc repro` builds the stages in
+dependency order and the file appears. The module's own premise — *"on a fresh
+clone a changed dep can only mean the committed lock is stale"* — held while every
+stage read only committed inputs, and became false the day one stage read another
+stage's output. Left alone it would have failed every clone of every future
+branch, not just this one.
+
+**Fix.** `pipeline_outputs()` collects the `outs` of every stage in `dvc.yaml` —
+from the pipeline, not from the lock, which is the artefact under test — and
+`changed_deps` skips a dependency in that set **only while its state is
+`deleted`**. A dependency that exists but *differs* is never exempt, whatever
+produces it: if an upstream output no longer hashes to what the lock recorded, the
+pipeline is not reproducible, which is exactly what this check exists to catch. The
+CLI prints what it tolerated, so the exemption is visible in the log rather than
+silent. Seven tests cover the rule, including that a deleted *source* file is still
+the Day-31 failure, and that a stale source dep still wins when both are reported
+at once — the state CI was actually in on 2026-10-15.
+
+**All four states exercised by hand** (the two middle rows are the ones that prove
+the fix did not simply disable the gate):
+
+| state | result |
+| --- | --- |
+| fresh clone, upstream output absent | **exit 0**, prints `not built here yet, and built by an earlier stage: data/retrieval/expanded.jsonl` |
+| fresh clone, `retrieval/data.py` perturbed | **exit 1**, names `retrieval/data.py (modified)` for both stages |
+| built tree, lock agrees | **exit 0** |
+| built tree, a row appended to `expanded.jsonl` | **exit 1**, names `expanded.jsonl (modified)` |
+
+### Rehearsal from a fresh clone
+
+PROGRESS.md's Day-31 lesson is *"rehearse from a clone, never from the working
+tree"*, and that is what Failure B needed — the working tree always has the
+derived data, so it can never reproduce a clone's state. `git clone` of this
+branch to `/tmp`, then, with `MANOVIA_ML_ROOT` and `PYTHONPATH` pointed at the
+clone so its own code and its own `dvc.yaml` were used:
+
+```
+clone ml/data/           only committed inputs: no data/processed, no data/safety,
+                         no data/retrieval_splits, no expanded.jsonl   (= CI's state)
+step 5  dvc_lock         exit 0, naming the one output it skipped
+step 6  dvc repro        ran retrieval_expand and retrieval_split from scratch
+        dvc status       Data and pipelines are up to date.
+step 5 again             exit 0
+step 7  catalogue --check  catalogue ok: 16 entries, table current, 10 restricted
+step 10 pytest tests/test_dvc_lock.py                        14 passed
+```
+
+The clone rebuilt the splits **byte-identically**, which is the reproducibility
+claim the whole job exists to make:
+
+```
+expanded.jsonl  md5 7364882febfa0993dc67d310ce830d03                 (unchanged)
+train       fingerprint c186b664c8f13716…  sha256 bf007809790053c5…   (unchanged)
+dev         fingerprint b9dc4cbbf98b10e9…  sha256 818abb3e3d03539d…   (unchanged)
+calibration fingerprint 1ce6ecf9c07afeeb…  sha256 3b3643dca5c914b2…   (unchanged)
+test        fingerprint 091a469c94b47c6b…  sha256 0dfb49d8f2304ce1…   (unchanged)
+```
+
+So every number in §1–§5 describes the same data and the same split boundaries §4
+attests to, and `expanded.jsonl` is the same 254 rows at sha256
+`455b5075ea6d2614fbd4f781c24a544223ba0e0d5e30ddd2890581a083d2c1e4`.
+
+### One thing the rehearsal turned up that is *not* fixed
+
+`dvc repro` in the clone rewrote four lock entries — and only four, all of them
+`manifest.json` outputs:
+
+```
+data/safety_toy/manifest.json        4761 -> 4759 bytes
+data/safety/manifest.json            4376 -> 4372 bytes
+data/retrieval/expand_manifest.json   446 ->  444 bytes
+data/retrieval_splits/manifest.json  8913 -> 8911 bytes
+```
+
+The cause is that these manifests embed the **absolute** path of their input:
+`expand_manifest.json` contains
+`/tmp/fresh-clone/ml/data/retrieval/retrieval_queries.jsonl` in the clone and
+`/home/user/Manovia/ml/data/retrieval/retrieval_queries.jsonl` in this working
+tree, and the 2-byte size difference is exactly the difference in path length.
+Two of the four are Day-33 safety outputs, so this predates Day 35.
+
+It does not fail CI and it does not touch any result: the lock check runs before
+`dvc repro` and looks only at *dependencies*, no manifest is a dependency of any
+stage, `dvc status` exits 0 either way, and the data outputs above are
+byte-identical. It does mean the committed lock's *output* hashes for those four
+manifests are only exact on a checkout at the original path. The fix — write
+paths relative to the ML root — belongs to the modules that produce the manifests,
+not to a retrieval change, so it is recorded in PROGRESS.md → Parking lot rather
+than done here.
+
+### Local mirror of the whole `ml-smoke` job
+
+Because CI had skipped steps 6–13 on both runs, the job was mirrored here in full
+(2026-10-15, venv on `PATH`; step numbers are the job's own):
+
+| step | command | result here |
 | --- | --- | --- |
-| 4 DVC lock | `python -m manovia_ml.data.dvc_lock` | **PASS** after the fix (`dvc.lock is consistent with the code`) |
-| 5 Data pipeline | `python -m dvc repro && python -m dvc status` | **PASS** — all six stages "didn't change, skipping"; `Data and pipelines are up to date.` |
-| 6 Catalogue | `python -m manovia_ml.data.catalogue --check` | **PASS** — `catalogue ok: 16 entries, table current, 10 restricted` |
-| 7 Smoke run | `make smoke PYTHON=python` | **PASS** — exit 0, `expected_problems: []`, accuracy 0.375 / macro_f1 0.273 |
-| 8 Emotion smoke | `make emotion-smoke PYTHON=python` | **CANNOT RUN** — `ModuleNotFoundError: No module named 'torch'`. CI installs the CPU torch wheel first; this sandbox cannot reach `download.pytorch.org` (§8). |
-| 9 Tests | `python -m pytest -q` | **454 passed, 7 skipped, 2 failed** — the 2 are the pre-existing `test_emotion_baselines_report.py` failures that need `huggingface_hub` (§6); `git diff a410bc7 HEAD` over those files is empty. |
-| 10 Lint and types | `ruff check .` / `ruff format --check .` / `mypy src tests` | **PASS** / **PASS** (133 files) / 1 pre-existing `huggingface_hub` error |
-| 11 Tree complete | `find` vs `git ls-files` | **PASS** — all 110 Python files under `ml/` are tracked |
-| 12 No weights | `git ls-files \| grep -E '\.(bin\|pt\|…)$'` | **PASS** — none tracked |
+| 5 DVC lock | `python -m manovia_ml.data.dvc_lock` | **PASS** after both fixes; **PASS** from a fresh clone too (above) |
+| 6 Data pipeline | `python -m dvc repro && python -m dvc status` | **PASS** — all six stages up to date; from a clean clone it rebuilds both retrieval stages and reproduces every fingerprint |
+| 7 Catalogue | `python -m manovia_ml.data.catalogue --check` | **PASS** — `catalogue ok: 16 entries, table current, 10 restricted` |
+| 8 Smoke run | `make smoke PYTHON=python` | **PASS** — exit 0, `expected_problems: []`, accuracy 0.375 / macro_f1 0.273 |
+| 9 Emotion smoke | `make emotion-smoke PYTHON=python` | **CANNOT RUN** — `ModuleNotFoundError: No module named 'torch'`. CI installs the CPU torch wheel first; this sandbox cannot reach `download.pytorch.org` (§8). |
+| 10 Tests | `python -m pytest -q` | **461 passed, 7 skipped, 2 failed** — the 2 are the pre-existing `test_emotion_baselines_report.py` failures that need `huggingface_hub` (§6); `git diff a410bc7 HEAD` over those files is empty. 461 = 452 before today's fixes + 2 lock regressions + 7 chained-stage tests. |
+| 11 Lint and types | `ruff check .` / `ruff format --check .` / `mypy src tests` | **PASS** / **PASS** (133 files) / 1 pre-existing `huggingface_hub` error |
+| 12 Tree complete | `find` vs `git ls-files` | **PASS** — all 110 Python files under `ml/` are tracked |
+| 13 No weights | `git ls-files \| grep -E '\.(bin\|pt\|…)$'` | **PASS** — none tracked |
 
-Retrieval-specific suites after the change: `pytest tests/test_retrieval_*.py
-tests/test_dvc_lock.py` → **145 passed** (138 retrieval + 7 lock).
+Retrieval-specific suites after both fixes: `pytest tests/test_retrieval_*.py
+tests/test_dvc_lock.py` → **152 passed** (138 retrieval + 14 lock).
