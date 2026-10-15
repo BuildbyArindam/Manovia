@@ -37,6 +37,8 @@ from manovia_ml.hashing import sha256_text
 from manovia_ml.paths import config_dir
 
 __all__ = [
+    "RETRIEVAL_ENCODER_KINDS",
+    "RETRIEVAL_RERANKER_KINDS",
     "ConfigError",
     "DataConfig",
     "DistillConfig",
@@ -52,6 +54,15 @@ __all__ = [
     "LoraTrainingConfig",
     "ModelConfig",
     "OptunaConfig",
+    "RetrievalCalibrationConfig",
+    "RetrievalConfig",
+    "RetrievalDataConfig",
+    "RetrievalEncoderConfig",
+    "RetrievalEvalConfig",
+    "RetrievalFeaturesConfig",
+    "RetrievalHybridConfig",
+    "RetrievalRerankerConfig",
+    "RetrievalTrainingConfig",
     "SafetyCalibrationConfig",
     "SafetyConformalConfig",
     "SafetyCostConfig",
@@ -72,6 +83,7 @@ __all__ = [
     "load_config_dict",
     "load_distill_config",
     "load_expected_metrics",
+    "load_retrieval_config",
     "write_expected_metrics",
 ]
 
@@ -519,12 +531,13 @@ def _canonical(payload: Any) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def config_fingerprint(config: TrainConfig) -> str:
+def config_fingerprint(config: BaseModel) -> str:
     """sha256 of the canonical JSON of a validated config.
 
     Logged as ``config.sha256``. Two runs whose fingerprints match were given
     the same inputs *after* defaults were applied, which YAML diffs cannot tell
-    you.
+    you. Any validated config object is acceptable (TrainConfig, DistillConfig,
+    RetrievalConfig): the fingerprint is of the canonical dump, not of a shape.
     """
 
     return sha256_text(_canonical(config.model_dump(mode="json")))
@@ -728,3 +741,260 @@ def compare_metrics(
                 f"(delta {delta:.6f} > tolerance {tolerance:g})"
             )
     return problems
+
+
+# --------------------------------------------------------------------- #
+# Day 35 — fine-tuned retrieval                                            #
+# --------------------------------------------------------------------- #
+#
+# The same rules as every other config here: unknown keys are errors, models are
+# frozen, bounds are declared rather than documented, and the resolved config is
+# logged whole. What is retrieval-specific is the *pairing* of the sections: a
+# `sentence_transformers` encoder needs a model id, a `lexical` reranker needs
+# coefficients, and thresholds may only ever be fitted on the calibration split
+# (the validator says so, because a threshold fitted on test is not a threshold).
+
+RETRIEVAL_ENCODER_KINDS: tuple[str, ...] = (
+    "projection",
+    "tfidf",
+    "hashing",
+    "sentence_transformers",
+)
+RETRIEVAL_RERANKER_KINDS: tuple[str, ...] = ("none", "lexical", "transformer")
+
+
+class RetrievalDataConfig(StrictModel):
+    """Where the eval set and its splits live."""
+
+    #: The expanded eval set (hand-written + synthetic). DVC output.
+    eval_set: str = "data/retrieval/expanded.jsonl"
+    #: Directory holding train/dev/calibration/test JSONL + manifest.json.
+    splits_dir: str = "data/retrieval_splits"
+    #: The knowledge corpus directory. Empty = resolve from the repository root.
+    corpus_dir: str = ""
+    chunk_words: int = Field(default=220, ge=20, le=600)
+    chunk_overlap_words: int = Field(default=50, ge=0)
+    #: Seed used to cut the splits (must match the DVC stage that wrote them).
+    split_seed: int = Field(default=20261013, ge=0, lt=2**32)
+
+    @model_validator(mode="after")
+    def _overlap(self) -> RetrievalDataConfig:
+        if self.chunk_overlap_words >= self.chunk_words:
+            raise ValueError("chunk_overlap_words must be smaller than chunk_words")
+        return self
+
+
+class RetrievalFeaturesConfig(StrictModel):
+    """The lexical feature space the offline projection encoder works in."""
+
+    word_ngram_range: tuple[int, int] = (1, 2)
+    char_ngram_range: tuple[int, int] = (3, 5)
+    word_max_features: int = Field(default=8000, gt=0)
+    char_max_features: int = Field(default=8000, gt=0)
+    min_df: int = Field(default=1, ge=1)
+    sublinear_tf: bool = True
+
+    @field_validator("word_ngram_range", "char_ngram_range")
+    @classmethod
+    def _ordered(cls, value: tuple[int, int]) -> tuple[int, int]:
+        if value[0] > value[1]:
+            raise ValueError("n-gram ranges must be (low, high)")
+        if value[0] < 1:
+            raise ValueError("n-gram ranges start at 1")
+        return value
+
+
+class RetrievalEncoderConfig(StrictModel):
+    """Which dense encoder a run embeds with, and how it was made."""
+
+    kind: Literal["projection", "tfidf", "hashing", "sentence_transformers"] = "projection"
+    #: Only for `sentence_transformers`: the off-the-shelf checkpoint, or a local
+    #: artefact directory holding a fine-tuned one. Never hard-coded in code
+    #: (AGENTS.md: never hard-code model names).
+    model_id: str = ""
+    #: Only for `projection`: the trained artefact directory. Empty = train one.
+    artifact_dir: str = ""
+    #: Embedding size for `projection` and `hashing`.
+    dim: int = Field(default=128, ge=16, le=1024)
+    features: RetrievalFeaturesConfig = RetrievalFeaturesConfig()
+
+    @model_validator(mode="after")
+    def _needs_model_id(self) -> RetrievalEncoderConfig:
+        if self.kind == "sentence_transformers" and not self.model_id.strip():
+            raise ValueError("encoder.kind 'sentence_transformers' requires encoder.model_id")
+        if self.kind != "sentence_transformers" and self.model_id.strip():
+            raise ValueError("encoder.model_id only applies to kind 'sentence_transformers'")
+        if self.kind != "projection" and self.artifact_dir.strip():
+            # Same reason as model_id: a key that only means something for one
+            # kind must not be silently ignored for the others. `artifact_dir`
+            # holds trained projection weights, so pointing a tfidf run at one
+            # is a mistake worth refusing rather than quietly overriding.
+            raise ValueError("encoder.artifact_dir only applies to kind 'projection'")
+        return self
+
+
+class RetrievalTrainingConfig(StrictModel):
+    """Contrastive fine-tuning hyperparameters."""
+
+    #: The loss the brief names. Implemented in `retrieval.contrastive` for the
+    #: offline path and by `sentence_transformers` for the checkpoint path.
+    loss: Literal["multiple_negatives_ranking"] = "multiple_negatives_ranking"
+    #: Cosine-similarity temperature scale (sentence-transformers' default 20).
+    scale: float = Field(default=20.0, gt=0.0)
+    epochs: int = Field(default=3, ge=1, le=200)
+    batch_size: int = Field(default=32, ge=2, le=512)
+    lr: float = Field(default=0.05, gt=0.0)
+    #: Hard negatives mined per (query, positive) pair, and how many candidates
+    #: the miner looks at to find them.
+    hard_negatives: int = Field(default=4, ge=0, le=32)
+    mine_candidates: int = Field(default=20, ge=2, le=200)
+    #: Positives sampled per query per epoch (a query with three relevant
+    #: documents yields three pairs; more than one passage per document is
+    #: allowed when the document has several chunks).
+    max_positives_per_query: int = Field(default=2, ge=1, le=10)
+    #: Model selection: which dev metric picks the epoch. Never a test metric.
+    select_on: Literal["dev_mrr", "dev_recall_at_3", "last_epoch"] = "dev_mrr"
+    #: Smoke runs train on a handful of rows and must not be quotable as a
+    #: result; the flag travels into the MLflow tags and the report title.
+    phase: Literal["train", "smoke"] = "train"
+
+
+class RetrievalHybridConfig(StrictModel):
+    """BM25 + dense, fused with reciprocal rank fusion."""
+
+    bm25_k1: float = Field(default=1.2, gt=0.0, le=5.0)
+    bm25_b: float = Field(default=0.75, ge=0.0, le=1.0)
+    #: Title tokens count this many times in the BM25 document (the corpus's
+    #: curated topical words live in the title).
+    title_boost: float = Field(default=2.0, ge=1.0, le=10.0)
+    #: RRF's k. 60 is the value from the original paper and the usual default;
+    #: it is a config knob because "usual" is not evidence.
+    fusion_k: int = Field(default=60, ge=1, le=1000)
+    #: Grid searched on dev for the dense weight; BM25 gets (1 - w).
+    dense_weight_grid: tuple[float, ...] = tuple(round(x * 0.1, 2) for x in range(11))
+    #: Candidates the fused list hands to the reranker.
+    rerank_candidates: int = Field(default=20, ge=1, le=100)
+    #: Documents returned to the caller (the chat surface shows at most 3).
+    top_k: int = Field(default=5, ge=1, le=20)
+    #: Whether the language metadata filter and its one-shot English fallback
+    #: stay on. The eval reports both postures; production keeps this true.
+    language_filter: bool = False
+
+    @field_validator("dense_weight_grid")
+    @classmethod
+    def _grid(cls, value: tuple[float, ...]) -> tuple[float, ...]:
+        if not value:
+            raise ValueError("dense_weight_grid must not be empty")
+        if any(not 0.0 <= weight <= 1.0 for weight in value):
+            raise ValueError("dense weights live in [0, 1]")
+        return tuple(sorted(set(value)))
+
+
+class RetrievalRerankerConfig(StrictModel):
+    """The cross-encoder stage over the fused candidates."""
+
+    kind: Literal["none", "lexical", "transformer"] = "lexical"
+    #: Only for `transformer`: a cross-encoder checkpoint id or a local
+    #: fine-tuned/distilled artefact directory.
+    model_id: str = ""
+    #: Trained coefficients for `lexical`. Empty = the committed default weights
+    #: (a heuristic scorer, documented as untrained).
+    artifact_dir: str = ""
+    candidates: int = Field(default=20, ge=1, le=100)
+    #: Logistic-regression strength for the distilled lexical reranker.
+    c: float = Field(default=1.0, gt=0.0)
+    #: Fit on train pairs only; the calibration split picks the threshold.
+    train_split: Literal["train", "dev"] = "train"
+
+    @model_validator(mode="after")
+    def _needs_model_id(self) -> RetrievalRerankerConfig:
+        if self.kind == "transformer" and not self.model_id.strip():
+            raise ValueError("reranker.kind 'transformer' requires reranker.model_id")
+        return self
+
+
+class RetrievalCalibrationConfig(StrictModel):
+    """ "No good answer": the abstain decision and how its threshold is chosen."""
+
+    #: `answer_precision` takes the lowest threshold that keeps the cards it
+    #: does show relevant at or above `min_answer_precision`; `f1` maximises the
+    #: abstain decision's F1 instead.
+    objective: Literal["answer_precision", "f1", "abstain_recall"] = "answer_precision"
+    min_answer_precision: float = Field(default=0.9, ge=0.0, le=1.0)
+    #: A turn counts as "answered well" when a relevant document is in the top k.
+    top_k_for_answer: int = Field(default=3, ge=1, le=10)
+    #: Which split the thresholds are fitted on. Test is not an option: a
+    #: threshold chosen on the split it is reported on is not a measurement.
+    fit_split: Literal["calibration", "dev"] = "calibration"
+
+
+class RetrievalEvalConfig(StrictModel):
+    """How the evaluation itself runs."""
+
+    ks: tuple[int, ...] = (1, 3, 5)
+    bootstrap: int = Field(default=2000, ge=0, le=20000)
+    #: Repeats per query when timing. p95 over 52 queries x 3 repeats is a
+    #: within-process measurement on one CPU, and the report says so.
+    latency_repeats: int = Field(default=3, ge=1, le=20)
+    #: Failure cases the report prints for the best setting.
+    failure_cases: int = Field(default=10, ge=0, le=50)
+    #: Split the headline numbers come from.
+    split: Literal["test", "dev", "calibration", "train"] = "test"
+
+    @field_validator("ks")
+    @classmethod
+    def _ks(cls, value: tuple[int, ...]) -> tuple[int, ...]:
+        if not value or any(k < 1 for k in value):
+            raise ValueError("ks must be positive")
+        return tuple(sorted(set(value)))
+
+
+class RetrievalConfig(StrictModel):
+    """One retrieval run: what to train, what to fuse, what to report."""
+
+    name: str = Field(min_length=1)
+    seed: int = Field(ge=0, lt=2**32)
+    notes: str | None = None
+    data: RetrievalDataConfig = RetrievalDataConfig()
+    encoder: RetrievalEncoderConfig = RetrievalEncoderConfig()
+    training: RetrievalTrainingConfig = RetrievalTrainingConfig()
+    hybrid: RetrievalHybridConfig = RetrievalHybridConfig()
+    reranker: RetrievalRerankerConfig = RetrievalRerankerConfig()
+    calibration: RetrievalCalibrationConfig = RetrievalCalibrationConfig()
+    evaluation: RetrievalEvalConfig = RetrievalEvalConfig()
+    tracking: TrackingConfig = TrackingConfig()
+    threads: int | None = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def _consistency(self) -> RetrievalConfig:
+        if self.reranker.candidates > self.hybrid.rerank_candidates:
+            raise ValueError(
+                "reranker.candidates cannot exceed hybrid.rerank_candidates: the reranker "
+                "only ever sees what the fused list produced"
+            )
+        if self.calibration.top_k_for_answer > self.evaluation.ks[-1]:
+            raise ValueError(
+                "calibration.top_k_for_answer must be within the reported k range "
+                f"(max {self.evaluation.ks[-1]})"
+            )
+        return self
+
+
+def load_retrieval_config(path: str | Path) -> RetrievalConfig:
+    """Load and validate a retrieval YAML (``extra=forbid``, like TrainConfig)."""
+
+    candidate = Path(path)
+    if not candidate.is_absolute() and not candidate.is_file():
+        candidate = config_dir() / path
+    if not candidate.is_file():
+        raise ConfigError(f"retrieval config not found: {path} (looked at {candidate})")
+    try:
+        raw = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"{candidate}: invalid YAML: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{candidate}: config must be a mapping at the top level")
+    try:
+        return RetrievalConfig.model_validate(raw)
+    except ValidationError as exc:
+        raise ConfigError(f"{candidate}: invalid retrieval config\n{exc}") from exc

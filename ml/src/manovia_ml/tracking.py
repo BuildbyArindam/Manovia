@@ -33,13 +33,19 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-from manovia_ml.config import TrainConfig, config_fingerprint
+from manovia_ml.config import DistillConfig, RetrievalConfig, TrainConfig, config_fingerprint
 from manovia_ml.hashing import DatasetRef
 from manovia_ml.mlflow_api import mlflow
 from manovia_ml.paths import default_tracking_uri, ml_root
 from manovia_ml.seeds import SeedState
 
-__all__ = ["RunHandle", "git_state", "library_versions", "tracked_run"]
+__all__ = ["RunHandle", "TrackedConfig", "git_state", "library_versions", "tracked_run"]
+
+#: The config shapes a tracked run may be opened from. A union rather than a
+#: protocol: each of these is a frozen pydantic model that carries ``name``,
+#: ``tracking`` and a JSON dump, and naming them keeps ``mypy --strict`` honest
+#: about what ``tracked_run`` reads (Day 35 added the retrieval shape).
+TrackedConfig = TrainConfig | DistillConfig | RetrievalConfig
 
 #: Libraries whose version can change a number. Anything else is in the
 #: ``environment.json`` artefact; these are also params, so they are visible in
@@ -171,7 +177,7 @@ def _as_param(value: Any) -> str:
 
 @contextmanager
 def tracked_run(
-    config: TrainConfig,
+    config: TrackedConfig,
     *,
     phase: str,
     data_refs: Sequence[DatasetRef] = (),

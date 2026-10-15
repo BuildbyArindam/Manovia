@@ -104,6 +104,13 @@ known-first-party = ["manovia_ml"]
 # LLM/provider errors the backend waives N818 for (backend/pyproject.toml). The
 # "Error" suffix would make the raise sites worse for no gain.
 "src/manovia_ml/paths.py" = ["N818"]
+# EncoderUnavailable / HarnessUnavailable / CrossEncoderUnavailable (backend)
+# name the condition a caller branches on — "this environment cannot fit or
+# serve that model, here is the fallback" — and they mirror the backend's
+# EmbedderUnavailable, which the backend waives for the same reason. Keeping the
+# names aligned across the seam is worth more than the suffix.
+"src/manovia_ml/retrieval/embeddings.py" = ["N818"]
+"src/manovia_ml/retrieval/harness.py" = ["N818"]
 # Notebooks are Colab/Kaggle-facing: `open()` without a context manager and a
 # non-strict zip are normal there, and the notebook exists to be read by a human
 # running cells one at a time. Ruff still parses the cells (so a syntax error is
@@ -176,6 +183,15 @@ module = ["onnx.*", "onnx", "onnxruntime.*", "onnxruntime"]
 ignore_missing_imports = true
 follow_imports = "skip"
 disallow_subclassing_any = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+# Day 35 retrieval: scipy.sparse (the stacked TF-IDF feature matrix) ships no
+# stubs, and sentence-transformers is an optional extra that is imported lazily
+# inside SentenceTransformerEncoder. Both are boundaries, not logic: the shapes
+# they hand back are asserted by tests that run the real objects.
+module = ["scipy.*", "scipy", "sentence_transformers.*", "sentence_transformers"]
+ignore_missing_imports = true
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
