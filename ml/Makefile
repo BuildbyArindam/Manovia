@@ -1,4 +1,4 @@
-.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status clean
+.PHONY: install data status lock catalogue catalogue-write record train eval report smoke test lint fetch-goemotions mlflow-up mlflow-down emotion-smoke emotion-train emotion-eval emotion-tune emotion-data safety-data safety-smoke safety-train safety-eval safety-explain distill-smoke distill-gates registry-status retrieval-finetune retrieval-tune retrieval-rerank retrieval-calibrate retrieval-eval retrieval-smoke retrieval-pipeline clean
 
 # ML platform targets (Day 31). Every target is runnable on a laptop with no GPU
 # and no network; `fetch-goemotions` is the one exception and says so.
@@ -38,6 +38,28 @@
 #   make safety-train  CONFIG=configs/safety_lora_xlmr.yaml (needs a GPU)
 #   make safety-eval    ARTIFACT=artifacts/safety/<name> [SAFETY_EVAL_DATA=data/safety/dev.jsonl]
 #   make safety-explain ARTIFACT=artifacts/safety/<name> N=10
+#   make safety-explain ARTIFACT=artifacts/safety/<name> N=10
+#
+# Day 35 adds fine-tuned retrieval (ADR 0035): a contrastively trained embedding,
+# BM25 + dense fused by reciprocal rank, a cross-encoder over the fused candidates
+# and a calibrated "no good answer" threshold. Five stages, in this order, each
+# reading what the previous one wrote — and none of them reading the test split:
+#
+#   make retrieval-finetune    train split -> encoder; epoch chosen on dev MRR
+#   make retrieval-tune        dev split   -> fusion weight  (tuning.json)
+#   make retrieval-rerank      train split -> cross-encoder coefficients
+#   make retrieval-calibrate   calibration -> abstain floors (tuning.json)
+#   make retrieval-eval        test split  -> reports/day35-retrieval.md
+#   make retrieval-pipeline    all five, in that order
+#   make retrieval-smoke       the same five on configs/retrieval_smoke.yaml
+#
+# Two of the five (finetune, and the encoder half of smoke) run with ml/ alone.
+# The other three measure the *serving* path, so they need the backend importable
+# (`pip install -e ../backend`); without it they print SKIP with the reason and
+# exit 0, because a missing optional dependency is not a failed run. A real
+# multilingual checkpoint is not trained here — no torch, no Hugging Face — see
+# notebooks/colab_retrieval_finetune.ipynb, which trains on the pairs and the
+# reranker examples these stages write.
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
 PYDIR := $(dir $(abspath $(PYTHON)))
@@ -68,6 +90,17 @@ SMOKE_JSON ?= /tmp/manovia-ml-smoke-$(SMOKE_DATE).json
 EMOTION_JSON ?= /tmp/manovia-ml-emotion-$(SMOKE_DATE).json
 SAFETY_CONFIG ?= configs/safety_lora_smoke.yaml
 SAFETY_JSON ?= /tmp/manovia-ml-safety-$(SMOKE_DATE).json
+SAFETY_CONFIG ?= configs/safety_lora_smoke.yaml
+SAFETY_JSON ?= /tmp/manovia-ml-safety-$(SMOKE_DATE).json
+
+# Day 35 retrieval. MLflow 3 refuses a file:// store unless this is set, so the
+# targets set it rather than expecting a reader to know (CI sets the same var).
+RETRIEVAL_ENCODER_CONFIG ?= configs/retrieval_finetune.yaml
+RETRIEVAL_HYBRID_CONFIG ?= configs/retrieval_hybrid.yaml
+RETRIEVAL_EVAL_CONFIG ?= configs/retrieval_eval.yaml
+RETRIEVAL_SMOKE_CONFIG ?= configs/retrieval_smoke.yaml
+RETRIEVAL_WORKDIR ?= data/retrieval_artifacts/harness
+export MLFLOW_ALLOW_FILE_STORE ?= true
 SAFETY_DATA ?= data/safety_toy/dev.jsonl
 SAFETY_EVAL_DATA ?= data/safety/dev.jsonl
 N ?= 10
@@ -201,6 +234,52 @@ MODEL ?= safety-student
 TRACKING_URI ?= file:mlruns
 registry-status:
 	$(PYTHON) -m manovia_ml.compression.registry --tracking-uri $(TRACKING_URI) --registry-dir $(REGISTRY_DIR) --model $(MODEL) status
+
+# ---------------------------------------------------------------------------
+# Day 35: fine-tuned retrieval (ADR 0035).
+#
+# `--install-backend` writes backend/app/ml_artifacts/retrieval_v1/tuning.json,
+# which IS committed: it is calibration data (a fusion weight and two abstain
+# floors) plus the split fingerprints that show where each came from, not a
+# weight file. The reranker coefficients stay in ml/data/retrieval_artifacts/
+# (gitignored) and the backend falls back to its documented untrained weights,
+# logging `rag_retriever_downgraded`, until `make retrieval-rerank` has run.
+
+retrieval-finetune:
+	$(PYTHON) -m manovia_ml.retrieval.train_embedding --config $(RETRIEVAL_ENCODER_CONFIG)
+
+retrieval-tune:
+	$(PYTHON) -m manovia_ml.retrieval.tuning --config $(RETRIEVAL_HYBRID_CONFIG) \
+		--stage fusion --workdir $(RETRIEVAL_WORKDIR) --install-backend
+
+retrieval-rerank:
+	$(PYTHON) -m manovia_ml.retrieval.reranker --config $(RETRIEVAL_HYBRID_CONFIG) \
+		--workdir $(RETRIEVAL_WORKDIR) --install-backend
+
+retrieval-calibrate:
+	$(PYTHON) -m manovia_ml.retrieval.tuning --config $(RETRIEVAL_HYBRID_CONFIG) \
+		--stage abstain --workdir $(RETRIEVAL_WORKDIR) --install-backend
+
+retrieval-eval:
+	$(PYTHON) -m manovia_ml.evaluation.retrieval --config $(RETRIEVAL_EVAL_CONFIG) \
+		--workdir $(RETRIEVAL_WORKDIR)
+
+retrieval-pipeline: retrieval-finetune retrieval-tune retrieval-rerank retrieval-calibrate retrieval-eval
+
+# The plumbing gate: two epochs, a three-point fusion grid, ten reranker
+# candidates, three failure cases. Proves every stage runs and writes what the
+# next one reads; `training.phase: smoke` puts SMOKE in the report title so none
+# of its numbers can be quoted as a result.
+retrieval-smoke:
+	$(PYTHON) -m manovia_ml.retrieval.train_embedding --config $(RETRIEVAL_SMOKE_CONFIG)
+	$(PYTHON) -m manovia_ml.retrieval.tuning --config $(RETRIEVAL_SMOKE_CONFIG) \
+		--stage fusion --workdir $(RETRIEVAL_WORKDIR)
+	$(PYTHON) -m manovia_ml.retrieval.reranker --config $(RETRIEVAL_SMOKE_CONFIG) \
+		--workdir $(RETRIEVAL_WORKDIR)
+	$(PYTHON) -m manovia_ml.retrieval.tuning --config $(RETRIEVAL_SMOKE_CONFIG) \
+		--stage abstain --workdir $(RETRIEVAL_WORKDIR)
+	$(PYTHON) -m manovia_ml.evaluation.retrieval --config $(RETRIEVAL_SMOKE_CONFIG) \
+		--workdir $(RETRIEVAL_WORKDIR)
 
 test:
 	$(PYTHON) -m pytest
