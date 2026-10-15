@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from manovia_ml.config import DistillConfig, RetrievalConfig, TrainConfig, config_fingerprint
+from manovia_ml.federated.config import FederatedConfig
 from manovia_ml.hashing import DatasetRef
 from manovia_ml.mlflow_api import mlflow
 from manovia_ml.mood_forecast.config import MoodForecastConfig
@@ -47,7 +48,14 @@ __all__ = ["RunHandle", "TrackedConfig", "git_state", "library_versions", "track
 #: protocol: each of these is a frozen pydantic model that carries ``name``,
 #: ``tracking`` and a JSON dump, and naming them keeps ``mypy --strict`` honest
 #: about what ``tracked_run`` reads (Day 35 added the retrieval shape).
-TrackedConfig = TrainConfig | DistillConfig | RetrievalConfig | MoodForecastConfig | JITAIConfig
+TrackedConfig = (
+    TrainConfig
+    | DistillConfig
+    | RetrievalConfig
+    | MoodForecastConfig
+    | JITAIConfig
+    | FederatedConfig
+)
 
 #: Libraries whose version can change a number. Anything else is in the
 #: ``environment.json`` artefact; these are also params, so they are visible in
@@ -64,6 +72,8 @@ _TRACKED_LIBRARIES = (
     "dvc",
     # Day 32: a LoRA run's numbers depend on these three, and "absent" is a
     # useful value — it says the run used the tiny stand-in or the fallback path.
+    "flwr",
+    "opacus",
     "torch",
     "transformers",
     "peft",

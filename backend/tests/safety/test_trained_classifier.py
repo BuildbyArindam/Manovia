@@ -720,3 +720,173 @@ def test_the_abstention_level_can_never_lower_a_rules_result() -> None:
         ):
             acted = _as_level(_abstain_level(prediction, point=point))
             assert acted >= order[point], (point, prediction)
+
+
+# Day-38 final-verification regressions: the repository's pre-existing safety
+# coverage gate exposed untested selector and corrupt-metadata boundaries.
+# Production code and the 95% gate remain unchanged.
+
+
+@pytest.mark.parametrize("values", [{"max_length": 7}, {"batch_size": 0}])
+def test_invalid_dimensions_fail_closed(tmp_path: Path, values: dict[str, int]) -> None:
+    with pytest.raises(ValueError):
+        TrainedSafetyClassifier(
+            tmp_path,
+            max_length=values.get("max_length", 96),
+            batch_size=values.get("batch_size", 8),
+        )
+    result = build_trained_safety_classifier(
+        artifact_dir=str(tmp_path),
+        max_length=values.get("max_length", 96),
+        batch_size=values.get("batch_size", 8),
+    )
+    assert isinstance(result, NullClassifier)
+    assert result.reason == "artifact_invalid"
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        "{broken",
+        "[]",
+        '{"labels": []}',
+        '{"labels": ["foreign"]}',
+        '{"base_model": "local-fixture"}',
+        "{}",
+    ],
+)
+def test_corrupt_or_legacy_manifest_preserves_safe_defaults(tmp_path: Path, manifest: str) -> None:
+    directory = _write_artifact(tmp_path)
+    (directory / "manifest.json").write_text(manifest, encoding="utf-8")
+    classifier = TrainedSafetyClassifier(directory, loader=_loader([[0.0] * 5]))
+    assert classifier.predict("synthetic fixture") is not None
+    assert classifier.labels == LEVEL_LABELS
+    assert classifier.directory == directory
+    assert classifier.max_length == 96
+    assert classifier.is_loaded
+    assert classifier.version == (
+        "day33-local-fixture" if "local-fixture" in manifest else "day33-untagged"
+    )
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "{broken",
+        "[]",
+        "{}",
+        '{"decision_rule": "", "temperature": false, "conformal_quantile": "invalid"}',
+        '{"decision_rule": 7, "temperature": -1, "conformal_quantile": 2}',
+    ],
+)
+def test_corrupt_threshold_files_do_not_narrow_abstention(tmp_path: Path, content: str) -> None:
+    directory = _write_artifact(tmp_path)
+    for filename in ("calibration.json", "conformal.json", "thresholds.json"):
+        (directory / filename).write_text(content, encoding="utf-8")
+    classifier = TrainedSafetyClassifier(directory, loader=_loader([[0.0] * 5]))
+    prediction = classifier.predict("synthetic fixture")
+    assert classifier.temperature == 1
+    assert classifier.quantile == 1
+    assert prediction is not None
+    assert set(prediction.prediction_set) == set(LEVEL_LABELS)
+
+
+def test_abstention_can_be_disabled_without_hiding_point_prediction(tmp_path: Path) -> None:
+    classifier = TrainedSafetyClassifier(
+        _write_artifact(tmp_path), abstain=False, loader=_loader([[0.0, 1.0, 4.0, 0.0, 0.0]])
+    )
+    prediction = classifier.predict("synthetic fixture")
+    assert prediction is not None
+    assert prediction.level is RiskLevel.MEDIUM
+    assert prediction.prediction_set == ()
+
+
+def test_default_loader_reads_only_local_artifact_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fake the optional dependency, not the loading boundary under test."""
+    from types import SimpleNamespace
+
+    calls: list[str] = []
+
+    class LocalModel(FakeModel):
+        def to(self, device: str) -> LocalModel:
+            assert device == "cpu"
+            return self
+
+    def tokenizer(path: str) -> FakeTokenizer:
+        calls.append(path)
+        return FakeTokenizer()
+
+    def model(path: str, *, num_labels: int) -> LocalModel:
+        calls.append(path)
+        assert num_labels == 5
+        return LocalModel([[0.0] * 5])
+
+    module = ModuleType("transformers")
+    module.AutoTokenizer = SimpleNamespace(from_pretrained=tokenizer)  # type: ignore[attr-defined]
+    module.AutoModelForSequenceClassification = SimpleNamespace(from_pretrained=model)  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "transformers", module)
+    directory = _write_artifact(tmp_path)
+    classifier = TrainedSafetyClassifier(directory)
+    assert classifier.predict("synthetic fixture") is not None
+    assert calls == [str(directory / "tokenizer"), str(directory / "model")]
+    assert classifier.load_count == 1
+
+
+def test_trained_selector_accepts_an_enabled_interface_fake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services.safety import trained
+
+    class EnabledFake(NullClassifier):
+        enabled = True
+
+    fake = EnabledFake()
+    monkeypatch.setattr(trained, "build_trained_safety_classifier", lambda **_kwargs: fake)
+    assert build_safety_classifier(_Settings(safety_ml="trained")) is fake
+
+
+@pytest.mark.parametrize(
+    "registry,missing_baseline,fails",
+    [
+        ("", False, False),
+        ("", True, False),
+        ("fixture", False, True),
+        ("fixture", True, True),
+        ("fixture", False, False),
+    ],
+)
+def test_onnx_selector_records_fallback_or_returns_provider(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    registry: str,
+    missing_baseline: bool,
+    fails: bool,
+) -> None:
+    from app.services.ml_runtime import classifier as runtime
+
+    fake = NullClassifier("fixture-provider")
+
+    def provider(**kwargs: Any) -> NullClassifier:
+        assert kwargs["registry_dir"] == registry
+        if fails:
+            raise RuntimeError("synthetic load failure")
+        return fake
+
+    monkeypatch.setattr(runtime, "build_onnx_safety_classifier", provider)
+    result = build_safety_classifier(
+        _Settings(
+            safety_ml="onnx",
+            ml_runtime_registry_dir=registry,
+            safety_ml_artifact_dir=str(tmp_path / "absent") if missing_baseline else "",
+        )
+    )
+    if registry and not fails:
+        assert result is fake
+    elif missing_baseline:
+        assert isinstance(result, NullClassifier)
+        assert result.reason == "artifact_missing"
+    else:
+        assert isinstance(result, TfidfLogisticClassifier)
+        assert result.version.endswith("+onnx-unavailable")

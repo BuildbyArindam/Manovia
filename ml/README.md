@@ -392,3 +392,75 @@ domain-shift limitation.
 | `sha256 mismatch` on a split | the data changed (or was rebuilt with a different seed): rebuild and update the pin deliberately |
 | `dvc.lock is out of date` (`make ml-lock`) | a file the pipeline depends on changed without re-running it: `make ml-data`, then commit `dvc.lock` |
 | tests all fail with a tracking error | `MLFLOW_TRACKING_URI` points somewhere unwritable; unset it to get the default file store |
+
+## Day 38 — Flower federation and Opacus DP-SGD (research only)
+
+Read [the design](../docs/federated-design.md) and
+[ADR 0038](../docs/adr/0038-privacy-preserving-ml.md). The default command is a tiny
+CPU smoke, **not** full training: 50 clients, 40 synthetic days, 4 rounds. It
+writes `ml/reports/day38-federated.md` and `.svg`, plus aggregate MLflow artifacts
+in ignored `ml/mlruns/`. No datasets or model weights are written. The head is a
+small next-day mood regressor, not the Day-36 GRU; MASE, not categorical accuracy,
+is the task metric. Catalogued source: §17, MIT-authored, no personal data.
+
+### Install and smoke locally
+
+Use a **separate ML environment**, not the backend environment. Flower 1.40 pins
+uvicorn below the backend's required 0.54. CPU execution is explicit even if a
+CUDA-capable wheel is installed. PyPI's Linux torch wheel can use ~10 GB of disk
+including dependencies; no GPU is required. Don't downgrade backend pins.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install --no-cache-dir -e './ml[ml,dev,federated]'
+.venv/bin/pip check
+PATH="$PWD/.venv/bin:$PATH" make ml-federated-sim
+# Existing ML suite requires ignored toy safety splits, generated offline:
+(cd ml && ../.venv/bin/python -m manovia_ml.training.safety.build_data \
+  --toy --out-dir data/safety_toy --seed 20261013)
+PATH="$PWD/.venv/bin:$PATH" make ml-lint ml-test
+```
+
+The optional `[training]` extra exercises the earlier transformer paths; without
+it those tests skip. No download/checkpoint is needed for Day 38. Opacus warns
+that secure RNG is disabled: intentional **synthetic research only**, not a
+setting to copy into production. The privacy budget is add/remove-one-pair
+record-level, **not** user-level, local, or federated DP. The FL arms do not add
+noise and do not implement secure aggregation.
+
+### Larger synthetic training on free Colab/Kaggle
+
+Start a fresh Python 3.11+ CPU runtime (GPU unnecessary); enable internet only
+for installation and cloning. In a Colab terminal or `%%bash` cell:
+
+```bash
+git clone --branch arena/e17d4e5d-manovia https://github.com/BuildbyArindam/Manovia.git
+cd Manovia
+python -m pip install --no-cache-dir -e './ml[ml,dev,federated]'
+python -m pip check
+cd ml
+# 50 clients, 210 days, 40 rounds, 5 local steps; repeat independent cohorts.
+for seed in 38 39 40 41 42; do
+  PYTHONHASHSEED=0 python notebooks/run_federated.py \
+    --config configs/federated_full.yaml --seed "$seed" \
+    --report-output "reports/day38-federated-full-seed-${seed}.md"
+done
+```
+
+Kaggle: use the same commands in a notebook shell cell or terminal after enabling
+internet in notebook settings. Private repository access, if needed, is through
+your own connected GitHub environment; never paste tokens into the notebook.
+For an exact code revision, `git checkout <commit shown in the smoke card>` after
+cloning; this is an instruction for your separate Colab clone, not Arena's branch.
+Save reports/SVGs and `ml/mlruns/` to your private Drive/Kaggle output before the
+runtime is reclaimed. Do not commit any generated records or weights. Compare
+MASE, AUC and convergence across all five seeds (include spread and failures;
+do not select only favourable seeds). Freeze data/splits and operating point
+before examining holdout. Run `make ml-federated-sim` for the single smoke figure;
+full multi-seed results have **not** been run in this sandbox.
+
+Before making empirical defence claims, run stronger attacks with predeclared
+scores and confidence intervals. Before any private-data use, review adjacency,
+cryptographic RNG, budget composition, private selection/metric release and
+consent/secure aggregation. `secure_mode=True` needs a reviewed cryptographic
+backend not installed here; no production-ready privacy guarantee is supplied.

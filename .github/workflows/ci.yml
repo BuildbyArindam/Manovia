@@ -253,8 +253,9 @@ jobs:
         # `training` extra so the LoRA tests *run* instead of skipping.
         run: |
           python -m pip install --upgrade pip
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[ml,dev,training,serving]"
+          pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[ml,dev,training,serving,federated]"
+          pip check
 
       - name: DVC lock matches the code (before repro rewrites it)
         # `dvc repro` regenerates dvc.lock, so a *committed* lock that names a
@@ -286,6 +287,9 @@ jobs:
         run: make emotion-smoke PYTHON=python
         env:
           MLFLOW_ALLOW_FILE_STORE: "true"
+
+      - name: Federated smoke (Day 38, synthetic only)
+        run: make federated-sim PYTHON=python
 
       - name: Tests (offline)
         # The JITAI simulation tests import the backend policy seam. Keep this

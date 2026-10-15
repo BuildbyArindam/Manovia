@@ -227,3 +227,8 @@ ml-mlflow-up:
 
 ml-mlflow-down:
 	$(MAKE) -C ml mlflow-down
+
+.PHONY: ml-federated-sim
+FEDERATED_CONFIG ?= configs/federated_smoke.yaml
+ml-federated-sim:
+	$(MAKE) -C ml federated-sim FEDERATED_CONFIG=$(FEDERATED_CONFIG)

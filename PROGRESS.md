@@ -1,5 +1,115 @@
 # Manovia — Progress
 
+## Day 38 — Privacy-preserving ML: federated learning and differential privacy
+
+**Implemented and verified on 2026-10-15**, on Arena's pinned branch
+`arena/e17d4e5d-manovia` (the requested `day-38-privacy-preserving-ml-federated`
+name could not replace the session branch). No push to main, branch switch or
+merge. [PR #46](https://github.com/BuildbyArindam/Manovia/pull/46) is open and
+intentionally unmerged. Work was committed/pushed in milestones. This is **offline synthetic
+research only**, with no product integration, GPU run, real dataset or weights.
+
+### Completed
+
+- Serial in-process **Flower FedAvg/FedProx**, 50 clients holding non-IID slices
+  of the Day-36 numeric synthetic mood generator; same-row IID control,
+  independent 0/30% round dropout, participant counts and per-round convergence.
+  A small next-day regression head is shared by central/FL/DP arms; not the
+  Day-36 GRU. FedProx adds the round-reference proximal objective locally.
+- **Opacus DP-SGD** with Poisson sampling and RDP accounting, noise multipliers
+  0.8/1.6/3.2 × clipping norms 0.5/1.0. Fixed public scaling and nonoverlapping
+  day pairs; add/remove-one-pair adjacency, **not** user-level/federated DP.
+  Each sweep arm has a distinct derived random stream. Public seeded,
+  noncryptographic research noise is not a production privacy guarantee.
+- Continuous negative-loss **membership-inference AUC** against central and DP
+  models, no holdout-tuned threshold/direction or favourable model selection.
+- `make ml-federated-sim`, strict smoke/full YAML configs, aggregate MLflow
+  provenance and metrics, generated report/SVG, cards, and a tested
+  Colab/Kaggle script with exact five-seed full-run instructions. No generated
+  datasets, per-example scores or weights are persisted/committed.
+- Exhaustive measured/proposed/limit claim register in
+  [`docs/federated-design.md`](docs/federated-design.md), and ML inversion,
+  membership, poisoning/Sybil and malicious-coordinator threats/mitigations in
+  [`docs/privacy-and-threat-model.md`](docs/privacy-and-threat-model.md).
+- Real-library clipping/aggregation/accountant tests, one-step central/FedAvg
+  equivalence, FedProx drift, missing observations, disjoint days, all-client
+  dropout, noise-stream separation and exact seeded integration reproduction.
+  ML CI installs the federated extra and runs the smoke, not a silent skip.
+
+### Evidence and decisions
+
+- **ADR:** [0038 — Privacy-preserving ML research boundary](docs/adr/0038-privacy-preserving-ml.md).
+  Central DP and non-private FL stay separate; phone updates/secure aggregation
+  are design-only. Operating point sigma=3.2/C=1 is **predeclared**, not picked
+  against holdout. Separate ML/backend environments resolve Flower/backend
+  uvicorn incompatibility without loosening backend pins.
+- **Run:** `a45a78eaa2d64ac5b90298a8a7fc4da9`; training code commit
+  `1e7e9b7026ee737bf3234702998812206f4fe729`, clean at run start, seed 38.
+  655 train / 253 held-out pairs; synthetic catalogue §17, MIT, no personal data.
+  [Report/figure](ml/reports/day38-federated.md),
+  [model card](ml/reports/day38-model-card.md),
+  [dataset card](ml/data/cards/day38-federated-mood.md),
+  [full verification/claim audit](docs/verification/day38-federated.md).
+- **Smoke MASE:** central 1.3372; no-dropout non-IID FedAvg 1.3381 / FedProx
+  1.3384. Predeclared DP 1.2754, epsilon 0.8417 at delta 1e-5. All trained
+  heads are worse than held-out persistence **1.1150**. DP uses 44 minibatch
+  steps versus central's 8 full-cohort steps: no fair-compute advantage claim.
+  Other epsilon values are 8.1267 and 2.2014, with the full clipping sweep in
+  the report. Independent-release composition is explicitly disclosed.
+- **Attack AUC:** central **0.5518**, chosen DP **0.5459**. The 0.0059 movement
+  towards chance is descriptive, **not an established empirical defence**.
+  FedProx/heterogeneity/dropout differences are small and inconsistent; no
+  algorithm superiority or real-world accuracy claim.
+- **Final ML:** `make ml-lint` passed (Ruff/format/mypy, 129 source files);
+  `make ml-test`: **546 passed, 1 skipped** (50.88s). Targeted Day-38 tests:
+  **23 passed**. Skip is the no-torch fallback when torch is present. Both
+  environments' `pip check`, catalogue (17 entries), DVC lock and diff check
+  passed. Script smoke exactly reproduced all 15 table rows.
+- **Final backend/frontend:** `make lint` passed (backend Ruff/format/mypy,
+  334 source files, plus frontend ESLint); full backend pytest **4,589 passed,
+  4 skipped** (574.44s). **All coverage rules satisfied:** overall 94.83%
+  statements / 87.48% branches. Initial verification reproduced Day-37's
+  safety coverage failure; 23 additional fallback/loading/metadata regressions
+  fixed the root coverage gap without production changes or weaker tests.
+  `ml_classifier.py`: 100%/97.22%; `trained.py`: 99.17%/97.06%.
+  Frontend type-check passed; Vitest **613 passed, 3 skipped** (74 files passed,
+  one skipped, 107.39s in the final root run). Final root `make test` exited 0.
+  Existing React act/jsdom scrollTo warnings remain.
+
+### Known issues / sandbox boundaries
+
+- Full 210-day/40-round, five-seed training is **not run here**; instructions
+  are in `ml/README.md`. No utility, clinical, demographic or language claims.
+- Central accountant budgets describe a record-private randomised mechanism;
+  production needs independently secret cryptographic randomness, user-level
+  adjacency/composition, private metric/selection accounting and review.
+- No phone trainer/storage/consent UX, clipped/noised federated transport,
+  secure aggregation, inversion/poisoning evaluation or adversarial dropout.
+  All proposed controls are flagged **unmeasured/unimplemented**, not guarantees.
+- Remote GitHub CI and real device/Colab runs need human follow-up. The sandbox
+  cannot fetch the CPU wheel host; PyPI CUDA-capable wheels were used on CPU.
+  Initial wheel-cache disk exhaustion was resolved, and no environment/cache
+  files are committed. Frontend dependencies were not changed in this task.
+
+### Parking lot (Day 38)
+
+- Stronger predeclared membership attacks with intervals/multi-seed inference;
+  inversion/backdoor/Sybil measurements and adversarial/non-independent dropout.
+- Audited minimum-cohort secure aggregation, user-level/distributed accounting,
+  secret cryptographic noise, budget/consent ledger and device policy validation.
+- Actual private-data programmes or product personalisation require a separate
+  reviewed proposal; neither should be inferred from this research milestone.
+
+### Day 39 — first three steps
+
+1. Read the actual Day-39 brief, `AGENTS.md`, this handoff and ADR 0038 before
+   choosing scope; preserve rules-first safety and the no-real-data boundary.
+2. In a separate Colab/Kaggle research runtime, run the prepared full synthetic
+   config on seeds 38–42; preserve every report/run id and summarise uncertainty
+   and failures, without promoting the smoke to a product result.
+3. Review the weak-attack limitation and all D1–D6 unmet design gates; obtain
+   privacy/security review before proposing user-level DP or phone integration.
+
 ## Day 37 — Personalised intervention policy (contextual bandits with safety constraints)
 
 **Implemented and verified on 2026-10-15** on Arena's pinned branch

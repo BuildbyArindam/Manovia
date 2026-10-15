@@ -369,3 +369,26 @@ gap. Someone with the environment must do these by hand:
 4. **Point the app at a real LLM provider.** Everything here ran against
    `LLM_PROVIDER=fake`. The redaction and token-guard path that protects a real
    provider is unit-tested but has never carried a real conversation.
+
+## 8. ML-specific threats — Day 38 (offline research boundary)
+
+No product route imports the Day-38 simulator. It uses synthetic numeric mood
+histories only; crisis detection remains rules-first and outside training.
+[ADR 0038](adr/0038-privacy-preserving-ml.md) and the
+[design claim register](federated-design.md) separate implemented measurements
+from proposed controls.
+
+| Threat / adversary | Exposure | Measured / implemented today | Proposed mitigation and residual risk |
+| --- | --- | --- | --- |
+| Membership inference: model recipient or query caller knows a candidate pair and its label | Weights, confidence/errors, repeated releases | Loss-score ROC AUC against same-person train/holdout pairs; central record-level Opacus DP-SGD, joint clipping, RDP accounting. See Day-38 report. | Budget caps, independent privacy review, cryptographic RNG, composition for all rounds/checkpoints/selection/metrics. Today's AUC near chance does not show robust defence; many pairs per person means no user-level guarantee. Query limiting is useful but not DP. |
+| Model/gradient inversion and attribute inference: curious coordinator, colluding peers or model recipient | Individual gradients/updates, model outputs, cohort metadata | **Not attack-tested.** Today's trusted-process Flower simulation sends unnoised weights and has no transport boundary. Central DP limits record influence, not all population inference. | Clip then noise locally before upload, reviewed secure aggregation with a minimum cohort and abort rules, authenticated encryption, no stable client IDs or per-client metrics. Noise calibration/user-level accounting, SecAgg+ and collusion analysis are design-only; don't claim these controls exist. |
+| Poisoning/backdoors/Sybil clients: malicious or compromised participants | Fabricated updates, sample counts, coordinated dropout, replay or model substitution | Toy weighted aggregation checks finite shapes/positive counts; FedProx is an optimisation method, **not** Byzantine protection. No poisoning success-rate measurement. | Signed models/schema, round binding, anonymous rate-limited admission, bounded pre-noise client updates, aggregate anomaly gates/canaries and rollback. Secure aggregation obscures individual-update inspection. Norm clipping does not remove a bounded backdoor; DP noise is not a poisoning defence. |
+| Malicious server / repeated participation / opt-out confusion | Adaptive cohorts, differencing, repeated queries, budget exhaustion, retained aggregates | Separate synthetic sweep results with individual budgets and basic-composition warning; no real clients enrolled | Audited key/round consistency, minimum cohort, ledger across model versions and re-consent, opt-in off by default, cancellation and key deletion. Historical aggregate influence cannot be retracted by opt-out; no machine-unlearning claim. |
+
+**Data and report release rule:** no real text, identifiers, datasets or weights
+enter Git. Synthetic reports may contain exact aggregate metrics; publishing the
+same diagnostics computed on private data would itself need lawful access and
+privacy accounting. Research uses `secure_mode=False` and a public seed for
+reproducibility, never a production cryptographic randomness claim. On-device
+storage, phone energy rules and consent controls are unimplemented requirements,
+not measured guarantees. Human checks are enumerated in the Day-38 verification.
