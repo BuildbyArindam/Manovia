@@ -92,6 +92,15 @@ export interface PrivateModeController extends PrivateModeBoot {
 export interface UsePrivateModeOptions {
   /** Injectable for tests; defaults to the browser's `fetch`. */
   fetchImpl?: typeof fetch;
+  /**
+   * Boot as soon as the hook mounts. Defaults to true.
+   *
+   * The chat page passes false unless the reader left with Private Mode on: the
+   * boot fetches a 191 KB bundle and probes the device, a cost only somebody who
+   * asked for Private Mode should pay. With `autoBoot: false` the boot runs the
+   * first time the switch is turned on.
+   */
+  autoBoot?: boolean;
   /** Called when the boot finishes, so a caller can measure it. */
   onReady?: (boot: PrivateModeBoot) => void;
 }
@@ -102,7 +111,8 @@ function conversationId(): string {
 }
 
 export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateModeController {
-  const [booting, setBooting] = useState(true);
+  const autoBoot = options.autoBoot !== false;
+  const [booting, setBooting] = useState(autoBoot);
   const [error, setError] = useState<string | null>(null);
   const [bundle, setBundle] = useState<PrivateBundle | null>(null);
   const [manifest, setManifest] = useState<ModelManifest | null>(null);
@@ -124,21 +134,27 @@ export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateMode
   const managerRef = useRef<DownloadManager | null>(null);
   const sessionRef = useRef<PrivateSession | null>(null);
   const conversationRef = useRef<string>(conversationId());
+  const mountedRef = useRef(true);
+  const bootStartedRef = useRef(false);
   const onReadyRef = useRef(options.onReady);
   onReadyRef.current = options.onReady;
 
   // ------------------------------------------------------------- boot
 
-  useEffect(() => {
-    let cancelled = false;
-    async function boot(): Promise<void> {
+  const boot = useCallback(async (): Promise<void> => {
+    if (bootStartedRef.current) {
+      return;
+    }
+    bootStartedRef.current = true;
+    setBooting(true);
+    {
       try {
         const [bundleAsset, manifestAsset, report] = await Promise.all([
           loadSafetyBundle({ fetchImpl: options.fetchImpl }),
           loadModelManifest({ fetchImpl: options.fetchImpl }),
           collectEnvironment(),
         ]);
-        if (cancelled) {
+        if (!mountedRef.current) {
           return;
         }
         const verdict = assess(report);
@@ -154,7 +170,7 @@ export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateMode
           freeBytes: freeStorageBytes,
           minFreeBytes: 256 * 1024 * 1024,
         });
-        if (cancelled) {
+        if (!mountedRef.current) {
           return;
         }
         databaseRef.current = database;
@@ -165,7 +181,7 @@ export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateMode
         const current = await settingsStore.load();
         const states = await manager.states();
         const usage = await manager.usageBytes();
-        if (cancelled) {
+        if (!mountedRef.current) {
           return;
         }
         setBundle(bundleAsset.value);
@@ -192,20 +208,33 @@ export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateMode
           usageBytes: usage,
         });
       } catch (bootError) {
-        if (cancelled) {
+        // A failed boot may be retried: switching Private Mode on again should not
+        // be a dead end after one transient fetch error.
+        bootStartedRef.current = false;
+        if (!mountedRef.current) {
           return;
         }
         setError(bootError instanceof Error ? bootError.message : String(bootError));
         setBooting(false);
       }
     }
-    void boot();
-    return () => {
-      cancelled = true;
-    };
-    // The boot runs once per mount; `fetchImpl` is a test seam, not a dependency.
+    // `fetchImpl` is a test seam, not a dependency worth re-booting for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!autoBoot) {
+      return;
+    }
+    void boot();
+  }, [autoBoot, boot]);
 
   // ------------------------------------------------------------- derived
 
@@ -323,6 +352,10 @@ export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateMode
 
   const setEnabled = useCallback(
     async (value: boolean) => {
+      // Turning Private Mode on is what the boot waits for when autoBoot is off.
+      if (value && settingsRef.current === null) {
+        await boot();
+      }
       await patchSettings({
         privateMode: value,
         consent: value ? { capabilityCheckedAt: new Date().toISOString() } : {},
@@ -332,7 +365,7 @@ export function usePrivateMode(options: UsePrivateModeOptions = {}): PrivateMode
         sessionRef.current = null;
       }
     },
-    [patchSettings],
+    [boot, patchSettings],
   );
 
   const consentAndDownload = useCallback(

@@ -27,6 +27,7 @@
 export const CACHE_NAMES = {
   helplines: "manovia-helplines-v1",
   exercises: "manovia-exercises-v1",
+  privateAssets: "manovia-private-v1",
 } as const;
 
 /** The API prefix every route below lives under. */
@@ -51,6 +52,23 @@ export const HELPLINES_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /** How long a cached exercise answer may be served offline (60 days). */
 export const EXERCISES_MAX_AGE_SECONDS = 60 * 24 * 60 * 60;
+
+/**
+ * Private Mode's two compiled artifacts (Day 41): the safety bundle and the model
+ * manifest, both built from this repository and both public, static and free of
+ * personal data. Cached network-first, so a deploy that changes a safety rule is
+ * picked up the next time the device is online, and Private Mode still boots when
+ * it is not.
+ *
+ * Model *bytes* are deliberately excluded: they are large, they are fetched only
+ * after explicit consent, they are verified against the manifest and they live in
+ * IndexedDB, where the download manager can resume and delete them. A silent copy
+ * in Cache Storage would bypass every one of those controls.
+ */
+export const PRIVATE_ASSETS_PREFIX = "/private/";
+
+/** How long a cached Private Mode artifact may be served offline (30 days). */
+export const PRIVATE_ASSETS_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * How long to wait for the network before answering a helpline request from
@@ -97,6 +115,21 @@ export function isExercisesRequest(url: URL, request: RequestLike, origin: strin
   }
   const id = match[1] ?? "";
   return id !== "history" && id !== "recommendations";
+}
+
+/**
+ * `GET /private/<name>.json`, same origin, unauthenticated: the compiled safety
+ * bundle and the model manifest, and nothing else under that prefix.
+ */
+export function isPrivateAssetRequest(url: URL, request: RequestLike, origin: string): boolean {
+  return (
+    sameOrigin(url, origin) &&
+    isPublicRead(request) &&
+    url.pathname.startsWith(PRIVATE_ASSETS_PREFIX) &&
+    url.pathname.endsWith(".json") &&
+    // One level only: `/private/safety-bundle.json`, not a nested tree.
+    !url.pathname.slice(PRIVATE_ASSETS_PREFIX.length).includes("/")
+  );
 }
 
 /**

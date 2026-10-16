@@ -72,8 +72,12 @@ async function turnOn(page: Page, testId: string): Promise<void> {
   await expect(control).toBeChecked();
 }
 
-/** Turn Private Mode on, wait for the boot, and report the capability verdict. */
+/** Open the panel, turn Private Mode on, and wait for the boot to finish. */
 async function enablePrivateMode(page: Page): Promise<void> {
+  // The panel is a dynamic import (the /chat route has a 25 KB gzip budget), so
+  // the way in is one button, and the switch lives in the panel that it loads.
+  await page.getByTestId("private-mode-open").click();
+  await expect(page.getByTestId("private-mode-panel")).toBeVisible();
   await turnOn(page, "private-mode-toggle");
   // The boot is finished when the verdict is on screen: the tier sentence is
   // rendered only once the bundle, the manifest and the device probe are in.
