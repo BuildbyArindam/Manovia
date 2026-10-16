@@ -18,6 +18,7 @@ export const APP_ROUTES = [
   { path: "/journal", name: "journal", ready: "journal-view" },
   { path: "/cbt", name: "cbt", ready: null },
   { path: "/exercises", name: "exercises", ready: "exercises-page" },
+  { path: "/biofeedback", name: "biofeedback", ready: "biofeedback-page" },
   { path: "/assessments", name: "assessments", ready: null },
   { path: "/insights", name: "insights", ready: null },
   { path: "/settings", name: "settings", ready: "install-section" },
