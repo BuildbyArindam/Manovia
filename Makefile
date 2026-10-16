@@ -1,4 +1,4 @@
-.PHONY: dev test lint format db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval voice-sim up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline ml-mood-forecast ml-jitai-sim ml-jitai-smoke
+.PHONY: dev test lint format parity parity-run db-upgrade db-downgrade db-check seed ingest retention frontend-dev frontend-test frontend-lint frontend-format eval voice-sim up down smoke prod-up prod-down prod-migrate ml-install ml-data ml-status ml-lock ml-catalogue ml-train ml-record ml-eval ml-report ml-smoke ml-test ml-lint ml-fetch-goemotions ml-mlflow-up ml-mlflow-down ml-emotion-smoke ml-emotion-train ml-emotion-eval ml-emotion-tune ml-emotion-data ml-retrieval-finetune ml-retrieval-tune ml-retrieval-rerank ml-retrieval-calibrate ml-retrieval-eval ml-retrieval-smoke ml-retrieval-pipeline ml-mood-forecast ml-jitai-sim ml-jitai-smoke
 
 MOOD_FORECAST_CONFIG ?= configs/mood_forecast.yaml
 MOOD_FORECAST_ARGS ?=
@@ -61,6 +61,32 @@ frontend-test:
 
 frontend-lint:
 	npm --prefix frontend run lint
+
+# Day 41: cross-language safety parity. Nothing here regenerates an artifact —
+# every gate is a --check, so a stale file fails with the fix named in the error.
+# `make parity-run` rebuilds all of them in the order they depend on.
+parity:
+	$(MAKE) -C backend parity
+	npm --prefix frontend run private:check
+	npm --prefix frontend run test:run -- src/features/private
+
+# Five Python-side fixtures are compared by the browser, all written by exporters
+# under evals/parity and all gated by --check in `make parity`:
+#   python-normalisation.json  normalise()   (126 probes x 12 assertions)
+#   python-expected.json       assess()      (the 500-phrase parity corpus)
+#   python-output-guard.json   OutputGuard.check()  (36 candidate replies)
+#   python-crisis-plans.json   Escalator.plan()     (96 level/about/locale/region plans)
+#   unicode/python-casefold.json  casefold() (1671 code points)
+parity-run:
+	# Order matters: the JS lowercase fixture feeds the Python casefold fixture,
+	# which feeds the bundle, whose hash the Python expectations record.
+	npm --prefix frontend run private:fixtures
+	$(MAKE) -C backend parity-casefold
+	npm --prefix frontend run private:bundle
+	$(MAKE) -C backend parity-corpus
+	$(MAKE) -C backend parity-output-guard
+	$(MAKE) -C backend parity-crisis-plans
+	$(MAKE) parity
 
 frontend-format:
 	npm --prefix frontend run format

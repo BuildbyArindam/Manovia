@@ -1,0 +1,4515 @@
+{
+ "cases": [
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "",
+   "confusables": "",
+   "corrected": "",
+   "first_person": false,
+   "id": "P-0001",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 0,
+    "primary": 0,
+    "utf16_units": 0
+   },
+   "primary": "",
+   "quotes": [
+    "",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "",
+   "text": "",
+   "variants": []
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "   ",
+   "confusables": "   ",
+   "corrected": "",
+   "first_person": false,
+   "id": "P-0002",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 3,
+    "primary": 0,
+    "utf16_units": 3
+   },
+   "primary": "",
+   "quotes": [
+    "   ",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "   ",
+   "text": "   ",
+   "variants": []
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "\t\n\r ",
+   "confusables": "\t\n\r ",
+   "corrected": "",
+   "first_person": false,
+   "id": "P-0003",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 4,
+    "primary": 0,
+    "utf16_units": 4
+   },
+   "primary": "",
+   "quotes": [
+    "\t\n\r ",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "\t\n\r ",
+   "text": "\t\n\r ",
+   "variants": []
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "...",
+   "confusables": "...",
+   "corrected": "",
+   "first_person": false,
+   "id": "P-0004",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 3,
+    "primary": 0,
+    "utf16_units": 3
+   },
+   "primary": "",
+   "quotes": [
+    "...",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "...",
+   "text": "...",
+   "variants": []
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "\ud83d\ude42",
+   "confusables": "\ud83d\ude42",
+   "corrected": "",
+   "first_person": false,
+   "id": "P-0005",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 1,
+    "primary": 0,
+    "utf16_units": 2
+   },
+   "primary": "",
+   "quotes": [
+    "\ud83d\ude42",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "\ud83d\ude42",
+   "text": "\ud83d\ude42",
+   "variants": []
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "!!! ???",
+   "confusables": "!!! ???",
+   "corrected": "",
+   "first_person": false,
+   "id": "P-0006",
+   "leet": "iii",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 7,
+    "primary": 0,
+    "utf16_units": 7
+   },
+   "primary": "",
+   "quotes": [
+    "!!! ???",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "!!! ???",
+   "text": "!!! ???",
+   "variants": [
+    "iii"
+   ]
+  },
+  {
+   "clause_text": "today was good",
+   "clauses": [
+    {
+     "end": 14,
+     "start": 0,
+     "text": "today was good"
+    }
+   ],
+   "collapsed": "today was god",
+   "combining": "today was good",
+   "confusables": "today was good",
+   "corrected": "today was good",
+   "first_person": false,
+   "id": "P-0007",
+   "leet": "today was good",
+   "lengths": {
+    "clause_text": 14,
+    "codepoints": 14,
+    "primary": 14,
+    "utf16_units": 14
+   },
+   "primary": "today was good",
+   "quotes": [
+    "today was good",
+    ""
+   ],
+   "squashed": "todaywasgood",
+   "stripped": "today was good",
+   "text": "today was good",
+   "variants": [
+    "today was good",
+    "today was god"
+   ]
+  },
+  {
+   "clause_text": "im fine",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "im fine"
+    }
+   ],
+   "collapsed": "im fine",
+   "combining": "i'm fine",
+   "confusables": "i'm fine",
+   "corrected": "im fine",
+   "first_person": true,
+   "id": "P-0008",
+   "leet": "im fine",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 8,
+    "primary": 7,
+    "utf16_units": 8
+   },
+   "primary": "im fine",
+   "quotes": [
+    "i'm fine",
+    ""
+   ],
+   "squashed": "imfine",
+   "stripped": "i'm fine",
+   "text": "i'm fine",
+   "variants": [
+    "im fine"
+   ]
+  },
+  {
+   "clause_text": "i feel a bit low today",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "i feel a bit low today"
+    }
+   ],
+   "collapsed": "i fel a bit low today",
+   "combining": "i feel a bit low today",
+   "confusables": "i feel a bit low today",
+   "corrected": "i feel a bit low today",
+   "first_person": true,
+   "id": "P-0009",
+   "leet": "i feel a bit low today",
+   "lengths": {
+    "clause_text": 22,
+    "codepoints": 22,
+    "primary": 22,
+    "utf16_units": 22
+   },
+   "primary": "i feel a bit low today",
+   "quotes": [
+    "i feel a bit low today",
+    ""
+   ],
+   "squashed": "ifeelabitlowtoday",
+   "stripped": "i feel a bit low today",
+   "text": "i feel a bit low today",
+   "variants": [
+    "i feel a bit low today",
+    "i fel a bit low today"
+   ]
+  },
+  {
+   "clause_text": "i have been thinking about ending it",
+   "clauses": [
+    {
+     "end": 36,
+     "start": 0,
+     "text": "i have been thinking about ending it"
+    }
+   ],
+   "collapsed": "i have ben thinking about ending it",
+   "combining": "i have been thinking about ending it",
+   "confusables": "i have been thinking about ending it",
+   "corrected": "i have been thinking about ending it",
+   "first_person": true,
+   "id": "P-0010",
+   "leet": "i have been thinking about ending it",
+   "lengths": {
+    "clause_text": 36,
+    "codepoints": 36,
+    "primary": 36,
+    "utf16_units": 36
+   },
+   "primary": "i have been thinking about ending it",
+   "quotes": [
+    "i have been thinking about ending it",
+    ""
+   ],
+   "squashed": "ihavebeenthinkingaboutendingit",
+   "stripped": "i have been thinking about ending it",
+   "text": "i have been thinking about ending it",
+   "variants": [
+    "i have been thinking about ending it",
+    "i have ben thinking about ending it"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i want to die",
+   "confusables": "i want to die",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0011",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i want to die",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i want to die",
+   "text": "i want to die",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "i have a plan to end it tonight and i already have the pills",
+   "clauses": [
+    {
+     "end": 31,
+     "start": 0,
+     "text": "i have a plan to end it tonight"
+    },
+    {
+     "end": 35,
+     "start": 32,
+     "text": "and"
+    },
+    {
+     "end": 60,
+     "start": 36,
+     "text": "i already have the pills"
+    }
+   ],
+   "collapsed": "i have a plan to end it tonight and i already have the pils",
+   "combining": "i have a plan to end it tonight and i already have the pills",
+   "confusables": "i have a plan to end it tonight and i already have the pills",
+   "corrected": "i have a plan to end it tonight and i already have the pills",
+   "first_person": true,
+   "id": "P-0012",
+   "leet": "i have a plan to end it tonight and i already have the pills",
+   "lengths": {
+    "clause_text": 60,
+    "codepoints": 60,
+    "primary": 60,
+    "utf16_units": 60
+   },
+   "primary": "i have a plan to end it tonight and i already have the pills",
+   "quotes": [
+    "i have a plan to end it tonight and i already have the pills",
+    ""
+   ],
+   "squashed": "ihaveaplantoendittonightandialreadyhavethepills",
+   "stripped": "i have a plan to end it tonight and i already have the pills",
+   "text": "i have a plan to end it tonight and i already have the pills",
+   "variants": [
+    "i have a plan to end it tonight and i already have the pills",
+    "i have a plan to end it tonight and i already have the pils"
+   ]
+  },
+  {
+   "clause_text": "i took 30 pills an hour ago",
+   "clauses": [
+    {
+     "end": 27,
+     "start": 0,
+     "text": "i took 30 pills an hour ago"
+    }
+   ],
+   "collapsed": "i tok 30 pils an hour ago",
+   "combining": "i took 30 pills an hour ago",
+   "confusables": "i took 30 pills an hour ago",
+   "corrected": "i took 30 pills an hour ago",
+   "first_person": true,
+   "id": "P-0013",
+   "leet": "i took eo pills an hour ago",
+   "lengths": {
+    "clause_text": 27,
+    "codepoints": 27,
+    "primary": 27,
+    "utf16_units": 27
+   },
+   "primary": "i took 30 pills an hour ago",
+   "quotes": [
+    "i took 30 pills an hour ago",
+    ""
+   ],
+   "squashed": "itook30pillsanhourago",
+   "stripped": "i took 30 pills an hour ago",
+   "text": "i took 30 pills an hour ago",
+   "variants": [
+    "i took 30 pills an hour ago",
+    "i took eo pills an hour ago",
+    "i tok 30 pils an hour ago"
+   ]
+  },
+  {
+   "clause_text": "i want to kill my neighbour",
+   "clauses": [
+    {
+     "end": 27,
+     "start": 0,
+     "text": "i want to kill my neighbour"
+    }
+   ],
+   "collapsed": "i want to kil my neighbour",
+   "combining": "i want to kill my neighbour",
+   "confusables": "i want to kill my neighbour",
+   "corrected": "i want to kill my neighbour",
+   "first_person": true,
+   "id": "P-0014",
+   "leet": "i want to kill my neighbour",
+   "lengths": {
+    "clause_text": 27,
+    "codepoints": 27,
+    "primary": 27,
+    "utf16_units": 27
+   },
+   "primary": "i want to kill my neighbour",
+   "quotes": [
+    "i want to kill my neighbour",
+    ""
+   ],
+   "squashed": "iwanttokillmyneighbour",
+   "stripped": "i want to kill my neighbour",
+   "text": "i want to kill my neighbour",
+   "variants": [
+    "i want to kill my neighbour"
+   ]
+  },
+  {
+   "clause_text": "i was raped last year and i cannot tell anyone",
+   "clauses": [
+    {
+     "end": 21,
+     "start": 0,
+     "text": "i was raped last year"
+    },
+    {
+     "end": 25,
+     "start": 22,
+     "text": "and"
+    },
+    {
+     "end": 46,
+     "start": 26,
+     "text": "i cannot tell anyone"
+    }
+   ],
+   "collapsed": "i was raped last year and i canot tel anyone",
+   "combining": "i was raped last year and i cannot tell anyone",
+   "confusables": "i was raped last year and i cannot tell anyone",
+   "corrected": "i was raped last year and i cannot tell anyone",
+   "first_person": true,
+   "id": "P-0015",
+   "leet": "i was raped last year and i cannot tell anyone",
+   "lengths": {
+    "clause_text": 46,
+    "codepoints": 46,
+    "primary": 46,
+    "utf16_units": 46
+   },
+   "primary": "i was raped last year and i cannot tell anyone",
+   "quotes": [
+    "i was raped last year and i cannot tell anyone",
+    ""
+   ],
+   "squashed": "iwasrapedlastyearandicannottellanyone",
+   "stripped": "i was raped last year and i cannot tell anyone",
+   "text": "i was raped last year and i cannot tell anyone",
+   "variants": [
+    "i was raped last year and i cannot tell anyone",
+    "i was raped last year and i canot tel anyone"
+   ]
+  },
+  {
+   "clause_text": "everyone would be better off without me",
+   "clauses": [
+    {
+     "end": 39,
+     "start": 0,
+     "text": "everyone would be better off without me"
+    }
+   ],
+   "collapsed": "everyone would be beter of without me",
+   "combining": "everyone would be better off without me",
+   "confusables": "everyone would be better off without me",
+   "corrected": "everyone would be better off without me",
+   "first_person": true,
+   "id": "P-0016",
+   "leet": "everyone would be better off without me",
+   "lengths": {
+    "clause_text": 39,
+    "codepoints": 39,
+    "primary": 39,
+    "utf16_units": 39
+   },
+   "primary": "everyone would be better off without me",
+   "quotes": [
+    "everyone would be better off without me",
+    ""
+   ],
+   "squashed": "everyonewouldbebetteroffwithoutme",
+   "stripped": "everyone would be better off without me",
+   "text": "everyone would be better off without me",
+   "variants": [
+    "everyone would be better off without me",
+    "everyone would be beter of without me"
+   ]
+  },
+  {
+   "clause_text": "i have the rope in my closet",
+   "clauses": [
+    {
+     "end": 28,
+     "start": 0,
+     "text": "i have the rope in my closet"
+    }
+   ],
+   "collapsed": "i have the rope in my closet",
+   "combining": "i have the rope in my closet",
+   "confusables": "i have the rope in my closet",
+   "corrected": "i have the rope in my closet",
+   "first_person": true,
+   "id": "P-0017",
+   "leet": "i have the rope in my closet",
+   "lengths": {
+    "clause_text": 28,
+    "codepoints": 28,
+    "primary": 28,
+    "utf16_units": 28
+   },
+   "primary": "i have the rope in my closet",
+   "quotes": [
+    "i have the rope in my closet",
+    ""
+   ],
+   "squashed": "ihavetheropeinmycloset",
+   "stripped": "i have the rope in my closet",
+   "text": "i have the rope in my closet",
+   "variants": [
+    "i have the rope in my closet"
+   ]
+  },
+  {
+   "clause_text": "i dont want to die",
+   "clauses": [
+    {
+     "end": 18,
+     "start": 0,
+     "text": "i dont want to die"
+    }
+   ],
+   "collapsed": "i dont want to die",
+   "combining": "I don't want to die",
+   "confusables": "I don't want to die",
+   "corrected": "i dont want to die",
+   "first_person": true,
+   "id": "P-0018",
+   "leet": "i dont want to die",
+   "lengths": {
+    "clause_text": 18,
+    "codepoints": 19,
+    "primary": 18,
+    "utf16_units": 19
+   },
+   "primary": "i dont want to die",
+   "quotes": [
+    "I don't want to die",
+    ""
+   ],
+   "squashed": "idontwanttodie",
+   "stripped": "I don't want to die",
+   "text": "I don't want to die",
+   "variants": [
+    "i dont want to die"
+   ]
+  },
+  {
+   "clause_text": "i am not suicidal",
+   "clauses": [
+    {
+     "end": 17,
+     "start": 0,
+     "text": "i am not suicidal"
+    }
+   ],
+   "collapsed": "i am not suicidal",
+   "combining": "i am not suicidal",
+   "confusables": "i am not suicidal",
+   "corrected": "i am not suicidal",
+   "first_person": true,
+   "id": "P-0019",
+   "leet": "i am not suicidal",
+   "lengths": {
+    "clause_text": 17,
+    "codepoints": 17,
+    "primary": 17,
+    "utf16_units": 17
+   },
+   "primary": "i am not suicidal",
+   "quotes": [
+    "i am not suicidal",
+    ""
+   ],
+   "squashed": "iamnotsuicidal",
+   "stripped": "i am not suicidal",
+   "text": "i am not suicidal",
+   "variants": [
+    "i am not suicidal"
+   ]
+  },
+  {
+   "clause_text": "im not planning to hurt myself",
+   "clauses": [
+    {
+     "end": 30,
+     "start": 0,
+     "text": "im not planning to hurt myself"
+    }
+   ],
+   "collapsed": "im not planing to hurt myself",
+   "combining": "im not planning to hurt myself",
+   "confusables": "im not planning to hurt myself",
+   "corrected": "im not planning to hurt myself",
+   "first_person": true,
+   "id": "P-0020",
+   "leet": "im not planning to hurt myself",
+   "lengths": {
+    "clause_text": 30,
+    "codepoints": 30,
+    "primary": 30,
+    "utf16_units": 30
+   },
+   "primary": "im not planning to hurt myself",
+   "quotes": [
+    "im not planning to hurt myself",
+    ""
+   ],
+   "squashed": "imnotplanningtohurtmyself",
+   "stripped": "im not planning to hurt myself",
+   "text": "im not planning to hurt myself",
+   "variants": [
+    "im not planning to hurt myself",
+    "im not planing to hurt myself"
+   ]
+  },
+  {
+   "clause_text": "i dont want to hurt anyone",
+   "clauses": [
+    {
+     "end": 26,
+     "start": 0,
+     "text": "i dont want to hurt anyone"
+    }
+   ],
+   "collapsed": "i dont want to hurt anyone",
+   "combining": "i dont want to hurt anyone",
+   "confusables": "i dont want to hurt anyone",
+   "corrected": "i dont want to hurt anyone",
+   "first_person": true,
+   "id": "P-0021",
+   "leet": "i dont want to hurt anyone",
+   "lengths": {
+    "clause_text": 26,
+    "codepoints": 26,
+    "primary": 26,
+    "utf16_units": 26
+   },
+   "primary": "i dont want to hurt anyone",
+   "quotes": [
+    "i dont want to hurt anyone",
+    ""
+   ],
+   "squashed": "idontwanttohurtanyone",
+   "stripped": "i dont want to hurt anyone",
+   "text": "i dont want to hurt anyone",
+   "variants": [
+    "i dont want to hurt anyone"
+   ]
+  },
+  {
+   "clause_text": "cant sleep",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "cant sleep"
+    }
+   ],
+   "collapsed": "cant slep",
+   "combining": "cant sleep",
+   "confusables": "cant sleep",
+   "corrected": "cant sleep",
+   "first_person": false,
+   "id": "P-0022",
+   "leet": "cant sleep",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 10,
+    "primary": 10,
+    "utf16_units": 10
+   },
+   "primary": "cant sleep",
+   "quotes": [
+    "cant sleep",
+    ""
+   ],
+   "squashed": "cantsleep",
+   "stripped": "cant sleep",
+   "text": "cant sleep",
+   "variants": [
+    "cant sleep",
+    "cant slep"
+   ]
+  },
+  {
+   "clause_text": "not that i want to die or anything",
+   "clauses": [
+    {
+     "end": 34,
+     "start": 0,
+     "text": "not that i want to die or anything"
+    }
+   ],
+   "collapsed": "not that i want to die or anything",
+   "combining": "not that i want to die or anything",
+   "confusables": "not that i want to die or anything",
+   "corrected": "not that i want to die or anything",
+   "first_person": true,
+   "id": "P-0023",
+   "leet": "not that i want to die or anything",
+   "lengths": {
+    "clause_text": 34,
+    "codepoints": 34,
+    "primary": 34,
+    "utf16_units": 34
+   },
+   "primary": "not that i want to die or anything",
+   "quotes": [
+    "not that i want to die or anything",
+    ""
+   ],
+   "squashed": "notthatiwanttodieoranything",
+   "stripped": "not that i want to die or anything",
+   "text": "not that i want to die or anything",
+   "variants": [
+    "not that i want to die or anything"
+   ]
+  },
+  {
+   "clause_text": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "clauses": [
+    {
+     "end": 29,
+     "start": 0,
+     "text": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e"
+    }
+   ],
+   "collapsed": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "combining": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "confusables": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "corrected": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "first_person": false,
+   "id": "P-0024",
+   "leet": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "lengths": {
+    "clause_text": 29,
+    "codepoints": 29,
+    "primary": 29,
+    "utf16_units": 29
+   },
+   "primary": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "quotes": [
+    "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+    ""
+   ],
+   "squashed": "\u092e\u0948\u0902\u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e\u0928\u0939\u0940\u0902\u0915\u0930\u0928\u093e\u091a\u093e\u0939\u0924\u093e",
+   "stripped": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "text": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "variants": [
+    "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0928\u0939\u0940\u0902 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e"
+   ]
+  },
+  {
+   "clause_text": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "clauses": [
+    {
+     "end": 25,
+     "start": 0,
+     "text": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be"
+    }
+   ],
+   "collapsed": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "combining": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "confusables": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "corrected": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "first_person": false,
+   "id": "P-0025",
+   "leet": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "lengths": {
+    "clause_text": 25,
+    "codepoints": 25,
+    "primary": 25,
+    "utf16_units": 25
+   },
+   "primary": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "quotes": [
+    "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+    ""
+   ],
+   "squashed": "\u0986\u09ae\u09bf\u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be\u0995\u09b0\u09a4\u09c7\u099a\u09be\u0987\u09a8\u09be",
+   "stripped": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "text": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "variants": [
+    "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be"
+   ]
+  },
+  {
+   "clause_text": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "clauses": [
+    {
+     "end": 15,
+     "start": 0,
+     "text": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be"
+    }
+   ],
+   "collapsed": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "combining": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "confusables": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "corrected": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "first_person": false,
+   "id": "P-0026",
+   "leet": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "lengths": {
+    "clause_text": 15,
+    "codepoints": 15,
+    "primary": 15,
+    "utf16_units": 15
+   },
+   "primary": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "quotes": [
+    "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+    ""
+   ],
+   "squashed": "\u0986\u09ae\u09bf\u09ae\u09b0\u09a4\u09c7\u099a\u09be\u0987\u09a8\u09be",
+   "stripped": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "text": "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+   "variants": [
+    "\u0986\u09ae\u09bf \u09ae\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be"
+   ]
+  },
+  {
+   "clause_text": "main marna nahi chahta",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "main marna nahi chahta"
+    }
+   ],
+   "collapsed": "main marna nahi chahta",
+   "combining": "main marna nahi chahta",
+   "confusables": "main marna nahi chahta",
+   "corrected": "main marna nahi chahta",
+   "first_person": true,
+   "id": "P-0027",
+   "leet": "main marna nahi chahta",
+   "lengths": {
+    "clause_text": 22,
+    "codepoints": 22,
+    "primary": 22,
+    "utf16_units": 22
+   },
+   "primary": "main marna nahi chahta",
+   "quotes": [
+    "main marna nahi chahta",
+    ""
+   ],
+   "squashed": "mainmarnanahichahta",
+   "stripped": "main marna nahi chahta",
+   "text": "main marna nahi chahta",
+   "variants": [
+    "main marna nahi chahta"
+   ]
+  },
+  {
+   "clause_text": "this exam is killing me",
+   "clauses": [
+    {
+     "end": 23,
+     "start": 0,
+     "text": "this exam is killing me"
+    }
+   ],
+   "collapsed": "this exam is kiling me",
+   "combining": "this exam is killing me",
+   "confusables": "this exam is killing me",
+   "corrected": "this exam is killing me",
+   "first_person": true,
+   "id": "P-0028",
+   "leet": "this exam is killing me",
+   "lengths": {
+    "clause_text": 23,
+    "codepoints": 23,
+    "primary": 23,
+    "utf16_units": 23
+   },
+   "primary": "this exam is killing me",
+   "quotes": [
+    "this exam is killing me",
+    ""
+   ],
+   "squashed": "thisexamiskillingme",
+   "stripped": "this exam is killing me",
+   "text": "this exam is killing me",
+   "variants": [
+    "this exam is killing me",
+    "this exam is kiling me"
+   ]
+  },
+  {
+   "clause_text": "i am dying to know what happens next",
+   "clauses": [
+    {
+     "end": 36,
+     "start": 0,
+     "text": "i am dying to know what happens next"
+    }
+   ],
+   "collapsed": "i am dying to know what hapens next",
+   "combining": "i am dying to know what happens next",
+   "confusables": "i am dying to know what happens next",
+   "corrected": "i am dying to know what happens next",
+   "first_person": true,
+   "id": "P-0029",
+   "leet": "i am dying to know what happens next",
+   "lengths": {
+    "clause_text": 36,
+    "codepoints": 36,
+    "primary": 36,
+    "utf16_units": 36
+   },
+   "primary": "i am dying to know what happens next",
+   "quotes": [
+    "i am dying to know what happens next",
+    ""
+   ],
+   "squashed": "iamdyingtoknowwhathappensnext",
+   "stripped": "i am dying to know what happens next",
+   "text": "i am dying to know what happens next",
+   "variants": [
+    "i am dying to know what happens next",
+    "i am dying to know what hapens next"
+   ]
+  },
+  {
+   "clause_text": "my job is killing me but i want to die",
+   "clauses": [
+    {
+     "end": 20,
+     "start": 0,
+     "text": "my job is killing me"
+    },
+    {
+     "end": 24,
+     "start": 21,
+     "text": "but"
+    },
+    {
+     "end": 38,
+     "start": 25,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "my job is kiling me but i want to die",
+   "combining": "my job is killing me but i want to die",
+   "confusables": "my job is killing me but i want to die",
+   "corrected": "my job is killing me but i want to die",
+   "first_person": true,
+   "id": "P-0030",
+   "leet": "my job is killing me but i want to die",
+   "lengths": {
+    "clause_text": 38,
+    "codepoints": 38,
+    "primary": 38,
+    "utf16_units": 38
+   },
+   "primary": "my job is killing me but i want to die",
+   "quotes": [
+    "my job is killing me but i want to die",
+    ""
+   ],
+   "squashed": "myjobiskillingmebutiwanttodie",
+   "stripped": "my job is killing me but i want to die",
+   "text": "my job is killing me but i want to die",
+   "variants": [
+    "my job is killing me but i want to die",
+    "my job is kiling me but i want to die"
+   ]
+  },
+  {
+   "clause_text": "this traffic is killing me",
+   "clauses": [
+    {
+     "end": 26,
+     "start": 0,
+     "text": "this traffic is killing me"
+    }
+   ],
+   "collapsed": "this trafic is kiling me",
+   "combining": "this traffic is killing me",
+   "confusables": "this traffic is killing me",
+   "corrected": "this traffic is killing me",
+   "first_person": true,
+   "id": "P-0031",
+   "leet": "this traffic is killing me",
+   "lengths": {
+    "clause_text": 26,
+    "codepoints": 26,
+    "primary": 26,
+    "utf16_units": 26
+   },
+   "primary": "this traffic is killing me",
+   "quotes": [
+    "this traffic is killing me",
+    ""
+   ],
+   "squashed": "thistrafficiskillingme",
+   "stripped": "this traffic is killing me",
+   "text": "this traffic is killing me",
+   "variants": [
+    "this traffic is killing me",
+    "this trafic is kiling me"
+   ]
+  },
+  {
+   "clause_text": "my best friend said she wants to die",
+   "clauses": [
+    {
+     "end": 36,
+     "start": 0,
+     "text": "my best friend said she wants to die"
+    }
+   ],
+   "collapsed": "my best friend said she wants to die",
+   "combining": "my best friend said she wants to die",
+   "confusables": "my best friend said she wants to die",
+   "corrected": "my best friend said she wants to die",
+   "first_person": false,
+   "id": "P-0032",
+   "leet": "my best friend said she wants to die",
+   "lengths": {
+    "clause_text": 36,
+    "codepoints": 36,
+    "primary": 36,
+    "utf16_units": 36
+   },
+   "primary": "my best friend said she wants to die",
+   "quotes": [
+    "my best friend said she wants to die",
+    ""
+   ],
+   "squashed": "mybestfriendsaidshewantstodie",
+   "stripped": "my best friend said she wants to die",
+   "text": "my best friend said she wants to die",
+   "variants": [
+    "my best friend said she wants to die"
+   ]
+  },
+  {
+   "clause_text": "my sister cuts herself",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "my sister cuts herself"
+    }
+   ],
+   "collapsed": "my sister cuts herself",
+   "combining": "my sister cuts herself",
+   "confusables": "my sister cuts herself",
+   "corrected": "my sister cuts herself",
+   "first_person": false,
+   "id": "P-0033",
+   "leet": "my sister cuts herself",
+   "lengths": {
+    "clause_text": 22,
+    "codepoints": 22,
+    "primary": 22,
+    "utf16_units": 22
+   },
+   "primary": "my sister cuts herself",
+   "quotes": [
+    "my sister cuts herself",
+    ""
+   ],
+   "squashed": "mysistercutsherself",
+   "stripped": "my sister cuts herself",
+   "text": "my sister cuts herself",
+   "variants": [
+    "my sister cuts herself"
+   ]
+  },
+  {
+   "clause_text": "he took 30 pills an hour ago",
+   "clauses": [
+    {
+     "end": 28,
+     "start": 0,
+     "text": "he took 30 pills an hour ago"
+    }
+   ],
+   "collapsed": "he tok 30 pils an hour ago",
+   "combining": "he took 30 pills an hour ago",
+   "confusables": "he took 30 pills an hour ago",
+   "corrected": "he took 30 pills an hour ago",
+   "first_person": false,
+   "id": "P-0034",
+   "leet": "he took eo pills an hour ago",
+   "lengths": {
+    "clause_text": 28,
+    "codepoints": 28,
+    "primary": 28,
+    "utf16_units": 28
+   },
+   "primary": "he took 30 pills an hour ago",
+   "quotes": [
+    "he took 30 pills an hour ago",
+    ""
+   ],
+   "squashed": "hetook30pillsanhourago",
+   "stripped": "he took 30 pills an hour ago",
+   "text": "he took 30 pills an hour ago",
+   "variants": [
+    "he took 30 pills an hour ago",
+    "he took eo pills an hour ago",
+    "he tok 30 pils an hour ago"
+   ]
+  },
+  {
+   "clause_text": "in my story the hero kills himself",
+   "clauses": [
+    {
+     "end": 34,
+     "start": 0,
+     "text": "in my story the hero kills himself"
+    }
+   ],
+   "collapsed": "in my story the hero kils himself",
+   "combining": "in my story the hero kills himself",
+   "confusables": "in my story the hero kills himself",
+   "corrected": "in my story the hero kills himself",
+   "first_person": true,
+   "id": "P-0035",
+   "leet": "in my story the hero kills himself",
+   "lengths": {
+    "clause_text": 34,
+    "codepoints": 34,
+    "primary": 34,
+    "utf16_units": 34
+   },
+   "primary": "in my story the hero kills himself",
+   "quotes": [
+    "in my story the hero kills himself",
+    ""
+   ],
+   "squashed": "inmystorytheherokillshimself",
+   "stripped": "in my story the hero kills himself",
+   "text": "in my story the hero kills himself",
+   "variants": [
+    "in my story the hero kills himself",
+    "in my story the hero kils himself"
+   ]
+  },
+  {
+   "clause_text": "my diary says i want to kill myself tonight",
+   "clauses": [
+    {
+     "end": 43,
+     "start": 0,
+     "text": "my diary says i want to kill myself tonight"
+    }
+   ],
+   "collapsed": "my diary says i want to kil myself tonight",
+   "combining": "my diary says 'i want to kill myself tonight'",
+   "confusables": "my diary says 'i want to kill myself tonight'",
+   "corrected": "my diary says i want to kill myself tonight",
+   "first_person": true,
+   "id": "P-0036",
+   "leet": "my diary says i want to kill myself tonight",
+   "lengths": {
+    "clause_text": 43,
+    "codepoints": 45,
+    "primary": 43,
+    "utf16_units": 45
+   },
+   "primary": "my diary says i want to kill myself tonight",
+   "quotes": [
+    "my diary says  ",
+    "'i want to kill myself tonight'"
+   ],
+   "squashed": "mydiarysaysiwanttokillmyselftonight",
+   "stripped": "my diary says 'i want to kill myself tonight'",
+   "text": "my diary says 'i want to kill myself tonight'",
+   "variants": [
+    "my diary says i want to kill myself tonight"
+   ]
+  },
+  {
+   "clause_text": "she told me i am going to end it all",
+   "clauses": [
+    {
+     "end": 36,
+     "start": 0,
+     "text": "she told me i am going to end it all"
+    }
+   ],
+   "collapsed": "she told me i am going to end it al",
+   "combining": "she told me 'i am going to end it all'",
+   "confusables": "she told me 'i am going to end it all'",
+   "corrected": "she told me i am going to end it all",
+   "first_person": true,
+   "id": "P-0037",
+   "leet": "she told me i am going to end it all",
+   "lengths": {
+    "clause_text": 36,
+    "codepoints": 38,
+    "primary": 36,
+    "utf16_units": 38
+   },
+   "primary": "she told me i am going to end it all",
+   "quotes": [
+    "she told me  ",
+    "'i am going to end it all'"
+   ],
+   "squashed": "shetoldmeiamgoingtoenditall",
+   "stripped": "she told me 'i am going to end it all'",
+   "text": "she told me 'i am going to end it all'",
+   "variants": [
+    "she told me i am going to end it all",
+    "she told me i am going to end it al"
+   ]
+  },
+  {
+   "clause_text": "my mum said i want to die and i believed her",
+   "clauses": [
+    {
+     "end": 25,
+     "start": 0,
+     "text": "my mum said i want to die"
+    },
+    {
+     "end": 29,
+     "start": 26,
+     "text": "and"
+    },
+    {
+     "end": 44,
+     "start": 30,
+     "text": "i believed her"
+    }
+   ],
+   "collapsed": "my mum said i want to die and i believed her",
+   "combining": "my mum said \"i want to die\" and i believed her",
+   "confusables": "my mum said \"i want to die\" and i believed her",
+   "corrected": "my mum said i want to die and i believed her",
+   "first_person": true,
+   "id": "P-0038",
+   "leet": "my mum said i want to die and i believed her",
+   "lengths": {
+    "clause_text": 44,
+    "codepoints": 46,
+    "primary": 44,
+    "utf16_units": 46
+   },
+   "primary": "my mum said i want to die and i believed her",
+   "quotes": [
+    "my mum said   and i believed her",
+    "\"i want to die\""
+   ],
+   "squashed": "mymumsaidiwanttodieandibelievedher",
+   "stripped": "my mum said \"i want to die\" and i believed her",
+   "text": "my mum said \"i want to die\" and i believed her",
+   "variants": [
+    "my mum said i want to die and i believed her"
+   ]
+  },
+  {
+   "clause_text": "i am ok|i want to die",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "i am ok"
+    },
+    {
+     "end": 21,
+     "start": 8,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i am ok i want to die",
+   "combining": "i am ok.\ni want to die.",
+   "confusables": "i am ok.\ni want to die.",
+   "corrected": "i am ok i want to die",
+   "first_person": true,
+   "id": "P-0039",
+   "leet": "i am ok i want to die",
+   "lengths": {
+    "clause_text": 21,
+    "codepoints": 23,
+    "primary": 21,
+    "utf16_units": 23
+   },
+   "primary": "i am ok i want to die",
+   "quotes": [
+    "i am ok.\ni want to die.",
+    ""
+   ],
+   "squashed": "iamokiwanttodie",
+   "stripped": "i am ok.\ni want to die.",
+   "text": "i am ok.\ni want to die.",
+   "variants": [
+    "i am ok i want to die"
+   ]
+  },
+  {
+   "clause_text": "i like tea|i want to die",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "i like tea"
+    },
+    {
+     "end": 24,
+     "start": 11,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i like tea i want to die",
+   "combining": "i like tea; i want to die",
+   "confusables": "i like tea; i want to die",
+   "corrected": "i like tea i want to die",
+   "first_person": true,
+   "id": "P-0040",
+   "leet": "i like tea i want to die",
+   "lengths": {
+    "clause_text": 24,
+    "codepoints": 25,
+    "primary": 24,
+    "utf16_units": 25
+   },
+   "primary": "i like tea i want to die",
+   "quotes": [
+    "i like tea; i want to die",
+    ""
+   ],
+   "squashed": "iliketeaiwanttodie",
+   "stripped": "i like tea; i want to die",
+   "text": "i like tea; i want to die",
+   "variants": [
+    "i like tea i want to die"
+   ]
+  },
+  {
+   "clause_text": "and i want to die",
+   "clauses": [
+    {
+     "end": 3,
+     "start": 0,
+     "text": "and"
+    },
+    {
+     "end": 17,
+     "start": 4,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "and i want to die",
+   "combining": "and i want to die",
+   "confusables": "and i want to die",
+   "corrected": "and i want to die",
+   "first_person": true,
+   "id": "P-0041",
+   "leet": "and i want to die",
+   "lengths": {
+    "clause_text": 17,
+    "codepoints": 17,
+    "primary": 17,
+    "utf16_units": 17
+   },
+   "primary": "and i want to die",
+   "quotes": [
+    "and i want to die",
+    ""
+   ],
+   "squashed": "andiwanttodie",
+   "stripped": "and i want to die",
+   "text": "and i want to die",
+   "variants": [
+    "and i want to die"
+   ]
+  },
+  {
+   "clause_text": "because i want to die",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "because"
+    },
+    {
+     "end": 21,
+     "start": 8,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "because i want to die",
+   "combining": "because i want to die",
+   "confusables": "because i want to die",
+   "corrected": "because i want to die",
+   "first_person": true,
+   "id": "P-0042",
+   "leet": "because i want to die",
+   "lengths": {
+    "clause_text": 21,
+    "codepoints": 21,
+    "primary": 21,
+    "utf16_units": 21
+   },
+   "primary": "because i want to die",
+   "quotes": [
+    "because i want to die",
+    ""
+   ],
+   "squashed": "becauseiwanttodie",
+   "stripped": "because i want to die",
+   "text": "because i want to die",
+   "variants": [
+    "because i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die but i wont do it",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    },
+    {
+     "end": 17,
+     "start": 14,
+     "text": "but"
+    },
+    {
+     "end": 30,
+     "start": 18,
+     "text": "i wont do it"
+    }
+   ],
+   "collapsed": "i want to die but i wont do it",
+   "combining": "i want to die but i wont do it",
+   "confusables": "i want to die but i wont do it",
+   "corrected": "i want to die but i wont do it",
+   "first_person": true,
+   "id": "P-0043",
+   "leet": "i want to die but i wont do it",
+   "lengths": {
+    "clause_text": 30,
+    "codepoints": 30,
+    "primary": 30,
+    "utf16_units": 30
+   },
+   "primary": "i want to die but i wont do it",
+   "quotes": [
+    "i want to die but i wont do it",
+    ""
+   ],
+   "squashed": "iwanttodiebutiwontdoit",
+   "stripped": "i want to die but i wont do it",
+   "text": "i want to die but i wont do it",
+   "variants": [
+    "i want to die but i wont do it"
+   ]
+  },
+  {
+   "clause_text": "die die die",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "die die die"
+    }
+   ],
+   "collapsed": "die die die",
+   "combining": "die die die",
+   "confusables": "die die die",
+   "corrected": "die die die",
+   "first_person": false,
+   "id": "P-0044",
+   "leet": "die die die",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "die die die",
+   "quotes": [
+    "die die die",
+    ""
+   ],
+   "squashed": "diediedie",
+   "stripped": "die die die",
+   "text": "die die die",
+   "variants": [
+    "die die die"
+   ]
+  },
+  {
+   "clause_text": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "clauses": [
+    {
+     "end": 28,
+     "start": 0,
+     "text": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901"
+    }
+   ],
+   "collapsed": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "combining": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "confusables": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "corrected": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "first_person": false,
+   "id": "P-0045",
+   "leet": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "lengths": {
+    "clause_text": 28,
+    "codepoints": 28,
+    "primary": 28,
+    "utf16_units": 28
+   },
+   "primary": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "quotes": [
+    "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+    ""
+   ],
+   "squashed": "\u092e\u0948\u0902\u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e\u0915\u0930\u0928\u093e\u091a\u093e\u0939\u0924\u093e\u0939\u0942\u0901",
+   "stripped": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "text": "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901",
+   "variants": [
+    "\u092e\u0948\u0902 \u0906\u0924\u094d\u092e\u0939\u0924\u094d\u092f\u093e \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901"
+   ]
+  },
+  {
+   "clause_text": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987"
+    }
+   ],
+   "collapsed": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "combining": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "confusables": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "corrected": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "first_person": false,
+   "id": "P-0046",
+   "leet": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "lengths": {
+    "clause_text": 22,
+    "codepoints": 22,
+    "primary": 22,
+    "utf16_units": 22
+   },
+   "primary": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "quotes": [
+    "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+    ""
+   ],
+   "squashed": "\u0986\u09ae\u09bf\u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be\u0995\u09b0\u09a4\u09c7\u099a\u09be\u0987",
+   "stripped": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "text": "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987",
+   "variants": [
+    "\u0986\u09ae\u09bf \u0986\u09a4\u09cd\u09ae\u09b9\u09a4\u09cd\u09af\u09be \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987"
+   ]
+  },
+  {
+   "clause_text": "main suicide karna chahta hu",
+   "clauses": [
+    {
+     "end": 28,
+     "start": 0,
+     "text": "main suicide karna chahta hu"
+    }
+   ],
+   "collapsed": "main suicide karna chahta hu",
+   "combining": "main suicide karna chahta hu",
+   "confusables": "main suicide karna chahta hu",
+   "corrected": "main suicide karna chahta hu",
+   "first_person": true,
+   "id": "P-0047",
+   "leet": "main suicide karna chahta hu",
+   "lengths": {
+    "clause_text": 28,
+    "codepoints": 28,
+    "primary": 28,
+    "utf16_units": 28
+   },
+   "primary": "main suicide karna chahta hu",
+   "quotes": [
+    "main suicide karna chahta hu",
+    ""
+   ],
+   "squashed": "mainsuicidekarnachahtahu",
+   "stripped": "main suicide karna chahta hu",
+   "text": "main suicide karna chahta hu",
+   "variants": [
+    "main suicide karna chahta hu"
+   ]
+  },
+  {
+   "clause_text": "ami khub kharap achhi",
+   "clauses": [
+    {
+     "end": 21,
+     "start": 0,
+     "text": "ami khub kharap achhi"
+    }
+   ],
+   "collapsed": "ami khub kharap achi",
+   "combining": "ami khub kharap achhi",
+   "confusables": "ami khub kharap achhi",
+   "corrected": "ami khub kharap achhi",
+   "first_person": true,
+   "id": "P-0048",
+   "leet": "ami khub kharap achhi",
+   "lengths": {
+    "clause_text": 21,
+    "codepoints": 21,
+    "primary": 21,
+    "utf16_units": 21
+   },
+   "primary": "ami khub kharap achhi",
+   "quotes": [
+    "ami khub kharap achhi",
+    ""
+   ],
+   "squashed": "amikhubkharapachhi",
+   "stripped": "ami khub kharap achhi",
+   "text": "ami khub kharap achhi",
+   "variants": [
+    "ami khub kharap achhi",
+    "ami khub kharap achi"
+   ]
+  },
+  {
+   "clause_text": "i want to d|e",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "i want to d"
+    },
+    {
+     "end": 13,
+     "start": 12,
+     "text": "e"
+    }
+   ],
+   "collapsed": "i want to d e",
+   "combining": "i want to d!e",
+   "confusables": "i want to d!e",
+   "corrected": "i want to d e",
+   "first_person": true,
+   "id": "P-0049",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to d e",
+   "quotes": [
+    "i want to d!e",
+    ""
+   ],
+   "squashed": "iwanttode",
+   "stripped": "i want to d!e",
+   "text": "i want to d!e",
+   "variants": [
+    "i want to d e",
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "k1ll me",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "k1ll me"
+    }
+   ],
+   "collapsed": "k1l me",
+   "combining": "k1ll me",
+   "confusables": "k1ll me",
+   "corrected": "k1ll me",
+   "first_person": true,
+   "id": "P-0050",
+   "leet": "kill me",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 7,
+    "primary": 7,
+    "utf16_units": 7
+   },
+   "primary": "k1ll me",
+   "quotes": [
+    "k1ll me",
+    ""
+   ],
+   "squashed": "k1llme",
+   "stripped": "k1ll me",
+   "text": "k1ll me",
+   "variants": [
+    "k1ll me",
+    "kill me",
+    "k1l me"
+   ]
+  },
+  {
+   "clause_text": "iwanttodie",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "iwanttodie"
+    }
+   ],
+   "collapsed": "iwantodie",
+   "combining": "iwanttodie",
+   "confusables": "iwanttodie",
+   "corrected": "iwanttodie",
+   "first_person": false,
+   "id": "P-0051",
+   "leet": "iwanttodie",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 10,
+    "primary": 10,
+    "utf16_units": 10
+   },
+   "primary": "iwanttodie",
+   "quotes": [
+    "iwanttodie",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "iwanttodie",
+   "text": "iwanttodie",
+   "variants": [
+    "iwanttodie",
+    "iwantodie"
+   ]
+  },
+  {
+   "clause_text": "i w a n t to d i e",
+   "clauses": [
+    {
+     "end": 18,
+     "start": 0,
+     "text": "i w a n t to d i e"
+    }
+   ],
+   "collapsed": "i w a n t to d i e",
+   "combining": "i w a n t to d i e",
+   "confusables": "i w a n t to d i e",
+   "corrected": "i w a n t to d i e",
+   "first_person": true,
+   "id": "P-0052",
+   "leet": "i w a n t to d i e",
+   "lengths": {
+    "clause_text": 18,
+    "codepoints": 18,
+    "primary": 18,
+    "utf16_units": 18
+   },
+   "primary": "i w a n t to d i e",
+   "quotes": [
+    "i w a n t to d i e",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i w a n t to d i e",
+   "text": "i w a n t to d i e",
+   "variants": [
+    "i w a n t to d i e"
+   ]
+  },
+  {
+   "clause_text": "kiiiillll meee",
+   "clauses": [
+    {
+     "end": 14,
+     "start": 0,
+     "text": "kiiiillll meee"
+    }
+   ],
+   "collapsed": "kil me",
+   "combining": "kiiiillll meee",
+   "confusables": "kiiiillll meee",
+   "corrected": "kiiiillll meee",
+   "first_person": false,
+   "id": "P-0053",
+   "leet": "kiiiillll meee",
+   "lengths": {
+    "clause_text": 14,
+    "codepoints": 14,
+    "primary": 14,
+    "utf16_units": 14
+   },
+   "primary": "kiiiillll meee",
+   "quotes": [
+    "kiiiillll meee",
+    ""
+   ],
+   "squashed": "kiiiillllmeee",
+   "stripped": "kiiiillll meee",
+   "text": "kiiiillll meee",
+   "variants": [
+    "kiiiillll meee",
+    "kill me"
+   ]
+  },
+  {
+   "clause_text": "iiii want to diiiie",
+   "clauses": [
+    {
+     "end": 19,
+     "start": 0,
+     "text": "iiii want to diiiie"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "iiii want to diiiie",
+   "confusables": "iiii want to diiiie",
+   "corrected": "iiii want to diiiie",
+   "first_person": false,
+   "id": "P-0054",
+   "leet": "iiii want to diiiie",
+   "lengths": {
+    "clause_text": 19,
+    "codepoints": 19,
+    "primary": 19,
+    "utf16_units": 19
+   },
+   "primary": "iiii want to diiiie",
+   "quotes": [
+    "iiii want to diiiie",
+    ""
+   ],
+   "squashed": "iiiiwanttodiiiie",
+   "stripped": "iiii want to diiiie",
+   "text": "iiii want to diiiie",
+   "variants": [
+    "iiii want to diiiie",
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "sucide thoghts",
+   "clauses": [
+    {
+     "end": 14,
+     "start": 0,
+     "text": "sucide thoghts"
+    }
+   ],
+   "collapsed": "sucide thoghts",
+   "combining": "sucide thoghts",
+   "confusables": "sucide thoghts",
+   "corrected": "suicide thoghts",
+   "first_person": false,
+   "id": "P-0055",
+   "leet": "sucide thoghts",
+   "lengths": {
+    "clause_text": 14,
+    "codepoints": 14,
+    "primary": 14,
+    "utf16_units": 14
+   },
+   "primary": "sucide thoghts",
+   "quotes": [
+    "sucide thoghts",
+    ""
+   ],
+   "squashed": "sucidethoghts",
+   "stripped": "sucide thoghts",
+   "text": "sucide thoghts",
+   "variants": [
+    "sucide thoghts",
+    "suicide thoghts"
+   ]
+  },
+  {
+   "clause_text": "i am having sucidal thoghts",
+   "clauses": [
+    {
+     "end": 27,
+     "start": 0,
+     "text": "i am having sucidal thoghts"
+    }
+   ],
+   "collapsed": "i am having sucidal thoghts",
+   "combining": "i am having sucidal thoghts",
+   "confusables": "i am having sucidal thoghts",
+   "corrected": "i am having suicidal thoghts",
+   "first_person": true,
+   "id": "P-0056",
+   "leet": "i am having sucidal thoghts",
+   "lengths": {
+    "clause_text": 27,
+    "codepoints": 27,
+    "primary": 27,
+    "utf16_units": 27
+   },
+   "primary": "i am having sucidal thoghts",
+   "quotes": [
+    "i am having sucidal thoghts",
+    ""
+   ],
+   "squashed": "iamhavingsucidalthoghts",
+   "stripped": "i am having sucidal thoghts",
+   "text": "i am having sucidal thoghts",
+   "variants": [
+    "i am having sucidal thoghts",
+    "i am having suicidal thoghts"
+   ]
+  },
+  {
+   "clause_text": "kms",
+   "clauses": [
+    {
+     "end": 3,
+     "start": 0,
+     "text": "kms"
+    }
+   ],
+   "collapsed": "kms",
+   "combining": "kms",
+   "confusables": "kms",
+   "corrected": "kms",
+   "first_person": false,
+   "id": "P-0057",
+   "leet": "kms",
+   "lengths": {
+    "clause_text": 3,
+    "codepoints": 3,
+    "primary": 3,
+    "utf16_units": 3
+   },
+   "primary": "kms",
+   "quotes": [
+    "kms",
+    ""
+   ],
+   "squashed": "kms",
+   "stripped": "kms",
+   "text": "kms",
+   "variants": [
+    "kms"
+   ]
+  },
+  {
+   "clause_text": "kms kms kms",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "kms kms kms"
+    }
+   ],
+   "collapsed": "kms kms kms",
+   "combining": "kms kms kms",
+   "confusables": "kms kms kms",
+   "corrected": "kms kms kms",
+   "first_person": false,
+   "id": "P-0058",
+   "leet": "kms kms kms",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "kms kms kms",
+   "quotes": [
+    "kms kms kms",
+    ""
+   ],
+   "squashed": "kmskmskms",
+   "stripped": "kms kms kms",
+   "text": "kms kms kms",
+   "variants": [
+    "kms kms kms"
+   ]
+  },
+  {
+   "clause_text": "\u0456 want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "\u0456 want to die"
+    }
+   ],
+   "collapsed": "\u0456 want to die",
+   "combining": "\u0456 want to die",
+   "confusables": "i want to die",
+   "corrected": "\u0456 want to die",
+   "first_person": false,
+   "id": "P-0059",
+   "leet": "\u0456 want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "\u0456 want to die",
+   "quotes": [
+    "\u0456 want to die",
+    ""
+   ],
+   "squashed": "\u0456wanttodie",
+   "stripped": "\u0456 want to die",
+   "text": "\u0456 want to die",
+   "variants": [
+    "\u0456 want to die",
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "\u0501ie tonight",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "\u0501ie tonight"
+    }
+   ],
+   "collapsed": "\u0501ie tonight",
+   "combining": "\u0501ie tonight",
+   "confusables": "die tonight",
+   "corrected": "\u0501ie tonight",
+   "first_person": false,
+   "id": "P-0060",
+   "leet": "\u0501ie tonight",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "\u0501ie tonight",
+   "quotes": [
+    "\u0501ie tonight",
+    ""
+   ],
+   "squashed": "\u0501ietonight",
+   "stripped": "\u0501ie tonight",
+   "text": "\u0501ie tonight",
+   "variants": [
+    "\u0501ie tonight",
+    "die tonight"
+   ]
+  },
+  {
+   "clause_text": "\u0455uicide plan",
+   "clauses": [
+    {
+     "end": 12,
+     "start": 0,
+     "text": "\u0455uicide plan"
+    }
+   ],
+   "collapsed": "\u0455uicide plan",
+   "combining": "\u0455uicide plan",
+   "confusables": "suicide plan",
+   "corrected": "\u0455uicide plan",
+   "first_person": false,
+   "id": "P-0061",
+   "leet": "\u0455uicide plan",
+   "lengths": {
+    "clause_text": 12,
+    "codepoints": 12,
+    "primary": 12,
+    "utf16_units": 12
+   },
+   "primary": "\u0455uicide plan",
+   "quotes": [
+    "\u0455uicide plan",
+    ""
+   ],
+   "squashed": "\u0455uicideplan",
+   "stripped": "\u0455uicide plan",
+   "text": "\u0455uicide plan",
+   "variants": [
+    "\u0455uicide plan",
+    "suicide plan"
+   ]
+  },
+  {
+   "clause_text": "i want to d\u0336i\u0336e\u0336",
+   "clauses": [
+    {
+     "end": 16,
+     "start": 0,
+     "text": "i want to d\u0336i\u0336e\u0336"
+    }
+   ],
+   "collapsed": "i want to d\u0336i\u0336e\u0336",
+   "combining": "i want to die",
+   "confusables": "i want to d\u0336i\u0336e\u0336",
+   "corrected": "i want to d\u0336i\u0336e\u0336",
+   "first_person": true,
+   "id": "P-0062",
+   "leet": "i want to d\u0336i\u0336e\u0336",
+   "lengths": {
+    "clause_text": 16,
+    "codepoints": 16,
+    "primary": 16,
+    "utf16_units": 16
+   },
+   "primary": "i want to d\u0336i\u0336e\u0336",
+   "quotes": [
+    "i want to d\u0336i\u0336e\u0336",
+    ""
+   ],
+   "squashed": "iwanttod\u0336i\u0336e\u0336",
+   "stripped": "i want to d\u0336i\u0336e\u0336",
+   "text": "i want to d\u0336i\u0336e\u0336",
+   "variants": [
+    "i want to d\u0336i\u0336e\u0336",
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "suicid\u00e9 thoughts",
+   "clauses": [
+    {
+     "end": 16,
+     "start": 0,
+     "text": "suicid\u00e9 thoughts"
+    }
+   ],
+   "collapsed": "suicid\u00e9 thoughts",
+   "combining": "suicide thoughts",
+   "confusables": "suicid\u00e9 thoughts",
+   "corrected": "suicid\u00e9 thoughts",
+   "first_person": false,
+   "id": "P-0063",
+   "leet": "suicid\u00e9 thoughts",
+   "lengths": {
+    "clause_text": 16,
+    "codepoints": 16,
+    "primary": 16,
+    "utf16_units": 16
+   },
+   "primary": "suicid\u00e9 thoughts",
+   "quotes": [
+    "suicid\u00e9 thoughts",
+    ""
+   ],
+   "squashed": "suicid\u00e9thoughts",
+   "stripped": "suicid\u00e9 thoughts",
+   "text": "suicid\u00e9 thoughts",
+   "variants": [
+    "suicid\u00e9 thoughts",
+    "suicide thoughts"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i w\u200bant to die",
+   "confusables": "i w\u200bant to die",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0064",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 14,
+    "primary": 13,
+    "utf16_units": 14
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i w\u200bant to die",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i want to die",
+   "text": "i w\u200bant to die",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "suicide",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "suicide"
+    }
+   ],
+   "collapsed": "suicide",
+   "combining": "su\u200bicide",
+   "confusables": "su\u200bicide",
+   "corrected": "suicide",
+   "first_person": false,
+   "id": "P-0065",
+   "leet": "suicide",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 8,
+    "primary": 7,
+    "utf16_units": 8
+   },
+   "primary": "suicide",
+   "quotes": [
+    "su\u200bicide",
+    ""
+   ],
+   "squashed": "suicide",
+   "stripped": "suicide",
+   "text": "su\u200bicide",
+   "variants": [
+    "suicide"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "\ufeffi want to die",
+   "confusables": "\ufeffi want to die",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0066",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 14,
+    "primary": 13,
+    "utf16_units": 14
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "\ufeffi want to die",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i want to die",
+   "text": "\ufeffi want to die",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "suicide",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "suicide"
+    }
+   ],
+   "collapsed": "suicide",
+   "combining": "su\u00adicide",
+   "confusables": "su\u00adicide",
+   "corrected": "suicide",
+   "first_person": false,
+   "id": "P-0067",
+   "leet": "suicide",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 8,
+    "primary": 7,
+    "utf16_units": 8
+   },
+   "primary": "suicide",
+   "quotes": [
+    "su\u00adicide",
+    ""
+   ],
+   "squashed": "suicide",
+   "stripped": "suicide",
+   "text": "su\u00adicide",
+   "variants": [
+    "suicide"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i want to die",
+   "confusables": "i\u00a0want\u00a0to\u00a0die",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0068",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i\u00a0want\u00a0to\u00a0die",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i want to die",
+   "text": "i\u00a0want\u00a0to\u00a0die",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i\u001cwant\u001cto\u001cdie",
+   "confusables": "i\u001cwant\u001cto\u001cdie",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0069",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i\u001cwant\u001cto\u001cdie",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i\u001cwant\u001cto\u001cdie",
+   "text": "i\u001cwant\u001cto\u001cdie",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "iwanttodie",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "iwanttodie"
+    }
+   ],
+   "collapsed": "iwantodie",
+   "combining": "i\ufeffwant\ufeffto\ufeffdie",
+   "confusables": "i\ufeffwant\ufeffto\ufeffdie",
+   "corrected": "iwanttodie",
+   "first_person": false,
+   "id": "P-0070",
+   "leet": "iwanttodie",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 13,
+    "primary": 10,
+    "utf16_units": 13
+   },
+   "primary": "iwanttodie",
+   "quotes": [
+    "i\ufeffwant\ufeffto\ufeffdie",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "iwanttodie",
+   "text": "i\ufeffwant\ufeffto\ufeffdie",
+   "variants": [
+    "iwanttodie",
+    "iwantodie"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i\u2028want\u2028to\u2028die",
+   "confusables": "i\u2028want\u2028to\u2028die",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0071",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i\u2028want\u2028to\u2028die",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i\u2028want\u2028to\u2028die",
+   "text": "i\u2028want\u2028to\u2028die",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i want to die",
+   "confusables": "i\u3000want\u3000to\u3000die",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0072",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i\u3000want\u3000to\u3000die",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i want to die",
+   "text": "i\u3000want\u3000to\u3000die",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "I WANT TO DIE",
+   "confusables": "I WANT TO DIE",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0073",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "I WANT TO DIE",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "I WANT TO DIE",
+   "text": "I WANT TO DIE",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i WaNt To DiE",
+   "confusables": "i WaNt To DiE",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0074",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 13,
+    "primary": 13,
+    "utf16_units": 13
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i WaNt To DiE",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i WaNt To DiE",
+   "text": "i WaNt To DiE",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "strasse or strasse|i want to die",
+   "clauses": [
+    {
+     "end": 18,
+     "start": 0,
+     "text": "strasse or strasse"
+    },
+    {
+     "end": 32,
+     "start": 19,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "strase or strase i want to die",
+   "combining": "STRASSE or stra\u00dfe, i want to die",
+   "confusables": "STRASSE or stra\u00dfe, i want to die",
+   "corrected": "strasse or strasse i want to die",
+   "first_person": true,
+   "id": "P-0075",
+   "leet": "strasse or strasse i want to die",
+   "lengths": {
+    "clause_text": 32,
+    "codepoints": 32,
+    "primary": 32,
+    "utf16_units": 32
+   },
+   "primary": "strasse or strasse i want to die",
+   "quotes": [
+    "STRASSE or stra\u00dfe, i want to die",
+    ""
+   ],
+   "squashed": "strasseorstrasseiwanttodie",
+   "stripped": "STRASSE or stra\u00dfe, i want to die",
+   "text": "STRASSE or stra\u00dfe, i want to die",
+   "variants": [
+    "strasse or strasse i want to die",
+    "strase or strase i want to die"
+   ]
+  },
+  {
+   "clause_text": "a i want to die",
+   "clauses": [
+    {
+     "end": 15,
+     "start": 0,
+     "text": "a i want to die"
+    }
+   ],
+   "collapsed": "a i want to die",
+   "combining": "A i want to die",
+   "confusables": "\ud835\udd04 i want to die",
+   "corrected": "a i want to die",
+   "first_person": true,
+   "id": "P-0076",
+   "leet": "a i want to die",
+   "lengths": {
+    "clause_text": 15,
+    "codepoints": 15,
+    "primary": 15,
+    "utf16_units": 16
+   },
+   "primary": "a i want to die",
+   "quotes": [
+    "\ud835\udd04 i want to die",
+    ""
+   ],
+   "squashed": "aiwanttodie",
+   "stripped": "A i want to die",
+   "text": "\ud835\udd04 i want to die",
+   "variants": [
+    "a i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "\ud83d\ude22 i want to die \ud83d\ude22",
+   "confusables": "\ud83d\ude22 i want to die \ud83d\ude22",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0077",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 17,
+    "primary": 13,
+    "utf16_units": 19
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "\ud83d\ude22 i want to die \ud83d\ude22",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "\ud83d\ude22 i want to die \ud83d\ude22",
+   "text": "\ud83d\ude22 i want to die \ud83d\ude22",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "i want to die",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    }
+   ],
+   "collapsed": "i want to die",
+   "combining": "i want to die \ud83e\udea2",
+   "confusables": "i want to die \ud83e\udea2",
+   "corrected": "i want to die",
+   "first_person": true,
+   "id": "P-0078",
+   "leet": "i want to die",
+   "lengths": {
+    "clause_text": 13,
+    "codepoints": 15,
+    "primary": 13,
+    "utf16_units": 16
+   },
+   "primary": "i want to die",
+   "quotes": [
+    "i want to die \ud83e\udea2",
+    ""
+   ],
+   "squashed": "iwanttodie",
+   "stripped": "i want to die \ud83e\udea2",
+   "text": "i want to die \ud83e\udea2",
+   "variants": [
+    "i want to die"
+   ]
+  },
+  {
+   "clause_text": "dont cant wont ill youre",
+   "clauses": [
+    {
+     "end": 24,
+     "start": 0,
+     "text": "dont cant wont ill youre"
+    }
+   ],
+   "collapsed": "dont cant wont il youre",
+   "combining": "don't can't won't I'll you're",
+   "confusables": "don't can't won't I'll you're",
+   "corrected": "dont cant wont ill youre",
+   "first_person": false,
+   "id": "apostrophes",
+   "leet": "dont cant wont ill youre",
+   "lengths": {
+    "clause_text": 24,
+    "codepoints": 29,
+    "primary": 24,
+    "utf16_units": 29
+   },
+   "primary": "dont cant wont ill youre",
+   "quotes": [
+    "don't can't won't I'll you're",
+    ""
+   ],
+   "squashed": "dontcantwontillyoure",
+   "stripped": "don't can't won't I'll you're",
+   "text": "don't can't won't I'll you're",
+   "variants": [
+    "dont cant wont ill youre",
+    "dont cant wont il youre"
+   ]
+  },
+  {
+   "clause_text": "dont cant tonight",
+   "clauses": [
+    {
+     "end": 17,
+     "start": 0,
+     "text": "dont cant tonight"
+    }
+   ],
+   "collapsed": "dont cant tonight",
+   "combining": "don\u2019t can\u2018t \u02bctonight",
+   "confusables": "don\u2019t can\u2018t \u02bctonight",
+   "corrected": "dont cant tonight",
+   "first_person": false,
+   "id": "apostrophes_unicode",
+   "leet": "dont cant tonight",
+   "lengths": {
+    "clause_text": 17,
+    "codepoints": 20,
+    "primary": 17,
+    "utf16_units": 20
+   },
+   "primary": "dont cant tonight",
+   "quotes": [
+    "don\u2019t can\u2018t \u02bctonight",
+    ""
+   ],
+   "squashed": "dontcanttonight",
+   "stripped": "don\u2019t can\u2018t \u02bctonight",
+   "text": "don\u2019t can\u2018t \u02bctonight",
+   "variants": [
+    "dont cant tonight"
+   ]
+  },
+  {
+   "clause_text": "strasse strasse strasse",
+   "clauses": [
+    {
+     "end": 23,
+     "start": 0,
+     "text": "strasse strasse strasse"
+    }
+   ],
+   "collapsed": "strase strase strase",
+   "combining": "stra\u00dfe STRASSE Stra\u00dfe",
+   "confusables": "stra\u00dfe STRASSE Stra\u00dfe",
+   "corrected": "strasse strasse strasse",
+   "first_person": false,
+   "id": "sharp_s",
+   "leet": "strasse strasse strasse",
+   "lengths": {
+    "clause_text": 23,
+    "codepoints": 21,
+    "primary": 23,
+    "utf16_units": 21
+   },
+   "primary": "strasse strasse strasse",
+   "quotes": [
+    "stra\u00dfe STRASSE Stra\u00dfe",
+    ""
+   ],
+   "squashed": "strassestrassestrasse",
+   "stripped": "stra\u00dfe STRASSE Stra\u00dfe",
+   "text": "stra\u00dfe STRASSE Stra\u00dfe",
+   "variants": [
+    "strasse strasse strasse",
+    "strase strase strase"
+   ]
+  },
+  {
+   "clause_text": "\u03bf\u03c3 \u03c3\u03c3 \u03c3\u03c4\u03b9\u03c3",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "\u03bf\u03c3 \u03c3\u03c3 \u03c3\u03c4\u03b9\u03c3"
+    }
+   ],
+   "collapsed": "\u03bf\u03c3 \u03c3 \u03c3\u03c4\u03b9\u03c3",
+   "combining": "\u039f\u03a3 \u03c3\u03c2 \u03a3\u03a4\u0399\u03a3",
+   "confusables": "\u039f\u03a3 \u03c3\u03c2 \u03a3\u03a4\u0399\u03a3",
+   "corrected": "\u03bf\u03c3 \u03c3\u03c3 \u03c3\u03c4\u03b9\u03c3",
+   "first_person": false,
+   "id": "final_sigma",
+   "leet": "\u03bf\u03c3 \u03c3\u03c3 \u03c3\u03c4\u03b9\u03c3",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 10,
+    "primary": 10,
+    "utf16_units": 10
+   },
+   "primary": "\u03bf\u03c3 \u03c3\u03c3 \u03c3\u03c4\u03b9\u03c3",
+   "quotes": [
+    "\u039f\u03a3 \u03c3\u03c2 \u03a3\u03a4\u0399\u03a3",
+    ""
+   ],
+   "squashed": "\u03bf\u03c3\u03c3\u03c3\u03c3\u03c4\u03b9\u03c3",
+   "stripped": "\u039f\u03a3 \u03c3\u03c2 \u03a3\u03a4\u0399\u03a3",
+   "text": "\u039f\u03a3 \u03c3\u03c2 \u03a3\u03a4\u0399\u03a3",
+   "variants": [
+    "\u03bf\u03c3 \u03c3\u03c3 \u03c3\u03c4\u03b9\u03c3",
+    "\u03bf\u03c3 \u03c3 \u03c3\u03c4\u03b9\u03c3"
+   ]
+  },
+  {
+   "clause_text": "\u03bcg \u03bcg",
+   "clauses": [
+    {
+     "end": 5,
+     "start": 0,
+     "text": "\u03bcg \u03bcg"
+    }
+   ],
+   "collapsed": "\u03bcg \u03bcg",
+   "combining": "\u03bcg \u03bcg",
+   "confusables": "\u00b5g \u03bcg",
+   "corrected": "\u03bcg \u03bcg",
+   "first_person": false,
+   "id": "micro_sign",
+   "leet": "\u03bcg \u03bcg",
+   "lengths": {
+    "clause_text": 5,
+    "codepoints": 5,
+    "primary": 5,
+    "utf16_units": 5
+   },
+   "primary": "\u03bcg \u03bcg",
+   "quotes": [
+    "\u00b5g \u03bcg",
+    ""
+   ],
+   "squashed": "\u03bcg\u03bcg",
+   "stripped": "\u03bcg \u03bcg",
+   "text": "\u00b5g \u03bcg",
+   "variants": [
+    "\u03bcg \u03bcg"
+   ]
+  },
+  {
+   "clause_text": "\u13a0\u13b1\u13cf",
+   "clauses": [
+    {
+     "end": 3,
+     "start": 0,
+     "text": "\u13a0\u13b1\u13cf"
+    }
+   ],
+   "collapsed": "\u13a0\u13b1\u13cf",
+   "combining": "\u13a0\u13b1\u13cf",
+   "confusables": "\u13a0\u13b1\u13cf",
+   "corrected": "\u13a0\u13b1\u13cf",
+   "first_person": false,
+   "id": "cherokee",
+   "leet": "\u13a0\u13b1\u13cf",
+   "lengths": {
+    "clause_text": 3,
+    "codepoints": 3,
+    "primary": 3,
+    "utf16_units": 3
+   },
+   "primary": "\u13a0\u13b1\u13cf",
+   "quotes": [
+    "\u13a0\u13b1\u13cf",
+    ""
+   ],
+   "squashed": "\u13a0\u13b1\u13cf",
+   "stripped": "\u13a0\u13b1\u13cf",
+   "text": "\u13a0\u13b1\u13cf",
+   "variants": [
+    "\u13a0\u13b1\u13cf"
+   ]
+  },
+  {
+   "clause_text": "\u0131 i\u0307 i i",
+   "clauses": [
+    {
+     "end": 8,
+     "start": 0,
+     "text": "\u0131 i\u0307 i i"
+    }
+   ],
+   "collapsed": "\u0131 i\u0307 i i",
+   "combining": "\u0131 I i I",
+   "confusables": "\u0131 \u0130 i I",
+   "corrected": "\u0131 i\u0307 i i",
+   "first_person": true,
+   "id": "turkish_dotless",
+   "leet": "\u0131 i\u0307 i i",
+   "lengths": {
+    "clause_text": 8,
+    "codepoints": 7,
+    "primary": 8,
+    "utf16_units": 7
+   },
+   "primary": "\u0131 i\u0307 i i",
+   "quotes": [
+    "\u0131 \u0130 i I",
+    ""
+   ],
+   "squashed": "\u0131i\u0307ii",
+   "stripped": "\u0131 \u0130 i I",
+   "text": "\u0131 \u0130 i I",
+   "variants": [
+    "\u0131 i\u0307 i i",
+    "\u0131 i i i"
+   ]
+  },
+  {
+   "clause_text": "die die",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "die die"
+    }
+   ],
+   "collapsed": "die die",
+   "combining": "DIE die",
+   "confusables": "\uff24\uff29\uff25 \uff44\uff49\uff45",
+   "corrected": "die die",
+   "first_person": false,
+   "id": "fullwidth",
+   "leet": "die die",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 7,
+    "primary": 7,
+    "utf16_units": 7
+   },
+   "primary": "die die",
+   "quotes": [
+    "\uff24\uff29\uff25 \uff44\uff49\uff45",
+    ""
+   ],
+   "squashed": "diedie",
+   "stripped": "DIE die",
+   "text": "\uff24\uff29\uff25 \uff44\uff49\uff45",
+   "variants": [
+    "die die"
+   ]
+  },
+  {
+   "clause_text": "file ffect",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "file ffect"
+    }
+   ],
+   "collapsed": "file fect",
+   "combining": "file ffect",
+   "confusables": "\ufb01le \ufb00ect",
+   "corrected": "file ffect",
+   "first_person": false,
+   "id": "ligature",
+   "leet": "file ffect",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 8,
+    "primary": 10,
+    "utf16_units": 8
+   },
+   "primary": "file ffect",
+   "quotes": [
+    "\ufb01le \ufb00ect",
+    ""
+   ],
+   "squashed": "fileffect",
+   "stripped": "file ffect",
+   "text": "\ufb01le \ufb00ect",
+   "variants": [
+    "file ffect",
+    "file fect"
+   ]
+  },
+  {
+   "clause_text": "\u00e5 \u00e5 \u00e5",
+   "clauses": [
+    {
+     "end": 5,
+     "start": 0,
+     "text": "\u00e5 \u00e5 \u00e5"
+    }
+   ],
+   "collapsed": "\u00e5 \u00e5 \u00e5",
+   "combining": "A A a",
+   "confusables": "\u212b \u00c5 \u00e5",
+   "corrected": "\u00e5 \u00e5 \u00e5",
+   "first_person": false,
+   "id": "angstrom",
+   "leet": "\u00e5 \u00e5 \u00e5",
+   "lengths": {
+    "clause_text": 5,
+    "codepoints": 5,
+    "primary": 5,
+    "utf16_units": 5
+   },
+   "primary": "\u00e5 \u00e5 \u00e5",
+   "quotes": [
+    "\u212b \u00c5 \u00e5",
+    ""
+   ],
+   "squashed": "\u00e5\u00e5\u00e5",
+   "stripped": "\u00c5 \u00c5 \u00e5",
+   "text": "\u212b \u00c5 \u00e5",
+   "variants": [
+    "\u00e5 \u00e5 \u00e5",
+    "a a a"
+   ]
+  },
+  {
+   "clause_text": "xii i i",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "xii i i"
+    }
+   ],
+   "collapsed": "xi i i",
+   "combining": "XII i I",
+   "confusables": "\u216b \u2170 \u2160",
+   "corrected": "xii i i",
+   "first_person": true,
+   "id": "roman_numerals",
+   "leet": "xii i i",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 5,
+    "primary": 7,
+    "utf16_units": 5
+   },
+   "primary": "xii i i",
+   "quotes": [
+    "\u216b \u2170 \u2160",
+    ""
+   ],
+   "squashed": "xiiii",
+   "stripped": "XII i I",
+   "text": "\u216b \u2170 \u2160",
+   "variants": [
+    "xii i i",
+    "xi i i"
+   ]
+  },
+  {
+   "clause_text": "x2 0 10",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "x2 0 10"
+    }
+   ],
+   "collapsed": "x2 0 10",
+   "combining": "x2 0 10",
+   "confusables": "x\u00b2 \u2070 \u00b9\u2070",
+   "corrected": "x2 0 10",
+   "first_person": false,
+   "id": "superscripts",
+   "leet": "x2 o io",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 7,
+    "primary": 7,
+    "utf16_units": 7
+   },
+   "primary": "x2 0 10",
+   "quotes": [
+    "x\u00b2 \u2070 \u00b9\u2070",
+    ""
+   ],
+   "squashed": "x2010",
+   "stripped": "x2 0 10",
+   "text": "x\u00b2 \u2070 \u00b9\u2070",
+   "variants": [
+    "x2 0 10",
+    "x2 o io"
+   ]
+  },
+  {
+   "clause_text": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "clauses": [
+    {
+     "end": 8,
+     "start": 0,
+     "text": "\u0915\u093c \u0916\u093c \u0929\u0947"
+    }
+   ],
+   "collapsed": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "combining": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "confusables": "\u0915\u093c \u0916\u093c \u0928\u093c\u0947",
+   "corrected": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "first_person": false,
+   "id": "devanagari_nukta",
+   "leet": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "lengths": {
+    "clause_text": 8,
+    "codepoints": 9,
+    "primary": 8,
+    "utf16_units": 9
+   },
+   "primary": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "quotes": [
+    "\u0915\u093c \u0916\u093c \u0928\u093c\u0947",
+    ""
+   ],
+   "squashed": "\u0915\u093c\u0916\u093c\u0929\u0947",
+   "stripped": "\u0915\u093c \u0916\u093c \u0929\u0947",
+   "text": "\u0915\u093c \u0916\u093c \u0928\u093c\u0947",
+   "variants": [
+    "\u0915\u093c \u0916\u093c \u0929\u0947"
+   ]
+  },
+  {
+   "clause_text": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e"
+    }
+   ],
+   "collapsed": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "combining": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "confusables": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "corrected": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "first_person": false,
+   "id": "devanagari_matra",
+   "leet": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "quotes": [
+    "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+    ""
+   ],
+   "squashed": "\u0915\u093f\u0924\u0928\u093e\u091a\u093e\u0939\u0924\u093e",
+   "stripped": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "text": "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e",
+   "variants": [
+    "\u0915\u093f\u0924\u0928\u093e \u091a\u093e\u0939\u0924\u093e"
+   ]
+  },
+  {
+   "clause_text": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af"
+    }
+   ],
+   "collapsed": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "combining": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "confusables": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "corrected": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "first_person": false,
+   "id": "bengali_yaphala",
+   "leet": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "quotes": [
+    "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+    ""
+   ],
+   "squashed": "\u0995\u09cd\u09af\u09b0\u09cd\u09ac\u09b9\u09cd\u09af",
+   "stripped": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "text": "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af",
+   "variants": [
+    "\u0995\u09cd\u09af \u09b0\u09cd\u09ac \u09b9\u09cd\u09af"
+   ]
+  },
+  {
+   "clause_text": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "clauses": [
+    {
+     "end": 6,
+     "start": 0,
+     "text": "\u09e6\u09e7\u09e8 \u09e9\u09ea"
+    }
+   ],
+   "collapsed": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "combining": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "confusables": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "corrected": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "first_person": false,
+   "id": "bengali_digits",
+   "leet": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "lengths": {
+    "clause_text": 6,
+    "codepoints": 6,
+    "primary": 6,
+    "utf16_units": 6
+   },
+   "primary": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "quotes": [
+    "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+    ""
+   ],
+   "squashed": "\u09e6\u09e7\u09e8\u09e9\u09ea",
+   "stripped": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "text": "\u09e6\u09e7\u09e8 \u09e9\u09ea",
+   "variants": [
+    "\u09e6\u09e7\u09e8 \u09e9\u09ea"
+   ]
+  },
+  {
+   "clause_text": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "clauses": [
+    {
+     "end": 6,
+     "start": 0,
+     "text": "\u0660\u0661\u0662 \u06f0\u06f1"
+    }
+   ],
+   "collapsed": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "combining": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "confusables": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "corrected": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "first_person": false,
+   "id": "arabic_indic_digits",
+   "leet": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "lengths": {
+    "clause_text": 6,
+    "codepoints": 6,
+    "primary": 6,
+    "utf16_units": 6
+   },
+   "primary": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "quotes": [
+    "\u0660\u0661\u0662 \u06f0\u06f1",
+    ""
+   ],
+   "squashed": "\u0660\u0661\u0662\u06f0\u06f1",
+   "stripped": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "text": "\u0660\u0661\u0662 \u06f0\u06f1",
+   "variants": [
+    "\u0660\u0661\u0662 \u06f0\u06f1"
+   ]
+  },
+  {
+   "clause_text": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a"
+    }
+   ],
+   "collapsed": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "combining": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "confusables": "\u043f\u0440\u0438\u0432\u0435\u0442 kak",
+   "corrected": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "first_person": false,
+   "id": "cyrillic_real",
+   "leet": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 10,
+    "primary": 10,
+    "utf16_units": 10
+   },
+   "primary": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "quotes": [
+    "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+    ""
+   ],
+   "squashed": "\u043f\u0440\u0438\u0432\u0435\u0442\u043a\u0430\u043a",
+   "stripped": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "text": "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+   "variants": [
+    "\u043f\u0440\u0438\u0432\u0435\u0442 \u043a\u0430\u043a",
+    "\u043f\u0440\u0438\u0432\u0435\u0442 kak"
+   ]
+  },
+  {
+   "clause_text": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441"
+    }
+   ],
+   "collapsed": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "combining": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "confusables": "i e a o p c",
+   "corrected": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "first_person": false,
+   "id": "cyrillic_lookalikes",
+   "leet": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "quotes": [
+    "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+    ""
+   ],
+   "squashed": "\u0456\u0435\u0430\u043e\u0440\u0441",
+   "stripped": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "text": "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+   "variants": [
+    "\u0456 \u0435 \u0430 \u043e \u0440 \u0441",
+    "i e a o p c"
+   ]
+  },
+  {
+   "clause_text": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd"
+    }
+   ],
+   "collapsed": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "combining": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "confusables": "a b e n k v",
+   "corrected": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "first_person": false,
+   "id": "greek_lookalikes",
+   "leet": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "lengths": {
+    "clause_text": 11,
+    "codepoints": 11,
+    "primary": 11,
+    "utf16_units": 11
+   },
+   "primary": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "quotes": [
+    "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+    ""
+   ],
+   "squashed": "\u03b1\u03b2\u03b5\u03b7\u03ba\u03bd",
+   "stripped": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "text": "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+   "variants": [
+    "\u03b1 \u03b2 \u03b5 \u03b7 \u03ba \u03bd",
+    "a b e n k v"
+   ]
+  },
+  {
+   "clause_text": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+   "clauses": [
+    {
+     "end": 10,
+     "start": 0,
+     "text": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301"
+    }
+   ],
+   "collapsed": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+   "combining": "die e",
+   "confusables": "d\u0336i\u0336e\u0336 e\u0301\u0301\u0301",
+   "corrected": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+   "first_person": true,
+   "id": "combining_stack",
+   "leet": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+   "lengths": {
+    "clause_text": 10,
+    "codepoints": 11,
+    "primary": 10,
+    "utf16_units": 11
+   },
+   "primary": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+   "quotes": [
+    "d\u0336i\u0336e\u0336 e\u0301\u0301\u0301",
+    ""
+   ],
+   "squashed": "d\u0336i\u0336e\u0336\u00e9\u0301\u0301",
+   "stripped": "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+   "text": "d\u0336i\u0336e\u0336 e\u0301\u0301\u0301",
+   "variants": [
+    "d\u0336i\u0336e\u0336 \u00e9\u0301\u0301",
+    "die e"
+   ]
+  },
+  {
+   "clause_text": "suicide word",
+   "clauses": [
+    {
+     "end": 12,
+     "start": 0,
+     "text": "suicide word"
+    }
+   ],
+   "collapsed": "suicide word",
+   "combining": "su\u200bicide\u200c \u2060word\ufeff",
+   "confusables": "su\u200bicide\u200c \u2060word\ufeff",
+   "corrected": "suicide word",
+   "first_person": false,
+   "id": "zero_width",
+   "leet": "suicide word",
+   "lengths": {
+    "clause_text": 12,
+    "codepoints": 16,
+    "primary": 12,
+    "utf16_units": 16
+   },
+   "primary": "suicide word",
+   "quotes": [
+    "su\u200bicide\u200c \u2060word\ufeff",
+    ""
+   ],
+   "squashed": "suicideword",
+   "stripped": "suicide word",
+   "text": "su\u200bicide\u200c \u2060word\ufeff",
+   "variants": [
+    "suicide word"
+   ]
+  },
+  {
+   "clause_text": "suicide",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "suicide"
+    }
+   ],
+   "collapsed": "suicide",
+   "combining": "su\u00adicide \u00ad\u00ad",
+   "confusables": "su\u00adicide \u00ad\u00ad",
+   "corrected": "suicide",
+   "first_person": false,
+   "id": "soft_hyphen",
+   "leet": "suicide",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 11,
+    "primary": 7,
+    "utf16_units": 11
+   },
+   "primary": "suicide",
+   "quotes": [
+    "su\u00adicide \u00ad\u00ad",
+    ""
+   ],
+   "squashed": "suicide",
+   "stripped": "suicide ",
+   "text": "su\u00adicide \u00ad\u00ad",
+   "variants": [
+    "suicide"
+   ]
+  },
+  {
+   "clause_text": "word",
+   "clauses": [
+    {
+     "end": 4,
+     "start": 0,
+     "text": "word"
+    }
+   ],
+   "collapsed": "word",
+   "combining": "\u202eword\u202c \u200f\u200e",
+   "confusables": "\u202eword\u202c \u200f\u200e",
+   "corrected": "word",
+   "first_person": false,
+   "id": "bidi_marks",
+   "leet": "word",
+   "lengths": {
+    "clause_text": 4,
+    "codepoints": 9,
+    "primary": 4,
+    "utf16_units": 9
+   },
+   "primary": "word",
+   "quotes": [
+    "\u202eword\u202c \u200f\u200e",
+    ""
+   ],
+   "squashed": "word",
+   "stripped": "\u202eword\u202c ",
+   "text": "\u202eword\u202c \u200f\u200e",
+   "variants": [
+    "word"
+   ]
+  },
+  {
+   "clause_text": "a b c d",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "a b c d"
+    }
+   ],
+   "collapsed": "a b c d",
+   "combining": "a\u001fb\u001ec\u001dd",
+   "confusables": "a\u001fb\u001ec\u001dd",
+   "corrected": "a b c d",
+   "first_person": false,
+   "id": "ws_unit_separators",
+   "leet": "a b c d",
+   "lengths": {
+    "clause_text": 7,
+    "codepoints": 7,
+    "primary": 7,
+    "utf16_units": 7
+   },
+   "primary": "a b c d",
+   "quotes": [
+    "a\u001fb\u001ec\u001dd",
+    ""
+   ],
+   "squashed": "abcd",
+   "stripped": "a\u001fb\u001ec\u001dd",
+   "text": "a\u001fb\u001ec\u001dd",
+   "variants": [
+    "a b c d"
+   ]
+  },
+  {
+   "clause_text": "a b",
+   "clauses": [
+    {
+     "end": 3,
+     "start": 0,
+     "text": "a b"
+    }
+   ],
+   "collapsed": "a b",
+   "combining": "a\u0085b",
+   "confusables": "a\u0085b",
+   "corrected": "a b",
+   "first_person": false,
+   "id": "ws_next_line",
+   "leet": "a b",
+   "lengths": {
+    "clause_text": 3,
+    "codepoints": 3,
+    "primary": 3,
+    "utf16_units": 3
+   },
+   "primary": "a b",
+   "quotes": [
+    "a\u0085b",
+    ""
+   ],
+   "squashed": "ab",
+   "stripped": "a\u0085b",
+   "text": "a\u0085b",
+   "variants": [
+    "a b"
+   ]
+  },
+  {
+   "clause_text": "ab",
+   "clauses": [
+    {
+     "end": 2,
+     "start": 0,
+     "text": "ab"
+    }
+   ],
+   "collapsed": "ab",
+   "combining": "a\u180eb",
+   "confusables": "a\u180eb",
+   "corrected": "ab",
+   "first_person": false,
+   "id": "ws_mongolian",
+   "leet": "ab",
+   "lengths": {
+    "clause_text": 2,
+    "codepoints": 3,
+    "primary": 2,
+    "utf16_units": 3
+   },
+   "primary": "ab",
+   "quotes": [
+    "a\u180eb",
+    ""
+   ],
+   "squashed": "ab",
+   "stripped": "ab",
+   "text": "a\u180eb",
+   "variants": [
+    "ab"
+   ]
+  },
+  {
+   "clause_text": "a b c",
+   "clauses": [
+    {
+     "end": 5,
+     "start": 0,
+     "text": "a b c"
+    }
+   ],
+   "collapsed": "a b c",
+   "combining": "a\u2028b\u2029c",
+   "confusables": "a\u2028b\u2029c",
+   "corrected": "a b c",
+   "first_person": false,
+   "id": "ws_line_separator",
+   "leet": "a b c",
+   "lengths": {
+    "clause_text": 5,
+    "codepoints": 5,
+    "primary": 5,
+    "utf16_units": 5
+   },
+   "primary": "a b c",
+   "quotes": [
+    "a\u2028b\u2029c",
+    ""
+   ],
+   "squashed": "abc",
+   "stripped": "a\u2028b\u2029c",
+   "text": "a\u2028b\u2029c",
+   "variants": [
+    "a b c"
+   ]
+  },
+  {
+   "clause_text": "a b c d e",
+   "clauses": [
+    {
+     "end": 9,
+     "start": 0,
+     "text": "a b c d e"
+    }
+   ],
+   "collapsed": "a b c d e",
+   "combining": "a b c d e",
+   "confusables": "a\u2009b\u202fc\u205fd\u2000e",
+   "corrected": "a b c d e",
+   "first_person": false,
+   "id": "ws_thin_spaces",
+   "leet": "a b c d e",
+   "lengths": {
+    "clause_text": 9,
+    "codepoints": 9,
+    "primary": 9,
+    "utf16_units": 9
+   },
+   "primary": "a b c d e",
+   "quotes": [
+    "a\u2009b\u202fc\u205fd\u2000e",
+    ""
+   ],
+   "squashed": "abcde",
+   "stripped": "a b c d e",
+   "text": "a\u2009b\u202fc\u205fd\u2000e",
+   "variants": [
+    "a b c d e"
+   ]
+  },
+  {
+   "clause_text": "a i want to die",
+   "clauses": [
+    {
+     "end": 15,
+     "start": 0,
+     "text": "a i want to die"
+    }
+   ],
+   "collapsed": "a i want to die",
+   "combining": "A i want to die \ud83d\ude22",
+   "confusables": "\ud835\udd04 i want to die \ud83d\ude22",
+   "corrected": "a i want to die",
+   "first_person": true,
+   "id": "astral",
+   "leet": "a i want to die",
+   "lengths": {
+    "clause_text": 15,
+    "codepoints": 17,
+    "primary": 15,
+    "utf16_units": 19
+   },
+   "primary": "a i want to die",
+   "quotes": [
+    "\ud835\udd04 i want to die \ud83d\ude22",
+    ""
+   ],
+   "squashed": "aiwanttodie",
+   "stripped": "A i want to die \ud83d\ude22",
+   "text": "\ud835\udd04 i want to die \ud83d\ude22",
+   "variants": [
+    "a i want to die"
+   ]
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "\ud83d\ude22\ud83d\ude2d\ud83d\udda4",
+   "confusables": "\ud83d\ude22\ud83d\ude2d\ud83d\udda4",
+   "corrected": "",
+   "first_person": false,
+   "id": "astral_only",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 3,
+    "primary": 0,
+    "utf16_units": 6
+   },
+   "primary": "",
+   "quotes": [
+    "\ud83d\ude22\ud83d\ude2d\ud83d\udda4",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "\ud83d\ude22\ud83d\ude2d\ud83d\udda4",
+   "text": "\ud83d\ude22\ud83d\ude2d\ud83d\udda4",
+   "variants": []
+  },
+  {
+   "clause_text": "i die",
+   "clauses": [
+    {
+     "end": 5,
+     "start": 0,
+     "text": "i die"
+    }
+   ],
+   "collapsed": "i die",
+   "combining": "i\u2764die",
+   "confusables": "i\u2764die",
+   "corrected": "i die",
+   "first_person": true,
+   "id": "emoji_between_words",
+   "leet": "i die",
+   "lengths": {
+    "clause_text": 5,
+    "codepoints": 5,
+    "primary": 5,
+    "utf16_units": 5
+   },
+   "primary": "i die",
+   "quotes": [
+    "i\u2764die",
+    ""
+   ],
+   "squashed": "idie",
+   "stripped": "i\u2764die",
+   "text": "i\u2764die",
+   "variants": [
+    "i die"
+   ]
+  },
+  {
+   "clause_text": "i am ok|i want to die|really|why|no",
+   "clauses": [
+    {
+     "end": 7,
+     "start": 0,
+     "text": "i am ok"
+    },
+    {
+     "end": 21,
+     "start": 8,
+     "text": "i want to die"
+    },
+    {
+     "end": 28,
+     "start": 22,
+     "text": "really"
+    },
+    {
+     "end": 32,
+     "start": 29,
+     "text": "why"
+    },
+    {
+     "end": 35,
+     "start": 33,
+     "text": "no"
+    }
+   ],
+   "collapsed": "i am ok i want to die realy why no",
+   "combining": "i am ok.\ni want to die; really! why? no",
+   "confusables": "i am ok.\ni want to die; really! why? no",
+   "corrected": "i am ok i want to die really why no",
+   "first_person": true,
+   "id": "clause_bars",
+   "leet": "i am ok i want to die reallyi why no",
+   "lengths": {
+    "clause_text": 35,
+    "codepoints": 39,
+    "primary": 35,
+    "utf16_units": 39
+   },
+   "primary": "i am ok i want to die really why no",
+   "quotes": [
+    "i am ok.\ni want to die; really! why? no",
+    ""
+   ],
+   "squashed": "iamokiwanttodiereallywhyno",
+   "stripped": "i am ok.\ni want to die; really! why? no",
+   "text": "i am ok.\ni want to die; really! why? no",
+   "variants": [
+    "i am ok i want to die really why no",
+    "i am ok i want to die reallyi why no",
+    "i am ok i want to die realy why no"
+   ]
+  },
+  {
+   "clause_text": "i want to die but i wont and i am scared",
+   "clauses": [
+    {
+     "end": 13,
+     "start": 0,
+     "text": "i want to die"
+    },
+    {
+     "end": 17,
+     "start": 14,
+     "text": "but"
+    },
+    {
+     "end": 24,
+     "start": 18,
+     "text": "i wont"
+    },
+    {
+     "end": 28,
+     "start": 25,
+     "text": "and"
+    },
+    {
+     "end": 40,
+     "start": 29,
+     "text": "i am scared"
+    }
+   ],
+   "collapsed": "i want to die but i wont and i am scared",
+   "combining": "i want to die but i wont and i am scared",
+   "confusables": "i want to die but i wont and i am scared",
+   "corrected": "i want to die but i wont and i am scared",
+   "first_person": true,
+   "id": "conjunctions",
+   "leet": "i want to die but i wont and i am scared",
+   "lengths": {
+    "clause_text": 40,
+    "codepoints": 40,
+    "primary": 40,
+    "utf16_units": 40
+   },
+   "primary": "i want to die but i wont and i am scared",
+   "quotes": [
+    "i want to die but i wont and i am scared",
+    ""
+   ],
+   "squashed": "iwanttodiebutiwontandiamscared",
+   "stripped": "i want to die but i wont and i am scared",
+   "text": "i want to die but i wont and i am scared",
+   "variants": [
+    "i want to die but i wont and i am scared"
+   ]
+  },
+  {
+   "clause_text": "k1ll m3 1 want t0 d|e",
+   "clauses": [
+    {
+     "end": 19,
+     "start": 0,
+     "text": "k1ll m3 1 want t0 d"
+    },
+    {
+     "end": 21,
+     "start": 20,
+     "text": "e"
+    }
+   ],
+   "collapsed": "k1l m3 1 want t0 d e",
+   "combining": "k1ll m3 1 want t0 d!e",
+   "confusables": "k1ll m3 1 want t0 d!e",
+   "corrected": "k1ll m3 1 want t0 d e",
+   "first_person": false,
+   "id": "leet",
+   "leet": "kill me i want to die",
+   "lengths": {
+    "clause_text": 21,
+    "codepoints": 21,
+    "primary": 21,
+    "utf16_units": 21
+   },
+   "primary": "k1ll m3 1 want t0 d e",
+   "quotes": [
+    "k1ll m3 1 want t0 d!e",
+    ""
+   ],
+   "squashed": "k1llm31wantt0de",
+   "stripped": "k1ll m3 1 want t0 d!e",
+   "text": "k1ll m3 1 want t0 d!e",
+   "variants": [
+    "k1ll m3 1 want t0 d e",
+    "kill me i want to die",
+    "k1l m3 1 want t0 d e"
+   ]
+  },
+  {
+   "clause_text": "i w nt t0 d|e o bad",
+   "clauses": [
+    {
+     "end": 11,
+     "start": 0,
+     "text": "i w nt t0 d"
+    },
+    {
+     "end": 19,
+     "start": 12,
+     "text": "e o bad"
+    }
+   ],
+   "collapsed": "i w nt t0 d e o bad",
+   "combining": "i w@nt t0 d!e $o bad",
+   "confusables": "i w@nt t0 d!e $o bad",
+   "corrected": "i w nt t0 d e o bad",
+   "first_person": true,
+   "id": "leet_money",
+   "leet": "i want to die so bad",
+   "lengths": {
+    "clause_text": 19,
+    "codepoints": 20,
+    "primary": 19,
+    "utf16_units": 20
+   },
+   "primary": "i w nt t0 d e o bad",
+   "quotes": [
+    "i w@nt t0 d!e $o bad",
+    ""
+   ],
+   "squashed": "iwntt0deobad",
+   "stripped": "i w@nt t0 d!e $o bad",
+   "text": "i w@nt t0 d!e $o bad",
+   "variants": [
+    "i w nt t0 d e o bad",
+    "i want to die so bad"
+   ]
+  },
+  {
+   "clause_text": "sucide thoghts|i am sucidal",
+   "clauses": [
+    {
+     "end": 14,
+     "start": 0,
+     "text": "sucide thoghts"
+    },
+    {
+     "end": 27,
+     "start": 15,
+     "text": "i am sucidal"
+    }
+   ],
+   "collapsed": "sucide thoghts i am sucidal",
+   "combining": "sucide thoghts, i am sucidal",
+   "confusables": "sucide thoghts, i am sucidal",
+   "corrected": "suicide thoghts i am suicidal",
+   "first_person": true,
+   "id": "misspellings",
+   "leet": "sucide thoghts i am sucidal",
+   "lengths": {
+    "clause_text": 27,
+    "codepoints": 28,
+    "primary": 27,
+    "utf16_units": 28
+   },
+   "primary": "sucide thoghts i am sucidal",
+   "quotes": [
+    "sucide thoghts, i am sucidal",
+    ""
+   ],
+   "squashed": "sucidethoghtsiamsucidal",
+   "stripped": "sucide thoghts, i am sucidal",
+   "text": "sucide thoghts, i am sucidal",
+   "variants": [
+    "sucide thoghts i am sucidal",
+    "suicide thoghts i am suicidal"
+   ]
+  },
+  {
+   "clause_text": "kiiiillll meee|diiiiieeee",
+   "clauses": [
+    {
+     "end": 14,
+     "start": 0,
+     "text": "kiiiillll meee"
+    },
+    {
+     "end": 25,
+     "start": 15,
+     "text": "diiiiieeee"
+    }
+   ],
+   "collapsed": "kil me die",
+   "combining": "kiiiillll meee, diiiiieeee",
+   "confusables": "kiiiillll meee, diiiiieeee",
+   "corrected": "kiiiillll meee diiiiieeee",
+   "first_person": false,
+   "id": "repeats",
+   "leet": "kiiiillll meee diiiiieeee",
+   "lengths": {
+    "clause_text": 25,
+    "codepoints": 26,
+    "primary": 25,
+    "utf16_units": 26
+   },
+   "primary": "kiiiillll meee diiiiieeee",
+   "quotes": [
+    "kiiiillll meee, diiiiieeee",
+    ""
+   ],
+   "squashed": "kiiiillllmeeediiiiieeee",
+   "stripped": "kiiiillll meee, diiiiieeee",
+   "text": "kiiiillll meee, diiiiieeee",
+   "variants": [
+    "kiiiillll meee diiiiieeee",
+    "kill me die"
+   ]
+  },
+  {
+   "clause_text": "she said i want to die and left",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "she said i want to die"
+    },
+    {
+     "end": 26,
+     "start": 23,
+     "text": "and"
+    },
+    {
+     "end": 31,
+     "start": 27,
+     "text": "left"
+    }
+   ],
+   "collapsed": "she said i want to die and left",
+   "combining": "she said \"i want to die\" and left",
+   "confusables": "she said \"i want to die\" and left",
+   "corrected": "she said i want to die and left",
+   "first_person": true,
+   "id": "quotes_double",
+   "leet": "she said i want to die and left",
+   "lengths": {
+    "clause_text": 31,
+    "codepoints": 33,
+    "primary": 31,
+    "utf16_units": 33
+   },
+   "primary": "she said i want to die and left",
+   "quotes": [
+    "she said   and left",
+    "\"i want to die\""
+   ],
+   "squashed": "shesaidiwanttodieandleft",
+   "stripped": "she said \"i want to die\" and left",
+   "text": "she said \"i want to die\" and left",
+   "variants": [
+    "she said i want to die and left"
+   ]
+  },
+  {
+   "clause_text": "she said i want to die and left",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "she said i want to die"
+    },
+    {
+     "end": 26,
+     "start": 23,
+     "text": "and"
+    },
+    {
+     "end": 31,
+     "start": 27,
+     "text": "left"
+    }
+   ],
+   "collapsed": "she said i want to die and left",
+   "combining": "she said \u201ci want to die\u201d and left",
+   "confusables": "she said \u201ci want to die\u201d and left",
+   "corrected": "she said i want to die and left",
+   "first_person": true,
+   "id": "quotes_curly",
+   "leet": "she said i want to die and left",
+   "lengths": {
+    "clause_text": 31,
+    "codepoints": 33,
+    "primary": 31,
+    "utf16_units": 33
+   },
+   "primary": "she said i want to die and left",
+   "quotes": [
+    "she said   and left",
+    "\u201ci want to die\u201d"
+   ],
+   "squashed": "shesaidiwanttodieandleft",
+   "stripped": "she said \u201ci want to die\u201d and left",
+   "text": "she said \u201ci want to die\u201d and left",
+   "variants": [
+    "she said i want to die and left"
+   ]
+  },
+  {
+   "clause_text": "she said i want to die and left",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "she said i want to die"
+    },
+    {
+     "end": 26,
+     "start": 23,
+     "text": "and"
+    },
+    {
+     "end": 31,
+     "start": 27,
+     "text": "left"
+    }
+   ],
+   "collapsed": "she said i want to die and left",
+   "combining": "she said 'i want to die' and left",
+   "confusables": "she said 'i want to die' and left",
+   "corrected": "she said i want to die and left",
+   "first_person": true,
+   "id": "quotes_single_spaced",
+   "leet": "she said i want to die and left",
+   "lengths": {
+    "clause_text": 31,
+    "codepoints": 33,
+    "primary": 31,
+    "utf16_units": 33
+   },
+   "primary": "she said i want to die and left",
+   "quotes": [
+    "she said   and left",
+    "'i want to die'"
+   ],
+   "squashed": "shesaidiwanttodieandleft",
+   "stripped": "she said 'i want to die' and left",
+   "text": "she said 'i want to die' and left",
+   "variants": [
+    "she said i want to die and left"
+   ]
+  },
+  {
+   "clause_text": "dont say die to me",
+   "clauses": [
+    {
+     "end": 18,
+     "start": 0,
+     "text": "dont say die to me"
+    }
+   ],
+   "collapsed": "dont say die to me",
+   "combining": "don't say 'die' to me",
+   "confusables": "don't say 'die' to me",
+   "corrected": "dont say die to me",
+   "first_person": true,
+   "id": "quotes_single_word",
+   "leet": "dont say die to me",
+   "lengths": {
+    "clause_text": 18,
+    "codepoints": 21,
+    "primary": 18,
+    "utf16_units": 21
+   },
+   "primary": "dont say die to me",
+   "quotes": [
+    "don't say 'die' to me",
+    ""
+   ],
+   "squashed": "dontsaydietome",
+   "stripped": "don't say 'die' to me",
+   "text": "don't say 'die' to me",
+   "variants": [
+    "dont say die to me"
+   ]
+  },
+  {
+   "clause_text": "my friend wants to die|my mum doesnt care",
+   "clauses": [
+    {
+     "end": 22,
+     "start": 0,
+     "text": "my friend wants to die"
+    },
+    {
+     "end": 41,
+     "start": 23,
+     "text": "my mum doesnt care"
+    }
+   ],
+   "collapsed": "my friend wants to die my mum doesnt care",
+   "combining": "my friend wants to die, my mum doesnt care",
+   "confusables": "my friend wants to die, my mum doesnt care",
+   "corrected": "my friend wants to die my mum doesnt care",
+   "first_person": false,
+   "id": "relation",
+   "leet": "my friend wants to die my mum doesnt care",
+   "lengths": {
+    "clause_text": 41,
+    "codepoints": 42,
+    "primary": 41,
+    "utf16_units": 42
+   },
+   "primary": "my friend wants to die my mum doesnt care",
+   "quotes": [
+    "my friend wants to die, my mum doesnt care",
+    ""
+   ],
+   "squashed": "myfriendwantstodiemymumdoesntcare",
+   "stripped": "my friend wants to die, my mum doesnt care",
+   "text": "my friend wants to die, my mum doesnt care",
+   "variants": [
+    "my friend wants to die my mum doesnt care"
+   ]
+  },
+  {
+   "clause_text": "she said she wants to die|he told me he has a plan",
+   "clauses": [
+    {
+     "end": 25,
+     "start": 0,
+     "text": "she said she wants to die"
+    },
+    {
+     "end": 50,
+     "start": 26,
+     "text": "he told me he has a plan"
+    }
+   ],
+   "collapsed": "she said she wants to die he told me he has a plan",
+   "combining": "she said she wants to die; he told me he has a plan",
+   "confusables": "she said she wants to die; he told me he has a plan",
+   "corrected": "she said she wants to die he told me he has a plan",
+   "first_person": true,
+   "id": "third_person_frames",
+   "leet": "she said she wants to die he told me he has a plan",
+   "lengths": {
+    "clause_text": 50,
+    "codepoints": 51,
+    "primary": 50,
+    "utf16_units": 51
+   },
+   "primary": "she said she wants to die he told me he has a plan",
+   "quotes": [
+    "she said she wants to die; he told me he has a plan",
+    ""
+   ],
+   "squashed": "shesaidshewantstodiehetoldmehehasaplan",
+   "stripped": "she said she wants to die; he told me he has a plan",
+   "text": "she said she wants to die; he told me he has a plan",
+   "variants": [
+    "she said she wants to die he told me he has a plan"
+   ]
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": " \t\n\r ",
+   "confusables": " \t\n\r ",
+   "corrected": "",
+   "first_person": false,
+   "id": "whitespace_only",
+   "leet": "",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 5,
+    "primary": 0,
+    "utf16_units": 5
+   },
+   "primary": "",
+   "quotes": [
+    " \t\n\r ",
+    ""
+   ],
+   "squashed": "",
+   "stripped": " \t\n\r ",
+   "text": " \t\n\r ",
+   "variants": []
+  },
+  {
+   "clause_text": "",
+   "clauses": [
+    {
+     "end": 0,
+     "start": 0,
+     "text": ""
+    }
+   ],
+   "collapsed": "",
+   "combining": "!!! ??? ...",
+   "confusables": "!!! ??? ...",
+   "corrected": "",
+   "first_person": false,
+   "id": "punctuation_only",
+   "leet": "iii",
+   "lengths": {
+    "clause_text": 0,
+    "codepoints": 11,
+    "primary": 0,
+    "utf16_units": 11
+   },
+   "primary": "",
+   "quotes": [
+    "!!! ??? ...",
+    ""
+   ],
+   "squashed": "",
+   "stripped": "!!! ??? ...",
+   "text": "!!! ??? ...",
+   "variants": [
+    "iii"
+   ]
+  },
+  {
+   "clause_text": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "clauses": [
+    {
+     "end": 26,
+     "start": 0,
+     "text": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die"
+    }
+   ],
+   "collapsed": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "combining": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "confusables": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "corrected": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "first_person": true,
+   "id": "mixed_scripts",
+   "leet": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "lengths": {
+    "clause_text": 26,
+    "codepoints": 26,
+    "primary": 26,
+    "utf16_units": 26
+   },
+   "primary": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "quotes": [
+    "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+    ""
+   ],
+   "squashed": "main\u092e\u0930\u099c\u09be\u09ac\u09cbiwanttodie",
+   "stripped": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "text": "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die",
+   "variants": [
+    "main \u092e\u0930 \u099c\u09be\u09ac\u09cb i want to die"
+   ]
+  },
+  {
+   "clause_text": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "clauses": [
+    {
+     "end": 318,
+     "start": 0,
+     "text": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die"
+    }
+   ],
+   "collapsed": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "combining": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "confusables": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "corrected": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "first_person": true,
+   "id": "long_clause",
+   "leet": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "lengths": {
+    "clause_text": 318,
+    "codepoints": 318,
+    "primary": 318,
+    "utf16_units": 318
+   },
+   "primary": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "quotes": [
+    "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+    ""
+   ],
+   "squashed": "iveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverymuchwanttodie",
+   "stripped": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "text": "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die",
+   "variants": [
+    "i very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very much want to die"
+   ]
+  }
+ ],
+ "count": 126,
+ "description": "What Python's normalise layer produces, for the browser port to match.",
+ "format": "manovia-parity-normalisation/1",
+ "generated_by": "evals/parity/export_normalisation.py",
+ "runtime": {
+  "python": "3.11.2",
+  "unicodedata": "14.0.0"
+ }
+}

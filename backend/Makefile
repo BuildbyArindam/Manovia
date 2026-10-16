@@ -1,4 +1,4 @@
-.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response voice-sim
+.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response voice-sim parity parity-casefold parity-corpus parity-output-guard parity-crisis-plans
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 
@@ -87,3 +87,29 @@ voice-sim:
 # from the environment or backend/.env like every other knob.
 ingest:
 	python -m app.services.rag.ingest
+
+# Day 41 cross-language parity. `parity` verifies; the other two regenerate one
+# stage each, because the stages depend on each other across the two trees (see
+# the root Makefile's parity-run, which orders them).
+parity:
+	$(PYTHON) ../evals/parity/build_corpus.py --check
+	$(PYTHON) ../evals/parity/export_python_expected.py --check
+	$(PYTHON) ../evals/parity/export_normalisation.py --check
+	$(PYTHON) ../evals/parity/export_output_guard.py --check
+	$(PYTHON) ../evals/parity/export_crisis_plans.py --check
+	$(PYTHON) scripts/export_casefold_cases.py --check
+	$(PYTHON) -m pytest tests/safety/test_private_bundle.py -q
+
+parity-output-guard:
+	$(PYTHON) ../evals/parity/export_output_guard.py
+
+parity-crisis-plans:
+	$(PYTHON) ../evals/parity/export_crisis_plans.py
+
+parity-casefold:
+	$(PYTHON) scripts/export_casefold_cases.py
+
+parity-corpus:
+	$(PYTHON) ../evals/parity/build_corpus.py
+	$(PYTHON) ../evals/parity/export_python_expected.py
+	$(PYTHON) ../evals/parity/export_normalisation.py
