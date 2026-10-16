@@ -78,7 +78,13 @@ describe("PrivateReplyBadge", () => {
       <PrivateReplyBadge
         metadata={metadata({ response_type: "crisis" })}
         runtimeLabel="deterministic crisis copy (no model)"
-        timings={{ assessedInMs: 1, repliedInMs: 0, totalMs: 2, tokensPerSecond: null, tokens: null }}
+        timings={{
+          assessedInMs: 1,
+          repliedInMs: 0,
+          totalMs: 2,
+          tokensPerSecond: null,
+          tokens: null,
+        }}
       />,
     );
     const badge = screen.getByTestId("private-reply-badge");

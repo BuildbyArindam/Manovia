@@ -378,7 +378,8 @@ function ModelRow({
   // A model with no files (the unshipped safety slot) is not "verified": an empty
   // list satisfies `every`, which would put a trust claim on a model that does not
   // exist yet.
-  const verified = state !== undefined && state.files.length > 0 && state.files.every((file) => file.verified);
+  const verified =
+    state !== undefined && state.files.length > 0 && state.files.every((file) => file.verified);
 
   return (
     <li
