@@ -6190,8 +6190,14 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
   bundle 196 KB in 4 ms, first turn 231.8 ms (rules warm-up), later turns
   30–38 ms, JS heap +3.4 MB after boot. **Tokens/second not measurable** — no
   model can run here.
-- Backend: `pytest tests/safety -q` **882 passed**; `make lint` clean (ruff,
-  ruff format over 408 files, mypy over 343 files).
+- Backend: `pytest tests/safety -q` **883 passed**; `make lint` clean (ruff,
+  ruff format over 408 files, mypy over 343 files). The CI Backend job caught two
+  things this sandbox could not: the repository-wide guard against a vendor model
+  id outside configuration (Day 41 had written one into four files and a `.mjs`
+  build script the guard did not read), and a casefold fixture gate that compared
+  bytes including the Unicode version, which can only pass on the interpreter that
+  wrote it — CI runs CPython 3.12 (Unicode 15.0.0), this sandbox has 3.11
+  (14.0.0). Both are fixed at the root; see the verification note.
 - Frontend: `npx vitest run` **2622 passed** (95 files); `tsc --noEmit` and
   `eslint .` clean; `npm run build` OK and `npm run budget` **met** — ChatPage is
   back to 42.1 KB raw / 12.7 KB gzip, Private Mode is its own lazy chunk (96.3 KB

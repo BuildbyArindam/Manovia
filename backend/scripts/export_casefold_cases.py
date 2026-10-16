@@ -18,7 +18,7 @@ Two consumers, and the loop is closed on both sides:
   entry with ``toLowerCase()`` and keeping only the divergences. Nothing is
   hard-coded in the bundle compiler.
 * ``backend/tests/safety/test_private_bundle.py`` regenerates the fixture and
-  fails if the committed copy drifted, and the frontend's
+  fails if the committed case data drifted, and the frontend's
   ``casefold.test.ts`` asserts the TypeScript implementation reproduces every
   entry in it.
 
@@ -47,7 +47,12 @@ Usage::
     .venv/bin/python backend/scripts/export_casefold_cases.py [--check]
 
 ``--check`` regenerates in memory and exits 1 when the committed file differs,
-which is what CI runs; without it the file is written.
+which is what ``make parity`` runs; without it the file is written. The comparison
+ignores one field: ``unicodedata_version`` records which Unicode tables the exporter
+ran against, and CPython 3.11 folds with 14.0.0 while 3.12 folds with 15.0.0 and
+3.13 with 15.1.0. The committed file was written by one interpreter and is checked
+by others, so that string is provenance, not data - and the data is compared
+strictly, in both directions.
 """
 
 from __future__ import annotations
@@ -55,8 +60,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import platform
 import sys
 import unicodedata
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Final
 
@@ -139,6 +146,22 @@ def build_payload() -> dict[str, Any]:
     }
 
 
+#: Fields that say *when* the fixture was written rather than what it holds. The
+#: Unicode version belongs to the interpreter that ran the exporter: requiring it to
+#: match would call the fixture stale on every interpreter upgrade even when not one
+#: case changed, and the honest fix for that is not to regenerate the file.
+PROVENANCE_FIELDS: Final = frozenset({"unicodedata_version"})
+
+
+def drift(committed: Mapping[str, Any], regenerated: Mapping[str, Any]) -> list[str]:
+    """Which fields a committed fixture and a fresh export disagree about."""
+    return sorted(
+        field
+        for field in set(committed) | set(regenerated)
+        if field not in PROVENANCE_FIELDS and committed.get(field) != regenerated.get(field)
+    )
+
+
 def render(payload: dict[str, Any]) -> str:
     """Serialise deterministically: sorted keys, two-space indent, LF endings."""
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
@@ -160,11 +183,33 @@ def main(argv: list[str] | None = None) -> int:
         if not OUTPUT.exists():
             print(f"MISSING {OUTPUT}", file=sys.stderr)
             return 1
-        if OUTPUT.read_text(encoding="utf-8") != rendered:
-            print(f"DRIFT {OUTPUT} - re-run without --check", file=sys.stderr)
+        committed_text = OUTPUT.read_text(encoding="utf-8")
+        committed = json.loads(committed_text)
+        differing = drift(committed, payload)
+        # Byte-identical once the recorded Unicode version is the committed one, so
+        # a hand edit to the formatting is drift too.
+        reformatted = render(
+            {**payload, "unicodedata_version": committed.get("unicodedata_version")}
+        )
+        if differing or committed_text != reformatted:
+            what = ", ".join(differing) if differing else "the formatting"
+            print(
+                f"DRIFT {OUTPUT} - {what} differ (this interpreter: Python "
+                f"{platform.python_version()}, Unicode {payload['unicodedata_version']}); "
+                "re-run without --check",
+                file=sys.stderr,
+            )
             return 1
         digest = payload["sha256"][:16]
-        print(f"OK {OUTPUT.relative_to(REPO_ROOT)}: {payload['count']} cases, sha256 {digest}")
+        written_with = committed.get("unicodedata_version")
+        note = (
+            ""
+            if written_with == payload["unicodedata_version"]
+            else f", written with Unicode {written_with}"
+        )
+        print(
+            f"OK {OUTPUT.relative_to(REPO_ROOT)}: {payload['count']} cases, sha256 {digest}{note}"
+        )
         return 0
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

@@ -30,6 +30,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import sys
 import unicodedata
 from collections.abc import Callable
 from pathlib import Path
@@ -348,7 +349,14 @@ def test_casefold_overrides_are_python_casefold(bundle: dict[str, Any]) -> None:
 
 
 def test_casefold_fixture_is_current_and_complete() -> None:
-    """The fixture the overrides come from must regenerate byte-identically.
+    """The fixture the overrides come from must be a current export.
+
+    Compared field by field, and byte for byte once the recorded Unicode version is
+    the committed one, because that field is provenance rather than data: CPython
+    3.11 folds with Unicode 14.0.0 and CI's 3.12 folds with 15.0.0, so requiring
+    the string to match would call the fixture stale on every interpreter upgrade
+    even when not one case changed. The cases themselves are compared strictly, in
+    both directions - a missing entry is as much drift as a wrong one.
 
     Completeness in the other direction (a code point a browser lowercases but
     Python leaves alone) is asserted by ``verifyUnicodeClaim`` in the bundle
@@ -357,13 +365,28 @@ def test_casefold_fixture_is_current_and_complete() -> None:
     if not CASEFOLD_PATH.exists():
         pytest.fail(f"missing {CASEFOLD_PATH}", pytrace=False)
     exporter = _load_exporter()
-    regenerated = cast(str, exporter.render(exporter.build_payload()))
-    assert CASEFOLD_PATH.read_text(encoding="utf-8") == regenerated, (
-        "python-casefold.json is stale: run "
+    payload = cast(dict[str, Any], exporter.build_payload())
+    committed_text = CASEFOLD_PATH.read_text(encoding="utf-8")
+    committed_doc = cast(dict[str, Any], json.loads(committed_text))
+    differing = cast("list[str]", exporter.drift(committed_doc, payload))
+    assert not differing, (
+        f"python-casefold.json is stale: {', '.join(differing)} differ on Python "
+        f"{sys.version_info[0]}.{sys.version_info[1]} / Unicode "
+        f"{unicodedata.unidata_version}; run "
+        "`.venv/bin/python backend/scripts/export_casefold_cases.py`"
+    )
+    reformatted = cast(
+        str,
+        exporter.render(
+            {**payload, "unicodedata_version": committed_doc.get("unicodedata_version")}
+        ),
+    )
+    assert committed_text == reformatted, (
+        "python-casefold.json is not written the way the exporter writes it: run "
         "`.venv/bin/python backend/scripts/export_casefold_cases.py`"
     )
 
-    committed = cast(dict[str, Any], json.loads(CASEFOLD_PATH.read_text(encoding="utf-8")))
+    committed = committed_doc
     cases = {int(key, 16): value for key, value in cast(dict[str, str], committed["cases"]).items()}
     for codepoint, value in cases.items():
         assert chr(codepoint).casefold() == value
@@ -373,6 +396,33 @@ def test_casefold_fixture_is_current_and_complete() -> None:
             assert int(codepoint) in cases, (
                 f"U+{int(codepoint):04X} lowercases in a browser but has no casefold entry"
             )
+
+
+def test_the_casefold_gate_ignores_only_the_unicode_version() -> None:
+    """Regression: the fixture was written by CPython 3.11 (Unicode 14.0.0) and CI
+    checks it with 3.12 (Unicode 15.0.0), where a byte-for-byte comparison fails on
+    the version string alone. Provenance may differ; data may not, in either
+    direction."""
+    exporter = _load_exporter()
+    payload = cast(dict[str, Any], exporter.build_payload())
+    assert cast("list[str]", exporter.drift(payload, payload)) == []
+
+    other_version = {**payload, "unicodedata_version": "99.0.0"}
+    assert cast("list[str]", exporter.drift(payload, other_version)) == []
+    assert cast("list[str]", exporter.drift(other_version, payload)) == []
+
+    cases = cast(dict[str, str], payload["cases"])
+    one_key = next(iter(sorted(cases)))
+    for label, changed in (
+        ("a wrong case", {**payload, "cases": {**cases, one_key: "not what python folds to"}}),
+        ("a missing case", {**payload, "cases": {k: v for k, v in cases.items() if k != one_key}}),
+        ("an extra case", {**payload, "cases": {**cases, "10ffff": "\uffff"}}),
+        ("a wrong count", {**payload, "count": payload["count"] + 1}),
+        ("a wrong hash", {**payload, "sha256": "0" * 64}),
+        ("a different js table", {**payload, "js_lowercase_source": {"sha256": "0" * 64}}),
+        ("a dropped field", {k: v for k, v in payload.items() if k != "folded_count"}),
+    ):
+        assert cast("list[str]", exporter.drift(payload, changed)), label
 
 
 # --------------------------------------------------------------------------- #

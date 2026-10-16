@@ -213,6 +213,36 @@ does not fetch the 191 KB bundle either, and the chunk is excluded from the
 precache exactly like the chart library is. Both numbers are now inside budget and
 the day25 production suite still passes (33 passed, 13 skipped).
 
+**Two more gates caught real problems, both in the CI Backend job** (which runs
+CPython 3.12; this sandbox has 3.11, and that difference is the point).
+
+1. `tests/llm/test_no_hardcoded_model.py`, the repository-wide guard behind
+   AGENTS.md's "never hard-code model names", failed: Day 41 had written one vendor
+   model id into four files — the model manifest, a doc comment, `PROGRESS.md` and
+   this note — and into the `.mjs` build script that generated the manifest, which
+   the guard did not read. Fixed at the root rather than by widening the guard's
+   one allowed file: which on-device model WebLLM offers is now
+   `PRIVATE_LLM_MODEL_ID` in `.env.example`, unset in the committed manifest, and
+   the guard reads `.mjs`/`.cjs` too, so the same test that caught it now enforces
+   the fix.
+2. `test_casefold_fixture_is_current_and_complete` compared the committed
+   `python-casefold.json` **byte for byte** with a fresh export — including
+   `unicodedata_version`, which records the Unicode tables the interpreter folds
+   with. CPython 3.11 folds with 14.0.0 and 3.12 with 15.0.0, so that gate could
+   only ever pass on the machine that wrote the file. It now compares provenance as
+   provenance and the case data strictly in both directions (a missing entry is
+   drift, not just a changed one), and `export_casefold_cases.py --check` reports
+   which interpreter wrote the fixture instead of calling it stale.
+
+   *Not verified on 3.12 itself*: this sandbox has no 3.12 and no egress to fetch
+   one, so the fix was verified by rewriting the committed fixture's version field
+   to `15.0.0` — the exact difference 3.12 produces — and confirming both gates
+   pass (`OK … 1671 cases, sha256 41420f2c4439ce53, written with Unicode 15.0.0`,
+   `3 passed`), plus a negative control: tamper with one case and both refuse with
+   `DRIFT … cases differ`. If Unicode 15.0 assigns a code point whose casefold is
+   not the identity, the gate will name it and the fixture must be regenerated on
+   3.12 — a data change, which is exactly what the gate exists to refuse silently.
+
 The first message costs ~170–245 ms because 215 compiled regular expressions run
 for the first time; every later message is 3–40 ms. A WebGPU device would add
 model load time (seconds, once) and then generate at whatever the device manages.
