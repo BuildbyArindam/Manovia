@@ -1,5 +1,126 @@
 # Manovia — Progress
 
+## Day 42 — Biofeedback breathing with wearables (HRV)
+
+**Implemented and fully regression-verified on 2026-10-16** on the Arena-pinned
+branch `arena/7fb1168e-manovia`. The requested descriptive branch name
+`day-42-biofeedback-breathing-wearables-hrv` cannot replace the pinned session
+branch (Days 38/40/41 precedent). Commits: `2c224de` (signal core),
+`6940648` (pacer), `bf98784` (CSV import, session summary, encrypted store),
+`844e53f` (Web Bluetooth layer), `305532f` (UI, i18n, routing, precache),
+`38cbe96` (e2e). Wellness feature — explicitly not a medical device in the UI
+and in the docs.
+
+### Completed
+
+1. **Signal core with a quality gate that withholds** (`features/biofeedback/signal/`):
+   Bluetooth 0x2A37 RR parsing (8/16-bit bpm, contact bits, RR in 1/1024 s,
+   malformed packets counted not shown), artefact rejection (out-of-range
+   <250/>2300 ms, |Δrr|>750 ms jumps, ectopic >20 % from local median),
+   dropout detection (>3 s notification silence), sliding 60 s/30 s windows of
+   RMSSD + mean HR, and a quality score (0.65 artefact + 0.35 gap, flatline
+   and contact caps) whose **poor** verdict nulls the numbers. Cross-checked
+   against a NumPy reference at 1e-9 (max observed error 4.4e-10).
+2. **Adaptive pacer, probe-and-settle** (`pacer/`): Hann-Goertzel HR-oscillation
+   amplitude at the current rate, measured over the since-move stretch;
+   fixed probes (+0.5/−0.5), 0.25 neighbour fills, settle-and-hold, bounded
+   4.5–7.0 bpm, ≤0.25 bpm per 30 s adaptation, every decision event recorded.
+   Manual rate always available; "I feel dizzy — stop" is permanent. Three
+   simulated users (20 min) converge by minute 4 and hold, in bounds, with no
+   oscillation (trajectories in the verification doc).
+3. **Session summary, trends, encrypted save** (`session/`, `store/`):
+   pre/post RMSSD + mean HR + quality, pre/post mood, associative caveats
+   (no thresholds, no conclusions), trend table over saved summaries, and
+   AES-GCM-256 device-key storage (fresh IV, AAD-bound, tampering refused) —
+   only on explicit save; raw RR is never persisted.
+4. **No-hardware CSV path** (`import/csvImport.ts`): rr_ms/s/1-1024s columns,
+   hr-derived intervals, timestamps with dropout preservation, `#` comments,
+   delimiter and unit auto-detection, honest refusal messages. Same pipeline
+   as the sensor; zero network calls (e2e blocks and records `/api`).
+5. **Web Bluetooth** (`ble/heartRateDevice.ts`): feature-detected (never UA
+   sniffed), permission explainer before the chooser, reconnect with backoff
+   (3 × 1/2/4 s) and re-subscribe, status replay, honest unsupported path with
+   the CSV alternative. Fully unit-tested against fakes.
+6. **UI + i18n + routing**: PacerOrb (prefers-reduced-motion fallback),
+   live metrics with withheld state, mood pickers, summary panel, CSV panel,
+   `/biofeedback` route with nav/icon, en/hi/bn lockstep (11 key groups) and a
+   wording guard (forbidden-claims denylist with negation awareness, key and
+   placeholder parity).
+7. **e2e (10/10, both viewports)**: CSV flow with every `/api` call blocked,
+   fake BLE sensor emitting real packets through the pipeline, dizzy-stop
+   freeze, and the Firefox/Safari unsupported path.
+
+### Decisions
+
+- **RMSSD skips pairs across removals/gaps instead of interpolating** (deviation
+  from the common practice): interpolation fabricates the variability being
+  measured. Documented in ADR 0041; TS and NumPy share the rule.
+- **Probe-and-settle replaced a Robbins-Monro walk** that overshot the amplitude
+  peak in simulation (improvement kept confirming an already-past direction).
+- **Quality is part of the measurement**: poor ⇒ numbers withheld, never
+  estimated; the pacer keeps working on the raw stream.
+- **Precache budget met without raising it**: hi/bn catalogue chunks return to
+  ADR 0025's on-demand design (English fallback is built in); the biofeedback
+  page stays precached so the pacer/CSV/summary work offline.
+- **Encryption threat model stated honestly**: protects storage dumps, not an
+  unlocked profile; passphrase wrapping parked.
+
+### Verification (docs/verification/day42-biofeedback-hrv.md)
+
+TS vs NumPy 8/8 (errors ≤ 4.4e-10, printed); signal 47/47; pacer 14/14 (3-user
+20-min sims in bounds, converged, non-oscillating); CSV 10/10; summary+store
+13/13 (ciphertext-at-rest proven by raw IndexedDB dump); BLE 9/9; wording guard
+5/5 + standalone grep (0 forbidden claims in 84 strings); frontend suite 2729
+passed / 3 skipped with `tsc` clean; e2e 10/10 on 360×640 and 1280×800;
+bundle budgets all met (precache 612.1/800 KB); backend 4685 passed / 4 skipped,
+ruff + mypy clean, coverage gate satisfied.
+
+### Known issues
+
+1. **No real radio in this sandbox**: the chest-strap pairing, real
+   notification timing and reconnect-on-Bluetooth-stack behaviour rest on the
+   manual checklist (verification doc §Manual).
+2. **Real Firefox/Safari installs not testable here** (Playwright browsers are
+   Chromium-only and the CDN is unreachable); covered by UA + feature-absence
+   e2e and the checklist.
+3. **hi/bn offline caveat**: with the catalogues no longer precached, a hi/bn
+   reader whose HTTP cache has been evicted falls back to English while
+   offline (never to raw keys). Degraded language, documented trade for the
+   800 KB budget.
+4. **RMSSD on noisy sessions rests on fewer pairs** (no interpolation by
+   design); the summary shows quality alongside so this is visible.
+5. **e2e needed a sandbox Chromium workaround** (`@sparticuz/chromium` from the
+   npm registry + `LD_LIBRARY_PATH`): Playwright's browser CDN is blocked.
+   On a normal machine `npx playwright install chromium` is enough.
+6. **Pacer adaptation during a real session is only as good as the HR feed**:
+   watches in broadcast mode can be noisier than straps; the quality gate
+   holds the pace, it does not rescue bad hardware.
+
+### Parking lot (out of scope for Day 42)
+
+- **Camera pulse (stretch)**: skipped — needs a perfusion quality gate and an
+  honest accuracy statement; revisit only with both.
+- **Passphrase-wrapped key for saved summaries** (Private Mode pattern).
+- **Trend charts with more points** (SVG sparkline by association once there
+  are several sessions).
+- **Battery-service readout** on the device panel (the GATT service is already
+  in the allowed list).
+- **Multi-sensor pairing memory** (reconnect to a known device without the
+  chooser needs `requestDevice` acceptAllDevices + a picker of our own).
+- **Server-side summary sync** — deliberately not built; data stays local.
+
+### Next steps (Day 43) — first three
+
+1. Pick up Parking-lot item 1 or 2 only after the manual checklist above has
+   been run against a real chest strap; fold any findings into the signal
+   constants via the reference script, not into the UI.
+2. If the day's scope is another wellness surface, reuse
+   `session/useBiofeedbackSession` + the wording-guard pattern; the quality-gate
+   ("withhold, don't estimate") convention should extend to any new measured
+   number.
+3. Re-check the bundle budget first thing — it is at 612 KB of 800 KB with
+   room, but the locale trees grow ~10 KB per feature with full trilingual copy.
+
 ## Day 40 — Real-time voice companion (streaming, barge-in, crisis-safe)
 
 **Implemented and fully regression-verified on 2026-10-16** on the Arena-pinned
