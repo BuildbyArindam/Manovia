@@ -9,7 +9,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && tsc -p tsconfig.sw.json && vite build",
+    "build": "npm run private:bundle && tsc --noEmit && tsc -p tsconfig.sw.json && vite build",
+    "private:fixtures": "node scripts/export-js-lowercase.mjs",
+    "private:bundle": "node scripts/build-private-bundle.mjs",
+    "private:check": "node scripts/export-js-lowercase.mjs --check && node scripts/build-private-bundle.mjs --check && node scripts/build-model-manifest.mjs --check",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.sw.json",
     "lint": "eslint .",
@@ -23,7 +26,9 @@
     "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
     "budget": "node scripts/check-bundle-budget.mjs",
     "lighthouse": "node scripts/lighthouse-ci.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "models:manifest": "node scripts/build-model-manifest.mjs",
+    "models:pin": "node scripts/pin-models.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
@@ -50,8 +55,10 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "fake-indexeddb": "^6.2.2",
     "globals": "^17.13.0",
     "jest-axe": "^11.0.0",
+    "js-yaml": "^4.3.2",
     "jsdom": "^26.1.0",
     "lighthouse": "^13.5.0",
     "postcss": "^8.5.6",
