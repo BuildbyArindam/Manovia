@@ -1,0 +1,440 @@
+{
+  "generator": "scripts/day42_hrv_reference.py",
+  "numpyVersion": "2.4.6",
+  "algorithm": {
+    "minRrMs": 300.0,
+    "maxRrMs": 2000.0,
+    "ectopicRelThreshold": 0.2,
+    "medianRadius": 2,
+    "gapFactor": 1.75,
+    "gapSlackMs": 250.0,
+    "windowMs": 60000.0,
+    "stepMs": 30000.0,
+    "minBeats": 15,
+    "minSuccessivePairs": 10
+  },
+  "clean-rsa": {
+    "acceptedCount": 240,
+    "rejectedCount": 0,
+    "rejected": [],
+    "gaps": [],
+    "flatlineFraction": 0.029289,
+    "fullSeries": {
+      "durationMs": 190708.892,
+      "quality": "good",
+      "qualityScore": 1.0,
+      "rmssdMs": 20.929019064,
+      "meanHrBpm": 75.193650281
+    },
+    "windows": [
+      {
+        "startMs": -29203.36,
+        "endMs": 30796.64,
+        "acceptedBeats": 38,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 37,
+        "flatlineFraction": 0.0,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.974106935,
+        "meanHrBpm": 75.239141672
+      },
+      {
+        "startMs": 796.64,
+        "endMs": 60796.64,
+        "acceptedBeats": 76,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 75,
+        "flatlineFraction": 0.04,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 21.098843451,
+        "meanHrBpm": 75.250745882
+      },
+      {
+        "startMs": 30796.64,
+        "endMs": 90796.64,
+        "acceptedBeats": 75,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 74,
+        "flatlineFraction": 0.067568,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.826262233,
+        "meanHrBpm": 75.216240423
+      },
+      {
+        "startMs": 60796.64,
+        "endMs": 120796.64,
+        "acceptedBeats": 75,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 74,
+        "flatlineFraction": 0.027027,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.763128333,
+        "meanHrBpm": 75.183799328
+      },
+      {
+        "startMs": 90796.64,
+        "endMs": 150796.64,
+        "acceptedBeats": 76,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 75,
+        "flatlineFraction": 0.026667,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 21.038462867,
+        "meanHrBpm": 75.196432127
+      },
+      {
+        "startMs": 120796.64,
+        "endMs": 180796.64,
+        "acceptedBeats": 75,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 74,
+        "flatlineFraction": 0.027027,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.763367404,
+        "meanHrBpm": 75.185448668
+      },
+      {
+        "startMs": 150796.64,
+        "endMs": 210796.64,
+        "acceptedBeats": 51,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 50,
+        "flatlineFraction": 0.0,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.584009129,
+        "meanHrBpm": 75.122486478
+      },
+      {
+        "startMs": 180796.64,
+        "endMs": 240796.64,
+        "acceptedBeats": 14,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 13,
+        "flatlineFraction": 0.0,
+        "quality": "poor",
+        "qualityScore": 1.0,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      }
+    ]
+  },
+  "noisy-ectopic-dropouts": {
+    "acceptedCount": 199,
+    "rejectedCount": 41,
+    "rejected": [
+      {
+        "rawIndex": 81,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 82,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 84,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 85,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 87,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 88,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 90,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 91,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 93,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 94,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 95,
+        "reason": "out-of-range"
+      },
+      {
+        "rawIndex": 96,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 97,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 99,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 100,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 102,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 103,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 105,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 106,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 108,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 109,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 110,
+        "reason": "out-of-range"
+      },
+      {
+        "rawIndex": 111,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 112,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 114,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 115,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 117,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 118,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 120,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 121,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 123,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 124,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 126,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 127,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 129,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 130,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 132,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 133,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 135,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 136,
+        "reason": "ectopic"
+      },
+      {
+        "rawIndex": 138,
+        "reason": "ectopic"
+      }
+    ],
+    "gaps": [
+      {
+        "afterRawIndex": 125,
+        "gapMs": 3800.0,
+        "estimatedMissingBeats": 4
+      }
+    ],
+    "flatlineFraction": 0.555556,
+    "fullSeries": {
+      "durationMs": 196721.755,
+      "quality": "good",
+      "qualityScore": 0.882197515,
+      "rmssdMs": 17.779627258,
+      "meanHrBpm": 75.06142448
+    },
+    "windows": [
+      {
+        "startMs": -59196.376,
+        "endMs": 803.624,
+        "acceptedBeats": 1,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 0,
+        "flatlineFraction": 0.0,
+        "quality": "poor",
+        "qualityScore": 1.0,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      },
+      {
+        "startMs": -29196.376,
+        "endMs": 30803.624,
+        "acceptedBeats": 38,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 37,
+        "flatlineFraction": 0.0,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.723781537,
+        "meanHrBpm": 75.236748268
+      },
+      {
+        "startMs": 803.624,
+        "endMs": 60803.624,
+        "acceptedBeats": 75,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 74,
+        "flatlineFraction": 0.013514,
+        "quality": "good",
+        "qualityScore": 1.0,
+        "rmssdMs": 20.753426369,
+        "meanHrBpm": 75.212618551
+      },
+      {
+        "startMs": 30803.624,
+        "endMs": 90803.624,
+        "acceptedBeats": 51,
+        "rejectedBeats": 22,
+        "gapMs": 0,
+        "successivePairs": 42,
+        "flatlineFraction": 0.02381,
+        "quality": "fair",
+        "qualityScore": 0.804109589,
+        "rmssdMs": 20.796344614,
+        "meanHrBpm": 74.755622405
+      },
+      {
+        "startMs": 60803.624,
+        "endMs": 120803.624,
+        "acceptedBeats": 27,
+        "rejectedBeats": 41,
+        "gapMs": 3800.0,
+        "successivePairs": 8,
+        "flatlineFraction": 0.375,
+        "quality": "poor",
+        "qualityScore": 0.585921569,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      },
+      {
+        "startMs": 90803.624,
+        "endMs": 150803.624,
+        "acceptedBeats": 51,
+        "rejectedBeats": 19,
+        "gapMs": 3800.0,
+        "successivePairs": 41,
+        "flatlineFraction": 0.97561,
+        "quality": "poor",
+        "qualityScore": 0.35,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      },
+      {
+        "startMs": 120803.624,
+        "endMs": 180803.624,
+        "acceptedBeats": 75,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 74,
+        "flatlineFraction": 1.0,
+        "quality": "poor",
+        "qualityScore": 0.35,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      },
+      {
+        "startMs": 150803.624,
+        "endMs": 210803.624,
+        "acceptedBeats": 59,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 58,
+        "flatlineFraction": 1.0,
+        "quality": "poor",
+        "qualityScore": 0.35,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      },
+      {
+        "startMs": 180803.624,
+        "endMs": 240803.624,
+        "acceptedBeats": 21,
+        "rejectedBeats": 0,
+        "gapMs": 0,
+        "successivePairs": 20,
+        "flatlineFraction": 1.0,
+        "quality": "poor",
+        "qualityScore": 0.35,
+        "rmssdMs": null,
+        "meanHrBpm": null
+      }
+    ]
+  }
+}
