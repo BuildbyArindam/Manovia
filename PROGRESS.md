@@ -62,6 +62,29 @@ Implemented and fully regression-verified on 2026-10-16, on the Arena-pinned bra
 | Full backend/frontend lint + tests | PASS — optional skips disclosed above |
 | Build, typecheck and bundle budgets | PASS |
 
+### PR #51 accessibility CI follow-up (2026-10-17)
+
+- CI's production target audit (run `38948888330`) found the new file import
+  below the repository's 44px minimum on both viewports. The earlier Day 43 axe
+  scans did not enforce this separate target-size rule; Lighthouse was skipped
+  after Playwright failed. No performance failure was reported by that run.
+- Reproduced with a new production-browser regression: the file input was
+  **34px high** on both mobile and desktop. The shared base target-size rule
+  omitted file inputs and their native chooser buttons. Added both selectors
+  to the existing **2.75rem** minimum; no thresholds or tests were weakened.
+- New regression checks input and native chooser sizes, viewport fit, and the
+  full page target audit before and after selecting a long filename. It failed
+  before the fix in both projects, then **2/2 passed** with the fix.
+- Ran the **full CI production Playwright suite** against the migrated real API
+  with the Fake LLM provider: **35 passed, 13 existing project/opt-in skips**,
+  9.9 minutes. This includes all-route axe scans in four appearances, touch
+  targets in both viewports, keyboard, zoom/reflow, offline and installability.
+- Frontend ESLint + both TypeScript checks clean; full Vitest **2,746 passed,
+  3 existing live-backend skips**; production build, bundle budgets and changed
+  file Prettier checks pass. Backend application code is unchanged.
+- Fix is pushed to the existing PR only; GitHub's full job (including Lighthouse)
+  must report its own new result. No merge and no additional PR.
+
 ### Known issues / manual checks
 
 - Day 43 UI copy is English-only; lexical topics are not semantic embeddings.

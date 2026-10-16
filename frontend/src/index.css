@@ -179,11 +179,15 @@
    * Targets (Day 25): every button, select and single-line field is at least
    * 44px tall (WCAG 2.5.5's size; 2.5.8 AA asks for 24px). Utilities can make a
    * control bigger, and the few that need a different shape say so locally.
+   * File imports need both the input hit area and its native chooser button:
+   * sizing just the wrapper leaves a small browser-default button (Day 43).
    */
   button,
   select,
   summary,
   input[type="text"],
+  input[type="file"],
+  input[type="file"]::file-selector-button,
   input[type="email"],
   input[type="password"],
   input[type="search"],

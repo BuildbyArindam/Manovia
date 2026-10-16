@@ -187,3 +187,45 @@ guard initially matched a statistical comment containing a treatment word (the
 comment was rephrased, guard unchanged); ESLint rejected `console.log` in the new
 e2e report (changed to the repository-permitted `console.warn`). Initial shell
 invocations used the wrong working directory and were rerun from `frontend/`.
+
+## PR #51 CI follow-up — 2026-10-17
+
+The first GitHub Accessibility & Lighthouse run (`38948888330`) failed in the
+**Playwright target-size audit**, not Lighthouse. The check annotations identify
+`patterns: interactive targets under 44px` on mobile and desktop. Lighthouse
+was skipped after that failure. `gh run view --log-failed` could not reach the
+log blob host from this sandbox; the check-run annotations and job steps were
+retrieved through the GitHub API instead.
+
+The missing base CSS coverage for `input[type="file"]` left the Day 43 importer
+34px high. The earlier Day 43-only axe scans passed because axe does not enforce
+the project's stricter 44px rule. A focused **production** regression was added
+in `e2e/day25/a11y.spec.ts` and run against the unchanged CSS first: **2 failed**,
+with `Expected >=44; Received 34` in both viewports.
+
+Fix: extend the existing 2.75rem target-size rule in `src/index.css` to file
+inputs **and their `::file-selector-button`**. No audit exception, reduced
+threshold, workflow bypass or dependency change. The regression asserts input
+width/height, native chooser minimum height, on-screen fit and the existing
+whole-page target audit, both empty and after choosing a long filename.
+
+Real post-fix commands (frontend directory; same sandbox browser env as above):
+
+| Command | Result |
+|---|---|
+| `npx playwright test -c playwright.prod.config.ts a11y.spec.ts -g 'patterns file import'` | **2 passed**; failed before the CSS fix |
+| `npm run test:e2e:prod` | **35 passed, 13 existing skips**, 9.9 minutes |
+| `npm run lint` | PASS |
+| `npm run typecheck` | PASS (app + service worker) |
+| `npm run test:run` | **2,746 passed, 3 existing live-backend skips** |
+| Production build (run by Playwright) + `npm run budget` | PASS; budgets unchanged |
+| `npx prettier --check src/index.css e2e/day25/a11y.spec.ts` | PASS |
+| `git diff --check` | PASS |
+
+The full production browser run uses a fresh migrated SQLite database and the
+real API with Fake LLM, keyword emotions and the workflow's test rate limits.
+No API-unreachable skips: the 13 skips are existing viewport-specific/opt-in
+cases. All-route axe in light/dark and both contrast modes, target audit,
+keyboard, zoom, offline and installability passed. GitHub CI must independently
+report its new result after the fix is pushed; local results are not presented
+as a completed remote Lighthouse run.
