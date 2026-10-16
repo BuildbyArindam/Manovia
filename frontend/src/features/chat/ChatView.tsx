@@ -15,11 +15,16 @@
  * celebration from landing on a safety reply.
  */
 
-import { useCallback, type ReactElement } from "react";
+import { useCallback, useEffect, type ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { PageHeader } from "@/components/PageHeader";
 import { api as defaultClient, type ApiClient } from "@/lib/api";
+import { usePrivateChat } from "@/features/private/session/usePrivateChat";
+import { usePrivateMode } from "@/features/private/session/usePrivateMode";
+import { PrivateModePanel } from "@/features/private/ui/PrivateModePanel";
+import { PrivateReplyBadge } from "@/features/private/ui/PrivateReplyBadge";
+import { PRIVATE_COPY } from "@/features/private/ui/copy";
 
 import { ChatControls } from "./ChatControls";
 import { ChatFailureBanner, OfflineNotice } from "./ChatFailureBanner";
@@ -29,7 +34,7 @@ import { MessageList } from "./MessageList";
 import { StarterChips } from "./StarterChips";
 import { VoiceCompanion } from "./VoiceCompanion";
 import { CHAT_COPY } from "./copy";
-import { isSoftened } from "./chatState";
+import { isSoftened, type ChatTurn } from "./chatState";
 import { useAutoScroll } from "./useAutoScroll";
 import { useChat } from "./useChat";
 import { useMoodHintPreference } from "./useMoodHint";
@@ -41,9 +46,32 @@ export interface ChatViewProps {
 
 export function ChatView({ client }: ChatViewProps): ReactElement {
   const resolvedClient = client ?? defaultClient;
-  const chat = useChat({ client: resolvedClient });
   const navigate = useNavigate();
   const [showMoodHint] = useMoodHintPreference();
+
+  // Both controllers always run: React's rules forbid calling one conditionally,
+  // and it is also the honest arrangement — switching Private Mode on or off must
+  // never lose the conversation that is already on screen.
+  const serverChat = useChat({ client: resolvedClient });
+  const privateMode = usePrivateMode();
+  const privateChat = usePrivateChat({
+    session: privateMode.enabled ? privateMode.session : null,
+    locale: serverChat.state.locale,
+    onStoreTranscriptChange: (value) => {
+      void privateMode.setStoreTranscript(value);
+    },
+  });
+  const chat = privateMode.enabled ? privateChat : serverChat;
+
+  // The app's language picker drives the private session too: helplines, crisis
+  // copy and the template writer all read the locale from private settings.
+  useEffect(() => {
+    if (!privateMode.enabled) {
+      return;
+    }
+    void privateMode.setLocale(serverChat.state.locale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [privateMode.enabled, serverChat.state.locale]);
 
   const { state, online } = chat;
   const softened = isSoftened(state.turns);
@@ -51,6 +79,40 @@ export function ChatView({ client }: ChatViewProps): ReactElement {
   // Follow the reply only while the reader is at the bottom.
   const lastTurn = state.turns[state.turns.length - 1];
   const scroll = useAutoScroll(lastTurn === undefined ? "" : `${lastTurn.id}:${lastTurn.text}`);
+
+  /**
+   * Every private reply is labelled with what actually wrote it and whether it was
+   * stored. Standard-mode turns get nothing: their bubble already says which
+   * service answered.
+   */
+  const privateTurnFooter = useCallback(
+    (turn: ChatTurn): ReactElement | null => {
+      if (!privateMode.enabled || turn.role !== "assistant" || turn.metadata === null) {
+        return null;
+      }
+      const diagnostics = privateChat.diagnostics.get(turn.id);
+      const guard = diagnostics?.guard;
+      return (
+        <PrivateReplyBadge
+          metadata={turn.metadata}
+          runtimeLabel={diagnostics?.runtimeLabel ?? null}
+          guardReplaced={guard !== undefined && guard !== null && !guard.passed}
+          timings={
+            diagnostics === undefined
+              ? null
+              : {
+                  assessedInMs: diagnostics.assessedInMs,
+                  repliedInMs: diagnostics.repliedInMs,
+                  totalMs: diagnostics.totalMs,
+                  tokensPerSecond: diagnostics.tokensPerSecond,
+                  tokens: diagnostics.tokens,
+                }
+          }
+        />
+      );
+    },
+    [privateMode.enabled, privateChat.diagnostics],
+  );
 
   const handleFailureAction = useCallback((): void => {
     const failure = state.failure;
@@ -73,6 +135,8 @@ export function ChatView({ client }: ChatViewProps): ReactElement {
     <div className="space-y-4" data-testid="chat-view" data-softened={softened ? "true" : "false"}>
       <PageHeader title={CHAT_COPY.heading} lede={CHAT_COPY.lede} />
 
+      <PrivateModePanel controller={privateMode} />
+
       <ChatControls
         saveHistory={state.saveHistory}
         sessionIsPersistent={state.persistent}
@@ -88,9 +152,15 @@ export function ChatView({ client }: ChatViewProps): ReactElement {
       <VoiceCompanion
         client={resolvedClient}
         locale={state.locale}
-        disabled={state.sending || !online}
+        disabled={state.sending || !online || privateMode.enabled}
         onOpenSession={chat.openVoiceSession}
       />
+
+      {privateMode.enabled ? (
+        <p data-testid="private-voice-notice" className="text-sm text-ink-muted">
+          {PRIVATE_COPY.voiceUnavailable}
+        </p>
+      ) : null}
 
       {online ? null : <OfflineNotice />}
 
@@ -108,6 +178,7 @@ export function ChatView({ client }: ChatViewProps): ReactElement {
         containerRef={scroll.containerRef}
         pinned={scroll.pinned}
         onJumpToLatest={scroll.scrollToLatest}
+        renderTurnFooter={privateTurnFooter}
       />
 
       {state.turns.length === 0 && !softened ? (
