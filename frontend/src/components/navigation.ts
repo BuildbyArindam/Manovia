@@ -42,6 +42,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     hint: () => t("nav.exercisesHint"),
   },
   {
+    to: "/biofeedback",
+    label: () => t("nav.biofeedback"),
+    icon: "biofeedback",
+    hint: () => t("nav.biofeedbackHint"),
+  },
+  {
     to: "/assessments",
     label: () => t("nav.assessments"),
     icon: "assessments",

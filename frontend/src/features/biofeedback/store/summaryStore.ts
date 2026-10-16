@@ -83,6 +83,15 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/** number[] (structured-cloned) back into a BufferSource WebCrypto accepts. */
+function toBufferSource(values: readonly number[]): BufferSource {
+  const bytes = new Uint8Array(new ArrayBuffer(values.length));
+  for (let i = 0; i < values.length; i += 1) {
+    bytes[i] = values[i] ?? 0;
+  }
+  return bytes;
+}
+
 function request<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
@@ -130,8 +139,8 @@ async function getOrCreateDeviceKey(db: IDBDatabase): Promise<DeviceKey> {
   return record;
 }
 
-function aad(id: string): Uint8Array {
-  return new TextEncoder().encode(`${AAD_PREFIX}|summary=${id}`);
+function aad(id: string): BufferSource {
+  return toBufferSource([...new TextEncoder().encode(`${AAD_PREFIX}|summary=${id}`)]);
 }
 
 /**
@@ -180,11 +189,11 @@ export async function openSummaryStore(): Promise<SummaryStore> {
       const plaintext = await crypto.subtle.decrypt(
         {
           name: "AES-GCM",
-          iv: Uint8Array.from(record.iv),
+          iv: toBufferSource(record.iv),
           additionalData: aad(record.id),
         },
         deviceKey.key,
-        Uint8Array.from(record.ciphertext),
+        toBufferSource(record.ciphertext),
       );
       return JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
     } catch {

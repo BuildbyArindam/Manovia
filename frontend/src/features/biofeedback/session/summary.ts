@@ -148,6 +148,6 @@ export function trendPoints(summaries: readonly SessionSummary[]): TrendPoint[] 
 /**
  * The fixed caveat carried with every summary and trend. Kept as data (not
  * formatted copy) so the wording guard test can check it and the UI can
- * translate it; see `biofeedback.caveats` in the locales.
+ * translate it; see `biofeedback.summary.caveats` in the locales.
  */
 export const SUMMARY_CAVEATS_VERSION = 1;

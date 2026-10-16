@@ -79,7 +79,7 @@ function fullSeriesInputs(series: CleanSeries): {
     windowMs: durationMs,
     contactDetected: null,
     minBeats: 15,
-    flatlineFraction: pairs === 0 ? 0 : pairs.flat / pairs.total,
+    flatlineFraction: pairs.total === 0 ? 0 : pairs.flat / pairs.total,
   });
   const withheld = quality.level === "poor";
   return {

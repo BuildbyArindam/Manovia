@@ -9,7 +9,15 @@
 import type { ReactElement } from "react";
 
 export type IconName =
-  "home" | "chat" | "mood" | "journal" | "exercises" | "assessments" | "insights" | "settings";
+  | "home"
+  | "chat"
+  | "mood"
+  | "journal"
+  | "exercises"
+  | "assessments"
+  | "insights"
+  | "settings"
+  | "biofeedback";
 
 const PATHS: Record<IconName, ReactElement> = {
   home: (
@@ -66,6 +74,13 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M4 8h8M16 8h4M4 16h4M12 16h8" />
       <circle cx="14" cy="8" r="2.25" />
       <circle cx="10" cy="16" r="2.25" />
+    </>
+  ),
+  biofeedback: (
+    <>
+      {/* A breath wave: the pacer, in one stroke. */}
+      <path d="M3 12c2.5-5 5.5-5 8 0s5.5 5 8 0" />
+      <path d="M3 17c2.5-5 5.5-5 8 0s5.5 5 8 0" opacity="0.55" />
     </>
   ),
 };

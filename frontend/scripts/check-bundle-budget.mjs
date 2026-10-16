@@ -49,6 +49,7 @@ const ROUTES = {
   "src/pages/CBTPage.tsx": "/cbt",
   "src/pages/AssessmentsPage.tsx": "/assessments",
   "src/pages/ExercisesPage.tsx": "/exercises",
+  "src/pages/BiofeedbackPage.tsx": "/biofeedback",
   "src/pages/InsightsPage.tsx": "/insights",
   "src/pages/SettingsPage.tsx": "/settings",
   "src/pages/AccessibilityPage.tsx": "/accessibility",

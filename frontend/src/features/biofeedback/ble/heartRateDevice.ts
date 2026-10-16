@@ -37,6 +37,13 @@ import {
   type SensorContact,
 } from "../signal/rr";
 
+declare global {
+  interface Navigator {
+    /** Web Bluetooth is not in the TS DOM lib (Chromium-only). */
+    bluetooth?: BleBluetooth;
+  }
+}
+
 /** Minimal structural slice of Web Bluetooth we use (not in the TS DOM lib). */
 export interface BleCharacteristic {
   startNotifications(): Promise<unknown>;
