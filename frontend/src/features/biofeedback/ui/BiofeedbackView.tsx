@@ -258,7 +258,9 @@ export function BiofeedbackView({ source, now }: BiofeedbackViewProps): ReactEle
             max={7}
             step={0.1}
             value={state.pacer.rateBpm}
-            className="w-full max-w-md"
+            // 44px hit area (Day 25 target-size floor): a bare range input is
+            // ~16px tall — too small for a thumb mid-session.
+            className="h-11 w-full max-w-md"
             data-testid="pacer-rate-slider"
             onChange={(event) => session.setManualRate(Number(event.target.value))}
           />
