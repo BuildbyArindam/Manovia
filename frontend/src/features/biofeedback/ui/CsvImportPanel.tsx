@@ -80,7 +80,10 @@ export function CsvImportPanel({ onImported }: CsvImportPanelProps): ReactElemen
           ref={inputRef}
           type="file"
           accept=".csv,text/csv"
-          className="mt-2 block"
+          // File inputs have a large intrinsic width: without an explicit
+          // width cap they push a 320–360 px screen into horizontal scroll
+          // (caught by the Day 25 zoom sweep).
+          className="mt-2 block w-full max-w-md"
           data-testid="csv-input"
           onChange={(event) => {
             const file = event.target.files?.[0];
