@@ -129,7 +129,7 @@ class FakeBluetooth {
   requestError: Error | null = null;
   constructor(readonly device: FakeDevice) {}
 
-  async requestDevice(_options: unknown): Promise<BleDevice> {
+  async requestDevice(): Promise<BleDevice> {
     if (this.requestError !== null) {
       throw this.requestError;
     }

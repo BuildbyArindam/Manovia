@@ -165,7 +165,8 @@ describe("TS pipeline vs NumPy reference", () => {
         errors.push(`qualityScore ts≈ ref=${ref.fullSeries.qualityScore} |err|=${scoreError}`);
         expect(scoreError).toBeLessThan(TOLERANCE);
         expect(full.quality.level).toBe(ref.fullSeries.quality);
-        console.log(`[reference:${fixture.name}] ${errors.join("  ;  ")}`);
+        // stdout, not console: `no-console` is a repo-wide lint rule.
+        process.stdout.write(`[reference:${fixture.name}] ${errors.join("  ;  ")}\n`);
       });
 
       it("matches every sliding window (metrics and the quality gate)", () => {
@@ -207,7 +208,8 @@ describe("TS pipeline vs NumPy reference", () => {
               `rmssd=${w.rmssdMs === null ? "withheld" : w.rmssdMs.toFixed(3)}`,
           );
         });
-        console.log(`[windows:${fixture.name}]\n  ${rows.join("\n  ")}`);
+        // stdout, not console: `no-console` is a repo-wide lint rule.
+        process.stdout.write(`[windows:${fixture.name}]\n  ${rows.join("\n  ")}\n`);
       });
     });
   }

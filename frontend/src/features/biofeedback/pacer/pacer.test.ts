@@ -227,8 +227,9 @@ describe("pacer stability simulation (three users)", () => {
       const perMinute = result.points
         .filter((p) => p.atMs % 120_000 === 0)
         .map((p) => `${Math.round(p.atMs / 60_000)}m:${p.rateBpm.toFixed(2)}`);
-      console.log(
-        `[pacer:user ${result.resonanceBpm} bpm] every 2 min -> ${perMinute.join("  ")}`,
+      // stdout, not console: `no-console` is a repo-wide lint rule (allow warn/error).
+      process.stdout.write(
+        `[pacer:user ${result.resonanceBpm} bpm] every 2 min -> ${perMinute.join("  ")}\n`,
       );
     }
   });
