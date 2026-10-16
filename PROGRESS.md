@@ -1,5 +1,50 @@
 # Manovia — Progress
 
+## Day 43 — Personal wellbeing knowledge graph and what-if explorer
+
+Implementation in progress on 2026-10-16, on the Arena-pinned branch
+`arena/41b24aaf-manovia` (cannot create/rename the session branch). No main push.
+
+### Completed (milestone 1)
+
+- Pure client-side Day 16 statistical-method port, daily aggregation, graph,
+  force-directed settled layout, keyboard buttons/text alternative, pattern cards,
+  distribution tables and sample withholding.
+- Browser lexical topic clustering with user naming, merging, deleting and entry
+  review. No inferred symptom names, people or places.
+- Explicit existing-source reads (standard mode only); Private Mode local JSON
+  path. Graph stays in memory. Export graph/experiment without journal text;
+  delete clears working state. Export/resume rather than hidden persistence.
+- Seven-of-fourteen randomised optional activities, complete-outcome requirement,
+  permutation analysis and plain-language uncertainty.
+- Decision: [ADR 0042](docs/adr/0042-local-personal-patterns.md).
+- Executed: frontend lint/typecheck clean; Day 43 **16 tests passed**. Synthetic
+  structure: 40/40 planted edges, 0/160 spurious; pure noise 2/200 (1%);
+  experiment 7/200 null positives (3.5%). Browser/network/axe and full regressions
+  still pending; these unit results alone do not verify accessibility/privacy.
+
+### Known issues / manual checks
+
+- Day 43 UI copy is English-only; lexical topics are not semantic embeddings.
+- Working state clears on navigation/reload. Explicit plaintext local export is
+  required to resume; downloaded files and original history are not erased by
+  local delete. Export is personal data; protect it accordingly.
+- First opening the lazy explorer needs assets online; not install-time precached.
+- Existing-data adapters and real assistive technologies still need manual checks.
+
+### Parking lot (Day 43)
+
+- Reviewed hi/bn translations; encrypted opt-in experiment persistence/reminders;
+  stronger serial-dependence-aware inference and optional on-device embeddings.
+  These are deliberately not included in today's scope.
+
+### First three steps for Day 44
+
+1. Review the Day 44 brief and select only its scope before changing code.
+2. Run the Day 43 manual checks on a real account/device (no secrets in chat).
+3. Re-run baseline gates and address any verified regressions before new work.
+
+
 ## Day 42 — Biofeedback breathing with wearables (HRV)
 
 **Implemented and fully regression-verified on 2026-10-16** on the Arena-pinned
