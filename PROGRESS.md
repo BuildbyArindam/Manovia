@@ -6054,3 +6054,240 @@ quick-start table and roadmap; the missing `POSTGRES_*` compose settings in
 - Wrote STT evaluation script `backend/scripts/evaluate_stt.py` using `jiwer`.
 - Verifications documented in `docs/verification/day39-voice.md`.
 - Completed pipeline integration ensuring zero audio data footprints on disk and STT transcriptions safely evaluated via deterministic crisis models.
+
+
+## Day 41 — In-browser private AI ("Private Mode": nothing leaves the device)
+
+### What was done
+
+1. **A compiled safety bundle.** `frontend/scripts/build-private-bundle.mjs`
+   reads `backend/app/content/**` (six YAML rule files, `helplines.json`, the
+   three i18n template trees and the three system prompts) at build time and
+   writes `frontend/public/private/safety-bundle.json` — 191.5 KB, sha256
+   `9fa233a8ea9ff143`, 215 rules, 66 output rules, 66 check-in phrases, 34
+   helplines, 3 locales, 352 casefold overrides. `--check` is a CI gate, and both
+   sides pin it: `backend/tests/safety/test_private_bundle.py` (25 tests) and
+   `frontend/src/features/private/bundle/drift.test.ts`.
+2. **The rules engine, ported rather than reimplemented.**
+   `rules/pyStrings.ts` and `rules/pyRegex.ts` reproduce CPython semantics JS does
+   not share — `str.casefold` (352 disagreement code points shipped as data,
+   generated on both sides), `\b` over `[\p{L}\p{N}_]`, `[\p{Nd}]` for `\d`, a
+   29-code-point whitespace class, the `u` flag everywhere.
+   `rules/ruleEngine.ts` walks the compiled rules in the server's order with no
+   extra tie-breakers. **Parity: 500 corpus phrases, 500 identical verdicts**
+   (level, categories, ordered rationale codes, ten context fields), ≈0.9 ms per
+   message, gated by `make parity`.
+3. **The client-side output guard and crisis path.** `rules/outputGuard.ts` runs
+   the same pattern-based check the server runs on model output (strip → primary
+   language → 66 indexed clauses → prompt-leak, too-long, wrong-language,
+   missing check-in at MEDIUM+), and `crisis/{content,escalation}.ts` reproduce
+   the escalation plans and the helpline selection. Fixtures: 36 output-guard
+   probes (25 refused) and 96 crisis plans must match Python exactly. Four Hindi
+   and four Bengali check-in phrases were added to
+   `backend/app/content/safety/output_patterns.yaml` — the missing-check-in rule
+   was English-only, so a correct non-English reply could be refused for not
+   containing an English sentence.
+4. **Capability detection.** `runtime/capability.ts` probes WebGPU (with a real
+   `requestAdapter()`), WASM SIMD and threads, cores, `deviceMemory`, storage
+   estimate, IndexedDB, Cache API, WebCrypto, service workers and the secure
+   context, and returns a tier (`full` / `classifiers` / `rules-only`), blocking
+   reasons, advisories and one plain-language sentence. `rules-only` is still
+   `usable`: deterministic crisis detection with real helplines is worth having
+   on a device that will never run a model, and the panel offers standard mode
+   rather than pretending.
+5. **A consented, resumable, verifiable model download manager.**
+   `models/downloadManager.ts` is built on interfaces (`ModelSink`,
+   `RemoteFetcher`, `Hasher`, `KeyValueStore`, `RuntimeInstaller`) so it is fully
+   testable offline: consent is recorded with the declared byte size before a byte
+   moves, downloads resume with HTTP Range (206 ⇒ resumed), bytes are hashed
+   against the manifest and a mismatch fails closed, model bytes live in IndexedDB
+   (`blobs`) rather than the Cache API, and `deleteModel`/`deleteAll` back the
+   "delete downloaded models" button (consent records survive deletion — they are
+   the person's decision). `scripts/build-model-manifest.mjs --check` gates
+   `public/private/model-manifest.json`; `scripts/pin-models.mjs` fills in hashes
+   from upstream and refuses to write what it could not verify.
+6. **Encrypted local storage.** `crypto/passphraseKey.ts`: PBKDF2-HMAC-SHA256 at
+   210,000 iterations, 16-byte salt, AES-GCM-256 keys that are never extractable,
+   per-field AAD, a keyId derived from the passphrase so a wrong passphrase is
+   indistinguishable from tampering. `store/localStore.ts` clears message records
+   to `id, conversationId, seq, format, ciphertext, iv, keyId`; role, text, level
+   and timestamps live inside the ciphertext. `assessPassphrase` refuses weak
+   passphrases with advice. There is no recovery, and the UI says so first.
+7. **The private session, the hooks and the UI.**
+   `session/privateSession.ts` mirrors the server turn pipeline in order
+   (validate → settings → rules → safety classifier that may only raise caution →
+   escalation plan → crisis short-circuit with **no model** → emotion → reply →
+   output guard over the model's text *before* the check-in suffix → encrypted
+   store → six-turn ring buffer); a storage failure never costs the reply.
+   `session/usePrivateMode.ts` owns the boot and every control;
+   `session/usePrivateChat.ts` is a `ChatController`, so `ChatView` swaps
+   controllers without changing the chat UI. `ui/PrivateModePanel.tsx` is the
+   switch, the verdict, the model manager and the passphrase;
+   `ui/PrivateReplyBadge.tsx` labels every private reply with what wrote it and
+   whether it was stored. `openVoiceSession()` returns null and the page says why.
+   47 new `private.*` keys in en/hi/bn, in the lockstep
+   `locales/parity.test.ts` enforces.
+8. **The network proof.** `e2e/private-mode.spec.ts` blocks everything twice
+   (`context.setOffline(true)` plus a catch-all aborting route that records every
+   attempt) and still completes an ordinary conversation and a HIGH-risk crisis
+   conversation with the CrisisCard, then sets a passphrase, stores a turn and
+   dumps IndexedDB to show ciphertext only. `session/private-session-no-network.test.ts`
+   is the static half: every module that holds message text is scanned for
+   `fetch(`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `sendBeacon`, dynamic
+   imports and API-client imports.
+
+### Decisions
+
+Recorded in [ADR 0040 — In-browser private AI](docs/adr/0040-in-browser-private-ai.md);
+it builds on [ADR 0017](docs/adr/0017-encrypted-journal-and-envelope-encryption.md) (server-side
+envelope encryption, which Private Mode deliberately does not reuse — the key
+must not exist server-side) and [ADR 0022](docs/adr/0022-privacy-controls-and-data-export.md)
+(deletion and consent). The short version:
+
+- **Compile the content; never duplicate it.** One bundle built from
+  `backend/app/content/**`, gated on both sides. Two hand-maintained copies of
+  safety rules drift silently.
+- **Port CPython's behaviour, and pin the disagreements as data.** Node 17 and
+  Python 3.11 lowercase and normalise differently on 55 code points; shipping the
+  table beats guessing at runtime.
+- **No model runtime is a dependency.** `@huggingface/transformers`,
+  `onnxruntime-web` and `@mlc-ai/web-llm` are *not* installed; the adapters take
+  an injectable module loader, so the bundle does not grow for people who never
+  enable Private Mode and the adapters are testable in CI. The only new
+  dependencies are dev-only (`js-yaml`, `fake-indexeddb`).
+- **Load it on demand; do not widen the budget.** Private Mode arrives as a lazy
+  chunk behind a one-line entry point, and the boot waits for the switch, so
+  `/chat` stays at 12.7 KB gzip of its 25 KB allowance and the precache at 791.5 KB
+  of 800 KB. Everybody who never turns it on downloads none of it
+  ([ADR 0040 §8](docs/adr/0040-in-browser-private-ai.md)).
+- **Fail closed on integrity.** The committed manifest is unpinned because this
+  sandbox has no model egress, so every model reports itself not installable
+  until `npm run models:pin` runs somewhere that can reach upstream. A hash typed
+  in by hand is worse than no model.
+- **Model bytes in IndexedDB, not the Cache API**: the Cache API is
+  service-worker-visible and evictable on a schedule this feature does not
+  control.
+- **Honesty over capability.** On a device with no WebGPU the reply comes from
+  reviewed templates and the badge says so, in the reader's language.
+
+### Verification
+
+[docs/verification/day41-browser-private-ai.md](docs/verification/day41-browser-private-ai.md)
+has the commands and the real output. Headlines, all executed on 2026-10-16:
+
+- `make parity` green: six exporter `--check` gates, `pytest` 25 passed,
+  frontend private tests 1990 passed (17 files). **500/500 parity, 0 mismatches.**
+- Playwright, all network blocked: **4 passed** (360x640 and 1280x800). Ordinary
+  message answered on device; HIGH-risk message produced the pre-written crisis
+  reply and the CrisisCard with 112, Find A Helpline and Befrienders Worldwide;
+  **0 network attempts** during the conversation.
+- Normal session with the network up and the backend running: **0 requests**
+  during a three-message conversation; no URL or body carried message text.
+- IndexedDB dump after a stored turn: message records hold only
+  `ciphertext, conversationId, format, id, iv, keyId, seq`; no plaintext message,
+  no crisis text, no passphrase anywhere in the database.
+- This machine (2 cores, 4 GB `deviceMemory`, no WebGPU adapter): boot 92 ms,
+  bundle 196 KB in 4 ms, first turn 231.8 ms (rules warm-up), later turns
+  30–38 ms, JS heap +3.4 MB after boot. **Tokens/second not measurable** — no
+  model can run here.
+- Backend: `pytest tests/safety -q` **883 passed**; `make lint` clean (ruff,
+  ruff format over 408 files, mypy over 343 files). The CI Backend job caught two
+  things this sandbox could not: the repository-wide guard against a vendor model
+  id outside configuration (Day 41 had written one into four files and a `.mjs`
+  build script the guard did not read), and a casefold fixture gate that compared
+  bytes including the Unicode version, which can only pass on the interpreter that
+  wrote it — CI runs CPython 3.12 (Unicode 15.0.0), this sandbox has 3.11
+  (14.0.0). Both are fixed at the root; see the verification note.
+- Frontend: `npx vitest run` **2622 passed** (95 files); `tsc --noEmit` and
+  `eslint .` clean; `npm run build` OK and `npm run budget` **met** — ChatPage is
+  back to 42.1 KB raw / 12.7 KB gzip, Private Mode is its own lazy chunk (96.3 KB
+  raw / 30.8 KB gzip, not precached) and the precache is 791.5 KB of its 800 KB
+  allowance; `npx playwright test e2e/private-mode.spec.ts` **4 passed**,
+  `e2e/chat.spec.ts` **14 passed** (standard mode unbroken) and
+  `npm run test:e2e:prod` — the day25 suite against the production build, which is
+  what the Accessibility job runs — **33 passed, 13 skipped**.
+
+### Known issues
+
+1. **`npm run models:pin` has never been run** (no Hugging Face egress here), so
+   the manifest ships unpinned and no model can be downloaded. The reply slot also
+   ships **unnamed**: which on-device model WebLLM offers is `PRIVATE_LLM_MODEL_ID`
+   (`.env.example`), because the repository forbids a vendor model id outside
+   configuration, and it is unset here. Until an operator sets it, re-runs
+   `npm run models:manifest` and pins the hashes on a machine with egress, Private
+   Mode answers with templates everywhere.
+2. **No real inference has been executed anywhere.** transformers.js and WebLLM
+   are adapters behind an injectable loader, tested against stubs (24 tests).
+   Tokens/second, model load time and memory with a real model are unmeasured.
+3. **WebLLM verifies nothing**: it manages its own artifact cache
+   (`managed_by_runtime: true`), so the integrity check that covers the
+   classifiers does not cover its bytes. Moot in the committed state — the slot is
+   unnamed, so the manager refuses it first — but it comes back the moment
+   `PRIVATE_LLM_MODEL_ID` is set.
+4. **Private Mode shows the international helpline set.** The region lives
+   server-side today and Private Mode does not ask for it, so
+   `resourcesFor(null)` returns DEFAULT (112, Find A Helpline, Befrienders
+   Worldwide). Correct but not local.
+5. **The distilled safety classifier does not exist.** The manifest slot is
+   `planned` with an honest note; a general toxicity model is not a substitute.
+   Rules alone decide risk, which is the safe direction (models may only raise
+   caution).
+6. **The first time somebody opens Private Mode needs a connection.** The chunk
+   (96 KB raw) is deliberately left out of the precache — it is bigger than the
+   whole /chat budget and useless to everyone who never turns Private Mode on — so
+   it is fetched the first time the panel is opened, and the service worker keeps
+   the 191 KB safety bundle after that (`manovia-private-v1`, network first).
+   Somebody who installs the app offline and has never opened the panel gets the
+   honest "Private Mode could not start" error, not a broken page.
+7. **`npm run format:check` fails on three files that predate this branch**
+   (`chat/Composer.tsx`, `chat/VoiceRecorder.tsx`,
+   `scripts/playwrightFailures.test.ts`). Left alone deliberately; every file this
+   branch adds or touches is Prettier-clean.
+8. **`PROGRESS.md`'s tail is corrupted** — five duplicated "Day 39 — Voice
+   journaling" blocks and a stray "Next steps (Day 30)" section, and no Day 40
+   entry at all. This section was appended after them rather than editing around
+   the damage.
+9. **Sandbox hardware limits:** no microphone, no WebGPU device, no WebXR, no
+   Bluetooth. See the manual checklist in the verification note.
+
+## Parking lot (Day 41)
+
+- **Warm the Private Mode chunk for the people who asked for it.** It is lazy and
+  not precached, which is right for everybody else; for a reader who left Private
+  Mode on, prefetching that one chunk at idle would make the offline-first promise
+  complete without charging anyone who did not opt in.
+- **A region picker for Private Mode** (stored in private settings, never sent
+  anywhere) so crisis replies carry local helplines instead of the international
+  set.
+- **Subresource Integrity or a signed bundle**: the compiled bundle is
+  same-origin and build-gated but not signed, so a tampered CDN copy would change
+  the safety rules. A detached signature checked in the browser would close it.
+- **Distil and pin a crisis-signal classifier** (the empty manifest slot), with
+  the same "may only raise caution" contract as the server's ML backstop.
+- **A diagnostics drawer** for the numbers already on the badge as `data-*`
+  (assess/reply/total ms, tokens, tokens/second) — useful on a real WebGPU device,
+  and it would make the "smaller model" claim concrete.
+- **WebLLM cache verification**: enumerate its Cache Storage entries and hash
+  them against the manifest, or vendor the artifacts and serve them same-origin.
+- **A "what would be sent" explainer** in standard mode, mirroring the private
+  badge, so the two modes are comparable at a glance.
+- **Prewarm the rules engine at boot** (one throwaway assessment) so the first
+  message does not pay the ~170–245 ms regex warm-up.
+
+### Next steps (Day 42 — first three)
+
+1. **Run `npm run models:pin` on a machine with egress**, review every hash and
+   size against upstream, commit the pinned manifest, then download the emotion
+   classifier in a real browser and confirm its labels match the bundle. Without
+   this, Private Mode is rules and templates everywhere.
+2. **Measure the real reply path on a WebGPU device**: install
+   `@mlc-ai/web-llm` and `@huggingface/transformers` behind the existing module
+   loader, name the model with `PRIVATE_LLM_MODEL_ID` (`.env.example`), download
+   it, and record tokens/second,
+   first-token latency, peak JS heap and battery/thermal behaviour against the
+   template path — then write the honest "what your device can do" copy from the
+   numbers instead of from the spec sheet.
+3. **Add the region picker for Private Mode**, stored in private settings and
+   never sent anywhere: it is the one known issue that changes what a person in
+   crisis is shown, and the helplines are already in the compiled bundle waiting
+   to be filtered by it.

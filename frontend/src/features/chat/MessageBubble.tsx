@@ -18,7 +18,7 @@
  *   the pre-written copy is rewritten here (AGENTS.md safety rule 2).
  */
 
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import { CrisisCard } from "@/components/CrisisCard";
 
@@ -33,12 +33,19 @@ export interface MessageBubbleProps {
   isLatestAssistant?: boolean;
   /** Show the emotion hint (Settings → "Show how I read your mood"). */
   showMoodHint?: boolean;
+  /**
+   * Rendered after the notices and before the crisis card. Day 41 uses it for the
+   * Private Mode badge, so a reply says where it was written; the chat surface
+   * itself stays unaware of Private Mode.
+   */
+  footer?: ReactNode;
 }
 
 export function MessageBubble({
   turn,
   isLatestAssistant = false,
   showMoodHint = false,
+  footer = null,
 }: MessageBubbleProps): ReactElement {
   const isUser = turn.role === "user";
   const label = isUser ? CHAT_COPY.youSaid : CHAT_COPY.manoviaSaid;
@@ -102,6 +109,8 @@ export function MessageBubble({
             {moodHint}
           </p>
         ) : null}
+
+        {footer}
 
         {isCrisis && metadata !== null ? (
           <div data-testid="crisis-turn" className="mt-4">

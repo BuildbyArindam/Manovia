@@ -20,6 +20,8 @@ export interface MessageListProps {
   containerRef: RefObject<HTMLElement>;
   pinned: boolean;
   onJumpToLatest: () => void;
+  /** Optional per-turn footer (see `MessageBubble`). */
+  renderTurnFooter?: (turn: ChatTurn) => ReactElement | null;
 }
 
 export function MessageList({
@@ -28,6 +30,7 @@ export function MessageList({
   containerRef,
   pinned,
   onJumpToLatest,
+  renderTurnFooter,
 }: MessageListProps): ReactElement {
   const latest = latestAssistantTurn(turns);
 
@@ -53,6 +56,7 @@ export function MessageList({
                 turn={turn}
                 isLatestAssistant={latest !== null && turn.id === latest.id}
                 showMoodHint={showMoodHint}
+                footer={renderTurnFooter?.(turn) ?? null}
               />
             ))}
           </ol>

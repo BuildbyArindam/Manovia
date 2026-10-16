@@ -350,6 +350,88 @@ send anything as anybody.
 3. **Stale helplines.** An offline copy can be up to 30 days old. The dialog
    says it is the saved copy, and every entry shows its `last_verified` date.
 
+## 6b. Day 41: Private Mode — what never leaves the device
+
+Private Mode is a switch on the chat page. When it is **off**, everything in this
+document applies as written: messages go to the server over the same-origin API,
+the server runs the rules engine and the LLM, and the transcript choice is the
+existing one. When it is **on**, the conversation is answered entirely in the
+browser by a compiled copy of the same safety content, and no message text is sent
+anywhere. Decisions and trade-offs:
+[ADR 0040](adr/0040-in-browser-private-ai.md). Measurements, including a browser
+run with all networking blocked and a raw IndexedDB dump:
+[Day 41 verification](verification/day41-browser-private-ai.md).
+
+### What the device holds while Private Mode is on
+
+| What | Where | Content | Cleared when |
+| --- | --- | --- | --- |
+| Safety bundle (191.5 KB, sha256 `9fa233a8ea9ff143`) | Fetched from this origin at enable time; held in memory, and in Cache Storage (`manovia-private-v1`, network first, 30 days) so Private Mode boots offline | Compiled `backend/app/content/**`: 215 rules, 66 output rules, 34 helplines, 3 locales, 3 system prompts. **No personal data** | Page unload (memory); site-data clear (cache) |
+| Model manifest (3.7 KB) | Same route, same cache | Which models exist, their declared sizes, honest notes, integrity hashes | Page unload |
+| Model bytes (only after explicit consent) | IndexedDB `manovia-private` → `blobs`, keyed `<modelId>/<path>` | Public model weights, hash-verified against the manifest before use | "Delete" / "Delete downloaded models" in the panel; site-data clear. Consent records are kept, because they are the person's decision |
+| Private settings | IndexedDB → `state` | `privateMode`, region, locale, storeTranscript, key id/salt/iterations, an encrypted verifier, consent timestamps. **Never the passphrase** | "Delete everything" in the panel |
+| The transcript (only if storage is on **and** unlocked) | IndexedDB → `messages`, one record per message | `id`, `conversationId`, `seq`, `format`, `ciphertext`, `iv`, `keyId` — and nothing else. Role, text, risk level, timestamps and the crisis flag are inside AES-GCM-256 ciphertext with per-field AAD | "Delete everything"; locking makes it unreadable until the passphrase returns |
+| Private Mode's own JavaScript (96 KB raw) | Not precached: fetched the first time the panel is opened, then the browser's HTTP cache like any static asset. Model **bytes** are never in Cache Storage — the worker's route matches `/private/<name>.json` only, so the consented, hash-verified download manager stays the only way they arrive | Compiled rules, capability probe, download manager, crypto, panel. **No personal data** | Site-data clear |
+| The last six turns | Memory only, in the session's ring buffer | Plain text, for context | Page unload, "New chat", lock, or switching Private Mode off |
+
+The key is derived from a passphrase with PBKDF2-HMAC-SHA256 at 210,000
+iterations over a 16-byte salt, and the AES key is **non-extractable**: it cannot
+be read out of WebCrypto, only used. There is no recovery path and no escrow.
+Forgetting the passphrase loses the transcript, and the panel says so before the
+key is created.
+
+### What Private Mode protects against
+
+- **A compromised or curious server.** No message text reaches it, so there is
+  nothing there to read, leak, subpoena or lose. The server does not learn that a
+  private conversation happened.
+- **A network observer** (ISP, employer, school, café Wi-Fi, a monitoring
+  household). After enable, a browser run with all networking blocked completed an
+  ordinary conversation and a HIGH-risk crisis conversation; an instrumented run
+  with the network *up* made **zero** requests during a three-message
+  conversation.
+- **Application logs.** The private path has no logger, and the static scan in
+  `private-session-no-network.test.ts` fails the build if any module that holds
+  message text grows a network call, a dynamic import or an API client import.
+- **Someone reading IndexedDB later** (a shared device, a second-hand phone,
+  disk inspection): transcript records are ciphertext with cleared fields, and a
+  dump of the whole database contains neither the message text nor the
+  passphrase.
+
+### What it does not protect against (honest residual risk)
+
+- **The device itself.** Malware, a browser extension with page access, or
+  somebody who can use the unlocked device can read what is on screen or in
+  memory. Private Mode is not a defence against a hostile endpoint.
+- **A coerced or remembered passphrase.** There is no duress code and no
+  plausible-deniability store; the ring buffer holds six plain-text turns in
+  memory while the conversation is open.
+- **The two static assets are not signed.** They are same-origin, hash-checked
+  against the repository at build time, and fetched with `credentials: "omit"`,
+  but a browser or CDN that serves a tampered bundle would change the safety
+  rules. Subresource Integrity cannot be applied to a build-time artifact that
+  changes with the content; the mitigation is the drift gates on both sides.
+- **WebLLM's own cache is unverified.** The reply runtime manages its artifacts
+  itself (`managed_by_runtime: true`), so the integrity check that covers the
+  classifiers does not cover those bytes.
+- **Traffic analysis before enable.** Loading the app, onboarding and the bundle
+  fetch are ordinary requests; an observer sees that Manovia was opened, not what
+  was said.
+- **Eviction.** Browsers can clear site data under storage pressure, which
+  deletes models and transcript alike. Nothing is recoverable, by design.
+
+### What Private Mode changes about the answers
+
+The reply runtime is smaller than the server's, and on most devices today there
+is no model at all: the tier is decided by capability detection (WebGPU, WASM
+SIMD/threads, cores, memory, storage, secure context) and, at `rules-only`,
+answers come from reviewed templates in the reader's language. Every reply says
+what wrote it. Risk assessment is the same rules engine, at parity with Python on
+500 phrases, and at HIGH or IMMINENT no model runs at all — the reply is
+pre-written crisis copy with helplines, exactly as on the server. Because Private
+Mode has no region source, the helplines shown are the international set (112,
+Find A Helpline, Befrienders Worldwide) rather than a country-specific list.
+
 ## 7. Manual checks this sandbox could not perform
 
 Stated because an unverified control presented as verified is worse than a known

@@ -54,8 +54,26 @@ SKIP_DIRS: frozenset[str] = frozenset(
 ALLOWED_FILES: frozenset[str] = frozenset({".env.example", "test_no_hardcoded_model.py"})
 
 #: Extensions worth reading. A model id in a binary blob is not a code path.
+#: `.mjs`/`.cjs` are here because a build script is code too: Day 41 shipped a
+#: model id inside `frontend/scripts/build-model-manifest.mjs` and this guard, as it
+#: stood, could not see it.
 SCANNED_SUFFIXES: frozenset[str] = frozenset(
-    {".py", ".md", ".ts", ".tsx", ".js", ".jsx", ".json", ".yml", ".yaml", ".toml", ".cfg", ".ini"}
+    {
+        ".py",
+        ".md",
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".json",
+        ".yml",
+        ".yaml",
+        ".toml",
+        ".cfg",
+        ".ini",
+    }
 )
 
 #: Shapes vendor model ids take. Anchored on a version or a family separator so

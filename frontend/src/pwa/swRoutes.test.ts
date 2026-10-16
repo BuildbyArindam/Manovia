@@ -19,6 +19,7 @@ import {
   isCacheableStatus,
   isExercisesRequest,
   isHelplinesRequest,
+  isPrivateAssetRequest,
   type RequestLike,
 } from "./swRoutes";
 
@@ -98,7 +99,15 @@ describe("what the worker may cache", () => {
 
   it("warms exactly the two public URLs the app requests", () => {
     expect([...WARM_URLS].sort()).toEqual([EXERCISES_PATH, HELPLINES_PATH].sort());
-    expect(Object.values(CACHE_NAMES)).toEqual(["manovia-helplines-v1", "manovia-exercises-v1"]);
+    // Three caches, two of them warmed at install. The third (Day 41) holds
+    // Private Mode's compiled artifacts and is filled at runtime, the first time
+    // somebody turns Private Mode on: 191 KB of safety rules is not a background
+    // download for everybody.
+    expect(Object.values(CACHE_NAMES)).toEqual([
+      "manovia-helplines-v1",
+      "manovia-exercises-v1",
+      "manovia-private-v1",
+    ]);
   });
 });
 
@@ -122,14 +131,52 @@ describe("which navigations get the offline app shell", () => {
   });
 });
 
+describe("Private Mode's compiled artifacts (Day 41)", () => {
+  it("caches the safety bundle and the model manifest", () => {
+    expect(isPrivateAssetRequest(url("/private/safety-bundle.json"), request(), ORIGIN)).toBe(true);
+    expect(isPrivateAssetRequest(url("/private/model-manifest.json"), request(), ORIGIN)).toBe(
+      true,
+    );
+  });
+
+  it("refuses model bytes, nested paths, writes, sessions and other origins", () => {
+    // Model bytes go through the consented, hash-verified download manager into
+    // IndexedDB. A silent copy in Cache Storage would bypass all of it.
+    const refused: [string, RequestLike, string][] = [
+      ["/private/models/emotion/onnx/model_quantized.onnx", request(), "a model file"],
+      ["/private/nested/safety-bundle.json", request(), "a nested path"],
+      ["/private/safety-bundle.json", request("POST"), "a write"],
+      ["/private/safety-bundle.json", request("GET", ["Authorization"]), "a session"],
+      ["/api/v1/chat/sessions", request(), "the chat API"],
+    ];
+    for (const [path, req, why] of refused) {
+      expect(isPrivateAssetRequest(url(path), req, ORIGIN), `${path} (${why})`).toBe(false);
+    }
+    expect(
+      isPrivateAssetRequest(
+        url("/private/safety-bundle.json", "https://elsewhere.example"),
+        request(),
+        ORIGIN,
+      ),
+    ).toBe(false);
+  });
+
+  it("is not warmed at install: 191 KB of rules is for people who ask for it", () => {
+    expect(WARM_URLS).toEqual([HELPLINES_PATH, EXERCISES_PATH]);
+    expect(WARM_URLS.some((path) => path.startsWith("/private/"))).toBe(false);
+    expect(CACHE_NAMES.privateAssets).toBe("manovia-private-v1");
+  });
+});
+
 describe("the precache list", () => {
-  it("leaves out the chart library and Insights, keeps everything else", async () => {
+  it("leaves out the chart library, Insights and Private Mode, keeps everything else", async () => {
     const entries = [
       { url: "index.html", revision: "1", size: 1 },
       { url: "assets/index-abc.js", revision: null, size: 1 },
       { url: "assets/ExercisesPage-def.js", revision: null, size: 1 },
       { url: "assets/charts-123.js", revision: null, size: 1 },
       { url: "assets/InsightsPage-456.js", revision: null, size: 1 },
+      { url: "assets/PrivateModeProvider-789.js", revision: null, size: 1 },
       { url: "manifest.webmanifest", revision: "2", size: 1 },
     ];
     const result = await filterPrecacheManifest(entries);

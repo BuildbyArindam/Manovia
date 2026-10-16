@@ -43,11 +43,13 @@ import {
   HELPLINES_MAX_AGE_SECONDS,
   HELPLINES_NETWORK_TIMEOUT_SECONDS,
   HELPLINES_PATH,
+  PRIVATE_ASSETS_MAX_AGE_SECONDS,
   WARM_URLS,
   isAppShellNavigation,
   isCacheableStatus,
   isExercisesRequest,
   isHelplinesRequest,
+  isPrivateAssetRequest,
 } from "../pwa/swRoutes";
 
 declare const self: ServiceWorkerGlobalScope & {
@@ -97,6 +99,29 @@ registerRoute(
     plugins: [
       okOnly,
       new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: EXERCISES_MAX_AGE_SECONDS }),
+    ],
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// 3c. Private Mode's compiled artifacts (Day 41): the safety bundle and the model
+// manifest. Network first, because a deploy that changes a safety rule must reach
+// the device the next time it is online — serving a stale rule set from cache
+// would be a safety regression, not a performance win. The cached copy is what
+// makes Private Mode boot with no network at all.
+//
+// Not warmed at install, unlike the two above: 191 KB of compiled rules is only
+// useful to somebody who turns Private Mode on, and downloading it for everyone
+// in the background is exactly what the bundle budget exists to prevent.
+registerRoute(
+  ({ request, url }) => isPrivateAssetRequest(url, request, self.location.origin),
+  new NetworkFirst({
+    cacheName: CACHE_NAMES.privateAssets,
+    networkTimeoutSeconds: HELPLINES_NETWORK_TIMEOUT_SECONDS,
+    matchOptions: { ignoreVary: true },
+    plugins: [
+      okOnly,
+      new ExpirationPlugin({ maxEntries: 4, maxAgeSeconds: PRIVATE_ASSETS_MAX_AGE_SECONDS }),
     ],
   }),
 );

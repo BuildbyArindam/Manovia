@@ -19,6 +19,23 @@ registerLanguageResources("bn", bn);
 // @testing-library/jest-dom's augmentation of it).
 expect.extend(toHaveNoViolations);
 
+// Day 41 (Private Mode): the on-device safety layer needs WebCrypto for the
+// passphrase-derived key and IndexedDB for the local transcript and model cache.
+// jsdom ships neither, so both are taken from Node (which has real WebCrypto) and
+// fake-indexeddb. Real browsers provide their own; this only fills the gap, and a
+// test that stubs `globalThis.crypto` still wins because `restoreMocks` runs after.
+if (typeof globalThis.crypto?.subtle === "undefined") {
+  const nodeCrypto = await import("node:crypto");
+  Object.defineProperty(globalThis, "crypto", {
+    value: nodeCrypto.webcrypto,
+    configurable: true,
+    writable: true,
+  });
+}
+if (typeof globalThis.indexedDB === "undefined") {
+  await import("fake-indexeddb/auto");
+}
+
 // jsdom has no matchMedia; every component that asks for a media query (theme
 // detection, reduced motion, desktop/mobile navigation) would otherwise throw.
 // Tests that care stub `window.matchMedia` themselves.
