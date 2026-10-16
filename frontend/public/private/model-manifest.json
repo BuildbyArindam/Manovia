@@ -1,0 +1,90 @@
+{
+  "format": "manovia-model-manifest/1",
+  "generated_by": "frontend/scripts/build-model-manifest.mjs",
+  "description": "What Private Mode may download, from where, and how it is verified. sha256 values are filled by `npm run models:pin` on a machine with network access; until then the manager refuses to install.",
+  "checksum_algorithm": "sha256",
+  "pinned": false,
+  "models": [
+    {
+      "id": "emotion",
+      "kind": "sequence-classification",
+      "runtime": "transformers",
+      "capability": "classifiers",
+      "status": "available",
+      "label": "Distilled emotion classifier (on-device)",
+      "honest_note": "A distilled ~66M-parameter classifier. It is less accurate than the server model it stands in for, it labels tone rather than diagnosis, and it never decides safety.",
+      "upstream": "https://huggingface.co/Xenova/distilbert-base-uncased-emotion",
+      "licence": "MIT",
+      "managed_by_runtime": false,
+      "labels": [
+        "neutral",
+        "joy",
+        "sadness",
+        "anger",
+        "fear",
+        "surprise"
+      ],
+      "files": [
+        {
+          "path": "config.json",
+          "kind": "config",
+          "url": "https://huggingface.co/Xenova/distilbert-base-uncased-emotion/resolve/main/config.json",
+          "bytes": 0,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.json",
+          "kind": "tokenizer",
+          "url": "https://huggingface.co/Xenova/distilbert-base-uncased-emotion/resolve/main/tokenizer.json",
+          "bytes": 0,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "kind": "config",
+          "url": "https://huggingface.co/Xenova/distilbert-base-uncased-emotion/resolve/main/tokenizer_config.json",
+          "bytes": 0,
+          "sha256": null
+        },
+        {
+          "path": "onnx/model_quantized.onnx",
+          "kind": "weights",
+          "url": "https://huggingface.co/Xenova/distilbert-base-uncased-emotion/resolve/main/onnx/model_quantized.onnx",
+          "bytes": 0,
+          "sha256": null
+        }
+      ],
+      "total_bytes": 0
+    },
+    {
+      "id": "safety",
+      "kind": "sequence-classification",
+      "runtime": "transformers",
+      "capability": "classifiers",
+      "status": "planned",
+      "label": "Distilled crisis-signal classifier (not shipped yet)",
+      "honest_note": "No distilled self-harm classifier is pinned. A general toxicity model is not a substitute and would mislabel risk, so this slot stays empty: the deterministic rules engine is the safety layer, and models may only ever raise caution.",
+      "upstream": null,
+      "licence": null,
+      "managed_by_runtime": false,
+      "labels": [],
+      "files": [],
+      "total_bytes": 0
+    },
+    {
+      "id": "reply",
+      "kind": "causal-lm",
+      "runtime": "webllm",
+      "capability": "replies",
+      "status": "available",
+      "label": "Small on-device language model (WebGPU)",
+      "honest_note": "A 1.5B-parameter instruct model, quantised. It is much smaller than the server model: replies are shorter, plainer and less flexible, and every one of them still passes the on-device output guard.",
+      "upstream": "https://huggingface.co/mlc-ai/Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+      "licence": "Apache-2.0",
+      "managed_by_runtime": true,
+      "labels": [],
+      "files": [],
+      "total_bytes": 0
+    }
+  ]
+}
