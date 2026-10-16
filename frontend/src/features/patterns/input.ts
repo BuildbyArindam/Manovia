@@ -111,6 +111,7 @@ export function parseSnapshot(raw: string): Snapshot {
 }
 /** Never include journal text in an export. Personal derived data still needs care. */
 export function exportSnapshot(s: Snapshot): string {
+  s = { ...s, themes: s.themes.map((t) => ({ ...t, name: t.name.trim() || "Unnamed theme" })) };
   return JSON.stringify(
     {
       ...s,

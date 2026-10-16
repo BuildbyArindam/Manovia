@@ -36,7 +36,11 @@ export function withThemes(days: Day[], themes: Theme[]): Day[] {
       ...day.factors,
       ...themes
         .filter((t) => t.dates.includes(day.date))
-        .map((t) => ({ id: t.id, label: t.name, kind: "theme" as const })),
+        .map((t) => ({
+          id: t.id,
+          label: t.name.trim() || "Unnamed theme",
+          kind: "theme" as const,
+        })),
     ],
   }));
 }

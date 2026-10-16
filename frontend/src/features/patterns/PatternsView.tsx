@@ -253,8 +253,17 @@ export function PatternsView(): ReactElement {
                 className={field}
                 maxLength={120}
                 value={theme.name}
+                onBlur={() => {
+                  if (!theme.name.trim())
+                    setSnapshot((s) => ({
+                      ...s,
+                      themes: s.themes.map((t) =>
+                        t.id === theme.id ? { ...t, name: "Unnamed theme" } : t,
+                      ),
+                    }));
+                }}
                 onChange={(e) => {
-                  const name = e.target.value || "Unnamed theme";
+                  const name = e.target.value;
                   setSnapshot((s) => ({
                     ...s,
                     themes: s.themes.map((t) => (t.id === theme.id ? { ...t, name } : t)),

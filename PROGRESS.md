@@ -2,10 +2,10 @@
 
 ## Day 43 — Personal wellbeing knowledge graph and what-if explorer
 
-Implementation in progress on 2026-10-16, on the Arena-pinned branch
+Implemented and targeted-verification complete on 2026-10-16, on the Arena-pinned branch
 `arena/41b24aaf-manovia` (cannot create/rename the session branch). No main push.
 
-### Completed (milestone 1)
+### Completed
 
 - Pure client-side Day 16 statistical-method port, daily aggregation, graph,
   force-directed settled layout, keyboard buttons/text alternative, pattern cards,
@@ -18,10 +18,18 @@ Implementation in progress on 2026-10-16, on the Arena-pinned branch
 - Seven-of-fourteen randomised optional activities, complete-outcome requirement,
   permutation analysis and plain-language uncertainty.
 - Decision: [ADR 0042](docs/adr/0042-local-personal-patterns.md).
-- Executed: frontend lint/typecheck clean; Day 43 **16 tests passed**. Synthetic
-  structure: 40/40 planted edges, 0/160 spurious; pure noise 2/200 (1%);
-  experiment 7/200 null positives (3.5%). Browser/network/axe and full regressions
-  still pending; these unit results alone do not verify accessibility/privacy.
+- Targeted verification: **17 unit/integration tests** and **6 browser tests**
+  pass. Synthetic structure: 40/40 planted edges, 0/160 spurious; pure noise
+  2/200 (1%); experiment 7/200 null positives (3.5%). Private Mode **0 API
+  requests**; standard mode only three explicit GETs. Keyboard graph/list and
+  axe at graph/text/completed-experiment states: **0 violations** in both
+  360×640 and 1280×800, with reduced motion enabled.
+- Fixed a genuine theme-name keyboard-editing regression (fallback inserted
+  while clearing); retained its browser test. Async-delete integration test
+  prevents pending source reads from resurrecting working data.
+- [Verification report](docs/verification/day43-personal-patterns.md) includes
+  actual recovered edges/intervals, simulation output, request inventory,
+  failure/fix history, commands and manual checks. Full final rerun pending.
 
 ### Known issues / manual checks
 
@@ -30,7 +38,8 @@ Implementation in progress on 2026-10-16, on the Arena-pinned branch
   required to resume; downloaded files and original history are not erased by
   local delete. Export is personal data; protect it accordingly.
 - First opening the lazy explorer needs assets online; not install-time precached.
-- Existing-data adapters and real assistive technologies still need manual checks.
+- Existing-data adapters pass fixture-backed browser tests; real-account auth,
+  timezone travel and real assistive technologies still need manual checks.
 
 ### Parking lot (Day 43)
 

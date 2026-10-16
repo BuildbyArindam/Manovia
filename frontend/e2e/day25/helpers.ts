@@ -21,6 +21,7 @@ export const APP_ROUTES = [
   { path: "/biofeedback", name: "biofeedback", ready: "biofeedback-page" },
   { path: "/assessments", name: "assessments", ready: null },
   { path: "/insights", name: "insights", ready: null },
+  { path: "/patterns", name: "patterns", ready: null },
   { path: "/settings", name: "settings", ready: "install-section" },
   { path: "/accessibility", name: "accessibility", ready: "accessibility-page" },
   { path: "/no-such-page", name: "not-found", ready: null },
