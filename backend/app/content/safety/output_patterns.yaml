@@ -136,11 +136,26 @@ check_in_phrases:
   - "क्या आप ठीक हैं"
   - "किसी भरोसेमंद व्यक्ति से बात"
   - "क्या इससे मदद मिलेगी"
+  # Day 41: the five Hindi/Bengali phrases above are questions a person is asked,
+  # but none of them appears in the Hindi/Bengali check-in templates or in the
+  # translated safe replies — so a Hindi reply that used the shipped copy was refused
+  # for `missing_check_in` while the English equivalent passed. These are the same
+  # three entries the English list already accepts ("im here", "we can keep talking",
+  # "helpline", "tell me more"), translated, which makes the rule's coverage equal
+  # across locales. It does not widen what counts as a check-in.
+  - "मैं यहाँ हूँ"
+  - "हम बात जारी रख सकते हैं"
+  - "हेल्पलाइन"
+  - "थोड़ा और बताना"
   - "আপনি কেমন অনুভব করছেন"
   - "আপনি কি নিরাপদ আছেন"
   - "আপনি কি ঠিক আছেন"
   - "বিশ্বাসের কাউকে বলুন"
   - "এতে কি সাহায্য হবে"
+  - "আমি আছি"
+  - "আমরা কথা চালিয়ে যেতে পারি"
+  - "হেল্পলাইন"
+  - "আরেকটু বলতে"
 
 # Words that cancel a sensitive hit earlier in the same clause.
 negation_cues:
