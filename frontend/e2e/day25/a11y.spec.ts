@@ -302,3 +302,41 @@ test("nothing covers the help dialog: it sits above the header and bottom naviga
     expect(covered).toBeNull();
   }
 });
+
+/** Day 43 regression: axe does not enforce the project's 44px target rule.
+ * The native file input and its chooser button must stay finger-sized both
+ * before and after a long filename is selected, without overflowing mobile.
+ */
+test("patterns file import has a 44px target and chooser before and after selection", async ({
+  page,
+}, info) => {
+  await completeGuestOnboarding(page);
+  await openRoute(page, "/patterns", null);
+  const input = page.getByLabel("Import local data or resume experiment");
+  const checkTarget = async (): Promise<void> => {
+    const size = await input.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        width: rect.width,
+        height: rect.height,
+        chooserMinHeight: parseFloat(getComputedStyle(element, "::file-selector-button").minHeight),
+        fits: rect.left >= 0 && rect.right <= window.innerWidth,
+      };
+    });
+    expect(size.height, "file input target height").toBeGreaterThanOrEqual(44);
+    expect(size.width, "file input target width").toBeGreaterThanOrEqual(44);
+    expect(size.chooserMinHeight, "native file chooser target height").toBeGreaterThanOrEqual(44);
+    expect(size.fits, "file control stays inside the viewport").toBe(true);
+    await auditTargets(page, info, "patterns file import");
+  };
+  await checkTarget();
+  await input.setInputFiles({
+    name: `${"local-patterns-".repeat(10)}.json`,
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ version: 1, days: [] })),
+  });
+  await expect(
+    page.getByRole("status").filter({ hasText: "0 observed days loaded locally" }),
+  ).toBeVisible();
+  await checkTarget();
+});

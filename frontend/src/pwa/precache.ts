@@ -26,6 +26,8 @@ import type { ManifestTransform } from "workbox-build";
 export const PRECACHE_EXCLUDED_CHUNKS: readonly RegExp[] = [
   /^assets\/charts-/,
   /^assets\/InsightsPage-/,
+  // Day 43: local explorer is loaded on demand; keep the existing precache budget.
+  /^assets\/PatternsPage-/,
   // Day 41: the whole on-device stack (rules engine, capability probe, download
   // manager, crypto, panel). It is larger than the /chat route budget and only
   // useful to someone who turns Private Mode on, so it is fetched the first time

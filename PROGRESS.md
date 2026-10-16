@@ -1,5 +1,113 @@
 # Manovia — Progress
 
+## Day 43 — Personal wellbeing knowledge graph and what-if explorer
+
+Implemented and fully regression-verified on 2026-10-16, on the Arena-pinned branch
+`arena/41b24aaf-manovia` (cannot create/rename the session branch). No main push.
+
+### Completed
+
+- Pure client-side Day 16 statistical-method port, daily aggregation, graph,
+  force-directed settled layout, keyboard buttons/text alternative, pattern cards,
+  distribution tables and sample withholding.
+- Browser lexical topic clustering with user naming, merging, deleting and entry
+  review. No inferred symptom names, people or places.
+- Explicit existing-source reads (standard mode only); Private Mode local JSON
+  path. Graph stays in memory. Export graph/experiment without journal text;
+  delete clears working state. Export/resume rather than hidden persistence.
+- Seven-of-fourteen randomised optional activities, complete-outcome requirement,
+  permutation analysis and plain-language uncertainty.
+- Decision: [ADR 0042](docs/adr/0042-local-personal-patterns.md).
+- Targeted verification: **17 unit/integration tests** and **6 browser tests**
+  pass. Synthetic structure: 40/40 planted edges, 0/160 spurious; pure noise
+  2/200 (1%); experiment 7/200 null positives (3.5%). Private Mode **0 API
+  requests**; standard mode only three explicit GETs. Keyboard graph/list and
+  axe at graph/text/completed-experiment states: **0 violations** in both
+  360×640 and 1280×800, with reduced motion enabled.
+- Fixed a genuine theme-name keyboard-editing regression (fallback inserted
+  while clearing); retained its browser test. Async-delete integration test
+  prevents pending source reads from resurrecting working data.
+- [Verification report](docs/verification/day43-personal-patterns.md) includes
+  actual recovered edges/intervals, simulation output, request inventory,
+  failure/fix history, commands and manual checks.
+
+### Final verification (real final rerun)
+
+- `PATH="$PWD/.venv/bin:$PATH" make lint`: backend ruff check/format clean
+  (408 files), mypy clean (343 source files), frontend ESLint clean.
+- `PATH="$PWD/.venv/bin:$PATH" make test`: backend **4,685 passed, 4 skipped,
+  50 warnings**; all coverage gates satisfied (94.13% statements, 86.11%
+  branches overall). Frontend **2,746 passed, 3 skipped**, 109 passing files
+  plus one skipped live-backend file. Optional extras/live-backend skips are
+  pre-existing and are not represented as verified integrations.
+- Frontend `npm run typecheck`, `npm run build`, `npm run budget`: pass.
+  `/patterns` adds **9.3 KiB gzip** in the budget inventory; precache **613.3
+  KiB / 800 KiB**; no budgets raised. Changed frontend files pass Prettier;
+  `git diff --check` clean.
+- Final `npx playwright test e2e/patterns.spec.ts`: **6 passed** at both
+  viewports; graph, text-only and complete-experiment axe scans have 0 violations.
+- Wording lint: 0 violations, five bad-claim negative controls rejected.
+- Milestones committed and pushed: `705fe6e` (build), `bcd3d7f` (verification
+  and keyboard-edit fix). Final documentation is committed separately.
+  One PR will be opened from the pinned branch to main; **do not merge**.
+
+| Day 43 check | Result |
+| --- | --- |
+| Known edges, 20 seeds / noise suppression | PASS — 40/40; 0/160; all-noise 2/200 |
+| Graph/journal-derived network egress | PASS — 0 API calls private; explicit GETs only standard |
+| Minimum sample / distribution withholding | PASS — both groups >=5; browser refusal covered |
+| Experiment randomiser / true and null analyses | PASS — 7/14 dates; null 7/200 (3.5%) |
+| Keyboard graph/list, reduced motion and axe | PASS — both viewports; 0 axe violations |
+| Associative wording guard | PASS — 0 violations; negative controls pass |
+| Full backend/frontend lint + tests | PASS — optional skips disclosed above |
+| Build, typecheck and bundle budgets | PASS |
+
+### PR #51 accessibility CI follow-up (2026-10-17)
+
+- CI's production target audit (run `38948888330`) found the new file import
+  below the repository's 44px minimum on both viewports. The earlier Day 43 axe
+  scans did not enforce this separate target-size rule; Lighthouse was skipped
+  after Playwright failed. No performance failure was reported by that run.
+- Reproduced with a new production-browser regression: the file input was
+  **34px high** on both mobile and desktop. The shared base target-size rule
+  omitted file inputs and their native chooser buttons. Added both selectors
+  to the existing **2.75rem** minimum; no thresholds or tests were weakened.
+- New regression checks input and native chooser sizes, viewport fit, and the
+  full page target audit before and after selecting a long filename. It failed
+  before the fix in both projects, then **2/2 passed** with the fix.
+- Ran the **full CI production Playwright suite** against the migrated real API
+  with the Fake LLM provider: **35 passed, 13 existing project/opt-in skips**,
+  9.9 minutes. This includes all-route axe scans in four appearances, touch
+  targets in both viewports, keyboard, zoom/reflow, offline and installability.
+- Frontend ESLint + both TypeScript checks clean; full Vitest **2,746 passed,
+  3 existing live-backend skips**; production build, bundle budgets and changed
+  file Prettier checks pass. Backend application code is unchanged.
+- Fix is pushed to the existing PR only; GitHub's full job (including Lighthouse)
+  must report its own new result. No merge and no additional PR.
+
+### Known issues / manual checks
+
+- Day 43 UI copy is English-only; lexical topics are not semantic embeddings.
+- Working state clears on navigation/reload. Explicit plaintext local export is
+  required to resume; downloaded files and original history are not erased by
+  local delete. Export is personal data; protect it accordingly.
+- First opening the lazy explorer needs assets online; not install-time precached.
+- Existing-data adapters pass fixture-backed browser tests; real-account auth,
+  timezone travel and real assistive technologies still need manual checks.
+
+### Parking lot (Day 43)
+
+- Reviewed hi/bn translations; encrypted opt-in experiment persistence/reminders;
+  stronger serial-dependence-aware inference and optional on-device embeddings.
+  These are deliberately not included in today's scope.
+
+### First three steps for Day 44
+
+1. Review the Day 44 brief and select only its scope before changing code.
+2. Run the Day 43 manual checks on a real account/device (no secrets in chat).
+3. Re-run baseline gates and address any verified regressions before new work.
+
+
 ## Day 42 — Biofeedback breathing with wearables (HRV)
 
 **Implemented and fully regression-verified on 2026-10-16** on the Arena-pinned
