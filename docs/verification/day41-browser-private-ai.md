@@ -196,7 +196,20 @@ Measured in Chromium 153 headless over CDP (`Performance.getMetrics`), dev serve
 | Crisis turn (no model): assess / reply / total | 14.8 ms / 23.5 ms / **38.3 ms** |
 | Tokens counted for the guard's length rule | 32 and 49 (per reply) |
 | **Tokens/second** | **not measurable here** — `requestAdapter()` returns null, so no model ran |
-| Production build | `npm run build` OK; ChatPage chunk 136 KB raw / 42.8 KB gzip; `dist/private/` = 192 KB bundle + 4 KB manifest, fetched only on enable |
+| Production build | `npm run build` OK; ChatPage chunk 42.1 KB raw / 12.7 KB gzip, Private Mode in its own lazy chunk 96.3 KB raw / 30.8 KB gzip; `dist/private/` = 192 KB bundle + 4 KB manifest, fetched only on enable |
+| Bundle budget (`npm run budget`) | **PASS** — `/chat` route increment 12.7 KB gzip of its 25 KB allowance, precache 791.5 KB of 800 KB. **FAIL before the split** (42.5 KB and 885.2 KB); see below |
+
+**The budget gate caught the integration, and it was right to.** With Private Mode
+imported statically, `npm run budget` failed both of its numbers: `/chat` allows a
+25 KB gzip increment and had 42.5 KB, and the precache allows 800 KB raw and had
+885.2 KB — every visitor to chat was downloading the rules engine, the capability
+probe, the download manager and the crypto, and the PWA was precaching it at
+install for people who would never turn Private Mode on. The budgets were not
+raised. `ChatView` now imports `PrivateModeProvider` with `React.lazy` behind a
+small entry point, `usePrivateMode` takes `autoBoot: false` so opening the panel
+does not fetch the 191 KB bundle either, and the chunk is excluded from the
+precache exactly like the chart library is. Both numbers are now inside budget and
+the day25 production suite still passes (33 passed, 13 skipped).
 
 The first message costs ~170–245 ms because 215 compiled regular expressions run
 for the first time; every later message is 3–40 ms. A WebGPU device would add
@@ -299,5 +312,10 @@ bundle, model manifest) is wired into `make parity` and into `npm run build`.
    `src/scripts/playwrightFailures.test.ts`). Left alone on purpose — Day 41 does
    not reformat other days' work. Every file this branch adds or touches is
    Prettier-clean.
-7. **Microphone, WebGPU, WebXR and Bluetooth cannot be tested in this sandbox** —
+7. **Opening Private Mode for the first time needs a connection**, because the
+   chunk is lazy and deliberately not precached. The service worker keeps the two
+   compiled artifacts after that (`manovia-private-v1`, network first, 30 days), so
+   later boots work offline; a first boot that cannot fetch the chunk reports
+   "Private Mode could not start" and leaves the standard chat page working.
+8. **Microphone, WebGPU, WebXR and Bluetooth cannot be tested in this sandbox** —
    voice is disabled in Private Mode and says why.

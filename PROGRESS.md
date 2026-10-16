@@ -6155,6 +6155,11 @@ must not exist server-side) and [ADR 0022](docs/adr/0022-privacy-controls-and-da
   an injectable module loader, so the bundle does not grow for people who never
   enable Private Mode and the adapters are testable in CI. The only new
   dependencies are dev-only (`js-yaml`, `fake-indexeddb`).
+- **Load it on demand; do not widen the budget.** Private Mode arrives as a lazy
+  chunk behind a one-line entry point, and the boot waits for the switch, so
+  `/chat` stays at 12.7 KB gzip of its 25 KB allowance and the precache at 791.5 KB
+  of 800 KB. Everybody who never turns it on downloads none of it
+  ([ADR 0040 §8](docs/adr/0040-in-browser-private-ai.md)).
 - **Fail closed on integrity.** The committed manifest is unpinned because this
   sandbox has no model egress, so every model reports itself not installable
   until `npm run models:pin` runs somewhere that can reach upstream. A hash typed
@@ -6187,10 +6192,14 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
   model can run here.
 - Backend: `pytest tests/safety -q` **882 passed**; `make lint` clean (ruff,
   ruff format over 408 files, mypy over 343 files).
-- Frontend: `npx vitest run` **2614 passed** (94 files); `tsc --noEmit` and
-  `eslint .` clean; `npm run build` OK (ChatPage chunk 136 KB raw / 42.8 KB
-  gzip); `npx playwright test e2e/chat.spec.ts` **14 passed** — standard mode
-  unbroken.
+- Frontend: `npx vitest run` **2622 passed** (95 files); `tsc --noEmit` and
+  `eslint .` clean; `npm run build` OK and `npm run budget` **met** — ChatPage is
+  back to 42.1 KB raw / 12.7 KB gzip, Private Mode is its own lazy chunk (96.3 KB
+  raw / 30.8 KB gzip, not precached) and the precache is 791.5 KB of its 800 KB
+  allowance; `npx playwright test e2e/private-mode.spec.ts` **4 passed**,
+  `e2e/chat.spec.ts` **14 passed** (standard mode unbroken) and
+  `npm run test:e2e:prod` — the day25 suite against the production build, which is
+  what the Accessibility job runs — **33 passed, 13 skipped**.
 
 ### Known issues
 
@@ -6211,10 +6220,13 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
    `planned` with an honest note; a general toxicity model is not a substitute.
    Rules alone decide risk, which is the safe direction (models may only raise
    caution).
-6. **Private Mode's code is statically imported into the ChatPage chunk**
-   (136 KB raw / 42.8 KB gzip), so everyone who opens chat downloads the rules
-   engine whether or not they enable it. The 191 KB bundle is not in the JS — it
-   is fetched on enable.
+6. **The first time somebody opens Private Mode needs a connection.** The chunk
+   (96 KB raw) is deliberately left out of the precache — it is bigger than the
+   whole /chat budget and useless to everyone who never turns Private Mode on — so
+   it is fetched the first time the panel is opened, and the service worker keeps
+   the 191 KB safety bundle after that (`manovia-private-v1`, network first).
+   Somebody who installs the app offline and has never opened the panel gets the
+   honest "Private Mode could not start" error, not a broken page.
 7. **`npm run format:check` fails on three files that predate this branch**
    (`chat/Composer.tsx`, `chat/VoiceRecorder.tsx`,
    `scripts/playwrightFailures.test.ts`). Left alone deliberately; every file this
@@ -6228,8 +6240,10 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
 
 ## Parking lot (Day 41)
 
-- **Code-split Private Mode behind the toggle** (`React.lazy` + a dynamic import
-  of the whole feature) so the ChatPage chunk goes back to its Day-40 size.
+- **Warm the Private Mode chunk for the people who asked for it.** It is lazy and
+  not precached, which is right for everybody else; for a reader who left Private
+  Mode on, prefetching that one chunk at idle would make the offline-first promise
+  complete without charging anyone who did not opt in.
 - **A region picker for Private Mode** (stored in private settings, never sent
   anywhere) so crisis replies carry local helplines instead of the international
   set.
@@ -6260,6 +6274,7 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
    first-token latency, peak JS heap and battery/thermal behaviour against the
    template path — then write the honest "what your device can do" copy from the
    numbers instead of from the spec sheet.
-3. **Code-split Private Mode and add the region picker**, in that order: the
-   chunk is the cheapest fix with the widest effect, and the region picker is the
-   one known issue that changes what a person in crisis is shown.
+3. **Add the region picker for Private Mode**, stored in private settings and
+   never sent anywhere: it is the one known issue that changes what a person in
+   crisis is shown, and the helplines are already in the compiled bundle waiting
+   to be filtered by it.

@@ -34,6 +34,13 @@ respective sessions.
   secure context) choosing one of three tiers and explaining itself in one
   sentence; at `rules-only` the app still answers offline and offers standard
   mode instead of pretending.
+- **Private Mode is loaded on demand.** The chat page keeps a one-line entry point
+  and pulls the on-device stack as a chunk of its own the first time the panel is
+  opened, so `/chat` stays inside its 25 KB gzip budget (12.7 KB) and the precache
+  stays inside 800 KB (791.5 KB): nobody downloads the rules engine, the download
+  manager or the crypto unless they ask for Private Mode. The service worker keeps
+  the two compiled artifacts after that — network first, because a safety-rule
+  change must reach the device — and never model bytes.
 - A **consented model download manager**: declared size and an honest note before
   consent, resumable HTTP Range downloads, sha256 verification that fails closed,
   bytes in IndexedDB, pause/resume/cancel, per-model delete and delete-all behind

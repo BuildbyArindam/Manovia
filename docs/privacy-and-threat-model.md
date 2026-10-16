@@ -366,11 +366,12 @@ run with all networking blocked and a raw IndexedDB dump:
 
 | What | Where | Content | Cleared when |
 | --- | --- | --- | --- |
-| Safety bundle (191.5 KB, sha256 `9fa233a8ea9ff143`) | Fetched from this origin at enable time; held in memory, and in the HTTP cache like any static asset | Compiled `backend/app/content/**`: 215 rules, 66 output rules, 34 helplines, 3 locales, 3 system prompts. **No personal data** | Page unload (memory); site-data clear (cache) |
-| Model manifest (3.7 KB) | Same | Which models exist, their declared sizes, honest notes, integrity hashes | Page unload |
+| Safety bundle (191.5 KB, sha256 `9fa233a8ea9ff143`) | Fetched from this origin at enable time; held in memory, and in Cache Storage (`manovia-private-v1`, network first, 30 days) so Private Mode boots offline | Compiled `backend/app/content/**`: 215 rules, 66 output rules, 34 helplines, 3 locales, 3 system prompts. **No personal data** | Page unload (memory); site-data clear (cache) |
+| Model manifest (3.7 KB) | Same route, same cache | Which models exist, their declared sizes, honest notes, integrity hashes | Page unload |
 | Model bytes (only after explicit consent) | IndexedDB `manovia-private` → `blobs`, keyed `<modelId>/<path>` | Public model weights, hash-verified against the manifest before use | "Delete" / "Delete downloaded models" in the panel; site-data clear. Consent records are kept, because they are the person's decision |
 | Private settings | IndexedDB → `state` | `privateMode`, region, locale, storeTranscript, key id/salt/iterations, an encrypted verifier, consent timestamps. **Never the passphrase** | "Delete everything" in the panel |
 | The transcript (only if storage is on **and** unlocked) | IndexedDB → `messages`, one record per message | `id`, `conversationId`, `seq`, `format`, `ciphertext`, `iv`, `keyId` — and nothing else. Role, text, risk level, timestamps and the crisis flag are inside AES-GCM-256 ciphertext with per-field AAD | "Delete everything"; locking makes it unreadable until the passphrase returns |
+| Private Mode's own JavaScript (96 KB raw) | Not precached: fetched the first time the panel is opened, then the browser's HTTP cache like any static asset. Model **bytes** are never in Cache Storage — the worker's route matches `/private/<name>.json` only, so the consented, hash-verified download manager stays the only way they arrive | Compiled rules, capability probe, download manager, crypto, panel. **No personal data** | Site-data clear |
 | The last six turns | Memory only, in the session's ring buffer | Plain text, for context | Page unload, "New chat", lock, or switching Private Mode off |
 
 The key is derived from a passphrase with PBKDF2-HMAC-SHA256 at 210,000

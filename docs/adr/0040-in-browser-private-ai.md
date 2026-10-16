@@ -148,6 +148,39 @@ that holds message text and fails on any network call, dynamic import or API
 client import; `e2e/private-mode.spec.ts` proves it behaviourally with all
 networking blocked twice over.
 
+### 8. Private Mode is loaded on demand, not shipped to everybody
+
+The feature first landed imported statically into `ChatView`, and the Day-25
+bundle budget said no: `/chat` may add 25 KB gzip and had added 42.5 KB, and the
+precache may hold 800 KB raw and had reached 885.2 KB. `npm run budget` is a gate
+in the Accessibility workflow, so this was a build failure, not a taste question.
+
+The budgets were not raised — raising them would let every route grow by whatever
+it likes next time. Instead:
+
+- `ChatView` renders `PrivateModeEntry` (a heading, one sentence and a button) and
+  loads `PrivateModeProvider` with `React.lazy`. The provider owns the hooks, the
+  locale sync and the panel, so the split is one line and the whole stack — rules
+  engine, capability probe, download manager, crypto, panel — travels in a chunk of
+  its own (96.3 KB raw / 30.8 KB gzip).
+- `usePrivateMode` takes `autoBoot: false` from the chat page: opening the panel is
+  not turning Private Mode on, so neither the boot's two fetches nor the 191 KB
+  bundle are requested until somebody flips the switch. The panel is a button rather
+  than a switch for the same reason — the consent copy has to be on screen first.
+- The chunk is excluded from the precache exactly like the chart library is
+  (`PRECACHE_EXCLUDED_CHUNKS`): a background download at install is the one thing
+  worse than a lazy fetch. The service worker does keep the two compiled artifacts
+  after that, network first with a 30-day expiry, because a deploy that changes a
+  safety rule must reach the device the next time it is online; serving stale rules
+  from cache would be a safety regression. Model bytes are excluded from that route
+  by path shape, so the consented, hash-verified download manager stays the only way
+  they arrive.
+
+The cost is honest and narrow: the first time somebody opens Private Mode needs a
+connection. `Suspense` keeps the standard chat page usable while the chunk loads, a
+failed boot reports itself and leaves the switch off, and `ChatView.private.test.tsx`
+pins all three behaviours.
+
 ## Consequences
 
 **Better:** a conversation that is genuinely local; identical safety decisions on
