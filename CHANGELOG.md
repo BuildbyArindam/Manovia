@@ -15,6 +15,44 @@ Days 28–34 are not recorded in this file — a pre-existing gap; their changes
 [docs/adr/README.md](docs/adr/README.md). Days 35 and 36 are recorded here by their
 respective sessions.
 
+### Added — Day 41: in-browser private AI ("Private Mode")
+
+- A **Private Mode** switch on the chat page. When it is on, no message text goes
+  to the server or to any model API: the safety rules, crisis support, output
+  guard and reply are all computed in the browser
+  ([ADR 0040](docs/adr/0040-in-browser-private-ai.md)).
+- A **compiled safety bundle** (191.5 KB, sha256 `9fa233a8ea9ff143`) built at
+  build time from `backend/app/content/**` — 215 rules, 66 output rules, 34
+  helplines, 3 locales and the 3 system prompts — fetched from this origin with
+  credentials omitted and gated for drift on both the Python and TypeScript side.
+- A **TypeScript rules engine at parity with Python**: 500 corpus phrases yield
+  identical risk levels, categories, ordered rationale codes and context fields
+  (500/500, ≈0.9 ms per message), with CPython's case folding, word boundaries
+  and Unicode classes reproduced rather than approximated. `make parity` runs the
+  six exporter gates, the bundle suite and the frontend private tests.
+- **Capability detection** (WebGPU, WASM SIMD/threads, cores, memory, storage,
+  secure context) choosing one of three tiers and explaining itself in one
+  sentence; at `rules-only` the app still answers offline and offers standard
+  mode instead of pretending.
+- A **consented model download manager**: declared size and an honest note before
+  consent, resumable HTTP Range downloads, sha256 verification that fails closed,
+  bytes in IndexedDB, pause/resume/cancel, per-model delete and delete-all behind
+  a confirmation. The committed manifest is deliberately unpinned, so nothing can
+  be downloaded until `npm run models:pin` runs somewhere with egress.
+- **Encrypted local transcripts**: PBKDF2-HMAC-SHA256 (210,000 iterations) from a
+  passphrase that is never stored, non-extractable AES-GCM-256 keys, per-field
+  AAD, message records cleared to routing data plus ciphertext, and no recovery
+  path — stated before the key is created.
+- A **per-reply honesty badge**: which runtime wrote the answer, whether it was
+  stored, and, for crisis and guard-refusal replies, that no model wrote them.
+  Voice is disabled in Private Mode and says why.
+- **47 new strings under `private.*`** in English, Hindi and Bengali, in the
+  lockstep the locale parity test enforces.
+- An **end-to-end network proof** (`e2e/private-mode.spec.ts`): with offline
+  emulation and a catch-all aborting route, an ordinary message and a HIGH-risk
+  crisis message are both answered, the CrisisCard shows real helplines, zero
+  requests are attempted, and a raw IndexedDB dump contains ciphertext only.
+
 ### Added — Day 36: mood forecasting and opt-in Outlook
 
 - A deterministic **synthetic mood-forecast research pipeline** with explicit user/time

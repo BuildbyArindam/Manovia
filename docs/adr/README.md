@@ -49,6 +49,7 @@ entry.
 | [0037](0037-personalised-intervention-policy.md) | Personalised intervention policy: contextual bandits behind a deterministic safety boundary | Accepted for offline research; not enabled in the product | 2026-10-15 |
 | [0038](0038-privacy-preserving-ml.md) | Privacy-preserving ML research boundary | Accepted for offline research; not deployment | 2026-10-15 |
 | [0039](0039-realtime-voice-companion.md) | Real-time voice companion: same-origin WebSocket, WebRTC VAD and crisis-first streaming | Accepted | 2026-10-15 |
+| [0040](0040-in-browser-private-ai.md) | In-browser private AI: compiled safety content, a ported rules engine, and consented on-device models | Accepted | 2026-10-16 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number
