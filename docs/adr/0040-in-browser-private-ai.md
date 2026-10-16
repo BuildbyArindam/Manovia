@@ -93,6 +93,17 @@ so the committed manifest is **deliberately unpinned** and every model reports
 itself not installable until `npm run models:pin` runs somewhere that can reach
 the upstream. Failing closed beats shipping a hash typed in by hand.
 
+**Which model the reply slot means is configuration, not code.**
+`build-model-manifest.mjs` reads `PRIVATE_LLM_MODEL_ID` (documented in
+`.env.example`, the one place `backend/tests/llm/test_no_hardcoded_model.py`
+allows a vendor model id). Committed with it unset, the slot is `planned` with
+`upstream: null` and no licence claimed, the manager refuses it, and the WebLLM
+adapter throws rather than falling back to asking for a model called `reply`.
+Naming an on-device model changes its size, speed, memory floor and licence, so it
+is an operator's decision recorded in configuration — the same rule the server's
+`ANTHROPIC_MODEL` follows. That guard test now also reads `.mjs`/`.cjs` files:
+the id this replaced was sitting in a build script it could not see.
+
 WebLLM keeps and verifies its own artifact cache (`managed_by_runtime: true`);
 that is recorded as a known issue rather than papered over, because the
 alternative — intercepting another runtime's cache — is worse.

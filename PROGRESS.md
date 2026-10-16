@@ -6204,14 +6204,20 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
 ### Known issues
 
 1. **`npm run models:pin` has never been run** (no Hugging Face egress here), so
-   the manifest ships unpinned and no model can be downloaded. Until it is run on
-   a machine with egress, Private Mode answers with templates everywhere.
+   the manifest ships unpinned and no model can be downloaded. The reply slot also
+   ships **unnamed**: which on-device model WebLLM offers is `PRIVATE_LLM_MODEL_ID`
+   (`.env.example`), because the repository forbids a vendor model id outside
+   configuration, and it is unset here. Until an operator sets it, re-runs
+   `npm run models:manifest` and pins the hashes on a machine with egress, Private
+   Mode answers with templates everywhere.
 2. **No real inference has been executed anywhere.** transformers.js and WebLLM
    are adapters behind an injectable loader, tested against stubs (24 tests).
    Tokens/second, model load time and memory with a real model are unmeasured.
 3. **WebLLM verifies nothing**: it manages its own artifact cache
    (`managed_by_runtime: true`), so the integrity check that covers the
-   classifiers does not cover its bytes.
+   classifiers does not cover its bytes. Moot in the committed state — the slot is
+   unnamed, so the manager refuses it first — but it comes back the moment
+   `PRIVATE_LLM_MODEL_ID` is set.
 4. **Private Mode shows the international helpline set.** The region lives
    server-side today and Private Mode does not ask for it, so
    `resourcesFor(null)` returns DEFAULT (112, Find A Helpline, Befrienders
@@ -6270,7 +6276,8 @@ has the commands and the real output. Headlines, all executed on 2026-10-16:
    this, Private Mode is rules and templates everywhere.
 2. **Measure the real reply path on a WebGPU device**: install
    `@mlc-ai/web-llm` and `@huggingface/transformers` behind the existing module
-   loader, download Qwen2.5-1.5B-Instruct-q4f16_1-MLC, and record tokens/second,
+   loader, name the model with `PRIVATE_LLM_MODEL_ID` (`.env.example`), download
+   it, and record tokens/second,
    first-token latency, peak JS heap and battery/thermal behaviour against the
    template path — then write the honest "what your device can do" copy from the
    numbers instead of from the spec sheet.

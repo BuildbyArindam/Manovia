@@ -220,7 +220,16 @@ export class WebLlmReplyModel implements ReplyModel {
       "reply",
       WEBLLM_SPECIFIER,
     );
-    const modelRef = this.entry.upstream ?? this.entry.id;
+    // `upstream` is the catalogue id, and it is null when this build was made
+    // without `PRIVATE_LLM_MODEL_ID`. Falling back to the entry's own id would ask
+    // WebLLM for a model called "reply": refusing is the honest failure.
+    const modelRef = this.entry.upstream;
+    if (modelRef === null) {
+      throw new ModelUnavailable(
+        "reply",
+        "this build does not name an on-device reply model (set PRIVATE_LLM_MODEL_ID and re-run `npm run models:manifest`)",
+      );
+    }
     try {
       this.engine = await factory(modelRef, {
         initProgressCallback: (report) => {

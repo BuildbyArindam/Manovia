@@ -381,13 +381,20 @@ describe("the shipped manifest", () => {
     const safety = entryOf(shipped, "safety");
     expect(safety.status).toBe("planned");
     expect(installBlocker(safety)).toMatch(/not shipped yet/);
-    // The reply model is the one exception, and it is worth being precise about why:
-    // WebLLM fetches and caches its own artifacts through the Cache API, so there is
-    // nothing here to pin. That also means its integrity is the runtime's business —
-    // see the known issue in PROGRESS.md for Day 41.
+    // The reply slot is refused for a different reason, and it is worth being
+    // precise about why: which model WebLLM should load is configuration
+    // (`PRIVATE_LLM_MODEL_ID`, see `.env.example`), and this repository is not
+    // allowed to name a vendor model outside it. Committed with that unset, the
+    // slot is `planned` with no upstream, so the manager refuses it and replies
+    // come from the reviewed templates. When it *is* configured, WebLLM fetches and
+    // caches its own artifacts, so there is nothing here to pin — which also means
+    // its integrity is the runtime's business; see the known issue in PROGRESS.md
+    // for Day 41.
     const reply = entryOf(shipped, "reply");
     expect(reply.managed_by_runtime).toBe(true);
-    expect(installBlocker(reply)).toBeNull();
+    expect(reply.status).toBe("planned");
+    expect(reply.upstream).toBeNull();
+    expect(installBlocker(reply)).toMatch(/not shipped yet/);
   });
 
   it("carries an honest note for every model it lists", () => {
@@ -395,7 +402,10 @@ describe("the shipped manifest", () => {
       expect(entry.honest_note.length).toBeGreaterThan(40);
       expect(entry.label).not.toMatch(/full|complete|equivalent/i);
     }
+    // Still smaller than the server model, whichever model gets named — and the
+    // note says out loud that this build names none.
     expect(entryOf(shipped, "reply").honest_note).toMatch(/smaller/i);
+    expect(entryOf(shipped, "reply").honest_note).toMatch(/does not name/i);
   });
 });
 

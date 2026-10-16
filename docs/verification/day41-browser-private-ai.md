@@ -158,10 +158,12 @@ text.
 ## 4. Model download manager
 
 No model can be downloaded in this sandbox: the committed manifest is
-deliberately unpinned (Hugging Face is unreachable), so `installBlocker()`
-reports `integrity hash missing for … (run npm run models:pin)` for the
-classifiers and `not shipped yet` for the safety slot, and the panel shows that
-sentence instead of a download button. The manager is therefore verified against
+deliberately unpinned (Hugging Face is unreachable) and names no reply model at
+all — which one WebLLM offers is `PRIVATE_LLM_MODEL_ID` in `.env.example`, the
+only place this repository may name a vendor model, and it is unset — so
+`installBlocker()` reports `integrity hash missing for … (run npm run models:pin)`
+for the emotion classifier and `not shipped yet` for the safety and reply slots,
+and the panel shows that sentence instead of a download button. The manager is therefore verified against
 fakes and against the hook:
 
 | Behaviour | Where verified | Result |
@@ -294,12 +296,15 @@ bundle, model manifest) is wired into `make parity` and into `npm run build`.
    on a machine with egress, review the hashes, commit the manifest.
 2. **No real inference was executed anywhere.** transformers.js and WebLLM are
    adapters behind an injectable module loader, tested against stubs (24 tests).
-   On a WebGPU device: download the emotion classifier, confirm the labels,
-   download Qwen2.5-1.5B-Instruct-q4f16_1-MLC through WebLLM, and measure
-   tokens/second and memory with a real model.
+   On a WebGPU device: download the emotion classifier, confirm the labels, set
+   `PRIVATE_LLM_MODEL_ID`, re-run `npm run models:manifest`, download that model
+   through WebLLM, and measure tokens/second and memory with a real model.
 3. **WebLLM verifies nothing** — it manages its own artifact cache
-   (`managed_by_runtime: true`), so `installBlocker()` returns null for it and the
-   integrity check does not cover its bytes.
+   (`managed_by_runtime: true`), so once a model *is* named `installBlocker()`
+   returns null for it and the integrity check does not cover its bytes. In the
+   committed manifest the slot is unnamed and refused before that question arises;
+   `webllm.ts` also refuses to guess a model reference instead of falling back to
+   the entry's own id.
 4. **Private Mode shows international helplines** — the region lives server-side
    today and Private Mode does not ask for it, so `resourcesFor(null)` returns the
    DEFAULT set (112, Find A Helpline, Befrienders Worldwide). A region picker is

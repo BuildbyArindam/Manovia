@@ -200,14 +200,35 @@ describe("the model manager", () => {
     expect(screen.queryByTestId("model-emotion-download")).toBeNull();
     // The safety model is not shipped at all yet.
     expect(screen.getByTestId("model-safety")).toHaveTextContent("not shipped yet");
+    // And the reply slot is unnamed: which model WebLLM offers is configuration
+    // (`PRIVATE_LLM_MODEL_ID`, `.env.example`), and this repository is not allowed
+    // to name a vendor model anywhere else. The row says so instead of offering a
+    // download of something nobody chose.
+    expect(screen.getByTestId("model-reply")).toHaveTextContent("not shipped yet");
+    expect(screen.getByTestId("model-reply-honest")).toHaveTextContent(/does not name/i);
+    expect(screen.queryByTestId("model-reply-download")).toBeNull();
   });
 
   it("offers the download, with the size in the label, for a model that can be installed", () => {
-    render(<PrivateModePanel controller={stub({ enabled: true })} />);
-    const reply = manifest.models.find((model) => model.id === "reply");
-    expect(reply).toBeDefined();
-    // WebLLM manages its own cache, so nothing here is blocked by a missing hash.
+    // The committed manifest names no reply model, so this is the manifest an
+    // operator gets after setting `PRIVATE_LLM_MODEL_ID` and rebuilding it. WebLLM
+    // manages its own cache, so nothing here is blocked by a missing hash.
+    const named = {
+      ...manifest,
+      models: manifest.models.map((model) =>
+        model.id === "reply"
+          ? {
+              ...model,
+              status: "available" as const,
+              upstream: "https://models.invalid/mlc-ai/a-named-model",
+              licence: "Apache-2.0",
+            }
+          : model,
+      ),
+    };
+    render(<PrivateModePanel controller={stub({ enabled: true, manifest: named })} />);
     expect(screen.getByTestId("model-reply-download")).toBeInTheDocument();
+    expect(screen.queryByTestId("model-reply-blocker")).toBeNull();
   });
 
   it("shows pause and cancel while a download runs, and resume when it is paused", () => {

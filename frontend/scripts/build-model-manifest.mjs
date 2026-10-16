@@ -27,10 +27,15 @@
  *   a purpose-built distilled classifier is `ml/` work and sits in the parking lot.
  *   The interface, the Fake and the adapter exist, so pinning an artifact later is
  *   a manifest change, not a code change.
- * - reply:   WebLLM's `Qwen2.5-1.5B-Instruct-q4f16_1-MLC`. WebLLM fetches and
- *   caches its own artifacts (params + wasm) through the Cache API and reports its
- *   own progress, so this entry is `managed_by_runtime`: the manager records consent
- *   and relays progress instead of duplicating the download.
+ * - reply:   a small instruct model for WebLLM. Which one is configuration, not
+ *   code: `PRIVATE_LLM_MODEL_ID`, documented in `.env.example` — the one place this
+ *   repository is allowed to name a vendor model
+ *   (`backend/tests/llm/test_no_hardcoded_model.py` enforces that). Committed with
+ *   the variable unset, the slot is `planned` with no upstream and the manager
+ *   refuses it, so Private Mode answers from the reviewed templates. WebLLM fetches
+ *   and caches its own artifacts (params + wasm) through the Cache API and reports
+ *   its own progress, so the entry is `managed_by_runtime`: the manager records
+ *   consent and relays progress instead of duplicating the download.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -50,7 +55,13 @@ const EMOTION_FILES = [
   { path: "onnx/model_quantized.onnx", kind: "weights" },
 ];
 
-const REPLY_MODEL = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+/**
+ * The catalogue id of the on-device reply model, from the environment. Empty means
+ * "this build does not name one", which the manifest then says out loud instead of
+ * guessing: naming a model is a size, speed and licence decision that belongs where
+ * an operator can see and change it, not buried in a build script.
+ */
+const REPLY_MODEL = (process.env.PRIVATE_LLM_MODEL_ID ?? "").trim();
 
 const models = [
   {
@@ -94,12 +105,15 @@ const models = [
     kind: "causal-lm",
     runtime: "webllm",
     capability: "replies",
-    status: "available",
+    status: REPLY_MODEL === "" ? "planned" : "available",
     label: "Small on-device language model (WebGPU)",
     honest_note:
-      "A 1.5B-parameter instruct model, quantised. It is much smaller than the server model: replies are shorter, plainer and less flexible, and every one of them still passes the on-device output guard.",
-    upstream: `https://huggingface.co/mlc-ai/${REPLY_MODEL}`,
-    licence: "Apache-2.0",
+      REPLY_MODEL === ""
+        ? "This build does not name an on-device language model, so replies come from the reviewed templates instead. An operator names one with PRIVATE_LLM_MODEL_ID (see .env.example) and re-runs `npm run models:manifest`. Whichever model that turns out to be, it is smaller than the server model: replies are shorter, plainer and less flexible, and every one of them still passes the on-device output guard."
+        : "A small quantised instruct model, fetched and cached by WebLLM itself. It is much smaller than the server model: replies are shorter, plainer and less flexible, and every one of them still passes the on-device output guard.",
+    upstream: REPLY_MODEL === "" ? null : `https://huggingface.co/mlc-ai/${REPLY_MODEL}`,
+    // Claiming a licence for a model nobody has named would be a made-up fact.
+    licence: REPLY_MODEL === "" ? null : "Apache-2.0",
     managed_by_runtime: true,
     labels: [],
     files: [],

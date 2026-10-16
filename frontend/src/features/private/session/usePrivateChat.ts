@@ -34,7 +34,7 @@ import { PrivateSessionError } from "./privateSession";
 export interface PrivateChatController extends ChatController {
   /** Keyed by assistant turn id. Read during the render the `final` action causes. */
   diagnostics: ReadonlyMap<string, PrivateDiagnostics>;
-  /** e.g. `"template writer (en, check-in)"` or `"Qwen2.5-1.5B (on device, 6 tok/s)"`. */
+  /** e.g. `"template writer (en, check-in)"` or `"small on-device model (6 tok/s)"`. */
   runtimeLabel: string | null;
 }
 

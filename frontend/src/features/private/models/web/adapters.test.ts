@@ -574,6 +574,22 @@ describe("the reply model adapter", () => {
     expect(updates.some((update) => update.phase === "ready")).toBe(true);
   });
 
+  it("refuses rather than inventing a model reference the build never named", async () => {
+    // `PRIVATE_LLM_MODEL_ID` unset means the manifest's reply slot has no upstream.
+    // Falling back to the entry's own id would ask WebLLM for a model called
+    // "reply", which would either fail obscurely or — worse — resolve to something
+    // nobody chose. The committed manifest is in exactly this state.
+    const model = new WebLlmReplyModel({
+      entry: { ...replyEntry(), status: "planned", upstream: null },
+      bundle,
+      loader: webllmLoader({ chunks: ["never reached"] }),
+    });
+    await expect(model.generate(replyRequest())).rejects.toThrow(
+      /does not name an on-device reply model/,
+    );
+    await expect(model.generate(replyRequest())).rejects.toMatchObject({ modelId: "reply" });
+  });
+
   it("is wired to the manifest's reply entry, which the manager treats as runtime-managed", async () => {
     const manifest = await fixtureManifest([], { runtimeManaged: ["reply"] });
     const shipped = manifest.models.find((model) => model.id === "reply");
