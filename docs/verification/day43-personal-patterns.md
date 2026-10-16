@@ -131,8 +131,7 @@ First full run: backend **4,685 passed, 4 skipped, 50 warnings**; coverage gates
 satisfied (overall statements **94.13%**, branches **86.11%**). Four skips are
 optional NLP, ONNX and external-provider extras, not Day 43 checks. Backend ruff,
 format (408 files), mypy (343 files) clean. Frontend **2,745 passed, 3 skipped**
-before the added deletion regression. Final rerun results are recorded below in
-the wrap-up section and PROGRESS.md.
+before the added deletion regression. Final rerun results are recorded below and in PROGRESS.md.
 
 Production build succeeds; all bundle budgets met. Explorer chunk **22.82 kB
 raw / 8.56 kB gzip** (Vite's decimal kB). The new route is included in the bundle
@@ -155,3 +154,36 @@ First route load needs assets online (not install-time precached). Plaintext
 exports contain personal derived data even though raw journals are excluded.
 Confounding, missingness, selective tagging and serial correlation limit all
 comparisons; the feature neither diagnoses nor forecasts.
+
+## Final wrap-up run (after the verification milestone)
+
+Executed `make lint` and `make test` from the root with `.venv/bin` prepended
+to PATH. Both exit 0. This is a second full backend run, not reuse of the first
+run's count.
+
+| Check | Real final result | Verdict |
+|---|---|---|
+| Backend lint | ruff check clean; 408 files formatted; mypy 343 source files clean | PASS |
+| Frontend lint | ESLint clean | PASS |
+| Backend full tests | 4,685 passed, 4 optional skips, 50 warnings; 594.16 s | PASS |
+| Backend coverage gate | 94.13% statements / 86.11% branches overall; all safety/crypto/scoring gates satisfied | PASS |
+| Frontend full tests | 2,746 passed, 3 existing live-backend skips; 109 passing files, 1 skipped file; 149.78 s | PASS |
+| Day 43 unit/integration | 17 passed; included in full suite | PASS |
+| Typecheck | app + service worker TypeScript clean | PASS |
+| Production build + budget | all budgets met; /patterns increment 9.3 KiB gzip; precache 613.3/800 KiB | PASS |
+| Browser privacy / keyboard / axe | 6 passed, 42.2 s; both viewports; zero axe violations | PASS |
+| Wording | 0 violations, 5 negative controls rejected | PASS |
+| Changed-file formatting / patch whitespace | Prettier clean; git diff --check clean | PASS |
+
+The final source/experiment simulation results were reproduced inside the full
+frontend run: 40/40 known edges, 0/160 spurious, 2/200 entirely-null edges,
+7/200 null-experiment positives. The final browser run reproduced only three GETs
+in standard mode and zero API calls in Private Mode. No full production-wide
+Playwright suite or real-account server integration was claimed; Day 43's browser
+suite uses a real browser with fixture-backed existing sources.
+
+Other failures encountered and corrected without weakening checks: the wording
+guard initially matched a statistical comment containing a treatment word (the
+comment was rephrased, guard unchanged); ESLint rejected `console.log` in the new
+e2e report (changed to the repository-permitted `console.warn`). Initial shell
+invocations used the wrong working directory and were rerun from `frontend/`.

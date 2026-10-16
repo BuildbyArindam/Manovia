@@ -2,7 +2,7 @@
 
 ## Day 43 — Personal wellbeing knowledge graph and what-if explorer
 
-Implemented and targeted-verification complete on 2026-10-16, on the Arena-pinned branch
+Implemented and fully regression-verified on 2026-10-16, on the Arena-pinned branch
 `arena/41b24aaf-manovia` (cannot create/rename the session branch). No main push.
 
 ### Completed
@@ -29,7 +29,38 @@ Implemented and targeted-verification complete on 2026-10-16, on the Arena-pinne
   prevents pending source reads from resurrecting working data.
 - [Verification report](docs/verification/day43-personal-patterns.md) includes
   actual recovered edges/intervals, simulation output, request inventory,
-  failure/fix history, commands and manual checks. Full final rerun pending.
+  failure/fix history, commands and manual checks.
+
+### Final verification (real final rerun)
+
+- `PATH="$PWD/.venv/bin:$PATH" make lint`: backend ruff check/format clean
+  (408 files), mypy clean (343 source files), frontend ESLint clean.
+- `PATH="$PWD/.venv/bin:$PATH" make test`: backend **4,685 passed, 4 skipped,
+  50 warnings**; all coverage gates satisfied (94.13% statements, 86.11%
+  branches overall). Frontend **2,746 passed, 3 skipped**, 109 passing files
+  plus one skipped live-backend file. Optional extras/live-backend skips are
+  pre-existing and are not represented as verified integrations.
+- Frontend `npm run typecheck`, `npm run build`, `npm run budget`: pass.
+  `/patterns` adds **9.3 KiB gzip** in the budget inventory; precache **613.3
+  KiB / 800 KiB**; no budgets raised. Changed frontend files pass Prettier;
+  `git diff --check` clean.
+- Final `npx playwright test e2e/patterns.spec.ts`: **6 passed** at both
+  viewports; graph, text-only and complete-experiment axe scans have 0 violations.
+- Wording lint: 0 violations, five bad-claim negative controls rejected.
+- Milestones committed and pushed: `705fe6e` (build), `bcd3d7f` (verification
+  and keyboard-edit fix). Final documentation is committed separately.
+  One PR will be opened from the pinned branch to main; **do not merge**.
+
+| Day 43 check | Result |
+| --- | --- |
+| Known edges, 20 seeds / noise suppression | PASS — 40/40; 0/160; all-noise 2/200 |
+| Graph/journal-derived network egress | PASS — 0 API calls private; explicit GETs only standard |
+| Minimum sample / distribution withholding | PASS — both groups >=5; browser refusal covered |
+| Experiment randomiser / true and null analyses | PASS — 7/14 dates; null 7/200 (3.5%) |
+| Keyboard graph/list, reduced motion and axe | PASS — both viewports; 0 axe violations |
+| Associative wording guard | PASS — 0 violations; negative controls pass |
+| Full backend/frontend lint + tests | PASS — optional skips disclosed above |
+| Build, typecheck and bundle budgets | PASS |
 
 ### Known issues / manual checks
 
