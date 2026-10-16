@@ -393,14 +393,17 @@ def build_csv_fixture(clean: dict) -> str:
         "timestamp,rr_ms",
     ]
     samples = clean["samples"][:40]
-    t0 = samples[0]["tMs"]
+    # Timestamps follow the *exported* intervals (consistent beat timeline):
+    # an ectopic beat shifts the clock in the file exactly as it does in life.
+    t = 0.0
     for i, sample in enumerate(samples):
         rr = sample["rrMs"]
         if i == 10:
             rr = 250.0  # out-of-range
         if i == 20:
             rr = round(rr * 1.3, 3)  # ectopic
-        offset_ms = int(round(sample["tMs"] - t0))
+        t += rr
+        offset_ms = int(round(t))
         seconds = offset_ms // 1000
         millis = offset_ms % 1000
         stamp = f"2026-10-16T18:{seconds // 60:02d}:{seconds % 60:02d}.{millis:03d}Z"
