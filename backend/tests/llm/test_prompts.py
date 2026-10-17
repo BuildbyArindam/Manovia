@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -444,13 +445,11 @@ def test_a_v3_file_missing_the_privacy_rule_fails_the_load(
 
 # --- the meditation passage prompt (Day 45) ----------------------------------
 
-MEDITATION_PROMPT_SHA256_V1 = (
-    "bb96c1f98d076b4cf592913c90b827b53e7ae44eee439974e9ab0456254fa96c"
-)
+MEDITATION_PROMPT_SHA256_V1 = "bb96c1f98d076b4cf592913c90b827b53e7ae44eee439974e9ab0456254fa96c"
 
 
 @pytest.fixture(autouse=True)
-def _clear_mediation_prompt_cache() -> None:
+def _clear_mediation_prompt_cache() -> Generator[None, None, None]:
     from app.services.meditation.prompt import load_passage_prompt
 
     load_passage_prompt.cache_clear()
@@ -504,11 +503,11 @@ def test_meditation_passage_prompt_missing_a_rule_fails_the_load(
 
     real_files = resources.files
 
-    def fake_files(package: str):
+    def fake_files(package: str) -> object:
         if package == "app.content":
 
             class _Trailing:
-                def joinpath(self, *parts: str):
+                def joinpath(self, *parts: str) -> object:
                     if parts and parts[0] == "prompts":
                         return _FakePromptFile()
                     return real_files("app.content").joinpath(*parts)

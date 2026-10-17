@@ -9,12 +9,18 @@ pacing and clarity.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from app.services.meditation.content import content_for, preface_for
 from app.services.meditation.lint import LintCategory, LintReport, lint_passage, lint_script
 
 
 def _clean_script(
-    *, language: str = "en", context: str = "unknown", eyes_open: bool = True, budget: int = 400
+    *,
+    language: Literal["en", "hi", "bn"] = "en",
+    context: Literal["seated", "walking", "driving", "unknown"] = "unknown",
+    eyes_open: bool = True,
+    budget: int = 400,
 ) -> str:
     """A structurally complete script built from the curated catalogue."""
     content = content_for(language)
@@ -55,7 +61,7 @@ def test_clean_curated_script_passes() -> None:
         text = _clean_script(language=language)
         report = lint_script(
             text,
-            language=language,  # type: ignore[arg-type]
+            language=language,
             context="unknown",
             eyes_open=True,
             word_budget=len(text.split()),
@@ -283,6 +289,8 @@ def test_report_as_dict_has_closed_codes_only() -> None:
     )
     payload = report.as_dict()
     assert payload["passed"] is False
-    for finding in payload["findings"]:  # type: ignore[union-attr]
+    findings = payload["findings"]
+    assert isinstance(findings, list)
+    for finding in findings:
         assert isinstance(finding["code"], str)
         assert isinstance(finding["count"], int)

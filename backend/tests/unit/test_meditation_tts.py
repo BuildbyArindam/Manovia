@@ -13,6 +13,7 @@ import io
 import json
 import math
 import wave
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -95,7 +96,7 @@ def test_captions_are_one_per_section_with_script_timing(script: MeditationScrip
         assert later.start_s >= earlier.end_s
 
 
-def test_render_is_cached_by_content_hash(script: MeditationScript, tmp_path) -> None:
+def test_render_is_cached_by_content_hash(script: MeditationScript, tmp_path: Path) -> None:
     renderer = MeditationTtsRenderer(provider="fake", piper_model=None, cache_dir=tmp_path)
     first = renderer.render(script)
     second = renderer.render(script)
@@ -176,7 +177,7 @@ def test_corrupt_cache_entry_is_a_miss_not_an_error(
 
 
 async def test_different_scripts_do_not_share_cache(
-    script: MeditationScript, other_script: MeditationScript, tmp_path
+    script: MeditationScript, other_script: MeditationScript, tmp_path: Path
 ) -> None:
     renderer = MeditationTtsRenderer(provider="fake", piper_model=None, cache_dir=tmp_path)
     first = renderer.render(script)
@@ -191,7 +192,7 @@ def test_unknown_provider_rejected() -> None:
         MeditationTtsRenderer(provider="espeak", piper_model=None, cache_dir=None)
 
 
-async def test_piper_missing_model_is_an_error(script: MeditationScript, tmp_path) -> None:
+async def test_piper_missing_model_is_an_error(script: MeditationScript, tmp_path: Path) -> None:
     renderer = MeditationTtsRenderer(
         provider="piper", piper_model=str(tmp_path / "missing.onnx"), cache_dir=None
     )

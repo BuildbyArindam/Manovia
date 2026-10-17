@@ -305,9 +305,7 @@ class MeditationScriptGenerator:
         # short budget; a breath cue is the only vetted material that fills
         # it without padding. Up to three total, each before the closing.
         while _words(composition.transcript()) < plan.budget * 0.75 and len(breaths_used) < 3:
-            insert_at = max(
-                i for i, s in enumerate(composition.sections) if s[0] == "passage"
-            ) + 1
+            insert_at = max(i for i, s in enumerate(composition.sections) if s[0] == "passage") + 1
             composition.sections.insert(insert_at, ("breath", next_breath(), "curated"))
         return composition
 

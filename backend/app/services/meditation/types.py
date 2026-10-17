@@ -78,9 +78,20 @@ class MeditationRequest(BaseModel):
     #: pull-over safety preface, it does not refuse.
     context: Context = "unknown"
     eyes_open: bool = True
-    preferences: list[Literal["breathing", "body", "nature", "warmth", "gratitude", "quiet", "rain", "morning", "night", "focus"]] = Field(  # noqa: E501
-        default_factory=list, max_length=4
-    )
+    preferences: list[
+        Literal[
+            "breathing",
+            "body",
+            "nature",
+            "warmth",
+            "gratitude",
+            "quiet",
+            "rain",
+            "morning",
+            "night",
+            "focus",
+        ]
+    ] = Field(default_factory=list, max_length=4)
     seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
 
     @model_validator(mode="after")

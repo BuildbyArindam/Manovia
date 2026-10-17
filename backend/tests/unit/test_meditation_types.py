@@ -73,18 +73,20 @@ def test_speed_bounds(speed: float) -> None:
 @pytest.mark.parametrize("theme", ["relax", "MORNING", ""])
 def test_theme_is_closed(theme: str) -> None:
     with pytest.raises(ValidationError):
+        # The values are deliberately outside the closed set.
         MeditationRequest(theme=theme)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("hour", [-1, 24])
 def test_hour_bounds(hour: int) -> None:
     with pytest.raises(ValidationError):
-        MeditationRequest(hour_of_day=hour)  # type: ignore[arg-type]
+        MeditationRequest(hour_of_day=hour)
 
 
 def test_unknown_preference_tag_is_rejected() -> None:
     with pytest.raises(ValidationError):
-        MeditationRequest(preferences=["gentle"])
+        # "gentle" is deliberately not a catalogue tag: the model must reject it.
+        MeditationRequest(preferences=["gentle"])  # type: ignore[list-item]
 
 
 def test_more_than_four_preferences_is_rejected() -> None:
@@ -174,7 +176,10 @@ def test_audio_request_round_trips_a_script() -> None:
         ],
         transcript="hello there friend",
         safety=ScriptSafety(
-            safety_preface=True, stop_cue=True, eyes_open=True, driving_warning=False,
+            safety_preface=True,
+            stop_cue=True,
+            eyes_open=True,
+            driving_warning=False,
             eyes_closed_allowed=False,
         ),
     )

@@ -239,10 +239,12 @@ async def test_catalog_unavailable_is_a_503_not_a_500(
     client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A broken catalogue is an honest 503 on the public endpoint."""
+    from typing import NoReturn
+
     import app.api.v1.meditation as api
     from app.services.meditation.content import ContentError
 
-    def broken() -> tuple:
+    def broken() -> NoReturn:
         raise ContentError("meditation content file missing: themes.yaml")
 
     monkeypatch.setattr(api, "load_themes", broken)

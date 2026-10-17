@@ -14,7 +14,7 @@ Pins the contracts the rest of the surface relies on:
 from __future__ import annotations
 
 import random
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -185,7 +185,7 @@ class _PassageProvider(LLMProvider):
 
     async def complete(
         self,
-        messages: list[LLMMessage],
+        messages: Sequence[LLMMessage],
         *,
         system: str | None = None,
         max_tokens: int = 400,
@@ -199,7 +199,7 @@ class _PassageProvider(LLMProvider):
 
     def stream(
         self,
-        messages: list[LLMMessage],
+        messages: Sequence[LLMMessage],
         *,
         system: str | None = None,
         max_tokens: int = 400,
@@ -207,7 +207,7 @@ class _PassageProvider(LLMProvider):
     ) -> AsyncIterator[str]:
         raise NotImplementedError
 
-    def describe(self) -> dict[str, object]:  # type: ignore[override]
+    def describe(self) -> dict[str, object]:
         return {"provider": self.name, "model": None, "configured": True}
 
 

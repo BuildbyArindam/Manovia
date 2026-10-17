@@ -8,6 +8,7 @@ a sentence served in the wrong language.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from typing import Any
 
 import pytest
@@ -22,7 +23,7 @@ from app.services.meditation.content import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_caches() -> None:
+def _clear_caches() -> Generator[None, None, None]:
     load_themes.cache_clear()
     load_content.cache_clear()
     yield
@@ -140,10 +141,11 @@ def test_content_too_few_passages_raises(monkeypatch: pytest.MonkeyPatch) -> Non
     real_load = mod._load_yaml
 
     def fake(name: str) -> dict[str, Any]:
-        data = real_load(name)
+        data: dict[str, Any] = real_load(name)
         if name == "hi.yaml":
             data = dict(data)
-            themes = dict(data["themes"])  # type: ignore[index]
+            themes = dict(data["themes"])
+
             calm = dict(themes["calm"])
             calm["passages"] = list(calm["passages"])[:3]  # one short
             themes["calm"] = calm
@@ -162,10 +164,11 @@ def test_content_lockstep_count_mismatch_raises(monkeypatch: pytest.MonkeyPatch)
     real_load = mod._load_yaml
 
     def fake(name: str) -> dict[str, Any]:
-        data = real_load(name)
+        data: dict[str, Any] = real_load(name)
         if name == "bn.yaml":
             data = dict(data)
-            themes = dict(data["themes"])  # type: ignore[index]
+            themes = dict(data["themes"])
+
             sleep = dict(themes["sleep"])
             passages = list(sleep["passages"])
             sleep["passages"] = [*passages, passages[0]]  # one extra: 5 vs 4 in en
