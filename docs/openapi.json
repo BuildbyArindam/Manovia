@@ -51,6 +51,230 @@
         "title": "AboutOut",
         "type": "object"
       },
+      "ActionLogEntry": {
+        "description": "One transparent record of something the agent did or tried to do.\n\nThe whole log is shown to the user after every turn — transparency is\nthe feature, not the debugging aid. Carries no raw message text.",
+        "properties": {
+          "arguments": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "event": {
+            "enum": [
+              "tool_proposed",
+              "tool_executed",
+              "tool_rejected",
+              "confirmation_required",
+              "confirmation_allowed",
+              "confirmation_denied",
+              "injection_quarantined",
+              "step_limit_reached",
+              "token_budget_exhausted",
+              "safety_gate_blocked",
+              "final_answer"
+            ],
+            "title": "Event",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          }
+        },
+        "required": [
+          "seq",
+          "at",
+          "event"
+        ],
+        "title": "ActionLogEntry",
+        "type": "object"
+      },
+      "AgentChatIn": {
+        "description": "One navigator message.",
+        "properties": {
+          "locale": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          },
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "AgentChatIn",
+        "type": "object"
+      },
+      "AgentSessionOut": {
+        "properties": {
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "AgentSessionOut",
+        "type": "object"
+      },
+      "AgentToolsOut": {
+        "properties": {
+          "tools": {
+            "additionalProperties": true,
+            "title": "Tools",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "title": "AgentToolsOut",
+        "type": "object"
+      },
+      "AgentTurnResult": {
+        "description": "One answered turn, as the API serves it.",
+        "properties": {
+          "action_log": {
+            "items": {
+              "$ref": "#/components/schemas/ActionLogEntry"
+            },
+            "title": "Action Log",
+            "type": "array"
+          },
+          "confirmation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfirmationRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crisis_resources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Crisis Resources",
+            "type": "array"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "response_type": {
+            "enum": [
+              "agent",
+              "crisis",
+              "refusal",
+              "confirmation_required",
+              "degraded"
+            ],
+            "title": "Response Type",
+            "type": "string"
+          },
+          "risk_level": {
+            "default": "none",
+            "title": "Risk Level",
+            "type": "string"
+          },
+          "steps_used": {
+            "default": 0,
+            "title": "Steps Used",
+            "type": "integer"
+          },
+          "tokens_used": {
+            "default": 0,
+            "title": "Tokens Used",
+            "type": "integer"
+          },
+          "tools_executed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools Executed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reply",
+          "response_type"
+        ],
+        "title": "AgentTurnResult",
+        "type": "object"
+      },
       "AnalyzeRequest": {
         "description": "One string to analyze, plus an optional language hint.",
         "properties": {
@@ -1119,6 +1343,78 @@
           "created_at"
         ],
         "title": "CompletionView",
+        "type": "object"
+      },
+      "ConfirmationIn": {
+        "description": "The person's answer to a confirmation card.",
+        "properties": {
+          "decision": {
+            "enum": [
+              "allow",
+              "deny"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "ConfirmationIn",
+        "type": "object"
+      },
+      "ConfirmationRequest": {
+        "description": "The card a person must answer before an effecting tool runs.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "pending_id": {
+            "maxLength": 64,
+            "minLength": 8,
+            "title": "Pending Id",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "tool": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pending_id",
+          "tool",
+          "title",
+          "summary",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "ConfirmationRequest",
         "type": "object"
       },
       "ConsentHistoryItem": {
@@ -5632,6 +5928,167 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/agent/sessions": {
+      "post": {
+        "description": "Open a navigator session (ephemeral, in memory).",
+        "operationId": "create_agent_session_api_v1_agent_sessions_post",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Agent Session",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/v1/agent/sessions/{session_id}/chat": {
+      "post": {
+        "description": "One navigator turn: safety gate first, then the agent.",
+        "operationId": "navigator_chat_api_v1_agent_sessions__session_id__chat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentChatIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTurnResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Navigator Chat",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/v1/agent/sessions/{session_id}/confirmations/{pending_id}": {
+      "post": {
+        "description": "Allow or deny a paused, effecting tool call.",
+        "operationId": "answer_confirmation_api_v1_agent_sessions__session_id__confirmations__pending_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pending_id",
+            "required": true,
+            "schema": {
+              "title": "Pending Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTurnResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Answer Confirmation",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/v1/agent/tools": {
+      "get": {
+        "description": "The allow-listed toolset, for transparency.",
+        "operationId": "list_agent_tools_api_v1_agent_tools_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentToolsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Agent Tools",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/v1/assessments": {
       "get": {
         "description": "The instruments this deployment ships, in a stable order.",

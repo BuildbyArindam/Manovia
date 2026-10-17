@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.api.v1.agent import router as agent_router
 from app.api.v1.assessments import router as assessments_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.cbt import router as cbt_router
@@ -52,6 +53,7 @@ from app.core.ratelimit import InMemoryRateLimiter
 from app.core.sentry import init_sentry
 from app.core.tokens import TokenService
 from app.db.session import Database, build_database
+from app.services.agent.service import build_agent_navigator
 from app.services.chat import ChatOrchestrator, build_session_service
 from app.services.exercises.engine import get_catalog
 from app.services.nlp import build_analyzer
@@ -222,6 +224,17 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.state.chat_sessions = build_session_service(app_settings, app.state.db)
     app.state.chat_orchestrator = None
 
+    # Day 44: the agentic care navigator. Like the orchestrator it is
+    # built eagerly but cheaply — the gate, the loop and the directory
+    # are all offline and deterministic; only the model adapter needs
+    # keys, and it degrades to the Fake (with a warning) without them.
+    # agent_enabled=false installs None, so the routes answer 503
+    # instead of running a half-configured navigator.
+    if app_settings.agent_enabled:
+        app.state.agent_navigator = build_agent_navigator(app_settings)
+    else:
+        app.state.agent_navigator = None
+
     # Day 40: one process-wide, local-only voice runtime. It holds only model
     # handles and deterministic crisis assistant audio; each participant's PCM
     # and transcript are owned by an in-memory WebSocket session and discarded
@@ -283,6 +296,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(consent_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
+    app.include_router(agent_router, prefix="/api/v1")
     app.include_router(knowledge_router, prefix="/api/v1")
     app.include_router(mood_router, prefix="/api/v1")
     app.include_router(exercises_router, prefix="/api/v1")

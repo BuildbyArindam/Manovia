@@ -76,6 +76,12 @@ eval-emotion:
 eval-response:
 	LLM_PROVIDER=$(EVAL_PROVIDER) $(PYTHON) ../evals/run_response_eval.py --provider $(EVAL_PROVIDER) $(EVAL_JUDGE_ARG)
 
+# Day 44: the agentic navigator's deterministic eval —
+# 40 scripted scenarios against the real loop with a
+# scripted fake model (offline).
+eval-agent:
+	$(PYTHON) ../evals/agent/run_agent_eval.py
+
 # Day 40: deterministic fake-stage timing; no microphone, audio bytes, model
 # download or network call. Prints per-stage p50/p95 and the <1.5s gate.
 voice-sim:
