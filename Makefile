@@ -127,6 +127,14 @@ prod-down:
 eval:
 	$(MAKE) -C backend eval
 
+# Day 44: agentic care navigator eval + the read-only
+# directory MCP server's tests (both offline).
+eval-agent:
+	$(MAKE) -C backend eval-agent
+
+mcp-server:
+	cd mcp-server && ../.venv/bin/python -m pytest test_server.py -q
+
 # Day 40 deterministic voice timing simulation (offline; no microphone needed).
 voice-sim:
 	$(MAKE) -C backend voice-sim
