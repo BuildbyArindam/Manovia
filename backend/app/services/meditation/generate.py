@@ -87,13 +87,26 @@ def _bucket_for_hour(hour: int) -> str:
     return "night"  # 23:00-04:59
 
 
-def resolve_theme(request: MeditationRequest, *, rng: random.Random) -> str:
+def resolve_theme(
+    request: MeditationRequest,
+    *,
+    rng: random.Random,
+    now: Callable[[], datetime] | None = None,
+) -> str:
     """Deterministic ``auto`` resolution: time of day first, a matching
-    preference tag narrows the pool, the seed breaks ties."""
+    preference tag narrows the pool, the seed breaks ties.
+
+    The clock is injected (the generator's ``now``), because the
+    ``hour_of_day`` fallback must be testable — a fallback that reads the
+    real clock makes the resolution flaky depending on when the suite runs
+    (caught by Day 45 verification)."""
     if request.theme != "auto":
         return request.theme
     themes = load_themes()
-    hour = request.hour_of_day if request.hour_of_day is not None else datetime.now(UTC).hour
+    if request.hour_of_day is not None:
+        hour = request.hour_of_day
+    else:
+        hour = (now or (lambda: datetime.now(UTC)))().hour
     bucket = _bucket_for_hour(hour)
     pool = [t for t in themes if t.best_time in (bucket, "any")]
     if not pool:
@@ -205,7 +218,7 @@ class MeditationScriptGenerator:
     async def generate(self, request: MeditationRequest) -> MeditationScript:
         seed = request.seed if request.seed is not None else _seed_for(request)
         rng = random.Random(seed)
-        resolved_theme = resolve_theme(request, rng=rng)
+        resolved_theme = resolve_theme(request, rng=rng, now=self._now)
         plan = _plan(request)
         floor_words = min(
             int(plan.budget * 0.75),
