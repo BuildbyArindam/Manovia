@@ -48,8 +48,8 @@ export class MockNode implements AudioNodeLike {
     this.id = id;
   }
 
-  connect(destination: AudioNodeLike): AudioNodeLike {
-    this.connected.push((destination as MockNode).id);
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike {
+    this.connected.push((destination as { id?: string }).id ?? "param");
     return destination;
   }
 }

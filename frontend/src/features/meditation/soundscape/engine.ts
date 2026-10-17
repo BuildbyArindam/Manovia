@@ -70,7 +70,7 @@ export interface AudioParamLike {
 export interface OscillatorNodeLike {
   type: string;
   frequency: AudioParamLike;
-  connect(destination: AudioNodeLike): AudioNodeLike;
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike;
   start(when?: number): void;
   stop(when?: number): void;
 }
@@ -78,7 +78,7 @@ export interface OscillatorNodeLike {
 export interface BufferSourceNodeLike {
   loop: boolean;
   buffer: unknown;
-  connect(destination: AudioNodeLike): AudioNodeLike;
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike;
   start(when?: number): void;
   stop(when?: number): void;
 }
@@ -87,12 +87,12 @@ export interface FilterNodeLike {
   type: string;
   frequency: AudioParamLike;
   Q: AudioParamLike;
-  connect(destination: AudioNodeLike): AudioNodeLike;
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike;
 }
 
 export interface GainNodeLike {
   gain: AudioParamLike;
-  connect(destination: AudioNodeLike): AudioNodeLike;
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike;
 }
 
 export interface CompressorNodeLike {
@@ -101,11 +101,11 @@ export interface CompressorNodeLike {
   ratio: AudioParamLike;
   attack: AudioParamLike;
   release: AudioParamLike;
-  connect(destination: AudioNodeLike): AudioNodeLike;
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike;
 }
 
 export interface AudioNodeLike {
-  connect(destination: AudioNodeLike): AudioNodeLike;
+  connect(destination: AudioNodeLike | AudioParamLike): AudioNodeLike | AudioParamLike;
 }
 
 export interface AudioBufferLike {
@@ -219,7 +219,7 @@ export class SoundscapeEngine {
         type: "sine",
         frequency: osc.frequency.value,
       });
-      this.connect(osc, padGain, `osc-${i + 1}`, "pad-gain");
+      this.connect(osc, padFilter, `osc-${i + 1}`, "pad-filter");
       this.oscillators.push(osc);
     });
     const sub = context.createOscillator();
@@ -229,7 +229,7 @@ export class SoundscapeEngine {
       type: "sine",
       frequency: sub.frequency.value,
     });
-    this.connect(sub, padGain, "osc-sub", "pad-gain");
+    this.connect(sub, padFilter, "osc-sub", "pad-filter");
     this.oscillators.push(sub);
 
     // The texture: a looping white-noise buffer through a bandpass.
@@ -288,10 +288,14 @@ export class SoundscapeEngine {
     this.connect(padGain, master, "pad-gain", "master");
     this.connect(noiseGain, master, "noise-gain", "master");
     this.connect(noiseSource, noiseFilter, "noise-source", "noise-filter");
+    // LFOs must modulate AudioParams (filter frequency, pad gain), not
+    // feed into node inputs: a BiquadFilter's input is audio, and the
+    // input of a GainNode would sum the LFO's tone into the pad. (The
+    // first wiring did both; Day 45 verification caught it.)
     this.connect(breathLfo, lfoAmp, "breath-lfo", "lfo-amp");
-    this.connect(lfoAmp, padFilter, "lfo-amp", "pad-filter");
+    this.connectParam(lfoAmp, padFilter.frequency, "lfo-amp", "pad-filter.frequency");
     this.connect(swellLfo, swellAmp, "swell-lfo", "swell-amp");
-    this.connect(swellAmp, padGain, "swell-amp", "pad-gain");
+    this.connectParam(swellAmp, padGain.gain, "swell-amp", "pad-gain.gain");
     this.connect(master, limiter, "master", "limiter");
     this.connect(limiter, context.destination, "limiter", "destination");
 
@@ -478,6 +482,16 @@ export class SoundscapeEngine {
 
   private connect(from: AudioNodeLike, to: AudioNodeLike, fromId: string, toId: string): void {
     from.connect(to);
+    this.edges.push([fromId, toId]);
+  }
+
+  private connectParam(
+    from: AudioNodeLike,
+    param: AudioParamLike,
+    fromId: string,
+    toId: string,
+  ): void {
+    from.connect(param);
     this.edges.push([fromId, toId]);
   }
 

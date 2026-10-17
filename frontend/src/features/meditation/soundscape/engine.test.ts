@@ -49,9 +49,32 @@ describe("soundscape engine (mocked AudioContext)", () => {
     expect(graph.edges).toContainEqual(["limiter", "destination"]);
     expect(graph.edges).toContainEqual(["pad-gain", "master"]);
     expect(graph.edges).toContainEqual(["noise-gain", "master"]);
+
+    // Every pad oscillator must go THROUGH the lowpass filter. The first
+    // wiring sent them straight to the pad gain and left the filter
+    // hanging; the brightness control (palette, energy adaptation,
+    // reduced stimulation) would have done nothing audible. (Day 45
+    // verification regression.)
+    const padOscillators = graph.nodes
+      .filter((node) => node.type === "OscillatorNode" && node.id.startsWith("osc-"))
+      .map((node) => node.id);
+    expect(padOscillators).toEqual(
+      expect.arrayContaining(["osc-1", "osc-2", "osc-3", "osc-sub"]),
+    );
+    for (const oscId of padOscillators) {
+      expect(graph.edges).toContainEqual([oscId, "pad-filter"]);
+    }
+    expect(graph.edges).toContainEqual(["pad-filter", "pad-gain"]);
+    // The breath LFO modulates the filter's FREQUENCY PARAMETER, and the
+    // swell LFO modulates the pad gain PARAMETER — node-to-node
+    // connections there would be audio summed into the signal, not
+    // modulation.
     expect(graph.edges).toContainEqual(["breath-lfo", "lfo-amp"]);
-    expect(graph.edges).toContainEqual(["lfo-amp", "pad-filter"]);
-    expect(graph.edges).toContainEqual(["swell-amp", "pad-gain"]);
+    expect(graph.edges).toContainEqual(["lfo-amp", "pad-filter.frequency"]);
+    expect(graph.edges).toContainEqual(["swell-lfo", "swell-amp"]);
+    expect(graph.edges).toContainEqual(["swell-amp", "pad-gain.gain"]);
+    expect(graph.edges).not.toContainEqual(["lfo-amp", "pad-filter"]);
+    expect(graph.edges).not.toContainEqual(["swell-amp", "pad-gain"]);
     void engine.dispose();
   });
 
