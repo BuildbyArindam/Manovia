@@ -1,0 +1,210 @@
+{
+  "engine": "manovia-soundscape-v1",
+  "running": true,
+  "paletteId": "warm-dawn",
+  "reducedStimulation": false,
+  "adaptationEnabled": false,
+  "master": {
+    "ceiling": 0.2,
+    "currentGain": 0.1,
+    "volume": 0.5
+  },
+  "limiter": {
+    "thresholdDb": -12,
+    "kneeDb": 6,
+    "ratio": 12,
+    "attack": 0.01,
+    "release": 0.3
+  },
+  "nodes": [
+    {
+      "id": "master",
+      "type": "GainNode",
+      "params": {
+        "ceiling": 0.2
+      }
+    },
+    {
+      "id": "limiter",
+      "type": "DynamicsCompressorNode",
+      "params": {
+        "threshold": -12,
+        "ratio": 12,
+        "knee": 6
+      }
+    },
+    {
+      "id": "pad-gain",
+      "type": "GainNode",
+      "params": {
+        "level": 0.5
+      }
+    },
+    {
+      "id": "pad-filter",
+      "type": "BiquadFilterNode",
+      "params": {
+        "type": "lowpass",
+        "frequency": 1200
+      }
+    },
+    {
+      "id": "osc-1",
+      "type": "OscillatorNode",
+      "params": {
+        "type": "sine",
+        "frequency": 146.83
+      }
+    },
+    {
+      "id": "osc-2",
+      "type": "OscillatorNode",
+      "params": {
+        "type": "sine",
+        "frequency": 220.65999999999997
+      }
+    },
+    {
+      "id": "osc-3",
+      "type": "OscillatorNode",
+      "params": {
+        "type": "sine",
+        "frequency": 368.88003000000003
+      }
+    },
+    {
+      "id": "osc-sub",
+      "type": "OscillatorNode",
+      "params": {
+        "type": "sine",
+        "frequency": 73.415
+      }
+    },
+    {
+      "id": "noise-source",
+      "type": "AudioBufferSourceNode",
+      "params": {
+        "loop": 1
+      }
+    },
+    {
+      "id": "noise-filter",
+      "type": "BiquadFilterNode",
+      "params": {
+        "type": "bandpass",
+        "frequency": 1400
+      }
+    },
+    {
+      "id": "noise-gain",
+      "type": "GainNode",
+      "params": {
+        "level": 0.125
+      }
+    },
+    {
+      "id": "lfo-amp",
+      "type": "GainNode",
+      "params": {
+        "depth": 210
+      }
+    },
+    {
+      "id": "breath-lfo",
+      "type": "OscillatorNode",
+      "params": {
+        "type": "sine",
+        "frequency": 0.1
+      }
+    },
+    {
+      "id": "swell-amp",
+      "type": "GainNode",
+      "params": {
+        "depth": 0.12
+      }
+    },
+    {
+      "id": "swell-lfo",
+      "type": "OscillatorNode",
+      "params": {
+        "type": "sine",
+        "frequency": 0.05
+      }
+    }
+  ],
+  "edges": [
+    [
+      "osc-1",
+      "pad-filter"
+    ],
+    [
+      "osc-2",
+      "pad-filter"
+    ],
+    [
+      "osc-3",
+      "pad-filter"
+    ],
+    [
+      "osc-sub",
+      "pad-filter"
+    ],
+    [
+      "pad-filter",
+      "pad-gain"
+    ],
+    [
+      "noise-filter",
+      "noise-gain"
+    ],
+    [
+      "pad-gain",
+      "master"
+    ],
+    [
+      "noise-gain",
+      "master"
+    ],
+    [
+      "noise-source",
+      "noise-filter"
+    ],
+    [
+      "breath-lfo",
+      "lfo-amp"
+    ],
+    [
+      "lfo-amp",
+      "pad-filter.frequency"
+    ],
+    [
+      "swell-lfo",
+      "swell-amp"
+    ],
+    [
+      "swell-amp",
+      "pad-gain.gain"
+    ],
+    [
+      "master",
+      "limiter"
+    ],
+    [
+      "limiter",
+      "destination"
+    ]
+  ],
+  "pace": {
+    "actualBpm": 6,
+    "targetBpm": 6,
+    "minBpm": 4,
+    "maxBpm": 12
+  },
+  "brightness": {
+    "actualHz": 1200,
+    "targetHz": 1200,
+    "minHz": 600,
+    "maxHz": 1800
+  }
+}
