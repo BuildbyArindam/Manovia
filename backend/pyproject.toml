@@ -152,6 +152,9 @@ include = ["app*"]
 # sentences a person reads about their own numbers, and a missing file is a
 # startup error rather than a blank panel.
 "app.content" = ["*.json", "safety/*.yaml", "exercises/*.yaml", "i18n/*.json", "insights/*.json", "prompts/*.md", "assessments/*.json"]
+# Day 44: the curated support directory and its schema, read by the
+# agentic navigator and the read-only MCP server.
+"app.content.resources" = ["*.json"]
 # Day 9 safety ML artifact (trained offline from evals/datasets; see
 # evals/train_safety_classifier.py). Missing artifact degrades to rules-only.
 "app.ml_artifacts.crisis_v1" = ["model.joblib", "metadata.json"]
@@ -225,6 +228,10 @@ plugins = ["pydantic.mypy"]
 module = [
     "langdetect.*", "transformers.*", "torch.*", "anthropic.*", "spacy.*", "faster_whisper.*",
     "faiss.*", "sentence_transformers.*", "sklearn.*", "joblib.*",
+    # Day 44: jsonschema validates the agent's tool arguments and
+    # the directory file; it ships no inline types and the stubs
+    # package is not a dependency.
+    "jsonschema.*",
     # Day 27: gunicorn config/worker and the observability stack below.
     # "manovia_worker.*" is checked here (it subclasses the untyped worker).
     "uvicorn_worker.*", "gunicorn.*", "prometheus_client.*", "sentry_sdk.*",

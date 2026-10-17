@@ -241,6 +241,25 @@ class Settings(BaseSettings):
     chat_ephemeral_max_sessions: int = 5000
     chat_ephemeral_max_turns: int = 60
 
+    # --- Agentic care navigator (Day 44) ---
+    # Master switch. Off = the /agent routes answer 503 "not enabled":
+    # a navigator that cannot run its safety gate must not run at all.
+    agent_enabled: bool = True
+    # Bounded turns (ADR 0043): the loop may call the model this many
+    # times per turn and spend this many cumulative tokens (input +
+    # output, provider-reported where available, estimated otherwise).
+    # Hitting either stops the turn with an honest message.
+    agent_max_steps: int = 6
+    agent_token_budget: int = 4000
+    # Model id for the navigator's function-calling model. Blank = use
+    # the chat model (anthropic_model). Like every model id, it lives
+    # only in configuration (tests/llm/test_no_hardcoded_model.py).
+    agent_llm_model: str | None = None
+    # Path to the curated directory. Blank = the shipped
+    # app/content/resources/directory.json. Overridable so operators
+    # can re-verify against a staged file without a deploy.
+    agent_directory_path: str | None = None
+
     # --- Safety ML ensemble (Day 9) ---
     # The ML classifier can only RAISE the level the rules engine found, never
     # lower it (docs/safety-design.md §12). With the flag off the pipeline is
