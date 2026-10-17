@@ -440,7 +440,7 @@ class MeditationScriptGenerator:
                 eyes_open=request.eyes_open,
                 preferences=request.preferences,
                 seed=seed,
-                transcript=transcript,
+                sections=sections,
             ),
             theme=request.theme,
             resolved_theme=theme,
@@ -492,11 +492,23 @@ def _content_hash(
     eyes_open: bool,
     preferences: Sequence[str],
     seed: int,
-    transcript: str,
+    sections: Sequence[ScriptSection],
 ) -> str:
+    """The content hash: a function of everything that gets spoken.
+
+    The renderer reads ``sections`` (text, roles, pauses, sources), so the
+    hash must cover them — the top-level ``transcript`` is a display-only
+    convenience field, and a hash that ignored the sections would let a
+    client get tampered section text rendered (Day 45 verification found
+    exactly that; the ``meditation-v2`` marker separates this basis from
+    the earlier transcript-only one)."""
+    section_parts = [
+        "|".join([section.role, section.source, section.text, str(section.pause_before_ms)])
+        for section in sections
+    ]
     basis = "|".join(
         [
-            "meditation-v1",
+            "meditation-v2",
             language,
             theme,
             str(duration_seconds),
@@ -505,7 +517,7 @@ def _content_hash(
             str(eyes_open).lower(),
             ",".join(sorted(preferences)),
             str(seed),
-            transcript,
+            "\u00a7".join(section_parts),
         ]
     )
     return hashlib.sha256(basis.encode("utf-8")).hexdigest()

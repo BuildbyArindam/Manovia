@@ -52,16 +52,15 @@ class RenderResult:
     provider: str
 
 
-def cache_key(
-    *, provider: str, model_name: str, language: str, voice_speed: float, transcript: str
-) -> str:
-    """The content hash that keys the render cache.
+def cache_key(*, provider: str, model_name: str, content_hash: str) -> str:
+    """The key of the render cache.
 
-    Two renders are interchangeable only when every input that changes
-    the bytes or the timing is identical: engine, voice, language, speed
-    and the words themselves.
+    Two renders are interchangeable only when the engine, the voice and
+    the script's content hash are identical. The content hash already
+    covers everything that changes the words or their timing (language,
+    speed, every section), so nothing else belongs in the key.
     """
-    basis = "|".join([provider, model_name, language, f"{voice_speed:.2f}", transcript])
+    basis = "|".join([provider, model_name, content_hash])
     return hashlib.sha256(basis.encode("utf-8")).hexdigest()
 
 
@@ -182,9 +181,7 @@ class MeditationTtsRenderer:
         key = cache_key(
             provider=self._provider,
             model_name=self._model_name(),
-            language=script.language,
-            voice_speed=script.voice_speed,
-            transcript=script.transcript,
+            content_hash=script.content_hash,
         )
         if self._cache_dir is not None:
             wav_path, meta_path = self._cache_paths(key)
@@ -194,9 +191,7 @@ class MeditationTtsRenderer:
                     return RenderResult(
                         wav_bytes=wav_path.read_bytes(),
                         duration_seconds=float(meta["duration_seconds"]),
-                        captions=tuple(
-                            CaptionOut(**item) for item in meta["captions"]
-                        ),
+                        captions=tuple(CaptionOut(**item) for item in meta["captions"]),
                         transcript=str(meta["transcript"]),
                         content_hash=str(meta["content_hash"]),
                         cache="hit",

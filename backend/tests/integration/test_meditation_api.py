@@ -145,14 +145,18 @@ async def test_audio_render_and_cache_headers(client: httpx.AsyncClient) -> None
     assert second.content == first.content
 
 
-async def test_audio_rejects_a_tampered_transcript(client: httpx.AsyncClient) -> None:
+async def test_audio_rejects_a_tampered_section(client: httpx.AsyncClient) -> None:
+    """The Day 45 verification regression. The renderer reads the sections,
+    so a client that rewrites a section's text while keeping the original
+    content hash must get a 422 — not a render of tampered words. (The
+    transcript field is display-only and is deliberately not what the hash
+    guards; what the hash guards is exactly what gets spoken.)"""
     headers = await guest(client)
     created = await client.post(
         ROOT + "/scripts", json={**_SCRIPT_PAYLOAD, "seed": 7}, headers=headers
     )
     script = created.json()
     script["sections"][3]["text"] = "Something entirely different was spoken here."
-    script["transcript"] = "Something entirely different was spoken here."
     response = await client.post(ROOT + "/audio", json={"script": script}, headers=headers)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "script_hash_mismatch"

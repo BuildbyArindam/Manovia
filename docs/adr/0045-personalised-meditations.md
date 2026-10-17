@@ -79,6 +79,19 @@ a model.
   favourites. (The library of saved favourites is a client-side feature;
   the content hash is its identity.)
 
+## Amendment (Day 45 verification)
+
+The live API verification (step 2 of the Day 45 brief) found a gap in the
+content hash: it was a function of the top-level `transcript` field, but the
+renderer reads the **sections** (their text, roles, pauses). A client that
+rewrote a section's text while keeping the original `transcript` and
+`content_hash` would get the tampered words rendered and spoken. The hash
+basis is now `meditation-v2` and covers every section's role, source, text
+and pause, so it is a function of exactly what gets spoken; the
+render-cache key is derived from that hash plus engine and voice.
+Regression tests: `test_tampered_sections_change_the_content_hash` (unit)
+and `test_audio_rejects_a_tampered_section` (integration).
+
 ## Consequences / limits
 
 * A 10-minute offline script is shorter than nominal when the curated pool

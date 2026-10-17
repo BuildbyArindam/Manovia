@@ -115,22 +115,57 @@ def test_render_is_cached_by_content_hash(script: MeditationScript, tmp_path) ->
 
 
 def test_cache_key_is_stable_and_input_sensitive() -> None:
-    base = dict(model_name="none", language="en", voice_speed=1.0, transcript="hello there")
-    same = cache_key(provider="fake", **base)
-    again = cache_key(provider="fake", **base)
+    hash_a = "a" * 64
+    hash_b = "b" * 64
+    same = cache_key(provider="fake", model_name="none", content_hash=hash_a)
+    again = cache_key(provider="fake", model_name="none", content_hash=hash_a)
     assert same == again
-    other_speed = dict(base, voice_speed=1.1)
-    other_model = dict(base, model_name="x.onnx")
-    other_lang = dict(base, language="hi")
-    other_text = dict(base, transcript="hello there friend")
-    assert cache_key(provider="fake", **other_speed) != same
-    assert cache_key(provider="piper", **base) != same  # the engine is part of the key
-    assert cache_key(provider="fake", **other_model) != same
-    assert cache_key(provider="fake", **other_lang) != same
-    assert cache_key(provider="fake", **other_text) != same
+    # The content hash is a function of language, speed and every section,
+    # so different script content shows up as a different hash in the key.
+    assert cache_key(provider="fake", model_name="none", content_hash=hash_b) != same
+    assert cache_key(provider="piper", model_name="none", content_hash=hash_a) != same
+    assert cache_key(provider="fake", model_name="x.onnx", content_hash=hash_a) != same
 
 
-def test_corrupt_cache_entry_is_a_miss_not_an_error(script: MeditationScript, tmp_path) -> None:
+def test_tampered_sections_change_the_content_hash(script: MeditationScript) -> None:
+    """The Day 45 verification regression: the renderer reads the sections,
+    so any tamper with a section's text (or role, source, pause) must break
+    the hash — the transcript field alone is display-only."""
+    from app.services.meditation.generate import _content_hash
+
+    original = _content_hash(
+        language=script.language,
+        theme=script.resolved_theme,
+        duration_seconds=script.duration_seconds,
+        voice_speed=script.voice_speed,
+        context=script.context,
+        eyes_open=script.eyes_open,
+        preferences=script.preferences,
+        seed=script.seed,
+        sections=script.sections,
+    )
+    assert original == script.content_hash
+    tampered = [section.model_copy() for section in script.sections]
+    tampered[0] = tampered[0].model_copy(update={"text": "tampered text"})
+    assert (
+        _content_hash(
+            language=script.language,
+            theme=script.resolved_theme,
+            duration_seconds=script.duration_seconds,
+            voice_speed=script.voice_speed,
+            context=script.context,
+            eyes_open=script.eyes_open,
+            preferences=script.preferences,
+            seed=script.seed,
+            sections=tampered,
+        )
+        != script.content_hash
+    )
+
+
+def test_corrupt_cache_entry_is_a_miss_not_an_error(
+    script: MeditationScript, tmp_path: Path
+) -> None:
     renderer = MeditationTtsRenderer(provider="fake", piper_model=None, cache_dir=tmp_path)
     first = renderer.render(script)
     meta_file = tmp_path / f"{first.content_hash}.render.json"

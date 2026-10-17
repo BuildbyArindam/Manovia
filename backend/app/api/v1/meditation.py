@@ -193,6 +193,8 @@ def _verify_script(body: AudioRequest) -> None:
     client sends back: a tampered transcript is a 422, not a render."""
     from app.services.meditation.generate import _content_hash
 
+    # The hash covers the sections — the text the renderer actually speaks —
+    # not just the display-only transcript field.
     expected = _content_hash(
         language=body.script.language,
         theme=body.script.resolved_theme,
@@ -202,7 +204,7 @@ def _verify_script(body: AudioRequest) -> None:
         eyes_open=body.script.eyes_open,
         preferences=body.script.preferences,
         seed=body.script.seed,
-        transcript=body.script.transcript,
+        sections=body.script.sections,
     )
     if expected != body.script.content_hash:
         raise ApiError(
