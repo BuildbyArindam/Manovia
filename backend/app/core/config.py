@@ -355,6 +355,10 @@ class Settings(BaseSettings):
     voice_piper_model_en: str | None = None
     voice_piper_model_hi: str | None = None
     voice_piper_model_bn: str | None = None
+    # Day 45: where meditation TTS renders are cached by content hash.
+    # Blank = ~/.cache/manovia/meditation-tts. Renders (WAV + captions JSON)
+    # are content bytes, not personal data, but the dir is outside the repo.
+    meditation_tts_cache_dir: str | None = None
 
     # --- Privacy controls and security hardening (Day 22) ---
     # Per-table ceiling for a data export. An export must finish and must not

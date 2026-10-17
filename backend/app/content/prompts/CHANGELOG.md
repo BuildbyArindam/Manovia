@@ -124,3 +124,34 @@ said `system_v1`, stale since Day 13).
 
 Not verified against a real model in the sandbox (no provider key): the fake
 provider does not read the prompt. See `docs/redteam-report.md`.
+
+---
+
+## `meditation_passage_v1` — 2026-10-17 (Day 45) — one safe body passage
+
+A new, separate prompt (not a `system_*` version): the generator uses it to
+ask a model for a single body passage for a composed meditation script.
+Placeholders: `{language}`, `{theme}`, `{context}`, `{word_target}`. The
+loader (`app/services/meditation/prompt.py`) fails at load if a placeholder
+or a required rule heading is missing, and SHA-256 hashes the file
+(pinned in `tests/llm/test_prompts.py`).
+
+The rules are the Day 45 safety rules, stated to the model so the
+deterministic linter stays a backstop rather than the only line:
+
+| rule | wording (heading) |
+| --- | --- |
+| stay in the requested language, plain short sentences, ~`{word_target}` words | "Write in {language} only … about {word_target} words" |
+| one theme, no new topic | "Stay inside the theme" |
+| no cures/diagnoses/medication talk | "No medical claims" |
+| invite, never promise outcomes | "No promises" |
+| no leaving the body, floating, emptying the mind, entering a state | "No trance or dissociation" |
+| say nothing about closing/opening eyes | "No closed-eye instructions" |
+| no nervous-system/neuroscience vocabulary | "No jargon" |
+| the person can stop at any time | "stop at any time" |
+| the person may be moving (walking/driving) | "the person may be moving" |
+
+Every passage the model returns is linted (`lint_passage`) and, for the
+whole script, re-gated by the script lint and the Day 14 output guard. A
+rejected passage gets one stricter retry, then the curated copy stands in.
+The prompt is only used when a real provider is configured (never the fake).

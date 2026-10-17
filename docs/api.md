@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **1.0.0** · 70 operations across 60 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **1.0.0** · 74 operations across 64 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -37,6 +37,7 @@ Manovia API **1.0.0** · 70 operations across 60 paths. The machine-readable sch
 - [Privacy, export and deletion](#privacy-export-and-deletion)
 - [Development only (not in production)](#development-only-not-in-production)
 - [Agent](#agent)
+- [Meditation](#meditation)
 - [Voice](#voice)
 
 ## Health and readiness
@@ -192,6 +193,15 @@ These routes exist only when `APP_ENV` is not `production`. They are for local d
 | `POST` | `/api/v1/agent/sessions` | Create Agent Session | yes + consent | 201 | Open a navigator session (ephemeral, in memory). |
 | `POST` | `/api/v1/agent/sessions/{session_id}/chat` | Navigator Chat | yes + consent | 200, 422 | One navigator turn: safety gate first, then the agent. |
 | `POST` | `/api/v1/agent/sessions/{session_id}/confirmations/{pending_id}` | Answer Confirmation | yes + consent | 200, 422 | Allow or deny a paused, effecting tool call. |
+
+## Meditation
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/meditation/themes` | List Themes | no | 200 | The reviewed catalogue (public, like the exercise list: reviewed content, not personal data). Labels are English, the content's review language; the UI localises its own chrome. |
+| `POST` | `/api/v1/meditation/scripts` | Create Script | yes | 200, 422 | Compose one personalised script. Deterministic per request + seed. |
+| `POST` | `/api/v1/meditation/audio` | Render Audio | yes | 200, 422 | Render the script locally and stream the WAV back. |
+| `POST` | `/api/v1/meditation/audio/captions` | Render Captions | yes | 200, 422 | The transcript and per-section captions (estimated timing, said so). |
 
 ## Voice
 

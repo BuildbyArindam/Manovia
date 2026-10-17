@@ -43,6 +43,7 @@ enforced by `frontend/src/lib/i18n/locales/parity.test.ts`.
 | Plan text (titles, reasons) | ✅ source | 🤖 | 🤖 | First request's language sticks per local day. |
 | Insight templates | ✅ source | 🤖 | 🤖 | Rendered server-side in the requested locale. |
 | Mood Outlook copy (`backend/app/content/outlook_copy.json`) | ✅ source | 🤖 | 🤖 | Day 36: placeholder-checked summary, uncertainty, eligibility, non-medical and gentle-action copy; no native-speaker sign-off yet. |
+| Meditation scripts (`backend/app/content/meditation/{en,hi,bn}.yaml`) | ✅ source | 🤖 | 🤖 | Day 45: curated preface/stop/eyes/openings/passages/closings/breath cues, kept in structural lockstep by the loader (a missing line is a load failure). The safety preface, stop cue and "not treatment" disclosure are present in all three. Linter marker sets for hi/bn are a backstop; native-speaker sign-off is still owed, especially the safety preface. |
 
 ### Deliberately English-only (⛔ — do not translate until sourced properly)
 

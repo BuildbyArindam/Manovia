@@ -1,0 +1,803 @@
+{
+  "eval": "meditation",
+  "day": 45,
+  "date": "2026-10-17",
+  "scripts": 30,
+  "passed": 30,
+  "failed": 0,
+  "total_findings": 0,
+  "forbidden_content_total": 0,
+  "llm_judge": "skipped (offline; deterministic lints only)",
+  "results": [
+    {
+      "index": 1,
+      "request": {
+        "theme": "morning",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "morning",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 339,
+      "estimated_duration_s": 189.9,
+      "content_hash": "e4f0b9da8e2fb261",
+      "lint_by_category": {},
+      "lint_word_count": 339,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 2,
+      "request": {
+        "theme": "morning",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "morning",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 340,
+      "estimated_duration_s": 190.4,
+      "content_hash": "b919e1c48a00036c",
+      "lint_by_category": {},
+      "lint_word_count": 340,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 3,
+      "request": {
+        "theme": "morning",
+        "language": "bn",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "morning",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 284,
+      "estimated_duration_s": 161.2,
+      "content_hash": "345c3ba458a66ea2",
+      "lint_by_category": {},
+      "lint_word_count": 284,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 4,
+      "request": {
+        "theme": "focus",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "focus",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 341,
+      "estimated_duration_s": 190.9,
+      "content_hash": "2b0af0f59a3d4d79",
+      "lint_by_category": {},
+      "lint_word_count": 341,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 5,
+      "request": {
+        "theme": "focus",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "focus",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 357,
+      "estimated_duration_s": 199.3,
+      "content_hash": "d8923f5a3f4efb9b",
+      "lint_by_category": {},
+      "lint_word_count": 357,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 6,
+      "request": {
+        "theme": "focus",
+        "language": "bn",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "focus",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 293,
+      "estimated_duration_s": 165.9,
+      "content_hash": "690a5c3c376cbaf1",
+      "lint_by_category": {},
+      "lint_word_count": 293,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 7,
+      "request": {
+        "theme": "stress-release",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "stress-release",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 336,
+      "estimated_duration_s": 188.3,
+      "content_hash": "7f143c3f60df002b",
+      "lint_by_category": {},
+      "lint_word_count": 336,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 8,
+      "request": {
+        "theme": "stress-release",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "stress-release",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 345,
+      "estimated_duration_s": 193.0,
+      "content_hash": "162d4f6d404458e6",
+      "lint_by_category": {},
+      "lint_word_count": 345,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 9,
+      "request": {
+        "theme": "stress-release",
+        "language": "bn",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "stress-release",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 290,
+      "estimated_duration_s": 164.3,
+      "content_hash": "1b660a425b38b183",
+      "lint_by_category": {},
+      "lint_word_count": 290,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 10,
+      "request": {
+        "theme": "calm",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 320,
+      "estimated_duration_s": 180.0,
+      "content_hash": "1a4ab68576dd5843",
+      "lint_by_category": {},
+      "lint_word_count": 320,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 11,
+      "request": {
+        "theme": "calm",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 310,
+      "estimated_duration_s": 174.7,
+      "content_hash": "dba53912f378b34f",
+      "lint_by_category": {},
+      "lint_word_count": 310,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 12,
+      "request": {
+        "theme": "calm",
+        "language": "bn",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 267,
+      "estimated_duration_s": 152.3,
+      "content_hash": "a89359a093bcab2b",
+      "lint_by_category": {},
+      "lint_word_count": 267,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 13,
+      "request": {
+        "theme": "sleep",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "sleep",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 334,
+      "estimated_duration_s": 187.3,
+      "content_hash": "282cae884aca8683",
+      "lint_by_category": {},
+      "lint_word_count": 334,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 14,
+      "request": {
+        "theme": "sleep",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "sleep",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 338,
+      "estimated_duration_s": 189.3,
+      "content_hash": "4aedad92ea4dff85",
+      "lint_by_category": {},
+      "lint_word_count": 338,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 15,
+      "request": {
+        "theme": "sleep",
+        "language": "bn",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "sleep",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 286,
+      "estimated_duration_s": 162.2,
+      "content_hash": "29e32cc2301e83a0",
+      "lint_by_category": {},
+      "lint_word_count": 286,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 16,
+      "request": {
+        "theme": "gratitude",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "gratitude",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 352,
+      "estimated_duration_s": 196.7,
+      "content_hash": "5c8630a19dc909dd",
+      "lint_by_category": {},
+      "lint_word_count": 352,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 17,
+      "request": {
+        "theme": "gratitude",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "gratitude",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 354,
+      "estimated_duration_s": 197.7,
+      "content_hash": "82d40d2c96304fad",
+      "lint_by_category": {},
+      "lint_word_count": 354,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 18,
+      "request": {
+        "theme": "gratitude",
+        "language": "bn",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "gratitude",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 303,
+      "estimated_duration_s": 171.1,
+      "content_hash": "8f9c7949195eff17",
+      "lint_by_category": {},
+      "lint_word_count": 303,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 19,
+      "request": {
+        "theme": "calm",
+        "language": "en",
+        "duration_seconds": 120,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 212,
+      "estimated_duration_s": 118.1,
+      "content_hash": "ff65fa0a3d4e0ad0",
+      "lint_by_category": {},
+      "lint_word_count": 212,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 20,
+      "request": {
+        "theme": "calm",
+        "language": "en",
+        "duration_seconds": 300,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 451,
+      "estimated_duration_s": 255.3,
+      "content_hash": "d68021f6ca007f0c",
+      "lint_by_category": {},
+      "lint_word_count": 451,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 21,
+      "request": {
+        "theme": "sleep",
+        "language": "en",
+        "duration_seconds": 900,
+        "context": "seated",
+        "eyes_open": false
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "sleep",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": false,
+      "word_count": 607,
+      "estimated_duration_s": 342.7,
+      "content_hash": "cbf54ad55fe23836",
+      "lint_by_category": {},
+      "lint_word_count": 607,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 22,
+      "request": {
+        "theme": "focus",
+        "language": "en",
+        "duration_seconds": 600,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "focus",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 621,
+      "estimated_duration_s": 350.0,
+      "content_hash": "6a934a1248b6dab6",
+      "lint_by_category": {},
+      "lint_word_count": 621,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 23,
+      "request": {
+        "theme": "focus",
+        "language": "en",
+        "duration_seconds": 180,
+        "context": "driving",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "focus",
+      "language": "en",
+      "context": "driving",
+      "eyes_open": true,
+      "word_count": 340,
+      "estimated_duration_s": 190.4,
+      "content_hash": "d7e2d2baf1baf410",
+      "lint_by_category": {},
+      "lint_word_count": 340,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 24,
+      "request": {
+        "theme": "calm",
+        "language": "en",
+        "duration_seconds": 120,
+        "context": "walking",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "en",
+      "context": "walking",
+      "eyes_open": true,
+      "word_count": 210,
+      "estimated_duration_s": 117.1,
+      "content_hash": "746b486a81df0747",
+      "lint_by_category": {},
+      "lint_word_count": 210,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 25,
+      "request": {
+        "theme": "stress-release",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "driving",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "stress-release",
+      "language": "hi",
+      "context": "driving",
+      "eyes_open": true,
+      "word_count": 348,
+      "estimated_duration_s": 194.6,
+      "content_hash": "3d653b60a9665a2e",
+      "lint_by_category": {},
+      "lint_word_count": 348,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 26,
+      "request": {
+        "theme": "calm",
+        "language": "en",
+        "duration_seconds": 180,
+        "voice_speed": 0.85,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "calm",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 264,
+      "estimated_duration_s": 172.5,
+      "content_hash": "bca117d2baf151ab",
+      "lint_by_category": {},
+      "lint_word_count": 264,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 27,
+      "request": {
+        "theme": "sleep",
+        "language": "bn",
+        "duration_seconds": 180,
+        "voice_speed": 1.15,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "sleep",
+      "language": "bn",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 313,
+      "estimated_duration_s": 156.0,
+      "content_hash": "6ed90e12908b1eb3",
+      "lint_by_category": {},
+      "lint_word_count": 313,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 28,
+      "request": {
+        "theme": "sleep",
+        "language": "en",
+        "duration_seconds": 300,
+        "context": "seated",
+        "eyes_open": false,
+        "preferences": [
+          "quiet",
+          "night"
+        ]
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "sleep",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": false,
+      "word_count": 486,
+      "estimated_duration_s": 273.6,
+      "content_hash": "406170e51b7a0912",
+      "lint_by_category": {},
+      "lint_word_count": 486,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 29,
+      "request": {
+        "theme": "gratitude",
+        "language": "hi",
+        "duration_seconds": 180,
+        "context": "seated",
+        "eyes_open": false,
+        "preferences": [
+          "warmth"
+        ]
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "gratitude",
+      "language": "hi",
+      "context": "seated",
+      "eyes_open": false,
+      "word_count": 361,
+      "estimated_duration_s": 201.3,
+      "content_hash": "70dcf8ea5ca00c46",
+      "lint_by_category": {},
+      "lint_word_count": 361,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    },
+    {
+      "index": 30,
+      "request": {
+        "theme": "auto",
+        "language": "en",
+        "duration_seconds": 180,
+        "hour_of_day": 8,
+        "context": "seated",
+        "eyes_open": true
+      },
+      "passed": true,
+      "failures": [],
+      "resolved_theme": "gratitude",
+      "language": "en",
+      "context": "seated",
+      "eyes_open": true,
+      "word_count": 351,
+      "estimated_duration_s": 196.1,
+      "content_hash": "7e03b20b530d9edd",
+      "lint_by_category": {},
+      "lint_word_count": 351,
+      "sections_first": [
+        "preface",
+        "stop",
+        "eyes"
+      ]
+    }
+  ]
+}

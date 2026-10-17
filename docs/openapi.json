@@ -864,6 +864,20 @@
         "title": "AssociationOut",
         "type": "object"
       },
+      "AudioRequest": {
+        "additionalProperties": false,
+        "description": "The client sends back the script it already holds: the server stores\nno audio or transcripts, so this is a pure function of the request.",
+        "properties": {
+          "script": {
+            "$ref": "#/components/schemas/MeditationScript"
+          }
+        },
+        "required": [
+          "script"
+        ],
+        "title": "AudioRequest",
+        "type": "object"
+      },
       "BandSummary": {
         "description": "A band as the chart and the history list need it.",
         "properties": {
@@ -967,6 +981,90 @@
           "notice"
         ],
         "title": "CadenceView",
+        "type": "object"
+      },
+      "CaptionOut": {
+        "properties": {
+          "end_s": {
+            "title": "End S",
+            "type": "number"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "section_id": {
+            "title": "Section Id",
+            "type": "string"
+          },
+          "start_s": {
+            "title": "Start S",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "section_id",
+          "start_s",
+          "end_s",
+          "text"
+        ],
+        "title": "CaptionOut",
+        "type": "object"
+      },
+      "CaptionsOut": {
+        "properties": {
+          "cache": {
+            "enum": [
+              "hit",
+              "miss"
+            ],
+            "title": "Cache",
+            "type": "string"
+          },
+          "captions": {
+            "items": {
+              "$ref": "#/components/schemas/CaptionOut"
+            },
+            "title": "Captions",
+            "type": "array"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "timing_basis": {
+            "const": "estimated",
+            "default": "estimated",
+            "title": "Timing Basis",
+            "type": "string"
+          },
+          "transcript": {
+            "title": "Transcript",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_hash",
+          "transcript",
+          "duration_seconds",
+          "provider",
+          "cache",
+          "captions"
+        ],
+        "title": "CaptionsOut",
         "type": "object"
       },
       "ChatMemoriesOut": {
@@ -3455,6 +3553,242 @@
         "title": "MeasureTrendOut",
         "type": "object"
       },
+      "MeditationRequest": {
+        "additionalProperties": false,
+        "description": "One generation request. Frozen: the hash of a script must be stable.",
+        "properties": {
+          "context": {
+            "default": "unknown",
+            "enum": [
+              "seated",
+              "walking",
+              "driving",
+              "unknown"
+            ],
+            "title": "Context",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "default": 180,
+            "maximum": 900.0,
+            "minimum": 120.0,
+            "title": "Duration Seconds",
+            "type": "integer"
+          },
+          "eyes_open": {
+            "default": true,
+            "title": "Eyes Open",
+            "type": "boolean"
+          },
+          "hour_of_day": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour Of Day"
+          },
+          "language": {
+            "default": "en",
+            "enum": [
+              "en",
+              "hi",
+              "bn"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "preferences": {
+            "items": {
+              "enum": [
+                "breathing",
+                "body",
+                "nature",
+                "warmth",
+                "gratitude",
+                "quiet",
+                "rain",
+                "morning",
+                "night",
+                "focus"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Preferences",
+            "type": "array"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "maximum": 2147483647.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "theme": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "morning",
+              "focus",
+              "stress-release",
+              "calm",
+              "sleep",
+              "gratitude"
+            ],
+            "title": "Theme",
+            "type": "string"
+          },
+          "voice_speed": {
+            "default": 1.0,
+            "maximum": 1.25,
+            "minimum": 0.75,
+            "title": "Voice Speed",
+            "type": "number"
+          }
+        },
+        "title": "MeditationRequest",
+        "type": "object"
+      },
+      "MeditationScript": {
+        "description": "The composed, linted, guard-checked script. ``content_hash`` is the\nTTS cache key and the identity the library uses for favourites.",
+        "properties": {
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "context": {
+            "enum": [
+              "seated",
+              "walking",
+              "driving",
+              "unknown"
+            ],
+            "title": "Context",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "integer"
+          },
+          "estimated_duration_s": {
+            "title": "Estimated Duration S",
+            "type": "number"
+          },
+          "eyes_open": {
+            "title": "Eyes Open",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "en",
+              "hi",
+              "bn"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preferences",
+            "type": "array"
+          },
+          "resolved_theme": {
+            "enum": [
+              "morning",
+              "focus",
+              "stress-release",
+              "calm",
+              "sleep",
+              "gratitude"
+            ],
+            "title": "Resolved Theme",
+            "type": "string"
+          },
+          "safety": {
+            "$ref": "#/components/schemas/ScriptSafety"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          },
+          "theme": {
+            "enum": [
+              "auto",
+              "morning",
+              "focus",
+              "stress-release",
+              "calm",
+              "sleep",
+              "gratitude"
+            ],
+            "title": "Theme",
+            "type": "string"
+          },
+          "transcript": {
+            "title": "Transcript",
+            "type": "string"
+          },
+          "version": {
+            "const": 1,
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "voice_speed": {
+            "title": "Voice Speed",
+            "type": "number"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "content_hash",
+          "theme",
+          "resolved_theme",
+          "language",
+          "duration_seconds",
+          "voice_speed",
+          "context",
+          "eyes_open",
+          "preferences",
+          "seed",
+          "word_count",
+          "estimated_duration_s",
+          "sections",
+          "transcript",
+          "safety"
+        ],
+        "title": "MeditationScript",
+        "type": "object"
+      },
       "MessageIn": {
         "description": "One user message. ``region`` / ``locale`` override the profile for this turn.",
         "properties": {
@@ -5089,6 +5423,101 @@
         "title": "ScreenInput",
         "type": "object"
       },
+      "ScriptSafety": {
+        "description": "Closed booleans only: what the script structurally guarantees.",
+        "properties": {
+          "driving_warning": {
+            "title": "Driving Warning",
+            "type": "boolean"
+          },
+          "eyes_closed_allowed": {
+            "title": "Eyes Closed Allowed",
+            "type": "boolean"
+          },
+          "eyes_open": {
+            "title": "Eyes Open",
+            "type": "boolean"
+          },
+          "safety_preface": {
+            "title": "Safety Preface",
+            "type": "boolean"
+          },
+          "stop_cue": {
+            "title": "Stop Cue",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "safety_preface",
+          "stop_cue",
+          "eyes_open",
+          "driving_warning",
+          "eyes_closed_allowed"
+        ],
+        "title": "ScriptSafety",
+        "type": "object"
+      },
+      "ScriptSection": {
+        "description": "One spoken segment. ``source`` records what wrote the words so a\nreviewer can tell curated copy from model-written copy at a glance.",
+        "properties": {
+          "end_s": {
+            "minimum": 0.0,
+            "title": "End S",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "pause_before_ms": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Pause Before Ms",
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "preface",
+              "stop",
+              "eyes",
+              "opening",
+              "breath",
+              "passage",
+              "closing"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "curated",
+              "llm"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "start_s": {
+            "minimum": 0.0,
+            "title": "Start S",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "text",
+          "source",
+          "pause_before_ms",
+          "start_s",
+          "end_s"
+        ],
+        "title": "ScriptSection",
+        "type": "object"
+      },
       "SessionOut": {
         "description": "One signed-in session: a token pair plus who it belongs to.",
         "properties": {
@@ -5403,6 +5832,58 @@
           "cadence"
         ],
         "title": "SubmitResponse",
+        "type": "object"
+      },
+      "ThemeOut": {
+        "properties": {
+          "best_time": {
+            "title": "Best Time",
+            "type": "string"
+          },
+          "hint": {
+            "title": "Hint",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "hint",
+          "best_time"
+        ],
+        "title": "ThemeOut",
+        "type": "object"
+      },
+      "ThemesOut": {
+        "properties": {
+          "preference_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preference Tags",
+            "type": "array"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeOut"
+            },
+            "title": "Themes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "themes",
+          "preference_tags"
+        ],
+        "title": "ThemesOut",
         "type": "object"
       },
       "TranscriptionResponse": {
@@ -8305,6 +8786,152 @@
         "summary": "Get Knowledge Doc",
         "tags": [
           "knowledge"
+        ]
+      }
+    },
+    "/api/v1/meditation/audio": {
+      "post": {
+        "description": "Render the script locally and stream the WAV back.\n\nCache state and the content hash travel in headers (never in the body,\nso nothing here needs to carry script text a second time).",
+        "operationId": "render_audio_api_v1_meditation_audio_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Render Audio",
+        "tags": [
+          "meditation"
+        ]
+      }
+    },
+    "/api/v1/meditation/audio/captions": {
+      "post": {
+        "description": "The transcript and per-section captions (estimated timing, said so).\n\nSharing one render with the audio endpoint means the cache is checked\nthe same way; the captions themselves are a pure function of the\nscript's sections.",
+        "operationId": "render_captions_api_v1_meditation_audio_captions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Render Captions",
+        "tags": [
+          "meditation"
+        ]
+      }
+    },
+    "/api/v1/meditation/scripts": {
+      "post": {
+        "description": "Compose one personalised script. Deterministic per request + seed.",
+        "operationId": "create_script_api_v1_meditation_scripts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeditationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeditationScript"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Script",
+        "tags": [
+          "meditation"
+        ]
+      }
+    },
+    "/api/v1/meditation/themes": {
+      "get": {
+        "description": "The reviewed catalogue (public, like the exercise list: reviewed\ncontent, not personal data). Labels are English, the content's review\nlanguage; the UI localises its own chrome.",
+        "operationId": "list_themes_api_v1_meditation_themes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Themes",
+        "tags": [
+          "meditation"
         ]
       }
     },

@@ -1,5 +1,182 @@
 # Manovia — Progress
 
+## Day 45 — Generative calm: personalised meditations and adaptive soundscapes
+
+Built and verified on 2026-10-17 on the Arena-pinned branch
+`arena/83b6e7a7-manovia` (session branch is fixed by Arena; the
+day-45 branch name in the brief could not be created, same as
+Days 38–44). No main push.
+
+### Completed
+
+- **Meditation script generator** (`backend/app/services/meditation/`):
+  `{theme, duration, voice speed, context, eyes-open, preferences,
+  language, seed}` → a script composed from vetted structural
+  templates (per-language curated catalogue in
+  `app/content/meditation/{en,hi,bn}.yaml`) plus optional
+  LLM-written passages (at most 2 slots, only when a real provider is
+  configured — `fake`/`canned` never count as LLM), every LLM passage
+  passing the FULL safety/output guard before it may enter the script.
+  Safety contract: no trance/dissociation inductions, no medical
+  claims, no promises, never eyes-closed while driving/walking
+  (the 422 is enforced at the API, not just in copy), eyes-open
+  variant offered, stop cue always present, safety preface always
+  first. Deterministic: same request + seed → same `content_hash`
+  (a SHA-256 over the request parameters and **every section** that
+  gets spoken — see "defects found during verification" below).
+  Honesty over padding: long offline scripts are shorter than nominal
+  when the curated pool cannot fill them, and
+  `estimated_duration_s` says so instead of padding with filler.
+- **Voice rendering** (`tts.py`): local provider behind an interface
+  (`fake` = deterministic tone-burst WAV for CI; `piper` when a model
+  is configured), per-section pauses (the SSML-like pacing lives in
+  the section structure, not in an unguarded string), **cache keyed
+  by content hash** (provider + voice + hash; file dir, no restart
+  needed), captions with per-section timings and an honest
+  `timing_basis: "estimated"` flag, `x-content-sha256` /
+  `x-render-cache` / `x-render-provider` response headers.
+- **Adaptive soundscape engine** (`frontend/.../soundscape/engine.ts`):
+  100 % procedural WebAudio — a detuned sine chord through a
+  lowpass, a generated 2 s looping noise texture through a bandpass,
+  a breath-rate LFO modulating the filter **frequency parameter**
+  (the breathing pacer's tempo *is* the LFO rate) and a slower LFO
+  modulating the pad gain parameter. User mood palette (4 palettes,
+  closed sets), hard volume limit (`MAX_MASTER_GAIN = 0.2` ceiling +
+  −12 dB / 12:1 limiter in front of destination), 1.5 s fade
+  in/out, reduced-stimulation mode (texture ×0.4, breath depth ×0.5,
+  slower drift), opt-in adaptation (pace 4–12 bpm and brightness
+  stay inside closed ranges, monotone slow lerp, never a jump). No
+  samples anywhere: the only buffer is one 2 s of generated noise.
+- **Library + quick action** (client-side, nothing stored server-side):
+  save favourites to local storage keyed by content hash;
+  "Make me a 3-minute one for right now" composes from the current
+  context/time-of-day.
+- **Evaluation** (`evals/meditation/`): 30-script matrix
+  (6 themes × en/hi/bn × 180–900 s) through deterministic rubric
+  lints (forbidden content, length, pacing, structure) +
+  `verify_api_e2e.py` (real HTTP against the live API: compose,
+  determinism, 422s, real WAV render, cache behaviour, tamper
+  rejection, captions). LLM-judge is a documented extension point,
+  not run (no model keys by design).
+- **Defects found during verification and fixed (root cause, never
+  a weakened test)**:
+  1. *Tamper gap:* the content hash covered the display-only
+     `transcript` field while the renderer reads the **sections** —
+     a client could get rewritten section text rendered and spoken.
+     Hash basis is now `meditation-v2` over every section's role,
+     source, text and pause; the render-cache key derives from it.
+     Regression: `test_tampered_sections_change_the_content_hash`
+     (unit) + `test_audio_rejects_a_tampered_section` (integration)
+     + the live e2e tamper check.
+  2. *Soundscape wiring:* pad oscillators bypassed the lowpass and
+     both LFOs fed node inputs instead of AudioParams (brightness
+     control would have done nothing audible). Re-wired with explicit
+     edge assertions, including `not.toContainEqual` guards for the
+     old edges.
+  3. *Clock injection:* `auto` theme resolution read the real clock
+     instead of the injected one, making the "server time" test
+     wall-clock-flaky. Clock now injected through `resolve_theme`.
+  4. *Toolchain drift:* the rebuilt venv surfaced pre-existing
+     `ruff format` drift (5 files) and 31 mypy strict errors in the
+     Day 45 test files (HEAD had 45). All fixed with real
+     annotations — no `noqa` waivers, no test weakened.
+  5. *Copy:* a run-on in the curated EN preface (3 places), found in
+     tone review and fixed.
+
+### Decisions
+
+- [ADR 0045](docs/adr/0045-personalised-meditations.md): curated
+  templates + guarded LLM passages; deterministic content hash as the
+  identity (cache key, library key, tamper gate); honest estimates
+  over padding; nothing stored server-side (the library is
+  client-side). The ADR carries the Day 45 verification amendment
+  (the `meditation-v2` hash basis).
+- Hindi and Bengali content are AI-draft translations flagged in
+  `translations/STATUS.md`; the linter's Indic pattern sets are a
+  backstop, not a substitute for native review.
+
+### Final verification (real final rerun)
+
+- Backend `pytest` (full): **5,112 passed, 4 skipped** (the four
+  skips are the pre-existing optional-extras/live-backend ones).
+  Day 26 coverage gate: **all rules satisfied** — overall
+  93.95 % statements / 85.32 % branches (floor 85 %); every gated
+  safety module ≥ 95 %; crypto and scoring 100 %.
+- Backend `make lint`: `ruff check` clean, `ruff format --check`
+  clean (448 files), `mypy app tests` clean (382 source files,
+  strict).
+- Meditation eval: **30/30 passed, 0 forbidden-content findings**
+  (`evals/reports/2026-10-17/meditation_eval.json`).
+- API e2e (real HTTP, fake provider, live server): **10/10** —
+  themes, compose ×3 (incl. hi sleep, 478 words), determinism,
+  422 closed-eyes-while-driving, real WAV render (7,936,118 B,
+  `provider=fake`), cache miss→hit with identical bytes, 422
+  `script_hash_mismatch` on tampered sections, captions with
+  `timing_basis=estimated`.
+- Frontend `vitest run`: **2,773 passed, 3 skipped** (114 files
+  passed; the meditation feature is 5 files / 27 tests including the
+  safety-preface/stop-control view tests and the 8-test mocked
+  AudioContext engine suite with node-graph + volume-limit
+  assertions). `tsc` (app + SW configs) clean; `eslint` clean;
+  `npm run build` exit 0 with all bundle budgets met (precache
+  28 entries / 641.32 KiB; the meditation route chunk is in the
+  service-worker precache).
+- i18n parity (en/hi/bn keys + placeholders): **14/14**.
+- Copyrighted audio assets: **none** — zero audio files in the
+  working tree or in git; soundscape is procedural WebAudio, voice
+  is rendered at runtime (fake in CI, Piper when configured).
+  Full details: [docs/verification/day45-generative-calm.md](docs/verification/day45-generative-calm.md).
+
+### Known issues / manual checks
+
+- **Browser e2e could not run in the sandbox** (no Chromium; the
+  Playwright CDN is outside the egress allowlist). The safety
+  preface + stop-now behaviour is covered by the jsdom view tests
+  and the real-HTTP API e2e; `e2e/meditation.spec.ts` is written and
+  runs with `npx playwright test e2e/meditation.spec.ts` on a
+  machine with a browser.
+- **Offline-after-first-load** is verified statically (every route
+  chunk, incl. the meditation page, is in the SW precache); the
+  runtime network-off reload is a manual DevTools check.
+- Voice is the deterministic `fake` provider in CI; with
+  `VOICE_TTS_PROVIDER=piper` + model files it renders real speech.
+  Real-voice timing differs a few seconds from the estimated caption
+  timings (the field says so).
+- Long offline scripts (600–900 s) are shorter than nominal in
+  en/hi/bn when the curated pool cannot fill them — the estimate is
+  disclosed, never padded. Long scripts are best served with a
+  configured LLM.
+- Hindi/Bengali content needs native-speaker review
+  (`translations/STATUS.md`).
+
+### Parking lot
+
+- LLM-judge layer for the meditation eval (rubric lints today; a
+  judge pass would add tone/flow scoring when keys are available).
+- Real Piper voices for hi/bn (only `en_US-lessac-medium` is the
+  documented default today).
+- Waveform/caption sync when a real TTS provider returns word-level
+  timestamps (today: estimated per-section timings).
+- Soundscape: per-palette texture variety (second noise colour,
+  optional slow chord movement); a "what does this soundscape sound
+  like" description for screen readers.
+- Shared meditations (export the content hash as a link — the hash
+  already is the identity).
+- Server-side favourites/persistence (today strictly client-side).
+
+### First three steps for Day 46
+
+1. Manual pass on a machine with a browser: run
+   `e2e/meditation.spec.ts` (4 tests), the offline network-off
+   reload of `/meditation`, and listen to one real render (fake
+   provider is enough) with captions on.
+2. Native-speaker review of the hi/bn curated content
+   (`translations/STATUS.md`); fix findings and re-run the 30-script
+   eval.
+3. Decide the LLM-judge eval layer (rubric vs judge, when it runs)
+   and add the first judge pass behind `LLM_PROVIDER` when a key is
+   configured.
+
 ## Day 44 — Agentic care navigator (tool-using AI with human-in-the-loop)
 
 Built and verified on 2026-10-16 on the Arena-pinned branch

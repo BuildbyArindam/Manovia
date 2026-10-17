@@ -134,6 +134,8 @@ _ENV_KEYS = (
     "VOICE_PIPER_MODEL_EN",
     "VOICE_PIPER_MODEL_HI",
     "VOICE_PIPER_MODEL_BN",
+    # Day 45 meditation render cache: never let a developer's dir leak in.
+    "MEDITATION_TTS_CACHE_DIR",
 )
 
 
@@ -169,6 +171,9 @@ def settings(clean_env: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     monkeypatch.setenv("FIELD_ENCRYPTION_KEY", crypto.FernetCipher.generate_key())
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://testserver")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'manovia-test.db'}")
+    # Day 45: meditation TTS renders are content bytes, but the cache dir
+    # still belongs in tmp so tests never share renders across runs.
+    monkeypatch.setenv("MEDITATION_TTS_CACHE_DIR", str(tmp_path / "meditation-tts"))
     # The Day 8 integration tests pin exact levels for pinned texts; the ML
     # raise path is exercised by its own tests, which flip this on.
     monkeypatch.setenv("SAFETY_ML_ENABLED", "false")

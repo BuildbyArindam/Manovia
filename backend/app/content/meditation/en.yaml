@@ -1,0 +1,280 @@
+# Day 45 — vetted structural passages (English).
+#
+# Every sentence here is hand-written and linted (tests/meditation):
+# no trance/dissociation inductions, no medical claims, no promises of
+# outcomes, no closed-eye instructions except the seated eyes-closed variant,
+# and the stop cue appears in the preface and in every closing.
+#
+# hi.yaml / bn.yaml hold the draft translations (flagged for native review
+# in translations/STATUS.md); the loader enforces structural parity across
+# the three files, so a missing entry is a startup failure, not a gap.
+
+version: 1
+
+preface:
+  # ``default`` is used for context=seated. ``unknown`` is used when the
+  # caller did not say where they are: it carries the driving warning.
+  default: >-
+    Before we begin, a quick note. This is a gentle, self-guided practice,
+    not medical advice, and it is not treatment. You can stop at any time; there
+    is nothing to finish, and nothing here will continue on its own.
+    If at any point it feels unwell, simply stop and do what feels right for
+    you.
+  unknown: >-
+    Before we begin, a quick note. If you might be driving, please do not
+    use this practice while driving pull over somewhere safe first. You can
+    stop at any time; there is nothing to finish. This is a self-guided
+    practice, not medical advice, and it is not treatment.
+  walking: >-
+    Before we begin, a quick note. You are moving, so we will keep your
+    attention with you: no closing your eyes, and no looking away from your
+    path. This is a gentle, self-guided practice, not medical advice, and it
+    is not treatment. You can stop at any time; there is nothing to finish.
+  driving: >-
+    Before we begin, a note about safety. Please do not use this practice
+    while driving. If you are driving, pull over somewhere safe and stop
+    before you begin this. It is for when you are stationary. You can stop
+    at any time, and this is a self-guided practice, not medical advice and
+    not treatment.
+
+eyes:
+  open: >-
+    You can keep your eyes open if you like, resting your gaze somewhere
+    quiet in front of you.
+  closed: >-
+    If it feels comfortable, you can close your eyes now. If not, keep them
+    open with a soft focus on a quiet spot in front of you.
+
+stop:
+  cue: >-
+    You can stop at any time, and you can let go of any instruction that
+    does not suit you.
+  closing: You can stop now, whenever you are ready.
+
+breath_cues:
+  - >-
+    Let us take a few ordinary breaths together. In through the nose, and
+    out through the mouth, whenever that feels natural. There is no pace to
+    match.
+  - >-
+    Breathe in gently, and let the breath out slowly. If a breath feels
+    small, let it be small. Nothing here needs effort.
+  - >-
+    For the next few breaths, let the breath out be a little longer than the
+    breath in, if that feels comfortable. If not, just breathe as you are.
+  - >-
+    Notice one breath at a time. In, and out. You are welcome to let your
+    attention wander, and you are welcome back to the breath when it comes.
+
+themes:
+  morning:
+    openings:
+      - >-
+        Good morning. There is no particular place this needs to take. If
+        you are where you are now, with the day not yet started, you can
+        simply begin by noticing that you are here.
+      - >-
+        Good morning. Before the day fills up, there is this moment that
+        belongs only to you. We can spend it the way you want quietly, and
+        at your own pace.
+    passages:
+      - >-
+        Notice where you are in your body. Feet, hands, the weight of your
+        body where it rests. You do not need to change any of it. Just let
+        the body be present for a few breaths.
+      - >-
+        The day ahead does not have to be solved now. You can meet it when
+        it arrives, one moment at a time. For now, there is only this breath,
+        and the next.
+      - >-
+        Whatever you are carrying today, you do not have to carry it all at
+        once. You are allowed to start slowly, and to start small.
+      - >-
+        If a thought about the day comes, let it come. You do not have to
+        argue with it, and you do not have to believe it. You can let it
+        pass, the way clouds pass.
+    closings:
+      - >-
+        That is enough for now. When you are ready, take one more breath in,
+        and out and return to the day at your own pace. You can stop now,
+        whenever you are ready.
+      - >-
+        You have done the whole of this practice already, just by being
+        here. Take one more breath when you are ready, and return to the
+        morning. You can stop now, whenever you are ready.
+
+  focus:
+    openings:
+      - >-
+        This is a short pause for your attention. We are not trying to clear
+        your mind that is not possible, and it is not the point. We are just
+        giving your attention a place to rest.
+      - >-
+        If your mind has been busy, this is a place to set it down for a
+        while. Nothing here asks you to achieve anything. The only task is
+        to notice.
+    passages:
+      - >-
+        Bring your attention to the sound of your own breathing. You do not
+        need to change it just let it be the thing you are paying attention
+        to, for a few breaths.
+      - >-
+        You will notice that your attention wanders. That is normal. When
+        you notice it has gone, you bring it back, gently, without
+        criticism. That small return is the whole practice.
+      - >-
+        Let your gaze be soft. Let your hands rest. Let the rest of the day
+        wait a while it has been waiting this long, and it can wait a little
+        more.
+      - >-
+        If a worry comes by, you can give it a name in your mind a to-do, a
+        message, a person and then let it be. Naming it often gives it
+        enough attention that it can rest.
+    closings:
+      - >-
+        One more breath in, and out. When you return to what you were
+        doing, you are allowed to do it at a pace that feels kind. You can
+        stop now, whenever you are ready.
+      - >-
+        That is enough for now. Your attention has had a moment to rest.
+        Take one more breath when you are ready, and return to the day. You
+        can stop now, whenever you are ready.
+
+  stress-release:
+    openings:
+      - >-
+        When the body holds a lot of tension, it rarely releases on command.
+        So this is not about forcing anything to relax. It is about letting
+        the body have space to do what it already knows how to do.
+      - >-
+        If the day has felt heavy, you do not need to unpack it all here.
+        We can just give your body a few minutes of quiet, and let it be.
+    passages:
+      - >-
+        Notice where tension sits in your body right now shoulders, jaw,
+        hands, stomach. You do not need to name it or fix it. Just let it be
+        noticed, for a breath or two.
+      - >-
+        As you breathe out, let the shoulders drop a little, if they want
+        to. Let the hands unclench, if they are clenching. Nothing needs to
+        be perfect a little is enough.
+      - >-
+        You are allowed to set this down. Whatever has been on your mind
+        today does not have to be carried for the next few minutes. You can
+        put it down, and pick it up later, when you choose.
+      - >-
+        Tension often loosens on its own, once it stops being fought. So
+        just breathe, and let the body do its own work, at its own speed.
+    closings:
+      - >-
+        Take one more slow breath out, and let whatever is left be left. You
+        can stop now, whenever you are ready, and return to the day at your
+        own pace.
+      - >-
+        That is enough for now. The body knows how to rest; you just gave it
+        a chance. Take one more breath when you are ready. You can stop
+        now, whenever you are ready.
+
+  calm:
+    openings:
+      - >-
+        There is nothing to get to here, and nothing to sort out. This is
+        just a few minutes of staying where you are.
+      - >-
+        You do not need to feel calmer for this to be worth it. It is enough
+        to be here, breathing, for a few minutes.
+    passages:
+      - >-
+        Notice the sounds around you. Far and near, coming and going. You do
+        not need to identify them. Let them be the sound of the place where
+        you are.
+      - >-
+        Notice the weight of your body where it is supported. The chair, the
+        floor, the ground. You do not have to hold yourself up this minute.
+      - >-
+        Thoughts will come, and that is fine. You do not need to push them
+        away or follow them. Just notice, and let the breath keep going.
+      - >-
+        If you can, let the breathing be a little slower than it needs to
+        be. Not forced just allowed. In, and out, at the speed that feels
+        right.
+    closings:
+      - >-
+        You can return to the day whenever you are ready. Take one more
+        breath in, and out and let the rest of this stay with you if you
+        want it to. You can stop now, whenever you are ready.
+      - >-
+        That is enough for now. Nothing here was required, and you did all
+        of it. Take one more breath when you are ready. You can stop now,
+        whenever you are ready.
+
+  sleep:
+    openings:
+      - >-
+        This is a wind-down, not a performance. If you fall asleep, that is
+        a success, not a failure. If you do not, that is also fine. This is
+        just a quiet few minutes before sleep.
+      - >-
+        The day is done, and it does not need more from you tonight. We can
+        spend these minutes getting quieter, the way a room gets quieter
+        when the lights go down.
+    passages:
+      - >-
+        Let your attention start with your hands. The fingers, the palms,
+        the wrists. There is nothing to do there just let them be heavy and
+        warm, for a few breaths.
+      - >-
+        Move your attention up to your shoulders. Let them be as soft as
+        they can be. If a shoulder wants to rise, let it. If it wants to
+        drop, let it.
+      - >-
+        Let the breath find its own rhythm. You do not need to count, or
+        shape, or fix it. In, and out. The breath already knows what to do.
+      - >-
+        If thoughts come tonight, you do not need to answer them. You can
+        let them come and go, the way traffic passes outside a quiet
+        window. You are in the quiet part.
+    closings:
+      - >-
+        You can let this go now, and let the night take over. One more
+        breath in, and out and let yourself settle, if settling feels good.
+        You can stop now, whenever you are ready.
+      - >-
+        That is enough for now. The rest of the night is yours, and it does
+        not require anything from you. You can stop now, whenever you are
+        ready.
+
+  gratitude:
+    openings:
+      - >-
+        This is a short pause to notice the good parts of today. They do not
+        have to be big. Small things count, and quiet things count.
+      - >-
+        You do not need to feel grateful for this to work. You just need a
+        few minutes to look for what was good, at a pace that feels gentle.
+    passages:
+      - >-
+        Think of one small thing from today that was okay, or better than
+        okay. It can be a meal, a message, a piece of weather. Let it be as
+        small as it needs to be.
+      - >-
+        If you can, notice one person who made today a little easier. You do
+        not need to say anything, and you do not need to do anything. Just
+        let them be noticed.
+      - >-
+        Think of one thing your body did for you today carrying you,
+        warming you, tasting something. It has been working quietly all
+        along, and you are allowed to notice that.
+      - >-
+        If today was mostly hard, that is honest, and it is allowed. You can
+        still notice one small thing that was not bad a glass of water, a
+        minute of quiet, the end of a difficult moment.
+    closings:
+      - >-
+        That is enough for now. You do not have to hold on to any of it you
+        just had to notice it for a while. Take one more breath when you
+        are ready. You can stop now, whenever you are ready.
+      - >-
+        You have noticed enough for today. Whatever you found is yours to
+        keep, or to let go of. Take one more breath when you are ready. You
+        can stop now, whenever you are ready.
