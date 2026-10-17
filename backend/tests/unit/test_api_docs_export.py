@@ -88,7 +88,10 @@ def test_every_schema_operation_is_documented(
     # (GET /agent/tools, POST /agent/sessions,
     # POST /agent/sessions/{id}/chat, POST
     # /agent/sessions/{id}/confirmations/{pending}).
-    assert len(operations) == 70
+    # 74 after the Day-45 meditation routes
+    # (GET /meditation/themes, POST /meditation/scripts,
+    # POST /meditation/audio, POST /meditation/audio/captions).
+    assert len(operations) == 74
     for path, method in operations:
         row = f"| `{method.upper()}` | `{path}` |"
         assert row in markdown, f"missing from api.md: {method.upper()} {path}"

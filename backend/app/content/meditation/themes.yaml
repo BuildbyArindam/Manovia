@@ -1,0 +1,84 @@
+# Day 45 — meditation themes.
+#
+# Trusted, reviewable data: a broken file rejects the whole catalogue at
+# import (the loader raises), so a typo is a startup failure, never a silent
+# half-catalogue. ``auto`` resolution (the "make me one for right now" quick
+# action) maps the local time of day onto ``best_time`` buckets, lets a
+# matching preference tag override the time-of-day pick, and breaks ties with
+# the request seed. ``gratitude`` has no time-of-day affinity on purpose: it
+# is picked by a preference tag or by rotation, never by the clock.
+
+version: 1
+
+themes:
+  - id: morning
+    label:
+      en: A gentle start
+      hi: एक नरम शुरुआत
+      bn: एक নরম শুরু
+    hint:
+      en: For the first quiet minutes of the day.
+      hi: दिन की पहली शांत देरी के लिए।
+      bn: দিনের প্রথম শান্ত মুহূর্তের জন্য।
+    tags: [morning, quiet]
+    best_time: morning
+
+  - id: focus
+    label:
+      en: A steadier mind
+      hi: एक अधिक स्थिर मन
+      bn: একটু স্থির মন
+    hint:
+      en: A short pause before back to what you are doing.
+      hi: काम पर वापस जाने से पहले एक छोटा ठहराव।
+      bn: কাজে ফিরতে পূর্বে একটি ছোট বিরতি।
+    tags: [focus, quiet]
+    best_time: midday
+
+  - id: stress-release
+    label:
+      en: Letting tension go
+      hi: तनाव को जाने देना
+      bn: চাপকে যেতে দেওয়া
+    hint:
+      en: For when the body has been holding a lot today.
+      hi: जब शरीर ने आज बहुत कुछ सहन किया हो।
+      bn: যখন শরীর আজ অনেকটা বহন করেছে।
+    tags: [body, warmth]
+    best_time: late-afternoon
+
+  - id: calm
+    label:
+      en: Just being here
+      hi: बस यहाँ होना
+      bn: শুধু এখানে থাকা
+    hint:
+      en: A few quiet minutes with no particular goal.
+      hi: एक निर्धारित लक्ष्य के बिना कुछ शांत दूर।
+      bn: কোনো নির্দিষ্ট লক্ষ্য ছাড়া কিছু শান্ত মুহূর্ত।
+    tags: [quiet, nature]
+    best_time: evening
+
+  - id: sleep
+    label:
+      en: Wind-down
+      hi: धीमा होने का समय
+      bn: ধীর হওয়ার সময়
+    hint:
+      en: A quiet pause before sleep.
+      hi: नींद से पहले एक शांत ठहराव।
+      bn: ঘুমের পূর্বে একটি শান্ত বিরতি।
+    tags: [night, quiet]
+    best_time: night
+
+  - id: gratitude
+    label:
+      en: What was good today
+      hi: आज अच्छा क्या था
+      bn: আজ ভালো কী ছিল
+    hint:
+      en: A short pause to notice the good parts of the day.
+      hi: दिन के अच्छे हिस्सों पर एक छोटी नज़र।
+      bn: দিনের ভালো অংশগুলোর দিকে একটি ছোট দৃষ্টি।
+    tags: [gratitude]
+    best_time: any

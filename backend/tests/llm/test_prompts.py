@@ -440,3 +440,93 @@ def test_a_v3_file_missing_the_privacy_rule_fails_the_load(
             mod.load_prompt("system_v3")
     finally:
         mod.load_prompt.cache_clear()
+
+
+# --- the meditation passage prompt (Day 45) ----------------------------------
+
+MEDITATION_PROMPT_SHA256_V1 = (
+    "bb96c1f98d076b4cf592913c90b827b53e7ae44eee439974e9ab0456254fa96c"
+)
+
+
+@pytest.fixture(autouse=True)
+def _clear_mediation_prompt_cache() -> None:
+    from app.services.meditation.prompt import load_passage_prompt
+
+    load_passage_prompt.cache_clear()
+    yield
+    load_passage_prompt.cache_clear()
+
+
+def test_meditation_passage_prompt_v1_is_pinned() -> None:
+    """A prompt change is a content decision: it needs a changelog entry and
+    a conscious hash update, not a silent rewrite of the meditation gate."""
+    from app.services.meditation.prompt import PROMPT_VERSION, load_passage_prompt
+
+    prompt = load_passage_prompt()
+    assert prompt.version == PROMPT_VERSION == "meditation_passage_v1"
+    assert prompt.sha256 == MEDITATION_PROMPT_SHA256_V1
+
+
+def test_meditation_passage_prompt_carries_the_safety_rules() -> None:
+    """The linter is the backstop, but the prompt must state the rules so a
+    model that follows it does not need the backstop at all."""
+    from app.services.meditation.prompt import load_passage_prompt
+
+    text = load_passage_prompt().text
+    for rule in ("No medical claims", "No promises", "No trance", "No closed-eye"):
+        assert rule in text, f"meditation prompt lost the rule: {rule}"
+    for placeholder in ("{language}", "{theme}", "{context}", "{word_target}"):
+        assert placeholder in text, f"meditation prompt lost {placeholder}"
+
+
+def test_meditation_passage_prompt_renders_every_placeholder() -> None:
+    from app.services.meditation.prompt import load_passage_prompt
+
+    rendered = load_passage_prompt().render(
+        language="English", theme="calm", context="walking", word_target=55
+    )
+    assert "{language}" not in rendered
+    assert "{theme}" not in rendered
+    assert "{context}" not in rendered
+    assert "{word_target}" not in rendered
+    assert "55" in rendered
+
+
+def test_meditation_passage_prompt_missing_a_rule_fails_the_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A rewording that drops a safety rule must fail at load, not at lint
+    time on the first generated script of the day."""
+    from importlib import resources
+
+    import app.services.meditation.prompt as mod
+
+    real_files = resources.files
+
+    def fake_files(package: str):
+        if package == "app.content":
+
+            class _Trailing:
+                def joinpath(self, *parts: str):
+                    if parts and parts[0] == "prompts":
+                        return _FakePromptFile()
+                    return real_files("app.content").joinpath(*parts)
+
+            return _Trailing()
+        return real_files(package)
+
+    class _FakePromptFile:
+        def read_text(self, encoding: str | None = None) -> str:
+            from app.services.meditation.prompt import PROMPT_VERSION
+
+            raw = (
+                real_files("app.content")
+                .joinpath("prompts", f"{PROMPT_VERSION}.md")
+                .read_text(encoding="utf-8")
+            )
+            return raw.replace("No medical claims", "No scary words")
+
+    monkeypatch.setattr(mod, "files", fake_files)
+    with pytest.raises(mod.PromptError, match="No medical claims"):
+        mod.load_passage_prompt()

@@ -24,6 +24,8 @@ from app.api.v1.health import router as health_router
 from app.api.v1.insights import router as insights_router
 from app.api.v1.journal import router as journal_router
 from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.meditation import build_meditation_service
+from app.api.v1.meditation import router as meditation_router
 from app.api.v1.metrics import router as metrics_router
 from app.api.v1.mood import router as mood_router
 from app.api.v1.plan import router as plan_router
@@ -243,6 +245,11 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
 
     app.state.voice_runtime = VoiceRuntime.build(app_settings)
 
+    # Day 45: one process-wide meditation service (generator + local TTS
+    # renderer). Building it loads no model and makes no network call; with
+    # LLM_PROVIDER=fake the generator is curated-only by design.
+    app.state.meditation_service = build_meditation_service(app_settings)
+
     # Middleware added last runs first (outermost), so the request ID wraps
     # every response, including error responses. Rate limiting sits just inside
     # the security headers so even a 429 is fully dressed; it is skipped when
@@ -300,6 +307,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(knowledge_router, prefix="/api/v1")
     app.include_router(mood_router, prefix="/api/v1")
     app.include_router(exercises_router, prefix="/api/v1")
+    app.include_router(meditation_router, prefix="/api/v1")
     app.include_router(journal_router, prefix="/api/v1")
     app.include_router(cbt_router, prefix="/api/v1")
     app.include_router(assessments_router, prefix="/api/v1")
