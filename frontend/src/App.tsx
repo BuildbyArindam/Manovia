@@ -63,6 +63,7 @@ const LOADERS = {
   "/assessments": () => import("@/pages/AssessmentsPage"),
   "/exercises": () => import("@/pages/ExercisesPage"),
   "/biofeedback": () => import("@/pages/BiofeedbackPage"),
+  "/meditation": () => import("@/pages/MeditationPage"),
   "/patterns": () => import("@/pages/PatternsPage"),
   "/insights": () => import("@/pages/InsightsPage"),
   "/settings": () => import("@/pages/SettingsPage"),
@@ -90,6 +91,7 @@ const CBTPage = lazyPage(LOADERS["/cbt"], "CBTPage");
 const AssessmentsPage = lazyPage(LOADERS["/assessments"], "AssessmentsPage");
 const ExercisesPage = lazyPage(LOADERS["/exercises"], "ExercisesPage");
 const BiofeedbackPage = lazyPage(LOADERS["/biofeedback"], "BiofeedbackPage");
+const MeditationPage = lazyPage(LOADERS["/meditation"], "MeditationPage");
 /**
  * Insights carries the chart library — as large as the rest of the app put
  * together — and is the one page left out of the offline precache.
@@ -248,6 +250,14 @@ function AppRoutes(): ReactElement {
           element={
             <Page>
               <BiofeedbackPage />
+            </Page>
+          }
+        />
+        <Route
+          path="/meditation"
+          element={
+            <Page>
+              <MeditationPage />
             </Page>
           }
         />

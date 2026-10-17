@@ -17,7 +17,8 @@ export type IconName =
   | "assessments"
   | "insights"
   | "settings"
-  | "biofeedback";
+  | "biofeedback"
+  | "meditation";
 
 const PATHS: Record<IconName, ReactElement> = {
   home: (
@@ -81,6 +82,14 @@ const PATHS: Record<IconName, ReactElement> = {
       {/* A breath wave: the pacer, in one stroke. */}
       <path d="M3 12c2.5-5 5.5-5 8 0s5.5 5 8 0" />
       <path d="M3 17c2.5-5 5.5-5 8 0s5.5 5 8 0" opacity="0.55" />
+    </>
+  ),
+  meditation: (
+    <>
+      {/* A lotus: the centre petal and two side ones. */}
+      <path d="M12 19.5c-4 0-7-2.2-7.3-5.3 1.6.1 3.1.7 4.3 1.5C9.3 13 10.4 10.7 12 9c1.6 1.7 2.7 4 3 6.7 1.2-.8 2.7-1.4 4.3-1.5-.3 3.1-3.3 5.3-7.3 5.3Z" />
+      <path d="M12 9c-.7-1.6-2.1-2.7-4-3 .3 1.7 1 3.1 2.4 4.1" opacity="0.55" />
+      <path d="M12 9c.7-1.6 2.1-2.7 4-3-.3 1.7-1 3.1-2.4 4.1" opacity="0.55" />
     </>
   ),
 };

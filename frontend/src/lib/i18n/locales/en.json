@@ -30,7 +30,9 @@
     "insights": "Insights",
     "insightsHint": "Patterns over time",
     "settings": "Settings",
-    "settingsHint": "Your choices"
+    "settingsHint": "Your choices",
+    "meditation": "Meditations",
+    "meditationHint": "Personalised calm, made now"
   },
   "language": {
     "label": "Language",
@@ -1097,6 +1099,115 @@
       "imported": "{{count}} intervals imported ({{skipped}} rows skipped).",
       "error": "Could not read that file: {{message}}",
       "goToImport": "Go to CSV import"
+    }
+  },
+  "meditation": {
+    "title": "Meditations",
+    "lede": "Personalised, self-guided meditations made for this moment — and a soundscape that stays as quiet as you want.",
+    "quick": {
+      "title": "Make me a 3-minute one for right now"
+    },
+    "form": {
+      "title": "Make one",
+      "theme": {
+        "auto": "Match it to the time of day",
+        "morning": "Start the day",
+        "focus": "Find focus",
+        "stress-release": "Let some stress go",
+        "calm": "Settle down",
+        "sleep": "Wind down for sleep",
+        "gratitude": "Notice what is going well"
+      },
+      "duration_value": "{{minutes}} minutes",
+      "eyesOpen": "I would like the eyes-open version",
+      "preferences": "What feels good to you? (up to 4)",
+      "compose": "Make this meditation",
+      "composing": "Composing…",
+      "themeLabel": "What is this for?",
+      "durationLabel": "How long?",
+      "duration": {
+        "value": "{{minutes}} minutes"
+      },
+      "speedLabel": "Voice speed",
+      "speed": {
+        "slower": "Slower",
+        "normal": "Ordinary",
+        "faster": "A little faster"
+      },
+      "contextLabel": "Where are you right now?",
+      "context": {
+        "seated": "Sitting still",
+        "walking": "Walking",
+        "driving": "Driving",
+        "unknown": "Not sure"
+      },
+      "pref": {
+        "breathing": "Breathing",
+        "body": "Body",
+        "nature": "Nature",
+        "warmth": "Warmth",
+        "gratitude": "Gratitude",
+        "quiet": "Quiet",
+        "rain": "Rain",
+        "morning": "Morning",
+        "night": "Night",
+        "focus": "Focus"
+      }
+    },
+    "errors": {
+      "unknown": "Something went wrong. Nothing was changed — you can try again."
+    },
+    "session": {
+      "title": "This one",
+      "empty": "Nothing is composed yet. Pick a few options, or use the quick button above.",
+      "estimated": "about {{seconds}} s",
+      "words": "{{count}} words",
+      "safetyLabel": "Safety notes",
+      "safety": {
+        "stop": "You can stop at any time",
+        "preface": "Self-guided — not a session with a practitioner",
+        "eyesOpen": "Eyes open — keep your attention where you need it",
+        "driving": "Please stay focused on the road"
+      }
+    },
+    "player": {
+      "playSoundscape": "Play with soundscape",
+      "playVoiceOnly": "Voice only",
+      "rendering": "Preparing your audio…",
+      "stop": "Stop now"
+    },
+    "soundscape": {
+      "title": "Soundscape",
+      "palette": "Mood",
+      "volume": "Volume",
+      "reduced": "Reduced stimulation (quieter, slower, less texture)",
+      "adapt": "Let it drift with my pace and energy (opt-in)",
+      "pace": "Breathing pace (breaths per minute)",
+      "energy": {
+        "low": "Low",
+        "normal": "About the same",
+        "high": "Higher than usual"
+      },
+      "unknownPalette": "Soundscape",
+      "energyLabel": "How is your energy right now?"
+    },
+    "palettes": {
+      "warm-dawn": "Warm dawn",
+      "deep-forest": "Deep forest",
+      "soft-rain": "Soft rain",
+      "night-calm": "Night calm"
+    },
+    "library": {
+      "title": "Your library",
+      "empty": "Nothing saved yet. Save a meditation you like and it will wait here — on this device only.",
+      "label": "Name for this one (optional)",
+      "labelPlaceholder": "e.g. Morning calm",
+      "save": "Save to library",
+      "saved": "Saved",
+      "defaultLabel": "A meditation",
+      "entryMeta": "{{theme}} · {{minutes}} min · {{palette}}",
+      "load": "Load",
+      "remove": "Remove"
     }
   }
 }
