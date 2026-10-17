@@ -112,9 +112,12 @@ day-44 branch name in the brief could not be created). No main push.
 - Committed OpenAPI docs regenerated
   (`scripts/export_openapi.py`); the operation-count test
   updated 66 → 70 as its comment instructs.
-- Frontend: **no frontend files changed** this day
-  (backend + data + docs only); see the wrap-up note for
-  the frontend verification run.
+- Frontend: no frontend files changed this day (backend +
+  data + docs only). Full frontend verification re-run
+  anyway: `npm run lint` clean, `npm run typecheck`
+  clean (tsc + swc), `npm run test:run` **2,746 passed,
+  3 skipped** (109 files passed, 1 skipped live-backend
+  file — pre-existing skip, not a Day 44 integration).
 
 ### Known issues
 
