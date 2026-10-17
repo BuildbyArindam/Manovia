@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Manovia support directory",
+  "description": "Contract for content/resources/directory.json: curated, verified support options (campus counselling, national helplines, free/low-cost therapy directories, support groups) by region. Every entry carries a source_url and a last_verified date. An entry that could not be verified from an official source on its last_verified date MUST carry verification_status \"needs_verification\" and is excluded from agent results until a human re-verifies it.",
+  "type": "object",
+  "required": ["version", "last_verified", "source", "disclaimer", "regions", "resources"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "last_verified": {"type": "string", "format": "date"},
+    "source": {"type": "string", "minLength": 20},
+    "disclaimer": {"type": "string", "minLength": 20},
+    "regions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^(GLOBAL|[A-Z]{2}(-[A-Z0-9]{2,})?)$"},
+      "uniqueItems": true
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": [
+        "id", "regions", "kind", "name", "description", "contact",
+        "languages", "cost", "hours", "needs", "source_url",
+        "last_verified", "verification_status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+        "regions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^(GLOBAL|[A-Z]{2}(-[A-Z0-9]{2,})?)$"},
+          "uniqueItems": true
+        },
+        "kind": {
+          "enum": [
+            "national_helpline",
+            "crisis_line",
+            "text_line",
+            "campus_counselling",
+            "therapy_directory",
+            "support_group",
+            "referral_service"
+          ]
+        },
+        "name": {"type": "string", "minLength": 2, "maxLength": 160},
+        "description": {"type": "string", "minLength": 10, "maxLength": 500},
+        "contact": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "phone": {
+              "type": "array",
+              "items": {"type": "string", "pattern": "^[0-9+()\\-. ]{3,32}$"},
+              "uniqueItems": true
+            },
+            "text_keyword": {"type": "string", "maxLength": 32},
+            "short_code": {"type": "string", "maxLength": 16},
+            "email": {"type": "string", "format": "email"},
+            "web": {"type": "string", "format": "uri"}
+          }
+        },
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+          "uniqueItems": true
+        },
+        "multilingual": {"type": "boolean"},
+        "language_note": {"type": "string", "maxLength": 200},
+        "cost": {"enum": ["free", "low_cost", "paid", "mixed"]},
+        "cost_note": {"type": "string", "maxLength": 200},
+        "hours": {"type": "string", "minLength": 1, "maxLength": 120},
+        "needs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "any", "emotional_support", "crisis", "anxiety", "depression",
+              "stress", "exam_stress", "relationships", "substance_use",
+              "mood_disorders", "grief", "loneliness", "students"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "audience": {"type": "string", "maxLength": 120},
+        "source_url": {"type": "string", "format": "uri"},
+        "last_verified": {"type": "string", "format": "date"},
+        "verification_status": {"enum": ["verified", "needs_verification"]},
+        "verification_note": {"type": "string", "maxLength": 600}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"verification_status": {"const": "needs_verification"}}},
+          "then": {"required": ["verification_note"]}
+        }
+      ]
+    }
+  }
+}

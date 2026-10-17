@@ -50,6 +50,10 @@ entry.
 | [0038](0038-privacy-preserving-ml.md) | Privacy-preserving ML research boundary | Accepted for offline research; not deployment | 2026-10-15 |
 | [0039](0039-realtime-voice-companion.md) | Real-time voice companion: same-origin WebSocket, WebRTC VAD and crisis-first streaming | Accepted | 2026-10-15 |
 | [0040](0040-in-browser-private-ai.md) | In-browser private AI: compiled safety content, a ported rules engine, and consented on-device models | Accepted | 2026-10-16 |
+| [0041](0041-biofeedback-hrv.md) | Biofeedback HRV companion: on-device sensor pipeline with no medical claims | Accepted | 2026-10-16 |
+| [0042](0042-local-personal-patterns.md) | Client-only personal patterns and small self-experiments | Accepted | 2026-10-16 |
+| [0043](0043-agentic-care-navigator.md) | Agentic care navigator: a five-tool allow-list behind every existing safety layer, with human confirmation for the one effecting tool | Accepted | 2026-10-16 |
+| [0044](0044-directory-mcp-server.md) | The verified support directory as a separate, authenticated, rate-limited, read-only MCP server | Accepted | 2026-10-16 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number

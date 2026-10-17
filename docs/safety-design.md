@@ -975,3 +975,68 @@ feature honours that decision; no threshold was relaxed to make the wizard
 pass. Browser verification therefore used rules-only mode, and the false
 positive remains a known issue for separate safety evaluation. See
 [ADR 0019](adr/0019-cbt-thought-record.md).
+
+## Day 44: the agentic layer (care navigator)
+
+The Day 44 navigator is a tool-using agent, and it is the
+most aggressively constrained part of the product. Its full
+design is [ADR 0043](adr/0043-agentic-care-navigator.md);
+this section is the safety summary.
+
+**The agent sits behind this pipeline, not beside it.**
+Every navigator message passes the same ensemble
+(rules engine + ML backstop) and escalator as chat
+(`app.services.agent.safety_gate.AgentSafetyGate`). At
+risk >= MEDIUM the agent does not run — no prompt is
+built, no model is called, no tool is considered — and
+the deterministic crisis flow answers with pre-written
+copy and region helplines. The agent only ever sees LOW.
+Because the gate reuses the chat pipeline's own
+components, the two surfaces cannot disagree about a
+verdict.
+
+**No effecting happens without a human.** The toolset is
+a closed allow-list of five tools. Four are read-only or
+produce text the person acts on themselves (directory
+search, message *drafts*, appointment *prep*, explainers).
+The fifth, `set_reminder`, is the only effecting tool and
+is gated behind a confirmation card with an unguessable
+pending id and a 15-minute TTL; the model cannot confirm
+its own action — confirmation exists only on the API's
+resume path. There is no browsing, payment, booking or
+sending tool anywhere in the codebase, so those cannot be
+performed even by a fully compromised model.
+
+**Tool results are data, never instructions.** Every
+result is sanitised (control characters stripped, markup
+removed, whitespace collapsed, length-capped), wrapped in
+an envelope that names the tool and states it is not
+instructions, and scanned with the same
+instruction-detector the output guard uses. A poisoned
+result is quarantined wholesale — the model sees a neutral
+placeholder, the person sees a neutral note, and the
+attempt is logged as `injection_quarantined`. Arguments
+are validated against strict JSON schemas (closed enums,
+bounded lengths, ISO-8601 times) before execution.
+
+**The loop is bounded.** At most 6 model calls and a
+4000-token cumulative budget per turn; hitting either
+stops the turn with an honest degradation message. The
+final answer passes the Day-14 output guard with one
+strict retry, then a safe refusal fallback.
+
+**Everything is auditable.** Every tool call — proposed,
+executed, rejected, confirmed, denied, quarantined —
+lands in the turn's transparent action log (closed event
+vocabulary, validated arguments, neutral outcome
+summaries). The log never carries the person's raw
+message text, honouring §7's no-raw-text rule; the
+navigator's sessions are ephemeral and in-memory, like
+ephemeral chat sessions.
+
+**The directory behind it** (`content/resources/
+directory.json`) is curated, source-cited and dated;
+`needs_verification` entries are excluded from agent
+results and from the read-only MCP server
+([ADR 0044](adr/0044-directory-mcp-server.md)), which
+adds bearer-token auth and per-key rate limiting.

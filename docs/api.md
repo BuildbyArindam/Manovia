@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **1.0.0** · 66 operations across 56 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **1.0.0** · 70 operations across 60 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -36,6 +36,7 @@ Manovia API **1.0.0** · 66 operations across 56 paths. The machine-readable sch
 - [Settings](#settings)
 - [Privacy, export and deletion](#privacy-export-and-deletion)
 - [Development only (not in production)](#development-only-not-in-production)
+- [Agent](#agent)
 - [Voice](#voice)
 
 ## Health and readiness
@@ -182,6 +183,15 @@ These routes exist only when `APP_ENV` is not `production`. They are for local d
 | --- | --- | --- | --- | --- | --- |
 | `POST` | `/api/v1/dev/analyze` | Analyze | no | 200, 422 | Analyze one string with the configured emotion chain. |
 | `GET` | `/api/v1/dev/analyze/state` | Analyzer State | no | 200 | Chain health, cache counters and the detected model. No text, no keys. |
+
+## Agent
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/agent/tools` | List Agent Tools | no | 200 | The allow-listed toolset, for transparency. |
+| `POST` | `/api/v1/agent/sessions` | Create Agent Session | yes + consent | 201 | Open a navigator session (ephemeral, in memory). |
+| `POST` | `/api/v1/agent/sessions/{session_id}/chat` | Navigator Chat | yes + consent | 200, 422 | One navigator turn: safety gate first, then the agent. |
+| `POST` | `/api/v1/agent/sessions/{session_id}/confirmations/{pending_id}` | Answer Confirmation | yes + consent | 200, 422 | Allow or deny a paused, effecting tool call. |
 
 ## Voice
 
