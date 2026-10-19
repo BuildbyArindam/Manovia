@@ -33,6 +33,7 @@ import { useSensory } from "@/features/sensory/SensoryProvider";
 import { t } from "@/lib/i18n/i18n";
 import { useI18nState } from "@/lib/i18n/I18nProvider";
 import { useMediaQuery } from "@/lib/useMediaQuery";
+import { useStickyChromeMetrics } from "@/lib/useStickyChromeMetrics";
 import { OfflineBanner } from "@/pwa/OfflineBanner";
 import { UpdateNotice } from "@/pwa/UpdateNotice";
 
@@ -71,6 +72,10 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
   const isDesktop = useMediaQuery(DESKTOP_QUERY, true);
   const { overwhelmed } = useSensory();
   useRouteAnnouncements();
+  // The header and the bottom bar are sticky/fixed, and both grow with the
+  // reader's text size. Their measured heights feed `scroll-padding`, so a
+  // focused control never lands underneath one of them (WCAG 2.4.11).
+  useStickyChromeMetrics(!isDesktop && !overwhelmed);
 
   return (
     <div className="min-h-screen bg-bg text-ink">

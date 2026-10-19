@@ -367,19 +367,37 @@ test("the header fits 360px and 320px screens in every language; the language se
  * test is the general form of the finding: no two header controls may overlap,
  * and every control's own centre must be its own topmost pixel — at the two
  * widths the header is designed for, on the first two routes.
+ *
+ * It also pins the second half of the fix. A wrapped header is taller than the
+ * fixed `5.5rem` scroll padding used to be, and at 200% text the focus walk
+ * found "Start the GAD-7" underneath it. So this test runs at 200% text too and
+ * asserts that `scroll-padding-top` clears the header's measured height — the
+ * value `useStickyChromeMetrics` keeps current.
  */
 test("header controls never overlap or cover each other, at 360px and at 400% zoom", async ({
   browser,
 }) => {
   for (const screen of [
-    { width: 360, height: 640, scale: 1, label: "360x640" },
-    { width: 320, height: 200, scale: 4, label: "400% zoom (320x200 @4x)" },
+    { width: 360, height: 640, scale: 1, fontPx: null, label: "360x640" },
+    { width: 320, height: 200, scale: 4, fontPx: null, label: "400% zoom (320x200 @4x)" },
+    { width: 1280, height: 800, scale: 1, fontPx: 32, label: "text 200%" },
   ]) {
     const context = await browser.newContext({
       viewport: { width: screen.width, height: screen.height },
       deviceScaleFactor: screen.scale,
       baseURL: test.info().project.use.baseURL,
     });
+    if (screen.fontPx !== null) {
+      // The reader's browser default font size (WCAG 1.4.4), applied exactly
+      // as the Day-25 zoom suite applies it.
+      await context.addInitScript((px) => {
+        document.addEventListener("DOMContentLoaded", () => {
+          const style = document.createElement("style");
+          style.textContent = `html { font-size: ${px}px !important; }`;
+          document.head.append(style);
+        });
+      }, screen.fontPx);
+    }
     const page = await context.newPage();
     await completeGuestOnboarding(page);
 
@@ -436,11 +454,33 @@ test("header controls never overlap or cover each other, at 360px and at 400% zo
         return found;
       });
       expect(problems, `${screen.label} ${path}`).toEqual([]);
+
+      // Focus scrolling must clear the sticky header at whatever height this
+      // text size gives it, not at a constant that fitted before it wrapped.
+      const chrome = await page.evaluate(() => {
+        const headerHeight =
+          document.querySelector<HTMLElement>("header")?.getBoundingClientRect().height ?? 0;
+        const style = getComputedStyle(document.documentElement);
+        return {
+          headerHeight: Math.round(headerHeight),
+          paddingTop: parseFloat(style.scrollPaddingTop),
+          paddingBottom: parseFloat(style.scrollPaddingBottom),
+        };
+      });
+      expect(
+        chrome.paddingTop,
+        `${screen.label} ${path}: scroll-padding-top`,
+      ).toBeGreaterThanOrEqual(chrome.headerHeight);
+
       if (path === "/") {
         // The regression's own symptom, stated as the rule: the brand is the
         // topmost thing at its centre, and "Need help now?" is still reachable.
-        await expect(page.getByRole("link", { name: "Manovia" })).toBeVisible();
-        await expect(page.getByRole("button", { name: /Need help now/i })).toBeVisible();
+        // Scoped to the banner: the home page has its own "Need help now?"
+        // shortcut, and an unscoped role query matches both (strict mode).
+        await expect(page.getByRole("banner").getByRole("link", { name: "Manovia" })).toBeVisible();
+        await expect(
+          page.getByRole("banner").getByRole("button", { name: /Need help now/i }),
+        ).toBeVisible();
       }
     }
     await context.close();

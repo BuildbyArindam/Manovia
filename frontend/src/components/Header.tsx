@@ -19,6 +19,13 @@ import { t } from "@/lib/i18n/i18n";
  * shrinks below its content now: the row wraps, the controls take their own
  * line when they must, and they stay in source order, so no control can ever be
  * laid on top of another.
+ *
+ * The control group also caps itself at the row's own width (`max-w-full`).
+ * Without that cap it kept its max-content width — 386 px at 320 px — and,
+ * because a `shrink-0` item may not shrink, the *page* scrolled sideways instead
+ * of the buttons wrapping. With the cap it is the group that wraps its children.
+ * Its height therefore depends on the reader's text size, which is why
+ * `useStickyChromeMetrics` measures it and feeds `scroll-padding-top`.
  */
 export function Header(): ReactElement {
   return (
@@ -40,7 +47,7 @@ export function Header(): ReactElement {
             {t("app.betaLabel")}
           </span>
         </span>
-        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-4">
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-4">
           <OverwhelmedButton />
           <LanguageSwitcher />
           <CrisisHelpButton openFromUrl />

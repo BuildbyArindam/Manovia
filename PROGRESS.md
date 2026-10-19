@@ -131,13 +131,24 @@ intentionally unmerged.
    zero width while its link kept its own width — so the link's box sat on top
    of the controls beside it. The Accessibility & Lighthouse job caught it as
    `home: focus-obscured — a "Manovia" under span.sm:hidden` at 400 % zoom.
-   The row now wraps and nothing shrinks below its content, plus a new
-   Playwright regression (`e2e/day25/zoom.spec.ts`, "header controls never
-   overlap…") asserts that no two header controls overlap and each control's
-   centre is its own topmost pixel at 360 × 640 and at 320 × 200 @4x. The fix
-   itself is verified in Node (typecheck, lint, 126 tests, production build,
-   budgets); whether the browser job is green is only knowable from CI, since
-   this sandbox cannot run Playwright.
+   A second CI run then showed that the first fix had gone too far the other
+   way: the control group kept its max-content width (386 px) and, because it
+   was `shrink-0`, the page scrolled sideways instead of the buttons wrapping.
+   It is now capped at the row's own width (`max-w-full`), so the group wraps
+   its children. That made the header's height depend on the reader's text
+   size, and at 200 % text it grew past the fixed `5.5rem` scroll padding — the
+   same run then reported `assessments: focus-obscured — button "Start the
+   GAD-7"` under the header. `useStickyChromeMetrics` now measures the header
+   and the bottom bar with a `ResizeObserver` and sets `--app-header-height` /
+   `--app-bottom-nav-height`, which `scroll-padding` reads (with the old rem
+   values as fallbacks). Three Playwright regressions cover it in
+   `e2e/day25/zoom.spec.ts`: no two header controls overlap and each control's
+   centre is its own topmost pixel at 360 × 640, at 320 × 200 @4x and at 200 %
+   text, and `scroll-padding-top` always clears the measured header height.
+   The fix is verified in Node (typecheck, lint, 2 858 frontend tests,
+   production build, budgets, six new unit tests for the measuring hook);
+   whether the browser job is green is only knowable from CI, since this
+   sandbox cannot run Playwright.
 
 ### Parking lot (out of scope for Day 46)
 
