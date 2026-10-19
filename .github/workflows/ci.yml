@@ -129,10 +129,126 @@ jobs:
       # stand-in for machines that cannot run the binary is
       # `python scripts/scan_secrets.py` (same rule set, weaker engine — read
       # its docstring before trusting it).
+      #
+      # GITLEAKS_ENABLE_COMMENTS=false: the action tries to post one review
+      # comment per finding, which needs `pull-requests: write`. This workflow
+      # keeps least privilege (`contents: read`, see the top of the file), so
+      # every attempt failed with "Resource not accessible by integration" and left
+      # a warning per finding instead — noise that hid the verdict. The step
+      # below reports the findings on the check itself, where they belong.
       - name: gitleaks
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+      # Not a gate — the step above decides. This makes that decision readable:
+      # the action's report is a SARIF artifact plus PR comments, and neither is
+      # available to a reviewer without log/artifact access. Re-running the same
+      # binary over the same commit range with a JSON report and re-emitting each
+      # finding as an annotation puts rule id, file, line, commit and the
+      # `.gitleaksignore` fingerprint on the check run itself.
+      #
+      # Secrets stay redacted (`--redact=90` keeps 10% of the characters, enough
+      # to tell two synthetic vectors apart, not enough to reconstruct one).
+      # `--exit-code=0` guarantees this step can never change the job's verdict.
+      #
+      # It scans twice — once letting gitleaks find `.gitleaks.toml` the way the
+      # action does (no `--config`), once naming it explicitly — and reports both
+      # counts, so "config never loaded" and "config loaded but does not match"
+      # are distinguishable instead of guessable.
+      - name: Report findings as annotations (always)
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          gl=gitleaks
+          if ! command -v "$gl" >/dev/null 2>&1; then
+            echo "::notice::gitleaks is not on PATH — fetching the release the action would use"
+            ver=$(curl -fsSL https://api.github.com/repos/zricethezav/gitleaks/releases/latest \
+              | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -1)
+            curl -fsSL -o /tmp/gitleaks.tar.gz \
+              "https://github.com/zricethezav/gitleaks/releases/download/v${ver}/gitleaks_${ver}_linux_x64.tar.gz"
+            mkdir -p /tmp/gitleaks-bin
+            tar xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks-bin
+            gl=/tmp/gitleaks-bin/gitleaks
+          fi
+          echo "::notice::gitleaks version: $("$gl" version 2>&1 | head -1)"
+
+          # Same range the action uses: the PR's first commit and everything
+          # after it (gitleaks scans history, not just the final tree).
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ]; then base=$(git rev-parse HEAD^ 2>/dev/null || echo ""); fi
+          first=$(git rev-list --reverse --first-parent --no-merges "${base}..HEAD" 2>/dev/null | head -1)
+          [ -n "$first" ] || first="$base"
+          range="--no-merges --first-parent ${first}^..HEAD"
+          out="$RUNNER_TEMP/gitleaks-diag"
+          mkdir -p "$out"
+
+          "$gl" detect --redact=90 -v --exit-code=0 --no-banner --log-level=debug \
+            --report-format json --report-path "$out/auto.json" \
+            --log-opts="$range" > "$out/auto.log" 2>&1
+          "$gl" detect --redact=90 -v --exit-code=0 --no-banner --config .gitleaks.toml \
+            --report-format json --report-path "$out/explicit.json" \
+            --log-opts="$range" > "$out/explicit.log" 2>&1
+
+          # Whether gitleaks saw the repository's own config is the first thing
+          # to check when an allowlist appears to do nothing.
+          grep -Ei "config|allowlist|gitleaksignore|using .* regex engine" "$out/auto.log" \
+            | head -20 | while IFS= read -r line; do
+              printf '::notice::gitleaks log: %s\n' "${line//%/%25}"
+            done
+
+          python3 - "$out/auto.json" "$out/explicit.json" "$range" <<'PY'
+          import json
+          import sys
+
+          def esc(value: object) -> str:
+              return (
+                  str(value)
+                  .replace("%", "%25")
+                  .replace("\r", "%0D")
+                  .replace("\n", "%0A")
+              )
+
+          def load(path: str):
+              try:
+                  with open(path, encoding="utf-8") as handle:
+                      return json.load(handle)
+              except Exception as exc:  # noqa: BLE001 - a diagnostic must not fail
+                  print(f"::error::could not read {path}: {esc(exc)}")
+                  return None
+
+          auto = load(sys.argv[1])
+          explicit = load(sys.argv[2])
+          if auto is None:
+              sys.exit(0)
+
+          print(f"::notice title=gitleaks range::{esc(sys.argv[3])}")
+          print(
+              "::notice title=gitleaks finding counts::"
+              f"auto-loaded config: {len(auto)}; "
+              f"explicit --config .gitleaks.toml: "
+              f"{len(explicit) if explicit is not None else 'unreadable'}"
+          )
+          for finding in auto:
+              print(
+                  f"::error title=gitleaks {esc(finding.get('RuleID'))}::"
+                  + esc(
+                      "\n".join(
+                          (
+                              f"fingerprint: {finding.get('Fingerprint')}",
+                              f"file: {finding.get('File')}",
+                              f"line: {finding.get('StartLine')}",
+                              f"commit: {str(finding.get('Commit'))[:12]}",
+                              f"entropy: {finding.get('Entropy')}",
+                              f"secret: {finding.get('Secret')}",
+                              f"rule: {finding.get('Description')}",
+                          )
+                      )
+                  )
+              )
+          PY
 
   dependency-audit:
     name: Dependency audit — fail on high
@@ -450,10 +566,46 @@ jobs:
 
       - name: Validate with the official HL7 validator (FHIR 4.0.1)
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          # The validator's own exit code is the gate: ValidateCommand.call()
+          # returns 1 when it recorded any error, and ValidatorCli.main() hands
+          # that to System.exit(). Nothing here infers a verdict from log text.
           java -jar .fhir-validator/validator_cli.jar \
             tests/fixtures/fhir/sample_share_bundle.json \
-            -version 4.0.1 -tx n/a 2>&1 | tee /tmp/fhir-validator.txt
+            -version 4.0.1 -tx n/a > /tmp/fhir-validator.txt 2>&1
+          status=$?
+          cat /tmp/fhir-validator.txt
+          # Annotations are the part of a job a reviewer can read on the check
+          # itself, so the validator's own words are re-emitted verbatim as
+          # workflow-command annotations, chunked to stay inside the message
+          # limit. The level follows the exit code, never the wording.
+          python - "$status" <<'PY'
+          import sys
+
+          status = int(sys.argv[1])
+          with open("/tmp/fhir-validator.txt", encoding="utf-8", errors="replace") as handle:
+              text = handle.read()
+          level = "error" if status != 0 else "notice"
+
+          def esc(value: str) -> str:
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          limit, chunks, buf = 6000, [], ""
+          for line in text.splitlines():
+              if buf and len(buf) + len(line) + 1 > limit:
+                  chunks.append(buf)
+                  buf = ""
+              buf += line + "\n"
+          if buf:
+              chunks.append(buf)
+          if len(chunks) > 12:
+              chunks = chunks[:12] + ["(output truncated for annotations — see the log)\n"]
+          total = len(chunks) or 1
+          for index, chunk in enumerate(chunks, start=1):
+              print(f"::{level} title=FHIR validator output ({index}/{total})::" + esc(chunk))
+          print(f"::{level} title=FHIR validator exit code::{status}")
+          PY
+          exit "$status"
 
       - name: Terminology check against tx.fhir.org (best-effort, non-blocking)
         # Same document, same validator, but with the default terminology server
@@ -463,9 +615,38 @@ jobs:
         # guarantees are the run above plus the pinned terminology file.
         continue-on-error: true
         run: |
+          set -uo pipefail
           java -jar .fhir-validator/validator_cli.jar \
             tests/fixtures/fhir/sample_share_bundle.json \
-            -version 4.0.1 -txLog /tmp/tx.log 2>&1 | tail -40 || true
+            -version 4.0.1 -txLog /tmp/tx.log > /tmp/fhir-tx.txt 2>&1
+          status=$?
+          tail -40 /tmp/fhir-tx.txt
+          python - "$status" <<'PY'
+          import sys
+
+          status = int(sys.argv[1])
+          with open("/tmp/fhir-tx.txt", encoding="utf-8", errors="replace") as handle:
+              text = handle.read()
+
+          def esc(value: str) -> str:
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          limit, chunks, buf = 6000, [], ""
+          for line in text.splitlines():
+              if buf and len(buf) + len(line) + 1 > limit:
+                  chunks.append(buf)
+                  buf = ""
+              buf += line + "\n"
+          if buf:
+              chunks.append(buf)
+          if len(chunks) > 8:
+              chunks = chunks[:8] + ["(output truncated for annotations — see the log)\n"]
+          total = len(chunks) or 1
+          for index, chunk in enumerate(chunks, start=1):
+              print(f"::notice title=tx.fhir.org terminology run ({index}/{total})::" + esc(chunk))
+          print(f"::notice title=tx.fhir.org terminology exit code::{status} (non-blocking)")
+          PY
+          exit 0
 
       - name: Summarise (always)
         if: always()
