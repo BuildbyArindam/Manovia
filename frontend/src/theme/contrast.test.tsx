@@ -20,9 +20,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, "..", "index.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
 
 function palette(selector: string): Record<string, string> {
-  const start = CSS.indexOf(`${selector} {`);
-  expect(start, `no block for ${selector}`).toBeGreaterThan(-1);
-  const body = CSS.slice(start, CSS.indexOf("}", start));
+  // Day 46: the high-contrast block now answers two selectors (the Appearance
+  // switch and the sensory profile), so find the selector inside a list rather
+  // than assuming `selector {` appears verbatim.
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`(?:^|,)\\s*${escaped}\\s*(?:,|\\{)`, "m").exec(CSS);
+  expect(match, `no block for ${selector}`).not.toBeNull();
+  const start = CSS.indexOf("{", match?.index ?? 0);
+  const body = CSS.slice(start + 1, CSS.indexOf("}", start));
   return Object.fromEntries(
     [...body.matchAll(/(--manovia-[a-z-]+):\s*(#[0-9a-f]{6})/gi)].map((match) => [
       match[1],
@@ -72,6 +77,15 @@ describe("high-contrast palettes", () => {
         ).toBeGreaterThanOrEqual(4.5);
       }
     }
+  });
+
+  it("gives the sensory profile's high-contrast choice the same palette", () => {
+    // One palette, two ways to ask for it: the Appearance switch and the
+    // sensory profile must never drift apart.
+    expect(palette(':root[data-sensory-colours="high-contrast"]')).toEqual(HC_LIGHT);
+    expect(palette(':root[data-theme="dark"][data-sensory-colours="high-contrast"]')).toEqual(
+      HC_DARK,
+    );
   });
 
   it("defines the same colour tokens as the standard palette", () => {

@@ -39,6 +39,7 @@ import { createQueryClient } from "@/lib/queryClient";
 import { HomePage } from "@/pages/HomePage";
 // Tiny, and the answer to a mistyped address should not need a download.
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { SensoryProvider } from "@/features/sensory/SensoryProvider";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
 /**
@@ -67,6 +68,7 @@ const LOADERS = {
   "/patterns": () => import("@/pages/PatternsPage"),
   "/insights": () => import("@/pages/InsightsPage"),
   "/settings": () => import("@/pages/SettingsPage"),
+  "/calm": () => import("@/pages/CalmPage"),
   "/accessibility": () => import("@/pages/AccessibilityPage"),
 } as const;
 
@@ -99,6 +101,7 @@ const MeditationPage = lazyPage(LOADERS["/meditation"], "MeditationPage");
 const PatternsPage = lazyPage(LOADERS["/patterns"], "PatternsPage");
 const InsightsPage = lazyPage(LOADERS["/insights"], "InsightsPage");
 const SettingsPage = lazyPage(LOADERS["/settings"], "SettingsPage");
+const CalmPage = lazyPage(LOADERS["/calm"], "CalmPage");
 const AccessibilityPage = lazyPage(LOADERS["/accessibility"], "AccessibilityPage");
 
 /**
@@ -286,6 +289,14 @@ function AppRoutes(): ReactElement {
           }
         />
         <Route
+          path="/calm"
+          element={
+            <Page>
+              <CalmPage />
+            </Page>
+          }
+        />
+        <Route
           path="/accessibility"
           element={
             <Page>
@@ -307,13 +318,15 @@ export function App(): ReactElement {
     // theme shell and the router alike, and no surface is exempt from it.
     <I18nProvider>
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <OnboardingProvider>
-              <AppRoutes />
-            </OnboardingProvider>
-          </BrowserRouter>
-        </QueryClientProvider>
+        <SensoryProvider>
+          <QueryClientProvider client={queryClient}>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <OnboardingProvider>
+                <AppRoutes />
+              </OnboardingProvider>
+            </BrowserRouter>
+          </QueryClientProvider>
+        </SensoryProvider>
       </ThemeProvider>
     </I18nProvider>
   );

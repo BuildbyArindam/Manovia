@@ -54,6 +54,8 @@ const ROUTES = {
   "src/pages/PatternsPage.tsx": "/patterns",
   "src/pages/SettingsPage.tsx": "/settings",
   "src/pages/AccessibilityPage.tsx": "/accessibility",
+  // Day 46: the calm space is lazy and tiny (no 3D library, no assets).
+  "src/pages/CalmPage.tsx": "/calm",
 };
 
 function sizes(file) {

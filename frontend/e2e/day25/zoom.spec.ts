@@ -355,3 +355,134 @@ test("the header fits 360px and 320px screens in every language; the language se
     await context.close();
   }
 });
+
+/**
+ * Regression (Day 46 CI failure). The header gained a third control ("I'm
+ * overwhelmed"). At 400% zoom the row no longer fits, and because the brand
+ * could shrink to zero width while its link kept its own min-content width, the
+ * link's box was laid out on top of the controls beside it. The Day-25 focus
+ * walk caught exactly that: "a 'Manovia' under span.sm:hidden".
+ *
+ * The row may wrap now, and nothing in it may shrink below its content. This
+ * test is the general form of the finding: no two header controls may overlap,
+ * and every control's own centre must be its own topmost pixel — at the two
+ * widths the header is designed for, on the first two routes.
+ *
+ * It also pins the second half of the fix. A wrapped header is taller than the
+ * fixed `5.5rem` scroll padding used to be, and at 200% text the focus walk
+ * found "Start the GAD-7" underneath it. So this test runs at 200% text too and
+ * asserts that `scroll-padding-top` clears the header's measured height — the
+ * value `useStickyChromeMetrics` keeps current.
+ */
+test("header controls never overlap or cover each other, at 360px and at 400% zoom", async ({
+  browser,
+}) => {
+  for (const screen of [
+    { width: 360, height: 640, scale: 1, fontPx: null, label: "360x640" },
+    { width: 320, height: 200, scale: 4, fontPx: null, label: "400% zoom (320x200 @4x)" },
+    { width: 1280, height: 800, scale: 1, fontPx: 32, label: "text 200%" },
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width: screen.width, height: screen.height },
+      deviceScaleFactor: screen.scale,
+      baseURL: test.info().project.use.baseURL,
+    });
+    if (screen.fontPx !== null) {
+      // The reader's browser default font size (WCAG 1.4.4), applied exactly
+      // as the Day-25 zoom suite applies it.
+      await context.addInitScript((px) => {
+        document.addEventListener("DOMContentLoaded", () => {
+          const style = document.createElement("style");
+          style.textContent = `html { font-size: ${px}px !important; }`;
+          document.head.append(style);
+        });
+      }, screen.fontPx);
+    }
+    const page = await context.newPage();
+    await completeGuestOnboarding(page);
+
+    for (const path of ["/", "/chat"] as const) {
+      await openRoute(page, path, path === "/" ? "home-page" : null);
+      const problems = await page.evaluate(() => {
+        const found: string[] = [];
+        const controls = Array.from(
+          document.querySelectorAll<HTMLElement>("header a, header button, header select"),
+        ).filter((element) => element.getClientRects().length > 0);
+        const describe = (element: HTMLElement): string =>
+          `${element.tagName.toLowerCase()} "${(element.innerText || element.getAttribute("aria-label") || "").trim().slice(0, 24)}"`;
+        const boxes = controls.map((element) => ({
+          element,
+          name: describe(element),
+          box: element.getBoundingClientRect(),
+        }));
+
+        for (let i = 0; i < boxes.length; i += 1) {
+          for (let j = i + 1; j < boxes.length; j += 1) {
+            const a = boxes[i]!;
+            const b = boxes[j]!;
+            // A 1px tolerance: adjacent borders may share an edge.
+            const overlap =
+              a.box.left < b.box.right - 1 &&
+              b.box.left < a.box.right - 1 &&
+              a.box.top < b.box.bottom - 1 &&
+              b.box.top < a.box.bottom - 1;
+            if (overlap) {
+              found.push(`${a.name} overlaps ${b.name}`);
+            }
+          }
+        }
+
+        for (const { element, name, box } of boxes) {
+          // Off screen entirely is its own failure, reported plainly.
+          if (box.right <= 0 || box.left >= window.innerWidth) {
+            found.push(`${name} is off screen`);
+            continue;
+          }
+          const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
+          const y = Math.min(Math.max(box.top + box.height / 2, 0), window.innerHeight - 1);
+          const top = document.elementFromPoint(x, y);
+          if (top === null) {
+            found.push(`${name} has nothing at its centre`);
+            continue;
+          }
+          if (!element.contains(top) && !top.contains(element)) {
+            found.push(
+              `${name} is covered by ${top.tagName.toLowerCase()}.${top.className.toString().split(" ").slice(0, 2).join(".")}`,
+            );
+          }
+        }
+        return found;
+      });
+      expect(problems, `${screen.label} ${path}`).toEqual([]);
+
+      // Focus scrolling must clear the sticky header at whatever height this
+      // text size gives it, not at a constant that fitted before it wrapped.
+      const chrome = await page.evaluate(() => {
+        const headerHeight =
+          document.querySelector<HTMLElement>("header")?.getBoundingClientRect().height ?? 0;
+        const style = getComputedStyle(document.documentElement);
+        return {
+          headerHeight: Math.round(headerHeight),
+          paddingTop: parseFloat(style.scrollPaddingTop),
+          paddingBottom: parseFloat(style.scrollPaddingBottom),
+        };
+      });
+      expect(
+        chrome.paddingTop,
+        `${screen.label} ${path}: scroll-padding-top`,
+      ).toBeGreaterThanOrEqual(chrome.headerHeight);
+
+      if (path === "/") {
+        // The regression's own symptom, stated as the rule: the brand is the
+        // topmost thing at its centre, and "Need help now?" is still reachable.
+        // Scoped to the banner: the home page has its own "Need help now?"
+        // shortcut, and an unscoped role query matches both (strict mode).
+        await expect(page.getByRole("banner").getByRole("link", { name: "Manovia" })).toBeVisible();
+        await expect(
+          page.getByRole("banner").getByRole("button", { name: /Need help now/i }),
+        ).toBeVisible();
+      }
+    }
+    await context.close();
+  }
+});

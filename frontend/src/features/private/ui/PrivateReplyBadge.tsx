@@ -21,6 +21,7 @@
 import type { ReactElement } from "react";
 
 import type { ChatMetadata } from "@/features/chat/types";
+import { useSensory } from "@/features/sensory/SensoryProvider";
 
 import { PRIVATE_COPY } from "./copy";
 
@@ -52,8 +53,14 @@ export function PrivateReplyBadge({
   runtimeLabel = null,
   guardReplaced = false,
   timings = null,
-}: PrivateReplyBadgeProps): ReactElement {
+}: PrivateReplyBadgeProps): ReactElement | null {
+  const { overwhelmed } = useSensory();
   const crisis = metadata?.response_type === "crisis";
+  // When someone has asked for the simplest view, provenance metadata is one
+  // more line of chrome. It returns when the mode is turned off.
+  if (overwhelmed) {
+    return null;
+  }
   const stored = metadata?.persisted === true;
 
   return (

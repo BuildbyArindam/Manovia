@@ -3,13 +3,29 @@ import { Link } from "react-router-dom";
 import type { ReactElement } from "react";
 
 import { CrisisHelpButton } from "@/components/CrisisHelpButton";
+import { OverwhelmedButton } from "@/features/sensory/OverwhelmedButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t } from "@/lib/i18n/i18n";
 
 /**
- * The app header. Present on every route, and carrying the two controls that
- * matter at a glance: the language of the whole interface, and "Need help
- * now?", which is never more than one glance away.
+ * The app header. Present on every route, and carrying the controls that matter
+ * at a glance: "I'm overwhelmed", the language of the whole interface, and
+ * "Need help now?", which is never more than one glance away.
+ *
+ * Day 46 (CI fix): with three controls the row no longer fits a 320 px screen,
+ * and `min-w-0` on the brand let it shrink to nothing while its link kept its
+ * own width and painted over the controls beside it — which is what the Day-25
+ * focus check caught as "a 'Manovia' under span.sm:hidden". Nothing here
+ * shrinks below its content now: the row wraps, the controls take their own
+ * line when they must, and they stay in source order, so no control can ever be
+ * laid on top of another.
+ *
+ * The control group also caps itself at the row's own width (`max-w-full`).
+ * Without that cap it kept its max-content width — 386 px at 320 px — and,
+ * because a `shrink-0` item may not shrink, the *page* scrolled sideways instead
+ * of the buttons wrapping. With the cap it is the group that wraps its children.
+ * Its height therefore depends on the reader's text size, which is why
+ * `useStickyChromeMetrics` measures it and feeds `scroll-padding-top`.
  */
 export function Header(): ReactElement {
   return (
@@ -17,8 +33,8 @@ export function Header(): ReactElement {
       data-print="hide"
       className="app-header sticky top-0 z-30 border-b border-border bg-surface"
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <span className="flex min-w-0 items-center gap-2">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+        <span className="flex shrink-0 items-center gap-2">
           <Link
             to="/"
             className="inline-flex min-h-11 items-center rounded-lg font-serif text-lg font-semibold tracking-tight text-ink"
@@ -31,7 +47,8 @@ export function Header(): ReactElement {
             {t("app.betaLabel")}
           </span>
         </span>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-4">
+          <OverwhelmedButton />
           <LanguageSwitcher />
           <CrisisHelpButton openFromUrl />
         </div>

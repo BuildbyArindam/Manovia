@@ -32,6 +32,8 @@
     "settings": "Settings",
     "settingsHint": "Your choices",
     "meditation": "Meditations",
+    "calm": "Calm space",
+    "calmHint": "Sit still and breathe",
     "meditationHint": "Personalised calm, made now"
   },
   "language": {
@@ -1208,6 +1210,146 @@
       "entryMeta": "{{theme}} · {{minutes}} min · {{palette}}",
       "load": "Load",
       "remove": "Remove"
+    }
+  },
+  "sensory": {
+    "settings": {
+      "heading": "Sensory profile",
+      "lede": "Five choices about how much the interface does. They apply everywhere, and you can undo any of them here.",
+      "motionLegend": "Motion",
+      "soundLegend": "Sound",
+      "densityLegend": "Detail",
+      "coloursLegend": "Colours",
+      "fontLegend": "Text size",
+      "effective": "In force now: motion {{motion}}, sound {{sound}}, detail {{density}}.",
+      "openCalm": "Open the calm space",
+      "reset": "Reset to defaults",
+      "privacy": "These choices are saved in this browser only. They are not sent to Manovia's servers."
+    },
+    "motion": {
+      "normal": {
+        "label": "As designed",
+        "hint": "The slow breathing animation and gentle transitions."
+      },
+      "low": {
+        "label": "Low",
+        "hint": "No decorative loops or drifting; short fades only."
+      },
+      "none": {
+        "label": "None",
+        "hint": "Everything holds still. The breathing cue becomes text."
+      }
+    },
+    "sound": {
+      "low": {
+        "label": "Low",
+        "hint": "Soft sounds you start yourself, at a quiet volume."
+      },
+      "off": {
+        "label": "Off",
+        "hint": "Nothing plays. Sound controls stay visible but disabled."
+      }
+    },
+    "density": {
+      "standard": {
+        "label": "Standard",
+        "hint": "Explanations and hints stay visible."
+      },
+      "simple": {
+        "label": "Simple",
+        "hint": "Fewer secondary lines; headings and actions stay."
+      }
+    },
+    "colours": {
+      "calm": {
+        "label": "Calm",
+        "hint": "The warm, low-saturation palette."
+      },
+      "high-contrast": {
+        "label": "High contrast",
+        "hint": "Stronger borders and text, using the existing high-contrast palette."
+      }
+    },
+    "fontSize": {
+      "normal": {
+        "label": "Normal",
+        "hint": "Your browser's own text size."
+      },
+      "large": {
+        "label": "Large",
+        "hint": "About 12% larger."
+      },
+      "larger": {
+        "label": "Larger",
+        "hint": "About 25% larger."
+      }
+    },
+    "suggestion": {
+      "heading": "Would a simpler view help?",
+      "body": "A few recent check-ins were heavy and restless. You can hide charts and badges and keep just breathing, grounding, chat and help. It is a display change, and you can undo it any time.",
+      "try": "Use the simpler view",
+      "notNow": "Not now"
+    },
+    "overwhelmed": {
+      "heading": "A simpler view",
+      "body": "Charts, badges and extra detail are hidden. These four things are still here.",
+      "exit": "I feel steadier",
+      "breathe": "Breathe",
+      "breatheHint": "The calm space",
+      "ground": "Ground",
+      "groundHint": "Short exercises",
+      "talk": "Talk",
+      "talkHint": "Chat",
+      "help": "Get help",
+      "helpHint": "Helplines",
+      "toggleOff": "I'm overwhelmed",
+      "toggleOffShort": "Overwhelmed",
+      "toggleOn": "Feeling steadier",
+      "toggleOnShort": "Steadier"
+    }
+  },
+  "calm": {
+    "title": "Calm space",
+    "lede": "A seated, still place. Nothing here moves you around.",
+    "leave": "Leave",
+    "sceneHeading": "The calm scene",
+    "sceneDescription": "A still evening lake with low hills and a soft orb that slowly grows as you breathe in and settles as you breathe out.",
+    "breath": {
+      "in": "Breathe in",
+      "out": "Breathe out",
+      "rest": "Breathe at your own pace"
+    },
+    "start": "Start",
+    "pause": "Pause",
+    "resume": "Resume",
+    "soundEnable": "Turn sound on",
+    "soundDisable": "Turn sound off",
+    "soundDisabled": "Sound is off in your sensory profile. Settings → Sensory profile.",
+    "staticNote": "Motion is off, so the orb stays still. The words follow the breath instead.",
+    "break": {
+      "heading": "You've been here ten minutes.",
+      "body": "Take a break if you'd like. Nothing ends unless you choose it.",
+      "take": "Take a break",
+      "stay": "Keep going"
+    },
+    "xr": {
+      "heading": "VR",
+      "body": "If you have a headset and your browser supports WebXR, you can sit inside the same scene.",
+      "enter": "Enter VR",
+      "leave": "Leave VR",
+      "gesture": "Any controller button ends the session, in one press.",
+      "fallback": "VR isn't available in this browser, so this is the 2D calm space. Everything else works the same.",
+      "inside": "You're in VR. The page stays here for when you come back.",
+      "ended": "The VR session has ended. You're back in the 2D space.",
+      "failed": "VR could not start. The 2D calm space is still here.",
+      "noWebGL": "This browser could not start 3D drawing, so VR can't run. The 2D calm space is still here."
+    },
+    "safety": {
+      "heading": "Before you start",
+      "notRecommended": "VR is not recommended for everyone. Follow your headset maker's guidance, especially if you are pregnant, prone to motion sickness or migraine, have epilepsy or are sensitive to flashing light, or are below the age limit for the device.",
+      "seated": "This space is designed for sitting still. It never moves you.",
+      "stop": "Stop if you feel dizzy, sick or uncomfortable. One controller press leaves VR.",
+      "notTherapy": "This is a wellbeing feature, not a treatment or a medical device."
     }
   }
 }

@@ -344,6 +344,7 @@ export function PatternsView(): ReactElement {
             <div
               ref={board}
               role="group"
+              data-sensory="chart"
               aria-label="Interactive pattern graph"
               aria-describedby="graph-keys"
               className="relative h-96 w-full rounded-xl border border-border bg-surface"

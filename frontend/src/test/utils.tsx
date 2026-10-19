@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { OnboardingProvider } from "@/onboarding/OnboardingProvider";
 import { createQueryClient } from "@/lib/queryClient";
+import { SensoryProvider } from "@/features/sensory/SensoryProvider";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
 export interface RenderOptions {
@@ -21,14 +22,16 @@ export function renderWithProviders(
   const queryClient = options.queryClient ?? createQueryClient();
   const result = render(
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter
-          initialEntries={[options.route ?? "/"]}
-          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        >
-          <OnboardingProvider>{ui}</OnboardingProvider>
-        </MemoryRouter>
-      </QueryClientProvider>
+      <SensoryProvider>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter
+            initialEntries={[options.route ?? "/"]}
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+          >
+            <OnboardingProvider>{ui}</OnboardingProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </SensoryProvider>
     </ThemeProvider>,
   );
   return { ...result, queryClient };

@@ -22,6 +22,8 @@ import { greetingNow } from "@/features/plan/greeting";
 import { useMoodCheckIn } from "@/features/mood/useMood";
 import { FaceScale } from "@/features/mood/components/FaceScale";
 import { EnergyScale } from "@/features/mood/components/EnergyScale";
+import { recordCheckIn } from "@/features/sensory/arousal";
+import { SensorySuggestion } from "@/features/sensory/SensorySuggestion";
 
 export interface HomePageProps {
   /** Injectable for tests; the browser uses the shared client. */
@@ -43,6 +45,9 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
       return;
     }
     const result = await checkIn.mutateAsync({ valence, energy, emotions: [], factors: [] });
+    // Day 46: a local, timestamp-only count, so the optional "simpler view?"
+    // offer can notice a run of activated, unpleasant check-ins.
+    recordCheckIn({ valence, energy });
     // Day 25: offline, the check-in is queued on this device and sent later.
     setSaved(result.kind);
     setValence(null);
@@ -55,6 +60,8 @@ export function HomePage({ client }: HomePageProps = {}): ReactElement {
   return (
     <div className="space-y-6" data-testid="home-page">
       <PageHeader title={greeting.headline} lede={greeting.qualifier} />
+
+      <SensorySuggestion />
 
       <section
         aria-labelledby="quick-checkin-heading"

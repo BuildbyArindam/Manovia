@@ -171,10 +171,13 @@ describe("design tokens", () => {
 
   it("sets a 16px base font size and never smaller", () => {
     // Day 25: `max(100%, 16px)` — the reader's own browser font size (so text
-    // resize in browser settings works, WCAG 1.4.4), floored at 16px.
+    // resize in browser settings works, WCAG 1.4.4), floored at 16px. Day 46
+    // multiplies it by the sensory profile's scale, which can only be >= 1, so
+    // neither guarantee is weakened.
     const size = blockWithSelector("html")?.declarations.get("font-size");
-    expect(size).toBe("max(100%, 16px)");
-    expect(size).toContain("16px");
+    expect(size).toBe("calc(max(100%, 16px) * var(--manovia-font-scale, 1))");
+    expect(size).toContain("max(100%, 16px)");
+    expect(size).toContain("--manovia-font-scale, 1");
     // A fixed pixel size would ignore a larger default chosen by the reader.
     expect(size).not.toMatch(/^\d+px$/);
   });

@@ -35,6 +35,8 @@ import {
   MOOD_FACTORS,
   NOTE_MAX_CHARS,
 } from "../taxonomy";
+import { recordCheckIn } from "@/features/sensory/arousal";
+
 import { useMoodCheckIn, type MoodSubmitResult } from "../useMood";
 import { EnergyScale } from "./EnergyScale";
 import { FaceScale } from "./FaceScale";
@@ -84,6 +86,10 @@ export function MoodCheckInForm({ onSaved, client }: MoodCheckInFormProps): Reac
       },
       {
         onSuccess: (result) => {
+          // Day 46: a saved (or queued) check-in is a real check-in. Only a
+          // timestamp and the high-arousal boolean are kept, on this device,
+          // so the optional "simpler view?" offer can count them.
+          recordCheckIn({ valence, energy });
           onSaved(result);
         },
         onError: (error) => {
