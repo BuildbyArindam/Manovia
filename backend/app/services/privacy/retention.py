@@ -50,6 +50,7 @@ from app.models.mood import MoodEntry
 from app.models.plan import PlanItem
 from app.models.privacy import PrivacySetting
 from app.models.safety_event import SafetyEvent
+from app.models.share import ClinicianShare
 
 #: Tables that hold a person's own rows and carry ``created_at``. ``messages``
 #: is handled separately: it has no ``user_id``, so ownership comes through
@@ -63,6 +64,10 @@ _RETENTION_MODELS: tuple[tuple[str, Any], ...] = (
     ("exercise_completions", ExerciseCompletion),
     ("plan_items", PlanItem),
     ("safety_events", SafetyEvent),
+    # Day 47: share rows and their audit lines. Expiry makes a link stop working
+    # the moment it passes; this is what removes the ciphertext afterwards. The
+    # events cascade with the share by foreign key.
+    ("clinician_shares", ClinicianShare),
 )
 
 

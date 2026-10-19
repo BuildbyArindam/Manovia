@@ -45,6 +45,7 @@ from app.models.plan import PlanItem
 from app.models.privacy import DeletionReceipt, PrivacySetting
 from app.models.refresh_token import RefreshToken
 from app.models.safety_event import SafetyEvent
+from app.models.share import ClinicianShare, ShareAccessEvent, SharePreference
 from app.models.user import User
 from app.models.user_settings import UserSettings
 
@@ -64,6 +65,11 @@ USER_OWNED_MODELS: tuple[tuple[str, Any], ...] = (
     ("refresh_tokens", RefreshToken),
     ("user_settings", UserSettings),
     ("privacy_settings", PrivacySetting),
+    # Day 47: a share row is this person's decision about their own data, and the
+    # preference row is the switch itself. Both go when the account goes; the
+    # audit lines hang off the share by foreign key and cascade with it.
+    ("clinician_shares", ClinicianShare),
+    ("share_preferences", SharePreference),
 )
 
 
@@ -102,6 +108,12 @@ async def count_user_rows(session: AsyncSession, user_id: uuid.UUID) -> dict[str
     session_ids = select(ChatSession.id).where(ChatSession.user_id == user_id)
     messages = select(func.count()).select_from(Message).where(Message.session_id.in_(session_ids))
     counts["messages"] = int((await session.execute(messages)).scalar() or 0)
+    # Share audit lines have no user_id of their own: they belong to a share.
+    share_ids = select(ClinicianShare.id).where(ClinicianShare.user_id == user_id)
+    share_events = (
+        select(func.count()).select_from(ShareAccessEvent).where(ShareAccessEvent.share_id.in_(share_ids))
+    )
+    counts["share_access_events"] = int((await session.execute(share_events)).scalar() or 0)
     return counts
 
 

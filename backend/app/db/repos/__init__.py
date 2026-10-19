@@ -16,9 +16,13 @@ from app.db.repos.plans import PlanRepository
 from app.db.repos.refresh_tokens import RefreshTokenRepository
 from app.db.repos.safety import SafetyEventRepository
 from app.db.repos.settings import SettingsRepository
+from app.db.repos.shares import ACTOR_OWNER, ACTOR_SYSTEM, ACTOR_VIEWER, ShareRepository
 from app.db.repos.users import UserRepository
 
 __all__ = [
+    "ACTOR_OWNER",
+    "ACTOR_SYSTEM",
+    "ACTOR_VIEWER",
     "AssessmentRepository",
     "ChatRepository",
     "ConsentRepository",
@@ -29,5 +33,6 @@ __all__ = [
     "RefreshTokenRepository",
     "SafetyEventRepository",
     "SettingsRepository",
+    "ShareRepository",
     "UserRepository",
 ]
