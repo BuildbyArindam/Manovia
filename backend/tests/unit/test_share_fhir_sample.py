@@ -70,7 +70,9 @@ def _entry_of(bundle: dict[str, Any], kind: str) -> dict[str, Any]:
     raise AssertionError(f"the sample has no {kind}")
 
 
-def _failures(checker: ModuleType, bundle: dict[str, Any]) -> list[str]:
+def _failures(checker: ModuleType, bundle: Any) -> list[str]:
+    """`Any` on purpose: one test hands the checker a list to prove it refuses it."""
+
     return cast("list[str]", checker.check_bundle(bundle))
 
 
