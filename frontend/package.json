@@ -26,6 +26,7 @@
     "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
     "budget": "node scripts/check-bundle-budget.mjs",
     "lighthouse": "node scripts/lighthouse-ci.mjs",
+    "measure:frames": "node scripts/measure-frame-time.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "models:manifest": "node scripts/build-model-manifest.mjs",
     "models:pin": "node scripts/pin-models.mjs"
