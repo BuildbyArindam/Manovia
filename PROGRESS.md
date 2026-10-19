@@ -5,7 +5,8 @@
 Built and verified on 2026-10-19 on the Arena-pinned branch
 `arena/51d18eee-manovia` (the requested `day-46-immersive-webxr-calm-space`
 name cannot replace the session branch, same as Days 38–45). No main push, no
-merge. The pull request is opened and intentionally left unmerged.
+merge. [PR #54](https://github.com/BuildbyArindam/Manovia/pull/54) is open and
+intentionally unmerged.
 
 ### Completed
 
