@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiClient, MemoryTokenStore } from "@/lib/api";
+import { VECTOR_SECRET, VECTOR_TOKEN } from "@/test/sharingFakes";
 
 import {
   PUBLIC_SHARES,
@@ -79,8 +80,8 @@ const CREATE: CreateShareBody = {
 
 describe("share endpoints", () => {
   it("builds the link with the key in the fragment and nowhere else", () => {
-    const token = "Zk9xT7vLmQ2sRbNcWf1YdA";
-    const secret = "bWFub3ZpYS1zaGFyZS12ZWN0b3Itc2VjcmV0LWtleSE";
+    const token = VECTOR_TOKEN;
+    const secret = VECTOR_SECRET;
     expect(sharePath(token)).toBe(`/s/${token}`);
     expect(shareUrl(token, secret)).toBe(`/s/${token}#k=${secret}`);
     expect(shareUrl(token, secret, "https://manovia.app")).toBe(

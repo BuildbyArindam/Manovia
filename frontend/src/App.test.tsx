@@ -17,6 +17,7 @@ import { fetchCrisisResources } from "@/lib/endpoints";
 import { TEST_RESPONSE } from "@/test/crisisFixtures";
 import { ONBOARDING_STORAGE_KEY } from "@/onboarding/storage";
 import { stubMatchMedia } from "@/test/matchMedia";
+import { VECTOR_SECRET, VECTOR_TOKEN } from "@/test/sharingFakes";
 
 vi.mock("@/lib/endpoints", { spy: true });
 
@@ -182,9 +183,7 @@ describe("App", () => {
   it("renders the public share viewer with no account and no shell", async () => {
     // Deliberately *not* calling completeOnboarding(): a professional opening a
     // shared link has no Manovia account and must not be asked to make one.
-    const token = "vectorToken0123456789";
-    const key = "bWFub3ZpYS1zaGFyZS12ZWN0b3Itc2VjcmV0LWtleSE";
-    renderApp(`/s/${token}#k=${key}`);
+    renderApp(`/s/${VECTOR_TOKEN}#k=${VECTOR_SECRET}`);
 
     expect(await screen.findByTestId("share-viewer-page")).toBeInTheDocument();
     // No onboarding flow and none of the shell's chrome: no primary navigation

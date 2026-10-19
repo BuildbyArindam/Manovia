@@ -1,0 +1,51 @@
+# Gitleaks configuration.
+#
+# gitleaks looks for `.gitleaks.toml` in the scanned directory before falling
+# back to its built-in defaults (cmd/root.go: "4. (target path)/.gitleaks.toml"),
+# and the `secrets-scan` CI job runs `gitleaks detect` from the repository root
+# without `--config`, so this file is what that job uses.
+#
+# It extends the default rule set unchanged — every rule the scan applied before
+# this file existed still applies — and adds exactly one allowlist, for the
+# Day 47 share test vectors. See the comment on it for why an allowlist is the
+# right answer rather than deleting the values.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """
+Day 47 share test vectors: synthetic cryptographic material that has to be a
+stable literal.
+
+Two kinds of value are covered.
+
+1. `frontend/src/features/sharing/testSupport/` — generated fixtures holding a
+   secret, a derived key and real AES-GCM ciphertexts produced by
+   `backend/app/services/sharing/crypto.py`. The frontend tests derive the key
+   from the fixture's secret and passcode and decrypt the fixture's ciphertexts,
+   which is the proof that the TypeScript HKDF/AES-GCM path agrees with the
+   Python one byte for byte. A parity vector cannot be randomised per run, so the
+   values are committed, high-entropy and — to a regex scanner — indistinguishable
+   from leaked credentials. They protect nothing: the secret decodes to a phrase,
+   and the ciphertexts were produced in a throwaway test database.
+
+2. Three literals that appear in test source (a vector secret, the key derived
+   from it, and a token-shaped string). They are allowlisted by exact value rather
+   than by path so that the files containing them keep being scanned for anything
+   else.
+
+Nothing else is allowlisted: no path, no rule and no commit is exempted, and the
+scan still covers every other file and every other rule.
+"""
+paths = ['''frontend/src/features/sharing/testSupport/''']
+regexes = [
+  # base64url of "manovia-share-vector-secret-key!" — the cross-language vector's
+  # URL secret, in frontend/src/features/sharing/crypto.test.ts.
+  '''^bWFub3ZpYS1zaGFyZS12ZWN0b3Itc2VjcmV0LWtleSE$''',
+  # the key Python's derive_key() produces from that secret, passcode "483920" and
+  # token "vectorToken0123456789"; the TypeScript derivation is asserted to match.
+  '''^f9349a15e94dd7e149f33b5abd6e6cc1a3e1b803533610c3912089a92e516eb3$''',
+  # a token-shaped literal used to assert URL building and export scrubbing.
+  '''^Zk9xT7vLmQ2sRbNcWf1YdA$''',
+]

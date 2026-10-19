@@ -501,10 +501,14 @@ async def test_a_share_is_exported_as_decisions_not_as_its_document(
 
     from app.models.enums import ShareCipher, ShareEventKind
     from app.models.share import ClinicianShare, ShareAccessEvent
+    from app.services.sharing import crypto
 
     person = await guest(client, kinds=("terms", "privacy"))
     plaintext = b'{"note": "Export sentinel: the document itself must not appear."}'
-    token = "Zk9xT7vLmQ2sRbNcWf1YdA"
+    # A real token, generated rather than typed: the point of the test is that a
+    # token-shaped string cannot leak into the archive, so it should have the
+    # shape the product actually produces.
+    token = crypto.new_token()
     share = ClinicianShare(
         id=uuid.uuid4(),
         user_id=person.id,
