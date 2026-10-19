@@ -92,6 +92,8 @@ formats: ['pdf', 'fhir']
 items: ['mood_trend', 'assessments', 'thought_records', 'exercise_helpfulness',
         'note', 'questions', 'identity']
 document_bytes: {'payload': 3591, 'pdf': 6056, 'fhir': 30367}
+              (the fhir document is 30493 since the narrative fix — see
+               "Re-measured on 2026-10-20" at the end of §8)
 warning: Save this link now. The key is part of it and is not stored anywhere:
          no one — not you, not us — can open this share later from the link alone.
 ```
@@ -110,6 +112,7 @@ pdf_ciphertext:     bytes, 6072 bytes, hex[:16]=a534cc9483832af9…
 fhir_ciphertext:    bytes, 30383 bytes, hex[:16]=0ff4dbd01b892401…
 payload_nonce: 12 bytes (7a151b6f…)
 plaintext sizes from the create response: {'payload': 3591, 'pdf': 6056, 'fhir': 30367}
+  (superseded for fhir only: 30493 plaintext / 30509 ciphertext since b2bcf1e)
 ciphertext − plaintext: {'payload': 16, 'pdf': 16, 'fhir': 16}   (16 bytes = the GCM tag)
 cipher: A256GCM   token_hash[:8]: e404dd63…   token_prefix: eiyZQaSi
 passcode_hash: bytes, 32 bytes   passcode_salt: 16 bytes
@@ -162,7 +165,7 @@ derivation is run through the Python implementation the vector was made with:
 
 ```
 derived key material (first 8 hex chars): 96164251…   (32 bytes, never sent to the server)
-payload: 3591 bytes decrypted     pdf: 6056 bytes     fhir: 30367 bytes
+payload: 3591 bytes decrypted     pdf: 6056 bytes     fhir: 30367 bytes (now 30493)
 generated_at: 2026-10-19 20:23:03+00:00   window_days: 30
 disclaimer_title: 'Patient-generated, not a diagnosis'
 counts: {'identity': 1, 'mood_check_ins': 6, 'assessments': 2, 'thought_records': 1,
@@ -212,7 +215,7 @@ Helvetica cannot draw.
 ## 8. The FHIR bundle and its codes
 
 ```
-fhir: 30367 bytes, resourceType=Bundle, type=document, 16 entries
+fhir: 30367 bytes (30493 since b2bcf1e), resourceType=Bundle, type=document, 16 entries
 identifier: {'system': 'https://manovia.app/fhir/share-bundle', 'value': '<share id>'}
 timestamp: 2026-10-19T20:23:03Z
 entry order: first=Composition last=Provenance
@@ -348,6 +351,56 @@ performed against the base questionnaire` on both QuestionnaireResponses —
 Questionnaire resource and Manovia publishes none, so the element is omitted
 rather than invented — and `'text/plain' could not be validated` on attachment
 content types, which likewise needs a terminology server.
+
+### Re-measured on 2026-10-20, after the narrative fix
+
+Everything above was recorded before `b2bcf1e` moved the QuestionnaireResponse
+disclaimer out of the illegal `note` element and into `text` narrative, which
+changed the FHIR document's size. So the whole walk-through was run again
+end-to-end through the API on the fixed code — register, switch on, seed a month
+of entries, preview, create with every item ticked, open twice anonymously,
+decrypt, read the audit, revoke everything. Every structural fact came back
+identical; only the FHIR sizes moved:
+
+```
+document_bytes: {'payload': 3591, 'pdf': 6056, 'fhir': 30493}     (fhir was 30367)
+stored ciphertext: payload 3607 B, pdf 6072 B, fhir 30509 B
+ciphertext − plaintext: {'payload': 16, 'pdf': 16, 'fhir': 16}     (unchanged: GCM tag)
+nonces 12 B each; derived key 32 B; passcode_hash 32 B; passcode_salt 16 B
+consent_sha256 7860bdc5…   (unchanged — the nine consent lines did not move)
+token 22 chars, secret 43 chars, 6-digit passcode, view_limit 5, formats ['pdf','fhir']
+expires_at = create + 7 days exactly
+row: 23 columns; columns whose name contains 'key': []; contains 'secret': []
+searched the whole row for the note text, a question, the raw token, the secret,
+  the passcode and 'atient-generated' → none of them present
+anonymous opens: 200, views_remaining 5 → 4 → 3, algorithm A256GCM,
+  key_derivation sentence and disclaimer_title 'Patient-generated, not a diagnosis'
+QuestionnaireResponse ×2: text narrative present, `note` absent, narrative
+  contains 'Patient-generated'
+bundle: type=document, 16 entries, first Composition, last Provenance, sections
+  ['Mood summary', 'Screening history', 'Thought records', 'Exercise helpfulness',
+   'Note for the appointment', 'Questions to ask']
+Observations: mood-summary|mean-valence 3.0 / mean-energy 3.5 / check-in-count 6
+  (unit '1'), loinc.org|70274-6 value 9 and loinc.org|44261-6 value 12 (unit
+  '{score}'), all category ['survey'], all status final
+Provenance: agents author → Patient and assembler → Device, 15 targets
+PDF: 6056 bytes, 106 non-blank text lines, line 1 is the banner; the phrase
+  'Patient-generated, not a diagnosis' appears 4 times — the boxed banner and the
+  document title on page 1, and the footer on each of the 2 pages
+audit: 'Opened 2 times of 5 allowed.', counts {'created': 1, 'opened': 2},
+  3 stored rows, columns ['id', 'share_id', 'kind', 'actor', 'created_at']
+revoke-all: {'revoked': 1, 'ids': ['771584ec-…']}, then GET /api/v1/public/shares/<token>
+  → 404 and POST …/open → 404
+```
+
+Two honest footnotes on these numbers. The PDF's size moves by a byte or two
+between runs (6058 in one of three, 6056 in the other two) because the page
+carries `Prepared <YYYY-MM-DD HH:MM UTC>` and zlib compresses different digits to
+slightly different lengths; the FHIR document is stable at 30493, and the
+committed sample is that plus the trailing newline the export script writes —
+30494, which is what `wc -c` reports. And this re-run was a throwaway pytest file
+that printed the transcript and was then deleted: the permanent assertions behind
+every line above are the 226 share tests, not this script.
 
 ## 9. Security scenarios
 

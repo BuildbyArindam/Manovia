@@ -33,7 +33,7 @@ Reference: [docs/clinical-sharing.md](docs/clinical-sharing.md). Decisions:
   persistent identifier, 16 entries for a full selection (6 Observations, 2
   QuestionnaireResponses, 4 inline `text/plain` DocumentReferences, Patient,
   Device). Measured on a real share: payload 3 591 B, PDF 6 056 B (2 pages),
-  bundle 30 367 B.
+  bundle 30 493 B (30 367 B before the QuestionnaireResponse narrative fix).
 - **Verified terminology.** PHQ-9 total `44261-6`
   (<https://loinc.org/44261-6>) and GAD-7 total `70274-6`
   (<https://loinc.org/70274-6>), read off loinc.org on 2026-10-19 and pinned
