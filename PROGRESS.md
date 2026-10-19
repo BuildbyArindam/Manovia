@@ -6,6 +6,8 @@ Built and verified on 2026-10-20 on the Arena-pinned branch
 `arena/52032e59-manovia` (the requested
 `day-47-clinician-share-bridge-consented` name cannot replace the session
 branch, same as Days 38–46). No main push, no merge.
+[PR #55](https://github.com/BuildbyArindam/Manovia/pull/55) is open and
+intentionally unmerged.
 
 Reference: [docs/clinical-sharing.md](docs/clinical-sharing.md). Decisions:
 [ADR 0047](docs/adr/0047-clinician-share-bridge.md). Evidence:
