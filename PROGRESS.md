@@ -72,7 +72,22 @@ merge. The pull request is opened and intentionally left unmerged.
 - **Budget:** `/calm` adds **5.8 KB gzip** (25 KB route budget); precache
   **674.0 KB** of the 800 KB allowance; 36 triangles; under 80 KB of TypeScript
   in the feature (source-level test).
-- **Tests:** see the final numbers below, run at the end of the day.
+- **Final frontend run:** `npx vitest run` — **2852 passed, 3 skipped** (127 test
+  files passed, 1 skipped, 181.9 s). `npx tsc --noEmit` clean, `npx eslint .`
+  clean, `npm run build` OK, `npm run budget` **met** (initial JS 123.7 KB gzip,
+  precache 674.0 KB of 800 KB, slowest route `/insights` 247.1 KB).
+- **Final backend run** (untouched by Day 46, run for the record):
+  `.venv/bin/python -m pytest -q` — **5113 passed, 4 skipped** (260.2 s);
+  `ruff check` + `ruff format --check` clean (408/427 files); `mypy app` clean
+  (195 source files).
+- **`npm run format:check` fails on 36 files that predate this branch**
+  (biofeedback and meditation sources, two chat components,
+  `scripts/playwrightFailures.test.ts`). Left alone deliberately; every file
+  this branch adds or touches is Prettier-clean.
+- The app was started for the preview (`uvicorn` on :8000 with
+  `LLM_PROVIDER=fake`, SQLite, migrations applied; Vite on :5173 proxying
+  `/api`), and `/` and `/calm` returned 200 with `/api/v1/ready` reporting
+  `ready`.
 - Full command output, the comfort checklist and the sandbox boundary are in
   [`docs/verification/day46-xr-sensory.md`](docs/verification/day46-xr-sensory.md).
 
