@@ -111,7 +111,9 @@ async def count_user_rows(session: AsyncSession, user_id: uuid.UUID) -> dict[str
     # Share audit lines have no user_id of their own: they belong to a share.
     share_ids = select(ClinicianShare.id).where(ClinicianShare.user_id == user_id)
     share_events = (
-        select(func.count()).select_from(ShareAccessEvent).where(ShareAccessEvent.share_id.in_(share_ids))
+        select(func.count())
+        .select_from(ShareAccessEvent)
+        .where(ShareAccessEvent.share_id.in_(share_ids))
     )
     counts["share_access_events"] = int((await session.execute(share_events)).scalar() or 0)
     return counts

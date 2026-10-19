@@ -187,9 +187,7 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     )
     # Day 47: the public share-viewer endpoints are unauthenticated by design,
     # so they get their own, much tighter budget than the global one.
-    app.state.rate_limit_share = InMemoryRateLimiter(
-        app_settings.share_rate_limit_per_minute
-    )
+    app.state.rate_limit_share = InMemoryRateLimiter(app_settings.share_rate_limit_per_minute)
 
     # Emotion analysis (Day 6). Built here so one chain (and one model load,
     # and one result cache) is shared by every request. Nothing is loaded

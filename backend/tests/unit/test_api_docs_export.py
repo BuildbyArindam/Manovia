@@ -91,7 +91,13 @@ def test_every_schema_operation_is_documented(
     # 74 after the Day-45 meditation routes
     # (GET /meditation/themes, POST /meditation/scripts,
     # POST /meditation/audio, POST /meditation/audio/captions).
-    assert len(operations) == 74
+    # 86 after the Day-47 clinician-share bridge: ten owner routes
+    # (GET /shares/options, GET|POST /shares/preferences, POST /shares/preview,
+    # POST /shares, GET /shares, POST /shares/revoke-all, GET /shares/{share_id},
+    # GET /shares/{share_id}/audit, POST /shares/{share_id}/revoke) and two
+    # anonymous viewer routes (GET /public/shares/{token},
+    # POST /public/shares/{token}/open).
+    assert len(operations) == 86
     for path, method in operations:
         row = f"| `{method.upper()}` | `{path}` |"
         assert row in markdown, f"missing from api.md: {method.upper()} {path}"
@@ -114,6 +120,15 @@ def test_session_requirement_is_derived_from_the_routes(exporter: ModuleType) ->
     assert sessions[("/api/v1/privacy/export", "get")] == "yes"
     # Sending a chat message needs the signed-in user and the consent gate.
     assert sessions[("/api/v1/chat/sessions/{session_id}/messages", "post")] == "yes + consent"
+    # Day 47: the two halves of the share bridge sit on opposite sides of the
+    # auth boundary. Making a link needs the privacy agreement (data is leaving
+    # the app); opening one needs nothing but the link and its passcode, because
+    # the person opening it is a professional with no Manovia account.
+    assert sessions[("/api/v1/shares", "post")] == "yes + consent"
+    assert sessions[("/api/v1/shares/{share_id}/audit", "get")] == "yes + consent"
+    assert sessions[("/api/v1/shares/revoke-all", "post")] == "yes + consent"
+    assert sessions[("/api/v1/public/shares/{token}", "get")] == "no"
+    assert sessions[("/api/v1/public/shares/{token}/open", "post")] == "no"
 
 
 def test_metrics_endpoint_is_not_in_the_published_reference(exporter: ModuleType) -> None:

@@ -218,7 +218,9 @@ async def test_a_wrong_passcode_never_decrypts_anything(
         derive_key(created), plaintext, aad=share_aad(created["token"], "payload")
     )
     with pytest.raises(crypto.ShareDecryptError):
-        crypto.decrypt_document(wrong_key, ciphertext, nonce, aad=share_aad(created["token"], "payload"))
+        crypto.decrypt_document(
+            wrong_key, ciphertext, nonce, aad=share_aad(created["token"], "payload")
+        )
     assert len(created["passcode"]) >= GENERATED_DIGITS
 
 
@@ -246,7 +248,9 @@ async def test_a_revoked_link_stops_immediately_and_the_attempt_is_audited(
         status = await client.get(f"{PUBLIC}/{token}")
         assert status.status_code == 404
         assert status.json()["error"]["code"] == UNAVAILABLE_CODE
-        refused = await client.post(f"{PUBLIC}/{token}/open", json={"passcode": created["passcode"]})
+        refused = await client.post(
+            f"{PUBLIC}/{token}/open", json={"passcode": created["passcode"]}
+        )
         assert refused.status_code == 404
         assert refused.json()["error"]["message"] == UNAVAILABLE_MESSAGE
 
@@ -293,8 +297,13 @@ async def test_tampering_with_the_ciphertext_is_detected_and_gives_no_oracle(
         ("all zeroes of the same length", bytes(len(raw))),
     ]
     for label, altered in tampered:
-        with pytest.raises(crypto.ShareDecryptError):
+        accepted = False
+        try:
             crypto.decrypt_document(key, altered, nonce, aad=aad)
+            accepted = True
+        except crypto.ShareDecryptError:
+            pass
+        assert not accepted, label
 
     # A fresh nonce for the same ciphertext fails the same way, with the same
     # single exception type: there is no "wrong nonce" vs "wrong key" vs
@@ -582,7 +591,7 @@ def test_redact_path_replaces_the_share_token_and_leaves_other_paths_alone() -> 
 
 @pytest.mark.asyncio
 async def test_the_deployment_can_turn_the_whole_bridge_off(
-    client_factory: Callable[..., httpx.AsyncClient]
+    client_factory: Callable[..., httpx.AsyncClient],
 ) -> None:
     """With SHARE_ENABLED=false the routes do not exist at all: 404, not 403."""
 
@@ -614,7 +623,9 @@ async def test_the_service_refuses_every_unusable_link_the_same_way(
     token = created["token"]
     passcode = created["passcode"]
 
-    assert (await client.post(f"{PUBLIC}/{token}/open", json={"passcode": passcode})).status_code == 200
+    assert (
+        await client.post(f"{PUBLIC}/{token}/open", json={"passcode": passcode})
+    ).status_code == 200
 
     with pytest.raises(ShareUnavailableError):
         await service.open_public(token, passcode)

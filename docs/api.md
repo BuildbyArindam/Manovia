@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **1.0.0** · 74 operations across 64 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **1.0.0** · 86 operations across 74 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -39,6 +39,8 @@ Manovia API **1.0.0** · 74 operations across 64 paths. The machine-readable sch
 - [Agent](#agent)
 - [Meditation](#meditation)
 - [Voice](#voice)
+- [Sharing](#sharing)
+- [Sharing-Public](#sharing-public)
 
 ## Health and readiness
 
@@ -210,6 +212,28 @@ These routes exist only when `APP_ENV` is not `production`. They are for local d
 | `POST` | `/api/v1/voice/transcribe` | Transcribe | yes | 200, 422 | Day 39 compatibility endpoint; live audio uses the documented WebSocket runtime. |
 | `GET` | `/api/v1/voice/voices` | Get Voices | yes | 200 | List reviewed local language choices without exposing model paths. |
 | `POST` | `/api/v1/voice/synthesize` | Synthesize | yes | 200, 422 | Legacy local TTS endpoint; sentence streaming uses the WebSocket runtime. |
+
+## Sharing
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/shares/options` | Share Options | yes + consent | 200 | The catalogue, the defaults, and the entries that can be selected. |
+| `GET` | `/api/v1/shares/preferences` | Get Share Preference | yes + consent | 200 | Read the switch (no row yet means off). |
+| `POST` | `/api/v1/shares/preferences` | Set Share Preference | yes + consent | 200, 422 | Turn sharing on or off. Off by default; turning it on is the person's act. |
+| `POST` | `/api/v1/shares/preview` | Preview Share | yes + consent | 200, 422 | Build the document without storing it, so the person can read it first. |
+| `GET` | `/api/v1/shares` | List Shares | yes + consent | 200 | The person's own links, newest first. |
+| `POST` | `/api/v1/shares` | Create Share | yes + consent | 201, 422 | Create one time-limited, passcode-protected, encrypted share link. |
+| `POST` | `/api/v1/shares/revoke-all` | Revoke All Shares | yes + consent | 200 | One click: every live link stops working. |
+| `GET` | `/api/v1/shares/{share_id}` | Share Detail | yes + consent | 200, 422 | One link, with its open count. |
+| `GET` | `/api/v1/shares/{share_id}/audit` | Share Audit | yes + consent | 200, 422 | The audit log the owner can read: what happened, and when. |
+| `POST` | `/api/v1/shares/{share_id}/revoke` | Revoke Share | yes + consent | 200, 422 | Revoke one link. Idempotent. |
+
+## Sharing-Public
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/public/shares/{token}` | Share Status | no | 200, 422 | Is this link usable, and what will it ask for? |
+| `POST` | `/api/v1/public/shares/{token}/open` | Open Share | no | 200, 422 | Hand over the ciphertext, or refuse. |
 
 ## Regenerating
 

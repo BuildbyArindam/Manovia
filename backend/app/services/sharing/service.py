@@ -40,7 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.db.repos import ACTOR_OWNER, ACTOR_VIEWER, ShareRepository
-from app.models.base import utcnow
+from app.models.base import as_utc, utcnow
 from app.models.enums import ShareCipher, ShareEventKind, ShareFormat, ShareItem
 from app.models.share import ClinicianShare, ShareAccessEvent, SharePreference, share_aad
 from app.models.user import User
@@ -127,15 +127,41 @@ class ShareRequestError(ShareError):
     """A create request the settings refuse (bad TTL, bad view limit, no format)."""
 
 
+#: How the viewer derives the content key, spelled out with every parameter.
+#:
+#: Built from the crypto module's own constants so the sentence cannot drift from
+#: the code: WebCrypto's HKDF needs the salt, the info and the length, and a
+#: browser implementer who guesses the info string gets a different key and an
+#: unhelpful "decryption failed".
+_HKDF_INFO_TEXT = crypto.HKDF_INFO.decode("ascii")
+KEY_DERIVATION = (
+    "HKDF-SHA256(ikm = url_key || 0x00 || utf8(passcode), "
+    f'salt = SHA-256(token), info = "{_HKDF_INFO_TEXT}", '
+    f"length = {crypto.KEY_BYTES} bytes)"
+)
+
+#: The Associated Data format, stated once. The viewer receives each document's
+#: AAD explicitly (see :class:`EncryptedDocument`) rather than rebuilding this
+#: string in a second language.
+AAD_FORMAT = "manovia.share.v1.{token}.{document}"
+
+
 @dataclass(frozen=True)
 class EncryptedDocument:
-    """One document as the viewer receives it: ciphertext, nonce, and how to read it."""
+    """One document as the viewer receives it: ciphertext, nonce, and how to read it.
+
+    ``aad`` is not a secret — Associated Data is a binding, and the token is
+    already in the URL. Sending it means the browser decrypts with the exact
+    bytes the server authenticated, instead of holding a second copy of the
+    format string that could silently disagree.
+    """
 
     name: str
     ciphertext: str
     nonce: str
     algorithm: str
     content_type: str
+    aad: str
 
 
 @dataclass(frozen=True)
@@ -366,8 +392,7 @@ class ShareService:
         total = sum(len(value) for value in documents.values())
         if total > self._settings.share_max_document_bytes:
             raise ShareLimitError(
-                "That selection makes too large a document. Share fewer items, "
-                "or a shorter window."
+                "That selection makes too large a document. Share fewer items, or a shorter window."
             )
 
         encrypted: dict[str, tuple[bytes, bytes]] = {
@@ -503,8 +528,10 @@ class ShareService:
 
         share = await self._resolve(token, log_refusals=True)
         if share.is_locked:
+            # ``as_utc`` because a database that stores naive timestamps (SQLite
+            # in the tests) hands back a naive ``locked_until``.
             retry_after = (
-                int((share.locked_until - utcnow()).total_seconds())
+                int((as_utc(share.locked_until) - utcnow()).total_seconds())
                 if share.locked_until
                 else self._settings.share_lockout_seconds
             )
@@ -517,9 +544,7 @@ class ShareService:
             locked_until = (
                 utcnow() + timedelta(seconds=self._settings.share_lockout_seconds) if lock else None
             )
-            await self._repo.register_passcode_failure(
-                share, lock=lock, locked_until=locked_until
-            )
+            await self._repo.register_passcode_failure(share, lock=lock, locked_until=locked_until)
             await self._repo.log(
                 share.id,
                 ShareEventKind.LOCKED if lock else ShareEventKind.PASSCODE_FAILED,
@@ -537,9 +562,7 @@ class ShareService:
         # "times the document was handed out". The claim is still one atomic
         # UPDATE, so two simultaneous correct opens hand out one document.
         if not await self._repo.claim_view(share.id):
-            await self._repo.log(
-                share.id, ShareEventKind.VIEW_LIMIT_REACHED, actor=ACTOR_VIEWER
-            )
+            await self._repo.log(share.id, ShareEventKind.VIEW_LIMIT_REACHED, actor=ACTOR_VIEWER)
             raise ShareUnavailableError("This link has reached its view limit.")
 
         await self._repo.clear_passcode_failures(share)
@@ -553,6 +576,7 @@ class ShareService:
                 nonce=crypto.encode_bytes(nonce),
                 algorithm=share.cipher.value,
                 content_type=CONTENT_TYPES[name],
+                aad=share_aad(token, name).decode("utf-8"),
             )
             for name, ciphertext, nonce in self._stored_documents(share)
         ]
@@ -565,7 +589,7 @@ class ShareService:
             formats=[member.value for member in share.format_list()],
             items=[member.value for member in share.item_list()],
             algorithm=share.cipher.value,
-            key_derivation="HKDF-SHA256(url_key || 0x00 || passcode, salt = SHA-256(token))",
+            key_derivation=KEY_DERIVATION,
             disclaimer_title=DISCLAIMER_TITLE,
             disclaimer=DISCLAIMER,
             documents=documents,
@@ -642,6 +666,7 @@ def documents_as_json(share: PublicShare) -> dict[str, Any]:
                 "nonce": document.nonce,
                 "algorithm": document.algorithm,
                 "content_type": document.content_type,
+                "aad": document.aad,
             }
             for document in share.documents
         ],
@@ -659,9 +684,11 @@ def parse_payload(raw: bytes) -> SharePayload:
 
 
 __all__ = [
+    "AAD_FORMAT",
     "CONTENT_TYPES",
     "DISCLAIMER",
     "DISCLAIMER_TITLE",
+    "KEY_DERIVATION",
     "SHARE_PATH_PREFIX",
     "ConsentMismatchError",
     "CreateOptions",

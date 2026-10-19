@@ -305,9 +305,7 @@ async def test_created_share_returns_the_key_once_and_stores_only_ciphertext(
 
     session.expire_all()
     row = (await session.execute(select(ClinicianShare))).scalars().one()
-    stored = {
-        column.name: getattr(row, column.name) for column in row.__table__.columns
-    }
+    stored = {column.name: getattr(row, column.name) for column in row.__table__.columns}
     assert row.token_hash == crypto.hash_token(body["token"])
     assert body["token"] not in json.dumps(stored, default=str), (
         "the raw token must not be stored anywhere on the row"

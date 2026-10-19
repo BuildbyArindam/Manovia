@@ -33,7 +33,6 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.deps import SessionDep
-from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ratelimit import InMemoryRateLimiter
 from app.services.sharing.passcode import PASSCODE_MAX_LENGTH
@@ -114,7 +113,6 @@ async def _share_rate_limit(request: Request) -> None:
     design and are exactly the ones somebody would script.
     """
 
-    settings: Settings = request.app.state.settings
     limiter: InMemoryRateLimiter | None = getattr(request.app.state, "rate_limit_share", None)
     if limiter is None:
         return

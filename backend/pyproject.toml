@@ -248,6 +248,16 @@ disallow_subclassing_any = false
 # which stopped mypy from using numpy's real stubs everywhere and broke
 # previously-clean modules (rag/store.py) under CI's Python 3.12 — numpy
 # must stay fully typed.
+# Day 47: reportlab renders the printable share summary. It ships no inline
+# types and no stub package is a dependency here (types-reportlab covers only
+# part of platypus), so the drawing calls are treated as Any — the shapes that
+# matter are asserted in tests/unit/test_share_pdf.py instead.
+[[tool.mypy.overrides]]
+module = ["reportlab.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_subclassing_any = false
+
 [[tool.mypy.overrides]]
 module = ["onnxruntime.*", "onnxruntime", "onnx.*", "onnx"]
 ignore_missing_imports = true

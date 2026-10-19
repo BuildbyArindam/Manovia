@@ -63,7 +63,7 @@ def share_aad(token: str, document: str) -> bytes:
     reader that disagree about the spelling fail at read time, not at build time.
     """
 
-    return f"manovia.share.v1.{token}.{document}".encode("utf-8")
+    return f"manovia.share.v1.{token}.{document}".encode()
 
 
 class ClinicianShare(Base, CreatedAtMixin):

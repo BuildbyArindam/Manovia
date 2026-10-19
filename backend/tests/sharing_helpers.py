@@ -148,7 +148,9 @@ async def seed_entries(session: AsyncSession, user: User) -> uuid.UUID:
             },
         )
     )
-    for offset, pre, post in ((12, 4, 2), (6, 4, 2), (2, 3, 2)):
+    # Ratings improve: on this scale (1 very low, 5 very good) an increase is the
+    # helpful direction, which is what makes "most helped by" a true sentence.
+    for offset, pre, post in ((12, 2, 4), (6, 2, 4), (2, 3, 4)):
         session.add(
             ExerciseCompletion(
                 user_id=user.id,
@@ -211,7 +213,7 @@ async def create_share(
         payload["expires_in_days"] = expires_in_days
     created = await client.post(API, headers=headers, json=payload)
     assert created.status_code == 201, created.text
-    return created.json()
+    return _as_dict(created.json())
 
 
 async def prepared_share(
@@ -286,7 +288,119 @@ def payload_of(raw: bytes) -> SharePayload:
 def bundle_of(raw: bytes) -> dict[str, Any]:
     """The decrypted FHIR bundle as JSON."""
 
-    return json.loads(raw.decode("utf-8"))
+    return _as_dict(json.loads(raw.decode("utf-8")))
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    """Narrow ``json.loads``/``Response.json()`` output to the dict these return."""
+
+    assert isinstance(value, dict)
+    return value
+
+
+def sample_payload(**overrides: Any) -> SharePayload:
+    """A full, realistic payload for the dependency-free unit tests.
+
+    Everything the PDF and the FHIR builder can be asked to render is present,
+    so a test can override one field (``sample_payload(note=None)``) and still
+    have a document to look at. The numbers match the entries
+    :func:`seed_entries` writes, so the two suites describe the same person.
+    """
+
+    from app.models.enums import AssessmentInstrument
+    from app.services.sharing.items import (
+        DIRECTION_NOTE,
+        AssessmentShare,
+        ExerciseHelpfulness,
+        ExerciseHelpfulnessRow,
+        LabelCount,
+        MoodTrendSummary,
+        ThoughtRecordShare,
+    )
+    from app.services.sharing.terminology import loinc_for
+
+    now = datetime(2026, 10, 19, 12, 0, tzinfo=UTC)
+    phq9 = loinc_for(AssessmentInstrument.PHQ9)
+    gad7 = loinc_for(AssessmentInstrument.GAD7)
+    values: dict[str, Any] = {
+        "generated_at": now,
+        "window_days": 30,
+        "items": list(ShareItem),
+        "identity": EMAIL,
+        "mood_trend": MoodTrendSummary(
+            window_days=30,
+            window_start=now - timedelta(days=30),
+            entries=6,
+            first_check_in=now - timedelta(days=25),
+            last_check_in=now - timedelta(days=1),
+            mean_valence=3.0,
+            mean_energy=3.5,
+            earlier_mean_valence=2.33,
+            recent_mean_valence=3.67,
+            direction="higher",
+            direction_note=DIRECTION_NOTE["higher"],
+            top_emotions=[LabelCount(label="calm", count=3), LabelCount(label="anxious", count=3)],
+            top_factors=[LabelCount(label="sleep", count=6), LabelCount(label="work", count=3)],
+        ),
+        "assessments": [
+            AssessmentShare(
+                instrument=AssessmentInstrument.GAD7,
+                instrument_name="GAD-7",
+                completed_at=now - timedelta(days=7),
+                total=9,
+                band="mild",
+                band_label="Mild",
+                loinc_code=gad7.code,
+                loinc_display=gad7.display,
+                loinc_source_url=gad7.source_url,
+                ucum_unit=gad7.ucum_unit,
+            ),
+            AssessmentShare(
+                instrument=AssessmentInstrument.PHQ9,
+                instrument_name="PHQ-9",
+                completed_at=now - timedelta(days=8),
+                total=12,
+                band="moderate",
+                band_label="Moderate",
+                loinc_code=phq9.code,
+                loinc_display=phq9.display,
+                loinc_source_url=phq9.source_url,
+                ucum_unit=phq9.ucum_unit,
+            ),
+        ],
+        "thought_records": [
+            ThoughtRecordShare(
+                id=uuid.UUID("7b1f0d5e-9c3a-4a1e-9f2b-6d0c1e2f3a4b"),
+                created_at=now - timedelta(days=3),
+                emotion="anxiety",
+                intensity_before=80,
+                intensity_after=45,
+                what_helped=["looking at evidence"],
+                **THOUGHT,
+            )
+        ],
+        "exercise_helpfulness": ExerciseHelpfulness(
+            window_days=30,
+            window_start=now - timedelta(days=30),
+            completions=3,
+            rated_completions=3,
+            exercises=[
+                ExerciseHelpfulnessRow(
+                    title="Box breathing",
+                    times=3,
+                    mean_before=2.33,
+                    mean_after=4.0,
+                    mean_change=1.67,
+                )
+            ],
+            most_helpful="Box breathing",
+        ),
+        "note": NOTE,
+        "questions": list(QUESTIONS),
+        "counts": {"mood_check_ins": 6},
+    }
+    values.update(overrides)
+    return SharePayload.model_validate(values)
 
 
 def flip_bit(raw: bytes, index: int = 0) -> bytes:

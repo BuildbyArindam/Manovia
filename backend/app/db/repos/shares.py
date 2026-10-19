@@ -172,7 +172,9 @@ class ShareRepository:
             await self._session.flush()
         return share
 
-    async def revoke_all(self, user_id: uuid.UUID, *, now: datetime | None = None) -> list[uuid.UUID]:
+    async def revoke_all(
+        self, user_id: uuid.UUID, *, now: datetime | None = None
+    ) -> list[uuid.UUID]:
         """Revoke every live share at once and return the ids that changed."""
 
         moment = now or utcnow()
@@ -200,7 +202,9 @@ class ShareRepository:
     ) -> ShareAccessEvent:
         """Append one audit line. No free text, no address, no agent string."""
 
-        event = ShareAccessEvent(share_id=share_id, kind=kind, actor=actor, created_at=now or utcnow())
+        event = ShareAccessEvent(
+            share_id=share_id, kind=kind, actor=actor, created_at=now or utcnow()
+        )
         self._session.add(event)
         await self._session.flush()
         return event

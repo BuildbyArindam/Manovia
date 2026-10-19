@@ -33,6 +33,7 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import re
 import secrets as pysecrets
 
 from cryptography.hazmat.primitives import hashes
@@ -97,12 +98,21 @@ def encode_bytes(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
 
 
+#: Unpadded base64url and nothing else. ``base64.urlsafe_b64decode`` silently
+#: discards characters outside the alphabet, so without this a key fragment
+#: containing a space or a stray character would decode to *something* instead of
+#: being refused. A malformed link should say so, not hand back surprise bytes.
+_BASE64URL = re.compile(r"[A-Za-z0-9_-]+")
+
+
 def _decode(value: str, what: str) -> bytes:
     """Unpadded base64url to bytes, or an honest :class:`ShareKeyError`."""
 
     text = value.strip()
     if not text:
         raise ShareKeyError(f"{what} is empty")
+    if _BASE64URL.fullmatch(text) is None:
+        raise ShareKeyError(f"{what} is not valid base64url")
     padded = text + "=" * (-len(text) % 4)
     try:
         return base64.urlsafe_b64decode(padded.encode("ascii"))
@@ -203,11 +213,11 @@ __all__ = [
     "TOKEN_BYTES",
     "ShareDecryptError",
     "ShareKeyError",
+    "decode_bytes",
+    "decode_document",
     "decrypt_document",
     "derive_key",
     "encode_bytes",
-    "decode_bytes",
-    "decode_document",
     "encrypt_document",
     "fingerprint",
     "hash_token",

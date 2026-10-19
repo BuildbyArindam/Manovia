@@ -200,7 +200,7 @@ def _footer(canvas: Any, document: Any) -> None:
     """The banner and the page number, on every page including the first."""
 
     canvas.saveState()
-    width, height = PAGE_SIZE
+    width, _height = PAGE_SIZE
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(_MUTED)
     text, _ = pdf_safe(f"{DISCLAIMER_TITLE} — Manovia is not an EHR and not a crisis service.")
@@ -237,7 +237,9 @@ def _overview_rows(payload: SharePayload) -> list[list[str]]:
             ]
         )
     if payload.thought_records is not None:
-        rows.append(["Selected thought records", f"{len(payload.thought_records)} record(s), in full"])
+        rows.append(
+            ["Selected thought records", f"{len(payload.thought_records)} record(s), in full"]
+        )
     if payload.exercise_helpfulness is not None:
         rows.append(
             [
@@ -247,7 +249,9 @@ def _overview_rows(payload: SharePayload) -> list[list[str]]:
             ]
         )
     if payload.note is not None:
-        rows.append(["Note for the appointment", f"{len(payload.note)} characters, written by the person"])
+        rows.append(
+            ["Note for the appointment", f"{len(payload.note)} characters, written by the person"]
+        )
     if payload.questions is not None:
         rows.append(["Questions to ask", f"{len(payload.questions)} question(s)"])
     return rows
@@ -291,17 +295,20 @@ def _flowables(payload: SharePayload) -> tuple[list[Flowable], bool]:
             styles["muted"],
         )
     )
-    if replaced_any:
-        story.append(
-            Paragraph(
-                track(
-                    "Note on characters: this PDF uses a built-in Latin font. Characters it "
-                    f"cannot draw (for example Devanagari or Bengali) appear as "
-                    f"'{UNRENDERABLE}'. The on-screen version of this share shows the full text."
-                ),
-                styles["muted"],
-            )
-        )
+    # The note about substituted characters belongs here, but whether it is
+    # needed is only known once every section has been rendered — a Devanagari
+    # note appears near the end of the document. So the paragraph is built now
+    # and inserted at this position at the end, rather than being decided too
+    # early and silently dropped.
+    substitution_slot = len(story)
+    substitution_note = Paragraph(
+        track(
+            "Note on characters: this PDF uses a built-in Latin font. Characters it "
+            f"cannot draw (for example Devanagari or Bengali) appear as "
+            f"'{UNRENDERABLE}'. The on-screen version of this share shows the full text."
+        ),
+        styles["muted"],
+    )
 
     if payload.mood_trend is not None:
         trend = payload.mood_trend
@@ -309,20 +316,27 @@ def _flowables(payload: SharePayload) -> tuple[list[Flowable], bool]:
         rows: list[list[str]] = [["Measure", "Value"]]
         rows.append(["Window", f"last {trend.window_days} days (from {_day(trend.window_start)})"])
         rows.append(["Check-ins", str(trend.entries)])
-        rows.append(["Mean mood (1-5)", "n/a" if trend.mean_valence is None else f"{trend.mean_valence}"])
+        rows.append(
+            ["Mean mood (1-5)", "n/a" if trend.mean_valence is None else f"{trend.mean_valence}"]
+        )
         rows.append(
             ["Mean energy (1-5)", "n/a" if trend.mean_energy is None else f"{trend.mean_energy}"]
         )
         halves = (
             "not enough check-ins for a direction"
             if trend.earlier_mean_valence is None or trend.recent_mean_valence is None
-            else f"{trend.earlier_mean_valence} then {trend.recent_mean_valence} ({trend.direction})"
+            else (
+                f"{trend.earlier_mean_valence} then {trend.recent_mean_valence} ({trend.direction})"
+            )
         )
         rows.append(["First half vs second half (mean mood)", halves])
         rows.append(["Direction", trend.direction_note])
         if trend.first_check_in is not None and trend.last_check_in is not None:
             rows.append(
-                ["First / last check-in", f"{_day(trend.first_check_in)} to {_day(trend.last_check_in)}"]
+                [
+                    "First / last check-in",
+                    f"{_day(trend.first_check_in)} to {_day(trend.last_check_in)}",
+                ]
             )
         if trend.top_emotions:
             rows.append(
@@ -380,7 +394,9 @@ def _flowables(payload: SharePayload) -> tuple[list[Flowable], bool]:
             )
             if record.what_helped:
                 story.append(
-                    Paragraph(track("What helped: " + ", ".join(record.what_helped)), styles["muted"])
+                    Paragraph(
+                        track("What helped: " + ", ".join(record.what_helped)), styles["muted"]
+                    )
                 )
             for field, label in (
                 ("situation", "Situation"),
@@ -411,7 +427,8 @@ def _flowables(payload: SharePayload) -> tuple[list[Flowable], bool]:
             Paragraph(
                 track(
                     f"{summary.completions} completions in the last {summary.window_days} days; "
-                    f"{summary.rated_completions} had both ratings. Scale: {summary.rating_scale}."
+                    f"{summary.rated_completions} had both ratings. Scale: {summary.rating_scale}. "
+                    f"{summary.change_caveat}"
                 ),
                 styles["muted"],
             )
@@ -439,6 +456,8 @@ def _flowables(payload: SharePayload) -> tuple[list[Flowable], bool]:
             styles["muted"],
         )
     )
+    if replaced_any:
+        story.insert(substitution_slot, substitution_note)
     return story, replaced_any
 
 

@@ -153,14 +153,40 @@ class _BundleBuilder:
         self.provenance_id = uuid.uuid5(bundle_id, "provenance")
         self._entries: list[tuple[uuid.UUID, dict[str, Any]]] = []
         self._sections: list[dict[str, Any]] = []
+        self._counter = 0
+
+    def next_id(self, kind: str) -> uuid.UUID:
+        """A deterministic id for one content resource.
+
+        Derived from the bundle id and the resource's position, not from
+        ``uuid4()``: the same share rebuilt gives byte-identical JSON, which is
+        what makes a committed sample bundle reviewable and a document
+        reproducible. Two resources can then never collide, because the counter
+        is part of the name.
+        """
+
+        self._counter += 1
+        return uuid.uuid5(self.bundle_id, f"{kind}:{self._counter}")
 
     # -- plumbing ----------------------------------------------------------
-    def add(self, resource_id: uuid.UUID, resource: dict[str, Any]) -> uuid.UUID:
-        """Register one resource; returns its id so callers can reference it."""
+    @staticmethod
+    def with_id(resource: dict[str, Any], resource_id: uuid.UUID) -> dict[str, Any]:
+        """The same resource with ``resourceType`` first and its ``id`` second.
+
+        Every entry in a document bundle carries the id its ``fullUrl`` names:
+        a resource without one cannot be pointed at from a section, a
+        ``derivedFrom`` or the Provenance target list, and the official
+        validator says so.
+        """
 
         kind = resource["resourceType"]
         rest = {key: value for key, value in resource.items() if key not in ("resourceType", "id")}
-        self._entries.append((resource_id, {"resourceType": kind, "id": str(resource_id), **rest}))
+        return {"resourceType": kind, "id": str(resource_id), **rest}
+
+    def add(self, resource_id: uuid.UUID, resource: dict[str, Any]) -> uuid.UUID:
+        """Register one resource; returns its id so callers can reference it."""
+
+        self._entries.append((resource_id, self.with_id(resource, resource_id)))
         return resource_id
 
     def section(self, title: str, entries: list[uuid.UUID], *, code: str) -> None:
@@ -186,7 +212,7 @@ class _BundleBuilder:
         """One inline ``text/plain`` DocumentReference: Manovia's narrative items."""
 
         return self.add(
-            uuid.uuid4(),
+            self.next_id("document-reference"),
             {
                 "resourceType": "DocumentReference",
                 "status": "current",
@@ -240,19 +266,25 @@ class _BundleBuilder:
         }
         if derived_from:
             resource["derivedFrom"] = [_reference(item) for item in derived_from]
-        return self.add(uuid.uuid4(), resource)
+        return self.add(self.next_id("observation"), resource)
 
     # -- bundle ------------------------------------------------------------
     def build(self) -> dict[str, Any]:
         """The document bundle: Composition first, then content, then Provenance."""
 
         entries: list[dict[str, Any]] = [
-            {"fullUrl": _urn(self.composition_id), "resource": self._composition()},
+            {
+                "fullUrl": _urn(self.composition_id),
+                "resource": self.with_id(self._composition(), self.composition_id),
+            },
             *(
                 {"fullUrl": _urn(resource_id), "resource": resource}
                 for resource_id, resource in self._entries
             ),
-            {"fullUrl": _urn(self.provenance_id), "resource": self._provenance()},
+            {
+                "fullUrl": _urn(self.provenance_id),
+                "resource": self.with_id(self._provenance(), self.provenance_id),
+            },
         ]
         return {
             "resourceType": "Bundle",
@@ -277,7 +309,7 @@ class _BundleBuilder:
         nobody verified would be a claim, not a description.
         """
 
-        return {
+        resource: dict[str, Any] = {
             "resourceType": "Composition",
             "status": "final",
             "type": {
@@ -294,8 +326,12 @@ class _BundleBuilder:
             "date": _instant(self.payload.generated_at),
             "author": [_reference(self.patient_id)],
             "title": f"{DISCLAIMER_TITLE}: appointment summary prepared in Manovia",
-            "section": list(self._sections),
         }
+        # An empty ``section`` array is legal but says nothing; omitting it keeps
+        # the Composition to the elements that are true.
+        if self._sections:
+            resource["section"] = list(self._sections)
+        return resource
 
     def _provenance(self) -> dict[str, Any]:
         """Patient as author, Manovia as assembler — the whole point of the export."""
@@ -424,9 +460,7 @@ def build_bundle(
     return builder.build()
 
 
-def _mood_entries(
-    builder: _BundleBuilder, trend: MoodTrendSummary
-) -> list[uuid.UUID]:
+def _mood_entries(builder: _BundleBuilder, trend: MoodTrendSummary) -> list[uuid.UUID]:
     """The mood item as Observations: two means, a count and a direction."""
 
     generated = builder.payload.generated_at
@@ -492,14 +526,12 @@ def _mood_entries(
     return entries
 
 
-def _assessment_entries(
-    builder: _BundleBuilder, assessments: list[Any]
-) -> list[uuid.UUID]:
+def _assessment_entries(builder: _BundleBuilder, assessments: list[Any]) -> list[uuid.UUID]:
     """One QuestionnaireResponse and one LOINC-coded Observation per result."""
 
     entries: list[uuid.UUID] = []
     for assessment in assessments:
-        response_id = uuid.uuid4()
+        response_id = builder.next_id("questionnaire-response")
         builder.add(
             response_id,
             {
@@ -599,7 +631,7 @@ def exercise_text(summary: ExerciseHelpfulness) -> str:
         )
     if summary.most_helpful:
         lines += ["", f"Largest average improvement: {summary.most_helpful}"]
-    lines += ["", DISCLAIMER]
+    lines += ["", summary.change_caveat, "", DISCLAIMER]
     return "\n".join(lines)
 
 

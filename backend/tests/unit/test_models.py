@@ -44,6 +44,11 @@ def test_every_model_is_registered_with_a_table() -> None:
         "user_settings",
         "privacy_settings",
         "deletion_receipts",
+        # Day 47: the clinician-share bridge. One row per link, one row per
+        # access event, and one row per person holding the on/off switch.
+        "clinician_shares",
+        "share_access_events",
+        "share_preferences",
     }
 
 
@@ -189,9 +194,13 @@ def test_personal_free_text_columns_are_binary() -> None:
 
 
 def test_every_child_table_cascades_from_users() -> None:
+    # ``clinician_shares`` is in the parent set because a share's audit lines
+    # hang off the share, not off the person: deleting a link must take its
+    # events with it, and deleting a person must take both (which it does,
+    # because ``clinician_shares.user_id`` cascades from ``users``).
     for table in Base.metadata.sorted_tables:
         for constraint in table.foreign_keys:
-            assert constraint.column.table.name in {"users", "chat_sessions"}
+            assert constraint.column.table.name in {"users", "chat_sessions", "clinician_shares"}
             assert constraint.ondelete == "CASCADE", (
                 f"{table.name}.{constraint.parent.name} must cascade"
             )

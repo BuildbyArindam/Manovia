@@ -46,7 +46,6 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import SessionDep, require_consent
 from app.core.config import Settings
@@ -59,17 +58,17 @@ from app.services.sharing.items import (
     DISCLAIMER,
     DISCLAIMER_TITLE,
     MAX_NOTE_CHARS,
-    MAX_QUESTIONS,
     MAX_QUESTION_CHARS,
+    MAX_QUESTIONS,
     MAX_THOUGHT_RECORDS,
     NEVER_INCLUDED,
-    ShareRequest,
     WINDOW_CHOICES,
+    ShareRequest,
 )
 from app.services.sharing.service import (
     ConsentMismatchError,
-    CreateOptions,
     CreatedShare,
+    CreateOptions,
     ShareLimitError,
     ShareNotFoundError,
     ShareRequestError,
@@ -83,9 +82,7 @@ router = APIRouter(prefix="/shares", tags=["sharing"])
 
 #: Creating or reading shares needs the privacy agreement, like every other
 #: data-leaves-the-app feature.
-ShareUser = Annotated[
-    User, Depends(require_consent(ConsentKind.TERMS, ConsentKind.PRIVACY))
-]
+ShareUser = Annotated[User, Depends(require_consent(ConsentKind.TERMS, ConsentKind.PRIVACY))]
 
 
 def _settings(request: Request) -> Settings:
@@ -173,9 +170,7 @@ class OptionsOut(BaseModel):
 
 
 #: Fields the create body adds on top of the selection itself.
-_CREATE_ONLY = frozenset(
-    {"formats", "expires_in_days", "view_limit", "passcode", "consent_sha256"}
-)
+_CREATE_ONLY = frozenset({"formats", "expires_in_days", "view_limit", "passcode", "consent_sha256"})
 
 
 class CreateIn(ShareRequest):
@@ -421,9 +416,7 @@ async def set_share_preference(
     except SharingDisabledError as exc:
         raise _raise_for(exc) from exc
     await session.commit()
-    logger.info(
-        "Share preference set: user_id=%s enabled=%s", str(user.id), str(body.enabled)
-    )
+    logger.info("Share preference set: user_id=%s enabled=%s", str(user.id), str(body.enabled))
     return PreferenceOut(
         enabled=bool(row.enabled),
         deployment_enabled=_settings(request).share_enabled,
@@ -620,4 +613,4 @@ async def revoke_share(
     )
 
 
-__all__ = ["router", "get_share_service"]
+__all__ = ["get_share_service", "router"]

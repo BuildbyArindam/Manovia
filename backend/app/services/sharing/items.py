@@ -32,7 +32,7 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
@@ -169,10 +169,11 @@ ITEM_CATALOGUE: tuple[ItemDescription, ...] = (
     ItemDescription(
         key=ShareItem.EXERCISE_HELPFULNESS,
         label="Exercise helpfulness",
-        blurb="Which exercises you used, and how much your rating moved.",
+        blurb="Which exercises you used, and how much your before-and-after rating moved.",
         includes=(
             "each exercise's name and how many times you did it",
-            "average rating before and after (1-5), and the average change",
+            "your average rating before and after (1 very low to 5 very good)",
+            "the average change, and which exercise moved most",
         ),
         excludes=("when you did each one", "anything you wrote anywhere"),
     ),
@@ -292,7 +293,14 @@ class ExerciseHelpfulness(Strict):
     rated_completions: int = Field(ge=0)
     exercises: list[ExerciseHelpfulnessRow] = Field(default_factory=list)
     most_helpful: str | None = None
-    rating_scale: str = "1 (not helpful) to 5 (very helpful)"
+    #: The app's own wording for these ratings ("1 is very low; 5 is very good"),
+    #: so a professional reading the summary and the person reading the app see
+    #: one scale. A positive ``mean_change`` is an improvement.
+    rating_scale: str = "1 (very low) to 5 (very good), rated before and after"
+    #: Stated wherever the numbers are shown: association, not causation.
+    change_caveat: str = (
+        "A rating that moved is an association, not proof that the exercise caused it."
+    )
 
 
 class SharePayload(Strict):
@@ -323,11 +331,12 @@ class SharePayload(Strict):
         return self.model_dump(mode="json")
 
     def as_json(self) -> bytes:
-        """Canonical UTF-8 JSON: sorted keys, no trailing whitespace.
+        """Canonical UTF-8 JSON: the model's own field order, ``None`` kept.
 
-        Canonical because the bytes are what gets encrypted and hashed — a
-        re-serialisation that reordered keys would change the fingerprint the
-        owner confirmed.
+        Canonical because these bytes are what gets encrypted and hashed — a
+        re-serialisation that reordered keys or dropped empty fields would
+        change the fingerprint the owner confirmed. Pydantic emits fields in
+        declaration order, so the output is stable across runs and machines.
         """
 
         return self.model_dump_json(exclude_none=False).encode("utf-8")
@@ -458,8 +467,7 @@ async def _mood_trend(
         direction=direction,
         direction_note=DIRECTION_NOTE[direction],
         top_emotions=[
-            LabelCount(label=label, count=count)
-            for label, count in emotions.most_common(5)
+            LabelCount(label=label, count=count) for label, count in emotions.most_common(5)
         ],
         top_factors=[
             LabelCount(label=label, count=count) for label, count in factors.most_common(5)
@@ -554,9 +562,7 @@ async def _exercise_helpfulness(
     start = _window_start(now, request.window_days)
     rows = [
         row
-        for row in await ExerciseRepository(session).list_for_user(
-            user.id, limit=MAX_EXERCISE_ROWS
-        )
+        for row in await ExerciseRepository(session).list_for_user(user.id, limit=MAX_EXERCISE_ROWS)
         if as_utc(row.created_at) >= start
     ]
     grouped: dict[str, list[tuple[int | None, int | None]]] = {}
@@ -568,7 +574,9 @@ async def _exercise_helpfulness(
         before = [float(pre) for pre, _ in ratings if pre is not None]
         after = [float(post) for _, post in ratings if post is not None]
         changes = [
-            float(post) - float(pre) for pre, post in ratings if pre is not None and post is not None
+            float(post) - float(pre)
+            for pre, post in ratings
+            if pre is not None and post is not None
         ]
         exercises.append(
             ExerciseHelpfulnessRow(
@@ -579,8 +587,13 @@ async def _exercise_helpfulness(
                 mean_change=_mean(changes),
             )
         )
+    # Only an actual improvement is a candidate. On this scale (1 very low,
+    # 5 very good) a negative change means the person rated themselves worse
+    # afterwards, and calling that "what helped most" would be a false claim in a
+    # document a professional may act on. With no improvement anywhere, the
+    # summary says nothing rather than picking the least bad.
     best = max(
-        (row for row in exercises if row.mean_change is not None),
+        (row for row in exercises if row.mean_change is not None and row.mean_change > 0),
         key=lambda row: float(row.mean_change or 0.0),
         default=None,
     )
@@ -668,9 +681,11 @@ def consent_lines(payload: SharePayload) -> list[str]:
             f"average energy {trend.mean_energy if trend.mean_energy is not None else 'n/a'})."
         )
     if payload.assessments is not None:
+        instruments = (
+            ", ".join(sorted({item.instrument_name for item in payload.assessments})) or "none"
+        )
         lines.append(
-            f"Screening history: {len(payload.assessments)} results "
-            f"({', '.join(sorted({item.instrument_name for item in payload.assessments})) or 'none'}). "
+            f"Screening history: {len(payload.assessments)} results ({instruments}). "
             "Totals and band labels only — your individual answers are not included."
         )
     if payload.thought_records is not None:
@@ -704,8 +719,8 @@ __all__ = [
     "ITEM_CATALOGUE",
     "MAX_ASSESSMENTS",
     "MAX_NOTE_CHARS",
-    "MAX_QUESTION_CHARS",
     "MAX_QUESTIONS",
+    "MAX_QUESTION_CHARS",
     "MAX_THOUGHT_RECORDS",
     "MIN_ENTRIES_FOR_DIRECTION",
     "NEVER_INCLUDED",

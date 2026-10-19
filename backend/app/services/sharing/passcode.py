@@ -49,8 +49,15 @@ def generate_passcode() -> str:
 
 
 def validate(passcode: str) -> str:
-    """Normalise and check a typed passcode, or raise :class:`PasscodeError`."""
+    """Normalise and check a typed passcode, or raise :class:`PasscodeError`.
 
+    A non-string is refused rather than allowed to raise ``AttributeError``:
+    this function runs on the create path, where an unhandled exception would be
+    a 500 instead of a 422.
+    """
+
+    if not isinstance(passcode, str):
+        raise PasscodeError("A passcode must be text.")
     candidate = passcode.strip()
     if len(candidate) < PASSCODE_MIN_LENGTH:
         raise PasscodeError(f"Use at least {PASSCODE_MIN_LENGTH} characters.")
@@ -78,9 +85,22 @@ def hash_passcode(passcode: str, salt: bytes, *, iterations: int = ITERATIONS) -
 def verify_passcode(
     passcode: str, salt: bytes, expected: bytes, *, iterations: int = ITERATIONS
 ) -> bool:
-    """Constant-time verification of a presented passcode."""
+    """Constant-time verification of a presented passcode.
 
-    return hmac.compare_digest(hash_passcode(passcode, salt, iterations=iterations), expected)
+    Fails closed on malformed *stored* values (a NULL or truncated column after a
+    bad migration, say): the caller is an anonymous viewer, and a 500 would be
+    both a worse answer and a louder signal than "that is not the passcode".
+    """
+
+    if not isinstance(passcode, str):
+        return False
+    if not isinstance(salt, (bytes, bytearray)) or not isinstance(expected, (bytes, bytearray)):
+        return False
+    if not expected:
+        return False
+    return hmac.compare_digest(
+        hash_passcode(passcode, bytes(salt), iterations=iterations), bytes(expected)
+    )
 
 
 __all__ = [
