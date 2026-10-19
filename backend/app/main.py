@@ -31,6 +31,8 @@ from app.api.v1.mood import router as mood_router
 from app.api.v1.plan import router as plan_router
 from app.api.v1.privacy import router as privacy_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.share_view import router as share_view_router
+from app.api.v1.sharing import router as sharing_router
 from app.api.v1.voice import router as voice_router
 from app.core.config import Settings, get_settings
 from app.core.crypto import FernetCipher, configure_cipher
@@ -183,6 +185,11 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.state.rate_limit_export = InMemoryRateLimiter(
         app_settings.privacy_export_per_hour, window_seconds=3600
     )
+    # Day 47: the public share-viewer endpoints are unauthenticated by design,
+    # so they get their own, much tighter budget than the global one.
+    app.state.rate_limit_share = InMemoryRateLimiter(
+        app_settings.share_rate_limit_per_minute
+    )
 
     # Emotion analysis (Day 6). Built here so one chain (and one model load,
     # and one result cache) is shared by every request. Nothing is loaded
@@ -317,6 +324,12 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(privacy_router, prefix="/api/v1")
     app.include_router(voice_router, prefix="/api/v1")
+    # Day 47: the owner side of the share bridge, and the public viewer side.
+    # The public router only answers for tokens that are live, and only with
+    # ciphertext.
+    if app_settings.share_enabled:
+        app.include_router(sharing_router, prefix="/api/v1")
+        app.include_router(share_view_router, prefix="/api/v1")
     if not app_settings.is_production:
         # Dev-only surface: in production the route does not exist at all, so
         # it is absent from the schema and a request gets the generic 404.
