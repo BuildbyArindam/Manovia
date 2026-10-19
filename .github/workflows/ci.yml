@@ -662,10 +662,19 @@ jobs:
           set -uo pipefail
           set +e
           java -jar .fhir-validator/validator_cli.jar \
-            tests/fixtures/fhir/tests/fixtures/fhir/sample_share_bundle.json \
+            tests/fixtures/fhir/sample_share_bundle.json \
             -version 4.0.1 -txLog /tmp/tx.log > /tmp/fhir-tx.txt 2>&1
           status=$?
           tail -40 /tmp/fhir-tx.txt
+          # A non-blocking step that quietly validates nothing is worse than no
+          # step at all: this one passed a whole run with a doubled path in it, so
+          # the validator never opened the file. Say so as an annotation — still
+          # without failing the job, because tx.fhir.org is somebody else's
+          # service and the blocking guarantee is the run above.
+          if ! grep -q "Sources to validate: tests/fixtures/fhir/sample_share_bundle.json" \
+            /tmp/fhir-tx.txt; then
+            echo "::error::the terminology run did not validate the sample bundle"
+          fi
           python - "$status" <<'PY'
           import sys
 
