@@ -153,6 +153,13 @@ intentionally unmerged.
   without turning a display preference into an account-level sensitivity record.
 - WebXR hand/controller visuals and any form of interaction beyond "leave" —
   interactions are how locomotion gets added by accident.
+- **A sign-in screen.** Onboarding offers "continue as a guest" or "create an
+  account" and nothing else, so an existing account (including the seeded
+  `demo@manovia.local`) cannot be used again after sign-out even though
+  `POST /api/v1/auth/login` and `signIn()` in `lib/endpoints.ts` both exist and
+  work. This is a real gap, found while answering "what do I log in with?"; it
+  needs its own small slice of work (account step → "already have an account",
+  password reset, tests), not a quiet addition to a verification day.
 
 ### First three steps for Day 47
 
