@@ -105,3 +105,87 @@ class PlanItemStatus(StrEnum):
     PENDING = "pending"
     DONE = "done"
     SKIPPED = "skipped"
+
+
+class ShareFormat(StrEnum):
+    """The export formats a clinician share can carry.
+
+    ``pdf`` is the printable human document; ``fhir`` is the HL7 FHIR R4 Bundle
+    (see :mod:`app.services.sharing.fhir`). A share always carries at least one.
+    """
+
+    PDF = "pdf"
+    FHIR = "fhir"
+
+
+class ShareItem(StrEnum):
+    """What a person may choose to include in a share, one item at a time.
+
+    The set is closed and stored by value, so a row written today still means
+    the same thing after a rename. Everything *not* in this list is never shared
+    — chat messages, journal entries and mood check-in notes cannot be selected
+    because there is no member for them.
+    """
+
+    #: Mood check-in summary over the chosen window (numbers only, never notes).
+    MOOD_TREND = "mood_trend"
+    #: PHQ-9 / GAD-7 totals, bands and dates (never the per-item answers).
+    ASSESSMENTS = "assessments"
+    #: Thought records the person ticks, one by one.
+    THOUGHT_RECORDS = "thought_records"
+    #: Which exercises they used and how much each helped (ratings only).
+    EXERCISE_HELPFULNESS = "exercise_helpfulness"
+    #: A free-text note they write for the appointment.
+    NOTE = "note"
+    #: Questions they want to ask.
+    QUESTIONS = "questions"
+    #: Their account email, so the clinician knows whose summary it is. Off by
+    #: default: an anonymous summary is the privacy-first choice.
+    IDENTITY = "identity"
+
+
+#: The order items are listed in, in the builder, the preview and the document.
+SHARE_ITEM_ORDER: tuple[ShareItem, ...] = (
+    ShareItem.MOOD_TREND,
+    ShareItem.ASSESSMENTS,
+    ShareItem.THOUGHT_RECORDS,
+    ShareItem.EXERCISE_HELPFULNESS,
+    ShareItem.NOTE,
+    ShareItem.QUESTIONS,
+    ShareItem.IDENTITY,
+)
+
+
+class ShareEventKind(StrEnum):
+    """Closed vocabulary for the share audit log the owner can read.
+
+    No member carries free text and none is derived from a viewer's input, so
+    the log can be shown to the person who owns the share without becoming a
+    channel for somebody else's words.
+    """
+
+    CREATED = "created"
+    #: A viewer passed the passcode and was handed the ciphertext.
+    OPENED = "opened"
+    PASSCODE_FAILED = "passcode_failed"
+    #: The passcode was wrong often enough that the link is locked for a while.
+    LOCKED = "locked"
+    REVOKED = "revoked"
+    #: Somebody presented a link whose window had closed.
+    EXPIRED = "expired"
+    VIEW_LIMIT_REACHED = "view_limit_reached"
+    #: Somebody presented a link the owner had already revoked. The public
+    #: answer is the same unhelpful 404 as for an unknown token; this line is
+    #: for the owner, who has a right to know an old link is still circulating.
+    ACCESS_AFTER_REVOKE = "access_after_revoke"
+
+
+class ShareCipher(StrEnum):
+    """The content-encryption label a share row carries.
+
+    One member today (AES-256-GCM with a 96-bit nonce, derived through HKDF —
+    see :mod:`app.services.sharing.crypto`). Storing the label means a future
+    algorithm is a visible migration with a read path for both, never a guess.
+    """
+
+    A256GCM = "A256GCM"

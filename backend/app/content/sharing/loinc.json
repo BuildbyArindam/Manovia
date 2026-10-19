@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "code_system": "http://loinc.org",
+  "verified_on": "2026-10-19",
+  "verified_against": "https://loinc.org",
+  "note": "Every code here was looked up on the official LOINC site and copied with its source URL. A code that is not in this file is never emitted: the FHIR builder refuses to guess terminology. Panel codes (PHQ-9 44249-1, GAD-7 69737-5) are deliberately NOT used for the total-score Observations — they identify the questionnaire, not the score.",
+  "codes": [
+    {
+      "key": "phq9_total",
+      "instrument": "phq9",
+      "code": "44261-6",
+      "display": "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]",
+      "fully_specified_name": "Patient health questionnaire 9 item total score:Score:Pt:^Patient:Qn:Reported.PHQ",
+      "status": "active",
+      "scale": "Qn",
+      "method": "Reported.PHQ",
+      "ucum_unit": "{score}",
+      "source_url": "https://loinc.org/44261-6",
+      "panel_code": "44249-1",
+      "panel_source_url": "https://loinc.org/44249-1"
+    },
+    {
+      "key": "gad7_total",
+      "instrument": "gad7",
+      "code": "70274-6",
+      "display": "Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]",
+      "fully_specified_name": "Generalized anxiety disorder 7 item total score:Score:Pt:^Patient:Qn:Reported.PHQ",
+      "status": "active",
+      "scale": "Qn",
+      "method": "Reported.PHQ",
+      "ucum_unit": "{score}",
+      "source_url": "https://loinc.org/70274-6",
+      "panel_code": "69737-5",
+      "panel_source_url": "https://loinc.org/69737-5"
+    }
+  ]
+}
