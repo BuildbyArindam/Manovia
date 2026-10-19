@@ -8,6 +8,13 @@ here, same as Days 38–46). No main push.
 Every number below comes from a real run on this machine. Where something could
 not run here, it says so and points at what covers it instead.
 
+Values that look like credentials — a share token, the URL secret, derived-key
+material, ciphertext prefixes — are **abbreviated to their first 8 characters**
+throughout, so nothing in this file can be mistaken for a live secret by a reader
+or by a scanner. They came from a throwaway test database and were 22 characters
+(token), 43 (secret) and 32 bytes (key) in full. The assertions behind each
+transcript line use the complete values; only the prose shortens them.
+
 ## What this sandbox cannot do
 
 | Not available | Consequence | Covered instead by |
@@ -75,10 +82,10 @@ Both are asserted in `tests/integration/test_sharing_flow.py`.
 
 ```
 share_id: 305a5a4f-025f-4eff-9df1-f889a261a6b0
-share_path: /s/0UgdAHl-3yfp9t6zlen3CA
-token: 0UgdAHl-3yfp9t6zlen3CA
-secret: ff4Ai5n1S-KnR1kd0dHk8GiWT1b3vSen0e6vBMY5jI0
-fragment: k=ff4Ai5n1S-KnR1kd0dHk8GiWT1b3vSen0e6vBMY5jI0
+share_path: /s/0UgdAHl-…
+token: 0UgdAHl-…            (22 characters in full)
+secret: ff4Ai5n1…           (43 characters in full)
+fragment: k=ff4Ai5n1…
 passcode: 564118      passcode_generated: True
 expires_at: 2026-10-26T20:23:03.979113Z   (7 days)   view_limit: 5
 formats: ['pdf', 'fhir']
@@ -98,13 +105,13 @@ columns (23): ['id', 'user_id', 'token_hash', 'token_prefix', 'passcode_hash',
   'payload_nonce', 'pdf_ciphertext', 'pdf_nonce', 'fhir_ciphertext', 'fhir_nonce',
   'cipher', 'consent_summary_sha256', 'created_at']
 columns whose name contains 'key': []
-payload_ciphertext: bytes, 3607 bytes, hex[:32]=2075922687f52b9c16aa200c505c3230…
-pdf_ciphertext:     bytes, 6072 bytes, hex[:32]=a534cc9483832af9fa8910d7b6796ced…
-fhir_ciphertext:    bytes, 30383 bytes, hex[:32]=0ff4dbd01b892401f00775ee841d8b82…
-payload_nonce: 12 bytes (7a151b6f969811de2fe8e5ff)
+payload_ciphertext: bytes, 3607 bytes, hex[:16]=2075922687f52b9c…
+pdf_ciphertext:     bytes, 6072 bytes, hex[:16]=a534cc9483832af9…
+fhir_ciphertext:    bytes, 30383 bytes, hex[:16]=0ff4dbd01b892401…
+payload_nonce: 12 bytes (7a151b6f…)
 plaintext sizes from the create response: {'payload': 3591, 'pdf': 6056, 'fhir': 30367}
 ciphertext − plaintext: {'payload': 16, 'pdf': 16, 'fhir': 16}   (16 bytes = the GCM tag)
-cipher: A256GCM   token_hash[:16]: e404dd630a3d8a68…   token_prefix: eiyZQaSi
+cipher: A256GCM   token_hash[:8]: e404dd63…   token_prefix: eiyZQaSi
 passcode_hash: bytes, 32 bytes   passcode_salt: 16 bytes
 failures=0 locked_until=None view_count=0 view_limit=5 revoked_at=None
 consent_summary_sha256=7860bdc5c0cac14ddacad1d2cf0ce83c6c676fa5cd94d78d71d46a53c83ed8d2
@@ -114,11 +121,12 @@ And the search that makes "ciphertext only" a statement rather than a hope —
 every column of the row serialised, then looked through for the plaintext:
 
 ```
-plaintext 'I have been sleeping badly and I wou' appears anywhere in the row: False
-plaintext 'Is this normal?' appears anywhere in the row: False
-plaintext 'eiyZQaSi3E1ZuxRysQUw9A'  (the token)  appears anywhere in the row: False
-plaintext 'yGNlqVaaf5VpUg4iAM0Ec0NJyCKUuvaQUcyv' (the secret) appears: False
-plaintext '039203' (the passcode) appears anywhere in the row: False
+searched every column of the row for five things (full values, not prefixes):
+  the note      'I have been sleeping badly and I wou…'  -> found: False
+  a question    'Is this normal?'                        -> found: False
+  the token     (22 characters)                          -> found: False
+  the secret    (43 characters)                          -> found: False
+  the passcode  (6 digits)                               -> found: False
 ```
 
 Each ciphertext is exactly its plaintext plus the 16-byte GCM tag, which is what
@@ -137,11 +145,11 @@ POST /api/v1/public/shares/<token>/open -> 200        (body: {"passcode": "56411
   key_derivation: HKDF-SHA256(ikm = url_key || 0x00 || utf8(passcode),
                     salt = SHA-256(token), info = "manovia.share.v1.key", length = 32 bytes)
   document payload: application/json,      4810 b64 chars, nonce 16 chars,
-                    aad manovia.share.v1.0UgdAHl-3yfp9t6zlen3CA.payload
+                    aad manovia.share.v1.<token>.payload
   document pdf:     application/pdf,       8096 b64 chars,
-                    aad manovia.share.v1.0UgdAHl-3yfp9t6zlen3CA.pdf
+                    aad manovia.share.v1.<token>.pdf
   document fhir:    application/fhir+json, 40511 b64 chars,
-                    aad manovia.share.v1.0UgdAHl-3yfp9t6zlen3CA.fhir
+                    aad manovia.share.v1.<token>.fhir
 ```
 
 No account, no session cookie, no key sent to the server — the request body is
@@ -153,7 +161,7 @@ The viewer derives the key with WebCrypto and decrypts locally. Here the same
 derivation is run through the Python implementation the vector was made with:
 
 ```
-derived key (hex, first 16): 96164251940f18bc…   (32 bytes, never sent to the server)
+derived key material (first 8 hex chars): 96164251…   (32 bytes, never sent to the server)
 payload: 3591 bytes decrypted     pdf: 6056 bytes     fhir: 30367 bytes
 generated_at: 2026-10-19 20:23:03+00:00   window_days: 30
 disclaimer_title: 'Patient-generated, not a diagnosis'
