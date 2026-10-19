@@ -47,6 +47,18 @@ def test_a_fresh_clone_env_from_the_example_file_boots(monkeypatch: pytest.Monke
     assert settings.rag_retrieval_limit == 3
     assert settings.app_env == "development"
     assert settings.database_url == "sqlite:///./manovia.db"
+    # Day 47 added a dozen typed share settings to the same file, including a
+    # bool and several ints that must satisfy each other. Blank lines have to
+    # leave every one of them at its documented default, and the combination has
+    # to survive the startup validator rather than only parsing.
+    assert settings.share_enabled is True
+    assert settings.share_default_ttl_days == 7
+    assert settings.share_min_ttl_days <= 7 <= settings.share_max_ttl_days
+    assert settings.share_default_view_limit == 5
+    assert settings.share_max_view_limit == 25
+    assert settings.share_passcode_min_length == 6
+    assert settings.share_lockout_seconds == 900
+    assert settings.share_max_document_bytes == 4_000_000
 
 
 def test_a_blank_env_value_means_unset_not_empty_string(

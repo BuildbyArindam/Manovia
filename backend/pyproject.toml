@@ -72,6 +72,18 @@ dependencies = [
     # Day 40's local VAD. The standard `webrtcvad` module comes from this
     # prebuilt wheel, avoiding a compiler requirement in the API image.
     "webrtcvad-wheels==2.0.14.post1",
+    # Day 47 clinician-share bridge. reportlab renders the printable summary
+    # (app/services/sharing/pdf.py). It is a *base* dependency, not an extra:
+    # creating a share with format=pdf is part of the shipped feature, and the
+    # module is imported eagerly by the share service — an absent reportlab
+    # would be a 500 on a documented endpoint. Pure Python, offline, no fonts
+    # downloaded at runtime (only the built-in Helvetica metrics are used, which
+    # is why non-Latin text is transliterated with an on-page note).
+    # It does pull two transitive wheels that the image did not have before:
+    # pillow 13.0.0 (image embedding, unused by this feature but a hard
+    # requirement in reportlab's metadata) and charset-normalizer 3.5.2. Both
+    # were pip-audited clean on 2026-10-20 at those exact versions.
+    "reportlab==5.0.1",
 ]
 
 [project.optional-dependencies]
@@ -135,6 +147,11 @@ dev = [
     "ruff==0.17.0",
     "mypy==2.4.0",
     "hypothesis==6.169.0",
+    # Day 47: pypdf reads the rendered share PDF back as text so the tests can
+    # assert on the banner, the section order and the page footers instead of
+    # trusting reportlab's layout. Test-only — the app never parses a PDF, it
+    # only writes one, so this stays out of the base dependencies.
+    "pypdf==6.21.1",
     # mypy --strict needs stubs for the YAML loader.
     "types-PyYAML==6.0.12.20260906",
 ]
@@ -151,7 +168,12 @@ include = ["app*"]
 # Day 16 adds the localised insight templates (insights/*.json): they are the
 # sentences a person reads about their own numbers, and a missing file is a
 # startup error rather than a blank panel.
-"app.content" = ["*.json", "safety/*.yaml", "exercises/*.yaml", "i18n/*.json", "insights/*.json", "prompts/*.md", "assessments/*.json"]
+# Day 47 adds the verified LOINC terms (sharing/loinc.json) the FHIR share
+# bundle codes assessments with. The loader raises TerminologyError when the
+# file is missing, so it has to be in the wheel: a share without it could not
+# be built at all, and inventing codes is exactly what the file exists to
+# prevent (see docs/adr/0047-clinician-share-bridge.md).
+"app.content" = ["*.json", "safety/*.yaml", "exercises/*.yaml", "i18n/*.json", "insights/*.json", "prompts/*.md", "assessments/*.json", "sharing/*.json"]
 # Day 44: the curated support directory and its schema, read by the
 # agentic navigator and the read-only MCP server.
 "app.content.resources" = ["*.json"]
