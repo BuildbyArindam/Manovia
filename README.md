@@ -34,6 +34,7 @@ Manovia is a self-help companion. It has not been reviewed by a licensed clinici
 - **Offline and accessible.** An installable PWA where "Need help now" and the breathing exercises work without a connection, and check-ins made offline are sent when the device is back online. The app aims for WCAG 2.2 AA and includes an in-app accessibility statement ([ADR 0025](docs/adr/0025-pwa-accessibility-low-bandwidth.md)).
 - **A calm space, in VR or without it.** `/calm` is a seated, still, low-poly evening lake with an orb that follows a six-breaths-a-minute cue, optional procedural audio, and WebXR where the browser and a headset support it. There is no artificial locomotion, the horizon never moves, nothing flashes, any controller button ends the session, a break prompt appears after ten minutes, and the page states who VR is not recommended for. With no WebXR the same scene runs as a 2D canvas, which is the path most people get. The renderer is 36 triangles and a few hundred lines, with no 3D library and no assets ([ADR 0046](docs/adr/0046-xr-calm-space-and-sensory-profile.md), [verification](docs/verification/day46-xr-sensory.md)).
 - **A sensory profile, applied everywhere.** Settings → Sensory profile sets motion (none/low/normal), sound (off/low), density (simple/standard), colours (calm/high-contrast) and text size, stored in this browser only. One tap on "I'm overwhelmed" hides charts, badges and secondary copy across the app and leaves breathing, grounding, chat and help. If several recent check-ins were activated and unpleasant, the app may *offer* the simpler view — never switch it on by itself ([ADR 0046](docs/adr/0046-xr-calm-space-and-sensory-profile.md)).
+- **A summary you can take to an appointment.** `/shares` builds a document from exactly the items you tick — mood trend, screening totals and bands, chosen thought records, exercise helpfulness, a note, questions to ask — shows you the consent lines and a live preview of the document itself, and then creates a link that expires (7 days by default), allows a limited number of views, needs a passcode, can be revoked one at a time or all at once, and is stored as AES-256-GCM ciphertext whose key travels in the URL fragment and is never held by the server. The recipient opens `/s/<token>` with no account and decrypts in their own browser. Exports are a printable PDF and an **HL7 FHIR R4** document bundle whose assessment totals carry verified LOINC codes (PHQ-9 `44261-6`, GAD-7 `70274-6`) and whose Provenance names the patient as author and the app as assembler. Every document says **patient-generated, not a diagnosis**, and this is **not** an EHR integration and **not** for emergencies ([ADR 0047](docs/adr/0047-clinician-share-bridge.md), [docs/clinical-sharing.md](docs/clinical-sharing.md), [verification](docs/verification/day47-clinician-share-bridge.md)).
 
 ## Screenshots
 
@@ -138,6 +139,8 @@ Manovia cannot send help to you. If you use the app offline, "Need help now" sho
 
 Configuration comes only from environment variables (see `.env.example`), and secrets are never committed. Message text, journal entries and mood notes are encrypted at rest with Fernet, per field. The structured logger drops raw user text (`message_text`, `content`, `body`, `note`, credentials) before anything is written. An end-to-end test checks this. The user ID is never put in an LLM prompt, and a test checks that identifying text does not reach a provider. For the full threat model, see [docs/privacy-and-threat-model.md](docs/privacy-and-threat-model.md).
 
+Shared documents (Day 47) are stored as ciphertext with a key the server never holds: the `clinician_shares` table has no key column, keeps only the SHA-256 of a link's token, and the audit table records an event kind, an actor and a timestamp — nothing that identifies a reader. Share tokens, secrets and passcodes are redacted from access logs and error reports like any other credential.
+
 The production compose file refuses to start without `SECRET_KEY` and `FIELD_ENCRYPTION_KEY`.
 
 ## Documentation
@@ -146,6 +149,7 @@ The production compose file refuses to start without `SECRET_KEY` and `FIELD_ENC
 - [docs/clinical-review.md](docs/clinical-review.md): the checklist a licensed professional should complete before public launch. It has no sign-offs yet.
 - [docs/ethics-and-limitations.md](docs/ethics-and-limitations.md): the open questions and stated limits.
 - [docs/demo-script.md](docs/demo-script.md): a 90-second walkthrough. It has not been recorded.
+- [docs/clinical-sharing.md](docs/clinical-sharing.md): the appointment-share bridge — data flow, limits, cryptography, the FHIR document, and what it is not.
 - [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Known limitations and open decisions

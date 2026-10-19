@@ -1,5 +1,273 @@
 # Manovia — Progress
 
+## Day 47 — Clinician-share bridge (consented, time-limited, standards-based)
+
+Built and verified on 2026-10-20 on the Arena-pinned branch
+`arena/52032e59-manovia` (the requested
+`day-47-clinician-share-bridge-consented` name cannot replace the session
+branch, same as Days 38–46). No main push, no merge.
+
+Reference: [docs/clinical-sharing.md](docs/clinical-sharing.md). Decisions:
+[ADR 0047](docs/adr/0047-clinician-share-bridge.md). Evidence:
+[docs/verification/day47-clinician-share-bridge.md](docs/verification/day47-clinician-share-bridge.md).
+
+### Completed
+
+- **"Prepare for my appointment" builder** (`frontend/src/features/sharing/`,
+  route `/shares`): seven tickable items — mood trend summary, screening
+  history, selected thought records, exercise helpfulness, a free-text note,
+  questions to ask, "identify me" — **all off by default**, with a live preview
+  (400 ms debounce) that renders the same component the recipient will see. The
+  five never-included things are listed on the page, not hidden in a tooltip.
+- **Consent that records what was shown.** `POST /api/v1/shares/preview` returns
+  the payload plus consent lines derived from it plus `consent_sha256`;
+  `POST /api/v1/shares` refuses `409 consent_mismatch` unless that hash comes
+  back with the same selection. Showing one thing and sharing another is a
+  failed request, not a design possibility.
+- **Two exports.** A printable A4 PDF (reportlab) with the banner *"Patient-
+  generated, not a diagnosis"* boxed on page 1 and repeated in every page footer
+  with "Manovia is not an EHR and not a crisis service"; and an **HL7 FHIR R4
+  document Bundle** — Composition first, Provenance last, `urn:uuid:` fullUrls,
+  persistent identifier, 16 entries for a full selection (6 Observations, 2
+  QuestionnaireResponses, 4 inline `text/plain` DocumentReferences, Patient,
+  Device). Measured on a real share: payload 3 591 B, PDF 6 056 B (2 pages),
+  bundle 30 367 B.
+- **Verified terminology.** PHQ-9 total `44261-6`
+  (<https://loinc.org/44261-6>) and GAD-7 total `70274-6`
+  (<https://loinc.org/70274-6>), read off loinc.org on 2026-10-19 and pinned
+  with their fully-specified names, scale, method, status, example unit
+  (`{score}`, UCUM) and source URLs in `backend/app/content/sharing/loinc.json`.
+  The loader refuses a file whose URL does not cite its own code, whose term is
+  not active, or that offers a panel code as a total; the panels (`44249-1`,
+  `69737-5`) are recorded beside the totals and never used. Everything
+  Manovia-specific is coded in `https://manovia.app/fhir/CodeSystem/…` with a
+  human `text` — the rule is *a code is either verified or it is ours*.
+- **Patient-generated provenance.** `Provenance.agent[0]` is the **Patient** as
+  `author`, `agent[1]` the Manovia **Device** as `assembler`
+  (terminology.hl7.org `provenance-participant-type`), targeting the Composition
+  and every content resource. The same sentence is in the Composition title,
+  every Observation note, every DocumentReference description and the PDF.
+- **Secure share links.** 7-day default TTL (1–30), 5-view budget (max 25),
+  generated 6-digit or chosen passcode (PBKDF2-HMAC-SHA256, 210 000 iterations),
+  lockout after 5 wrong passcodes for 15 minutes, 10 requests/minute per address
+  and per (address, token) on the public routes, revoke one, **revoke
+  everything** in one request. Owner-visible audit: *"Opened 2 times of 5
+  allowed."* with per-kind counts; the audit table has exactly five columns
+  (`id`, `share_id`, `kind`, `actor`, `created_at`).
+- **Encryption whose key the server never holds.** AES-256-GCM per document with
+  AAD `manovia.share.v1.<token>.<document>`; the content key is
+  HKDF-SHA256(`ikm = secret || 0x00 || passcode`, `salt = SHA-256(token)`,
+  `info = "manovia.share.v1.key"`, 32 bytes) over a 32-byte secret delivered in
+  the URL **fragment** (`/s/<token>#k=<secret>`), so it is never sent to the
+  server. `clinician_shares` has 23 columns and **no key column**; only the
+  token's SHA-256 and first 8 characters are stored. The same derivation exists
+  in WebCrypto (`frontend/src/features/sharing/crypto.ts`) and is proved equal to
+  Python against a committed vector of real backend ciphertext.
+- **Read-only viewer, no account** (`/s/:token`, matched in `App.tsx` *before*
+  the onboarding gate and rendered with no shell chrome): status → key present? →
+  one `/open` → decrypt locally → the document with the banner first and
+  PDF/FHIR downloads as object URLs revoked on unmount. One open call per mount,
+  because the view budget is the owner's.
+- **Uniform refusals.** Unknown, expired, revoked and view-exhausted tokens all
+  answer `404 share_unavailable` / "This link is not available." — only the
+  per-request `request_id` differs. Wrong passcode is 403 with the tries left in
+  the message; locked is 423 with `Retry-After`; the limiter answers 429 before
+  any token comparison.
+- **Tokens treated as half-credentials in logs.** `redact_path()` scrubs share
+  tokens (and secrets) from access logs, unhandled-exception logs and Sentry
+  URLs; `SENSITIVE_LOG_FIELDS` gained the passcode, secret, key and fragment
+  fields. The app-side assertion is strict; the one thing that had to be quieted
+  was httpx's own client logger, which prints full request URLs at INFO.
+- **Deployment kill switch and privacy wiring.** `SHARE_ENABLED=false` unmounts
+  both routers (every share route 404s). Account deletion removes shares, audit
+  lines and the preference row; the retention job removes expired share rows; a
+  data export contains the share decisions and audit trail in
+  `clinician-shares.json` and never a ciphertext, token or passcode hash (a test
+  asserts exactly that across the whole archive).
+- **Twelve routes** (`GET /shares/options`, `GET|POST /shares/preferences`,
+  `POST /shares/preview`, `POST /shares`, `GET /shares`, `GET /shares/{id}`,
+  `GET /shares/{id}/audit`, `POST /shares/{id}/revoke`, `POST /shares/revoke-all`,
+  `GET|POST /public/shares/{token}[/open]`), 12 `SHARE_*` settings validated at
+  startup, migration `0012_clinician_shares`, and `docs/api.md` +
+  `docs/openapi.json` regenerated (74 → **86 operations**).
+- **FHIR validation, both halves.** `backend/scripts/export_fhir_sample.py`
+  writes the committed artifact
+  `backend/tests/fixtures/fhir/sample_share_bundle.json` through the same
+  `bundle_bytes()` the endpoint uses, deterministically (`uuid5` ids, pinned
+  instant); `backend/scripts/fhir_offline_check.py` is a dependency-free
+  structural check (document invariants, reference resolution, required elements,
+  "verified terminology or ours", the disclaimer on every Observation,
+  DocumentReference and the Composition title); `make fhir-validate` runs the
+  official validator when java and the jar are present and the fallback when they
+  are not, and prints which it used; `make fhir-validator` fetches the
+  sha256-pinned jar. The CI job `fhir-validation` regenerates the sample, fails
+  on drift, runs both checks and gates on the official validator's exit code.
+- **i18n**: 137 new `sharing.*` keys in en, hi and bn, with the parity suite
+  asserting identical key sets and identical `{{placeholders}}` across the three.
+
+### Evidence
+
+Real runs on this machine, 2026-10-20:
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Backend suite | `python -m pytest -q -p no:warnings` | **5 444 passed, 4 skipped** in 4 m 57 s (5 113 before Day 47 → **+331**) |
+| Backend lint | `ruff check app tests scripts` | All checks passed |
+| Backend format | `ruff format --check app tests scripts` | 457 files already formatted |
+| Backend types | `mypy app tests` (strict) | Success: no issues found in **404** source files |
+| Share tests | security + integration + 7 unit suites + artifact suite | **221** (integration 14, security 18, terminology 25, crypto 33, passcode 16, items 41, fhir 29, pdf 20, artifact 25) |
+| Frontend suite | `npx vitest run` | **2 915 passed, 3 skipped** (2 858 before → **+57**) |
+| Frontend types/lint/build | `npm run typecheck`, `npm run lint`, `npm run build` | clean, clean, succeeds |
+| Frontend share tests | `npx vitest run src/features/sharing src/App.test.tsx` | **66 passed** (crypto 15, builder 15, links 7, viewer 14, endpoints 4, App 11) |
+| Formatting | `npx prettier --check .` | every Day-47 file clean |
+| Wheel packaging | `pip wheel --no-deps --no-build-isolation` | `app/content/sharing/loinc.json` inside; `Requires-Dist: reportlab==5.0.1`, `pypdf==6.21.1; extra == "dev"` |
+| Dependency audit | `pip-audit` on reportlab 5.0.1, pypdf 6.21.1, pillow 13.0.0, charset-normalizer 3.5.2 | No known vulnerabilities found |
+| FHIR sample freshness | `python scripts/export_fhir_sample.py --check` | up to date (30 348 bytes) |
+| FHIR offline check | `make fhir-validate` | ok — 16 entries; both LOINC totals with their verified displays |
+| Ciphertext-only proof | end-to-end walk-through transcript | 23 columns, none named `key`; each ciphertext = plaintext + 16 (GCM tag); note, question, token, secret and passcode found nowhere in the row |
+| Audit log | same transcript | `'Opened 2 times of 5 allowed.'`, counts `{'created': 1, 'opened': 2}`, 3 rows |
+| Enumeration | same transcript | expired / unknown / revoked envelopes identical (`request_id` aside) |
+
+The **official HL7 validator did not run here** — no JVM and no egress to GitHub
+release downloads in this sandbox. The job that runs it
+(`hapifhir/org.hl7.fhir.core` 7.0.2 `validator_cli.jar`, sha256
+`e3e50f06b806437821b7aef8189a1b790415cb96c5036e0812ed62981452b377`, temurin 17,
+`-version 4.0.1 -tx n/a`) is committed and its first execution is on this
+branch's PR. That is the only requirement in the Day-47 brief not completed by a
+local run, and it is recorded as pending rather than passed.
+
+### Decisions
+
+Full reasoning in [ADR 0047](docs/adr/0047-clinician-share-bridge.md); the short
+form:
+
+1. **A document, not an integration.** No FHIR server, no SMART-on-FHIR, no HL7
+   v2, no write-back, no patient matching. "Validated FHIR" means the document
+   conforms, not that Manovia participates in health IT.
+2. **Encryption at rest with an ephemeral fragment-delivered key — never called
+   E2EE.** The server assembles the plaintext from rows it can already decrypt
+   (Day 17 field key) and re-encrypts it under the share key. Browser-side
+   assembly would mean porting the whole payload builder to TypeScript and
+   holding parity, which is its own project. Parked, and stated as a caveat
+   wherever the feature is described.
+3. **One refusal for every unusable link** — distinguishing "expired" from
+   "never existed" is a free enumeration oracle.
+4. **Verified terminology or ours.** No invented LOINC/SNOMED codes: a wrong code
+   is a false clinical claim in somebody's record, read by software that trusts
+   codes. Also deliberately omitted: `Composition.attester`,
+   `Composition.confidentiality`, `QuestionnaireResponse.questionnaire`,
+   `Provenance.entity` — each would have been a claim rather than a description.
+5. **Consent as the hash of the lines shown**, not a checkbox; and no new
+   `ConsentKind` (consent content is versioned and localised across three
+   languages — a new kind would churn all of it for nothing).
+6. **Off by default twice** (deployment and person), with "revoke everything" as
+   the answer to link sprawl rather than a loop of per-link buttons.
+7. **Expiry enforced at read time**, retention removes the rows: correctness
+   never depends on a scheduler.
+8. **The audit log stores almost nothing** — kind, actor, timestamp. It answers
+   "was it read?" and cannot answer "by whom, from where".
+9. **Reproducible documents** (`uuid5` ids, fixed serialisation) so the sample
+   bundle can be committed, reviewed and freshness-gated.
+10. **Validate with the official validator and be explicit about what it proves**:
+    `-tx n/a` means structure and invariants, not terminology lookup, so code
+    existence is guaranteed by `loinc.json` + the offline rule, with a
+    non-blocking `tx.fhir.org` run for the log.
+11. **Tokens are half-credentials** and are redacted from logs and Sentry.
+12. **The PDF says the disclaimer on every page and never lies silently**: glyphs
+    Helvetica cannot draw become `?` plus one on-page note.
+
+### Known issues
+
+1. **The official FHIR validator has not executed.** No JVM and no release
+   download in this sandbox. The CI job is committed; its verdict is the first
+   thing to read on the PR, and §8 of the verification note is where it belongs.
+2. **Not end-to-end encryption.** See Decision 2. A database dump is useless
+   without the secret and passcode; a server compromise during document assembly
+   is not covered, and neither is a recipient who forwards the whole link.
+3. **The link is a complete credential.** `/s/<token>#k=<secret>` plus the
+   passcode is everything needed to read the document. Mitigations are the view
+   budget, the TTL and revocation — not the encryption. Browsers keep fragments
+   in the *recipient's* history.
+4. **The PDF cannot render Devanagari or Bengali.** reportlab's built-in
+   Helvetica has no glyphs for them and the repository ships no TrueType font, so
+   those characters become `?` with a note printed on the page. The HTML viewer
+   and the FHIR bundle are unaffected (both UTF-8). A licensed font is parked.
+5. **No recipient identity.** The audit log says `viewer`. Manovia cannot
+   distinguish a professional from anybody else holding the link, and says so
+   rather than implying an assurance it does not have.
+6. **`QuestionnaireResponse` has no `questionnaire` canonical.** There is no
+   published Questionnaire resource to point at; importers that want one will not
+   find it. Publishing the two questionnaires (or citing LOINC's panels properly)
+   is parked.
+7. **Rate limiting is in-memory per process**, so with more than one worker the
+   share budget is per process, not global — the same limitation as the rest of
+   Manovia's limiting (Day 27), and it matters more here because these routes are
+   unauthenticated.
+8. **No browser or Playwright in this sandbox.** The viewer is verified in jsdom
+   against real ciphertext, and the create → open → revoke click-through is on
+   the hand-test list instead.
+9. **`fhir.resources` cannot model R4.** Its published releases cover R5, R4B,
+   STU3 and DSTU2; it was installed, checked and removed rather than used to emit
+   a bundle for a version it does not support.
+10. **36 pre-existing frontend files are not prettier-clean** (Day 40 biofeedback
+    and others). Every file Day 47 touched is clean; the older drift was left
+    alone because reformatting 36 unrelated files would bury this day's diff.
+11. **reportlab brings pillow and charset-normalizer** into the API image
+    (pillow is unused by this feature but is a hard requirement in reportlab's
+    metadata). Both audited clean at the pinned versions on 2026-10-20.
+
+### Parking lot (out of scope for Day 47)
+
+- **True client-side document assembly**: port the payload builder to TypeScript
+  with a parity corpus, so the server only ever stores and forwards ciphertext it
+  cannot read. The single biggest honest gap in the bridge.
+- **Embed a licensed Devanagari/Bengali TTF** for the PDF, and drop the
+  substitution note.
+- **Publish FHIR Questionnaire resources** for PHQ-9 and GAD-7 (or reference
+  LOINC's panels correctly) so `QuestionnaireResponse.questionnaire` can be
+  filled and item-level answers could be shared *if* a person ever wanted that —
+  they are excluded today by design.
+- **A Playwright spec** for create → open → decrypt → revoke, once a browser can
+  be downloaded in CI or locally.
+- **Recipient attestation**: let the owner record who they sent it to (a name, an
+  organisation) so the audit log can say more than `viewer` — without turning the
+  share into an identity claim about the recipient.
+- **Signed documents**: `Provenance.signature` plus a document signing key, so a
+  recipient can verify the bundle was not edited after export.
+- **A shared limiter store** (Redis) for the public share routes, which is the
+  same carried-over item as the session store and matters more for
+  unauthenticated endpoints.
+- **QR-code handoff** for in-person appointments, and a "re-send the link" flow
+  that rotates the token without rebuilding the document.
+- **A per-share note about what to ask**, i.e. letting the owner attach context
+  for the professional that is *not* part of the clinical document.
+- **View-limited PDF watermarks** (recipient-facing "shared by <initials> on
+  <date>") if forwarding turns out to be a real problem.
+
+### First three steps for Day 48
+
+The Day-48 brief was not in the workspace when this was written
+(`docs/plan/README.md` records that the 49-day plan file was never available), so
+these are the three things Day 47 leaves behind that should happen first whatever
+Day 48 turns out to be:
+
+1. **Read the `fhir-validation` job on the PR and paste the official validator's
+   output into §8 of
+   [docs/verification/day47-clinician-share-bridge.md](docs/verification/day47-clinician-share-bridge.md)**,
+   then flip row 6 of that note's PASS/FAIL table from PARTIAL to PASS — or fix
+   what it found. Ten minutes, no code, and it closes the only requirement not
+   completed by a local run.
+2. **Work through the hand-test list** in the same note in a real browser (create
+   → open in a private window → lose the key → break the ciphertext → five wrong
+   passcodes → revoke everything), and turn the two most valuable steps into a
+   committed Playwright spec so the flow stops depending on a human remembering
+   to do it.
+3. **Fix the PDF's non-Latin glyphs** by embedding a licensed Devanagari and
+   Bengali TrueType font, since Hindi and Bengali are shipped languages and a
+   printed summary full of `?` is the one user-visible defect this day knowingly
+   left in. Keep the substitution note as the fallback path and keep
+   `tests/unit/test_share_pdf.py` asserting both.
+
 ## Day 46 — Immersive WebXR calm space and adaptive, low-stimulation UI
 
 Built and verified on 2026-10-19 on the Arena-pinned branch

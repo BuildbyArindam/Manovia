@@ -10,10 +10,88 @@ to GHCR, GitHub release).
 
 ## Unreleased
 
-Days 28–34 are not recorded in this file — a pre-existing gap; their changes are in
-[PROGRESS.md](PROGRESS.md) and their decision records in
-[docs/adr/README.md](docs/adr/README.md). Days 35 and 36 are recorded here by their
-respective sessions.
+Days 28–34 and 42–46 are not recorded in this file — pre-existing gaps; their
+changes are in [PROGRESS.md](PROGRESS.md) and their decision records in
+[docs/adr/README.md](docs/adr/README.md). Days 35, 36, 41 and 47 are recorded
+here by their respective sessions.
+
+### Added — Day 47: clinician-share bridge (consented, time-limited, standards-based)
+
+- **"Prepare for my appointment"** (`/shares`): seven items — mood trend summary,
+  screening history, selected thought records, exercise helpfulness, a note,
+  questions to ask, "identify me" — all off by default, with a live preview that
+  renders the same component the recipient sees. Nothing is shared that was not
+  ticked, and the five never-included items are printed on the page
+  ([ADR 0047](docs/adr/0047-clinician-share-bridge.md)).
+- **Consent that records what was shown**: `POST /api/v1/shares/preview` returns
+  the consent lines and their `consent_sha256`, and `POST /api/v1/shares` answers
+  `409 consent_mismatch` unless that hash comes back with the same selection.
+- **Two exports**: a printable A4 PDF whose banner *"Patient-generated, not a
+  diagnosis"* is boxed on page 1 and repeated in every page footer, and an **HL7
+  FHIR R4 document Bundle** (Composition first, Provenance last, 16 entries for a
+  full selection) in which the **Patient** is the `author` and the Manovia
+  **Device** the `assembler`.
+- **Verified terminology only**: PHQ-9 total `44261-6`
+  (<https://loinc.org/44261-6>) and GAD-7 total `70274-6`
+  (<https://loinc.org/70274-6>), read off loinc.org on 2026-10-19 and pinned with
+  their source URLs in `backend/app/content/sharing/loinc.json`; every
+  Manovia-specific concept is coded in `https://manovia.app/fhir/CodeSystem/…`.
+- **Secure share links**: 7-day default TTL (1–30), a 5-view budget (max 25), a
+  passcode (PBKDF2-HMAC-SHA256, 210 000 iterations) with lockout after 5 wrong
+  attempts, 10 requests/minute on the public routes, revoke one or **revoke
+  everything**, and an owner-visible audit line — *"Opened 2 times of 5 allowed."*
+- **Encryption whose key the server never holds**: AES-256-GCM per document with
+  AAD bound to the token and the document name, under a key derived by
+  HKDF-SHA256 from a secret delivered in the URL fragment (`/s/<token>#k=…`), the
+  passcode and the token. `clinician_shares` has 23 columns and no key column, and
+  only the token's SHA-256 and first 8 characters are stored. The WebCrypto
+  implementation is proved equal to the Python one against a committed vector of
+  real backend ciphertext.
+- **A read-only viewer at `/s/:token`** that needs no account, renders no app
+  chrome, and decrypts in the browser — matched before the onboarding gate so a
+  professional is never asked to sign up.
+- **Uniform refusals**: unknown, expired, revoked and view-exhausted tokens all
+  answer the same `404 share_unavailable`, because telling them apart would be an
+  enumeration oracle.
+- **Tokens redacted from logs and Sentry**: share tokens, secrets and passcodes
+  never reach an access log, an unhandled-exception log or a Sentry URL.
+- **An operator kill switch** (`SHARE_ENABLED=false` unmounts both routers) and
+  privacy wiring: account deletion removes shares, audit lines and the preference;
+  retention removes expired rows; a data export contains the decisions and the
+  audit trail, never a ciphertext, token or passcode hash.
+- **FHIR validation, both halves**: a deterministic committed sample bundle
+  (`backend/scripts/export_fhir_sample.py`), a dependency-free structural checker
+  (`backend/scripts/fhir_offline_check.py`, 25 tests including 16 mutations it
+  must catch), `make fhir-validate` / `make fhir-validator`, and a CI
+  `fhir-validation` job that runs the **official HL7 validator**
+  (`hapifhir/org.hl7.fhir.core` 7.0.2 `validator_cli.jar`, sha256-pinned,
+  temurin 17, `-version 4.0.1 -tx n/a`) on the regenerated sample and gates on its
+  exit code.
+- **Twelve new routes** (86 API operations in `docs/api.md`, from 74), twelve
+  `SHARE_*` settings validated at startup, migration `0012_clinician_shares`, and
+  137 `sharing.*` strings in English, Hindi and Bengali.
+- **Tests**: backend 5 113 → **5 444 passed, 4 skipped**; frontend 2 858 →
+  **2 915 passed, 3 skipped**; 221 of the backend tests are share tests
+  (14 integration, 18 security, 189 unit and artifact), 57 of the frontend ones
+  are share tests. `ruff check`, `ruff format --check` and strict `mypy` are clean.
+- **Docs**: [docs/clinical-sharing.md](docs/clinical-sharing.md) (the data flow,
+  the limits, and the three sentences about what this is *not* — not an EHR
+  integration, not for emergencies, not a diagnosis) and
+  [docs/verification/day47-clinician-share-bridge.md](docs/verification/day47-clinician-share-bridge.md).
+
+### Known limitation — Day 47
+
+- The official HL7 validator could not execute in the development sandbox (no
+  JVM, no release download); the CI job that runs it is committed and its first
+  verdict lands on the branch's PR. Everything else above was verified by a real
+  local run.
+- This is **encryption at rest with an ephemeral, fragment-delivered key**, not
+  end-to-end encryption: the server assembles the plaintext from rows it can
+  already decrypt before re-encrypting it. Browser-side assembly is in
+  [PROGRESS.md](PROGRESS.md)'s parking lot.
+- The PDF cannot render Devanagari or Bengali (reportlab's built-in Helvetica,
+  no TrueType font in the repository): those glyphs become `?` with a note printed
+  on the page. The HTML viewer and the FHIR bundle are unaffected.
 
 ### Added — Day 41: in-browser private AI ("Private Mode")
 
