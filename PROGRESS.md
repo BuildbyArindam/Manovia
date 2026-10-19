@@ -66,7 +66,7 @@ merge. The pull request is opened and intentionally left unmerged.
 
 - **Frame time (2D fallback, this machine, Node + recording context):**
   `npm run measure:frames` — 1200 frames at 800×480, p50 **0.004 ms**, p5
-  **0.003 ms**, p95 **0.013 ms**. These are CPU draw-call costs, **not** GPU or
+  **0.003–0.004 ms**, p95 **0.012–0.013 ms** (two runs). These are CPU draw-call costs, **not** GPU or
   vsync frame rates; the `--browser` mode is the one that reports rAF intervals
   and needs a Playwright browser, which this sandbox cannot download.
 - **Budget:** `/calm` adds **5.8 KB gzip** (25 KB route budget); precache
@@ -78,7 +78,8 @@ merge. The pull request is opened and intentionally left unmerged.
   precache 674.0 KB of 800 KB, slowest route `/insights` 247.1 KB).
 - **Final backend run** (untouched by Day 46, run for the record):
   `.venv/bin/python -m pytest -q` — **5113 passed, 4 skipped** (260.2 s);
-  `ruff check` + `ruff format --check` clean (408/427 files); `mypy app` clean
+  `ruff check` + `ruff format --check` clean (427 files already formatted);
+  `mypy app` clean
   (195 source files).
 - **`npm run format:check` fails on 36 files that predate this branch**
   (biofeedback and meditation sources, two chat components,

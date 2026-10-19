@@ -30,6 +30,9 @@ Calm-space 2D fallback — headless-cpu (1200 frames, 800x480)
   frame p95 : 0.013 ms
 ```
 
+A second run reported p50 0.004 ms, p5 0.004 ms, p95 0.012 ms — the timer
+resolution is ~1 µs, so read these as "sub-microsecond to a few microseconds". 
+
 Read this honestly: those are the CPU costs of *issuing* the draw calls to a
 recording context, not GPU work and not a display's frame rate. What it
 establishes is that the painter allocates nothing, performs a bounded number of
