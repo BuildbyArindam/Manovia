@@ -71,6 +71,17 @@ def render_sample() -> str:
     return bundle.decode("utf-8") + "\n"
 
 
+def sample_size(text: str) -> int:
+    """The artifact's size on disk, in bytes.
+
+    Not ``len(text)``: the disclaimer's em dashes are one character but three
+    bytes in UTF-8, so the character count understates the file by 20 bytes and
+    a printed size that does not match ``wc -c`` is a size nobody can check.
+    """
+
+    return len(text.encode("utf-8"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -90,12 +101,12 @@ def main() -> int:
         if SAMPLE_PATH.read_text(encoding="utf-8") != text:
             print(f"stale: {relative} — run backend/scripts/export_fhir_sample.py")
             return 1
-        print(f"fhir sample up to date ({relative}, {len(text)} bytes)")
+        print(f"fhir sample up to date ({relative}, {sample_size(text)} bytes)")
         return 0
 
     SAMPLE_PATH.parent.mkdir(parents=True, exist_ok=True)
     SAMPLE_PATH.write_text(text, encoding="utf-8")
-    print(f"wrote {relative} ({len(text)} bytes, bundle id {SAMPLE_BUNDLE_ID})")
+    print(f"wrote {relative} ({sample_size(text)} bytes, bundle id {SAMPLE_BUNDLE_ID})")
     return 0
 
 
