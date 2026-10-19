@@ -130,7 +130,21 @@ jobs:
       # `python scripts/scan_secrets.py` (same rule set, weaker engine — read
       # its docstring before trusting it).
       #
-      # GITLEAKS_ENABLE_COMMENTS=false: the action tries to post one review
+      # GITLEAKS_VERSION: this action installs "whatever it defaults to"
+      # (`process.env.GITLEAKS_VERSION || "8.24.3"` in its src/index.js) when the
+      # variable is unset. Pinning it makes the scan reproducible and makes
+      # `.gitleaks.toml` meaningful, because that file is written for one
+      # version's config schema — see the header comment in it, and
+      # backend/tests/unit/test_gitleaks_config.py, which fails if the pin and
+      # the config form drift apart. Bumping the version is a deliberate change
+      # that has to re-read that file.
+      #
+      # GITLEAKS_CONFIG: gitleaks' own fallback is `<source>/.gitleaks.toml`,
+      # where `<source>` is the directory it was started in. Naming the file by
+      # absolute path stops the action's working directory from deciding whether
+      # the allowlist exists at all.
+      #
+      # GITLEAKS_ENABLE_COMMENTS="false": the action tries to post one review
       # comment per finding, which needs `pull-requests: write`. This workflow
       # keeps least privilege (`contents: read`, see the top of the file), so
       # every attempt failed with "Resource not accessible by integration" and left
@@ -140,6 +154,8 @@ jobs:
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
           GITLEAKS_ENABLE_COMMENTS: "false"
 
       # Not a gate — the step above decides. This makes that decision readable:
@@ -164,42 +180,74 @@ jobs:
           set -uo pipefail
           gl=gitleaks
           if ! command -v "$gl" >/dev/null 2>&1; then
-            echo "::notice::gitleaks is not on PATH — fetching the release the action would use"
-            ver=$(curl -fsSL https://api.github.com/repos/zricethezav/gitleaks/releases/latest \
-              | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -1)
+            echo "::notice::gitleaks is not on PATH — fetching the pinned release"
+            ver="${GITLEAKS_VERSION:-8.24.3}"
             curl -fsSL -o /tmp/gitleaks.tar.gz \
-              "https://github.com/zricethezav/gitleaks/releases/download/v${ver}/gitleaks_${ver}_linux_x64.tar.gz"
+              "https://github.com/zricethezav/gitleaks/releases/download/v${ver}/gitleaks_${ver}_linux_x64.tar.gz" \
+              || echo "::error::could not download gitleaks ${ver}"
             mkdir -p /tmp/gitleaks-bin
-            tar xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks-bin
+            tar xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks-bin || true
             gl=/tmp/gitleaks-bin/gitleaks
           fi
           echo "::notice::gitleaks version: $("$gl" version 2>&1 | head -1)"
 
-          # Same range the action uses: the PR's first commit and everything
-          # after it (gitleaks scans history, not just the final tree).
+          # Where the action wrote its own report says which directory it ran in,
+          # which decides whether it could ever find `.gitleaks.toml` by itself.
+          { find "$HOME" "$GITHUB_WORKSPACE" -maxdepth 3 -name results.sarif 2>/dev/null \
+            | sed -n '1,3p' | while IFS= read -r f; do
+                printf '::notice::action wrote its report at %s\n' "$f"
+              done; } || true
+
+          # Same range the action scans: the PR's first commit and everything
+          # after it. Named SHAs, never HEAD — on a pull_request event GitHub
+          # checks out a synthetic merge commit, and `--first-parent` from there
+          # walks back into the base branch, so a HEAD-relative range scans
+          # nothing at all and reports a confident zero. The first version of
+          # this step did exactly that.
+          head="${{ github.event.pull_request.head.sha }}"
           base="${{ github.event.pull_request.base.sha }}"
-          if [ -z "$base" ]; then base=$(git rev-parse HEAD^ 2>/dev/null || echo ""); fi
-          first=$(git rev-list --reverse --first-parent --no-merges "${base}..HEAD" 2>/dev/null | head -1)
-          [ -n "$first" ] || first="$base"
-          range="--no-merges --first-parent ${first}^..HEAD"
+          if [ -z "$head" ]; then head=$(git rev-parse HEAD); fi
+          if [ -z "$base" ]; then base=$(git rev-parse "${head}^" 2>/dev/null || echo "$head"); fi
+          first=$(git rev-list --reverse --no-merges "${base}..${head}" 2>/dev/null | sed -n '1p')
+          [ -n "$first" ] || first="$head"
+          range="--no-merges --first-parent ${first}^..${head}"
           out="$RUNNER_TEMP/gitleaks-diag"
           mkdir -p "$out"
 
-          "$gl" detect --redact=90 -v --exit-code=0 --no-banner --log-level=debug \
-            --report-format json --report-path "$out/auto.json" \
-            --log-opts="$range" > "$out/auto.log" 2>&1
-          "$gl" detect --redact=90 -v --exit-code=0 --no-banner --config .gitleaks.toml \
-            --report-format json --report-path "$out/explicit.json" \
-            --log-opts="$range" > "$out/explicit.log" 2>&1
+          # One scan per way the binary can find its configuration, because the
+          # gate uses the first and the other two explain why it might not have.
+          # The mode is an argument rather than a `VAR=x run_scan` prefix: bash
+          # makes an assignment in front of a *function* persistent, which would
+          # have leaked GITLEAKS_CONFIG into the scans meant to do without it.
+          run_scan() {  # run_scan <label> <report> <env|flag|discovery> [args...]
+            label="$1"; report="$2"; mode="$3"; shift 3
+            if [ "$mode" = env ]; then
+              export GITLEAKS_CONFIG="$GITHUB_WORKSPACE/.gitleaks.toml"
+            else
+              unset GITLEAKS_CONFIG
+            fi
+            "$gl" detect --redact=90 -v --exit-code=0 --no-banner --log-level=debug \
+              --report-format json --report-path "$out/$report" --log-opts="$range" \
+              "$@" > "$out/$report.log" 2>&1 || true
+            count=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" \
+              "$out/$report" 2>/dev/null || echo "unreadable")
+            printf '::notice::gitleaks[%s] findings: %s\n' "$label" "$count"
+            grep -Ei "using .*config|no gitleaks config|extending config" "$out/$report.log" \
+              | sed -n '1,4p' | while IFS= read -r line; do
+                  printf '::notice::gitleaks[%s] log: %s\n' "$label" "${line//%/%25}"
+                done || true
+          }
+          run_scan env findings-env.json env
+          run_scan flag findings-flag.json flag --config .gitleaks.toml
+          run_scan discovery findings-discovered.json discovery
 
-          # Whether gitleaks saw the repository's own config is the first thing
-          # to check when an allowlist appears to do nothing.
-          grep -Ei "config|allowlist|gitleaksignore|using .* regex engine" "$out/auto.log" \
-            | head -20 | while IFS= read -r line; do
-              printf '::notice::gitleaks log: %s\n' "${line//%/%25}"
-            done
-
-          python3 - "$out/auto.json" "$out/explicit.json" "$range" <<'PY'
+          # Findings from all three scans, labelled, so a disagreement between
+          # the way the gate loads its config and the ways this step does is
+          # visible instead of hidden behind a zero.
+          python3 - "$range" \
+            "$out/findings-env.json:env" \
+            "$out/findings-flag.json:flag" \
+            "$out/findings-discovered.json:discovery" <<'PY'
           import json
           import sys
 
@@ -211,44 +259,35 @@ jobs:
                   .replace("\n", "%0A")
               )
 
-          def load(path: str):
+          print(f"::notice title=gitleaks range::{esc(sys.argv[1])}")
+          for spec in sys.argv[2:]:
+              path, _, label = spec.rpartition(":")
               try:
                   with open(path, encoding="utf-8") as handle:
-                      return json.load(handle)
-              except Exception as exc:  # noqa: BLE001 - a diagnostic must not fail
-                  print(f"::error::could not read {path}: {esc(exc)}")
-                  return None
+                      findings = json.load(handle)
+              except Exception as exc:  # a diagnostic must not fail the job
+                  print(f"::error::could not read the {label} report: {esc(exc)}")
+                  continue
 
-          auto = load(sys.argv[1])
-          explicit = load(sys.argv[2])
-          if auto is None:
-              sys.exit(0)
-
-          print(f"::notice title=gitleaks range::{esc(sys.argv[3])}")
-          print(
-              "::notice title=gitleaks finding counts::"
-              f"auto-loaded config: {len(auto)}; "
-              f"explicit --config .gitleaks.toml: "
-              f"{len(explicit) if explicit is not None else 'unreadable'}"
-          )
-          for finding in auto:
-              print(
-                  f"::error title=gitleaks {esc(finding.get('RuleID'))}::"
-                  + esc(
-                      "\n".join(
-                          (
-                              f"fingerprint: {finding.get('Fingerprint')}",
-                              f"file: {finding.get('File')}",
-                              f"line: {finding.get('StartLine')}",
-                              f"commit: {str(finding.get('Commit'))[:12]}",
-                              f"entropy: {finding.get('Entropy')}",
-                              f"secret: {finding.get('Secret')}",
-                              f"rule: {finding.get('Description')}",
+              for finding in findings:
+                  print(
+                      f"::error title=gitleaks[{label}] {esc(finding.get('RuleID'))}::"
+                      + esc(
+                          "\n".join(
+                              (
+                                  f"fingerprint: {finding.get('Fingerprint')}",
+                                  f"file: {finding.get('File')}",
+                                  f"line: {finding.get('StartLine')}",
+                                  f"commit: {str(finding.get('Commit'))[:12]}",
+                                  f"entropy: {finding.get('Entropy')}",
+                                  f"secret: {finding.get('Secret')}",
+                                  f"rule: {finding.get('Description')}",
+                              )
                           )
                       )
                   )
-              )
           PY
+
 
   dependency-audit:
     name: Dependency audit — fail on high
@@ -566,7 +605,12 @@ jobs:
 
       - name: Validate with the official HL7 validator (FHIR 4.0.1)
         run: |
+          # GitHub runs every `run:` block under `bash -e`, so the validator's
+          # non-zero exit has to be *captured*: left alone it ends the step right
+          # there and the annotations below never run, which is how this job
+          # managed to fail with nothing readable attached to it.
           set -uo pipefail
+          set +e
           # The validator's own exit code is the gate: ValidateCommand.call()
           # returns 1 when it recorded any error, and ValidatorCli.main() hands
           # that to System.exit(). Nothing here infers a verdict from log text.
@@ -616,8 +660,9 @@ jobs:
         continue-on-error: true
         run: |
           set -uo pipefail
+          set +e
           java -jar .fhir-validator/validator_cli.jar \
-            tests/fixtures/fhir/sample_share_bundle.json \
+            tests/fixtures/fhir/tests/fixtures/fhir/sample_share_bundle.json \
             -version 4.0.1 -txLog /tmp/tx.log > /tmp/fhir-tx.txt 2>&1
           status=$?
           tail -40 /tmp/fhir-tx.txt
