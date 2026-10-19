@@ -19,7 +19,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
-from pypdf import PdfReader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import encrypt_field
@@ -273,7 +272,15 @@ def decrypt_documents(
 
 
 def pdf_text(raw: bytes) -> str:
-    """The extracted text of a rendered PDF, page after page."""
+    """The extracted text of a rendered PDF, page after page.
+
+    ``pypdf`` is a dev extra and is imported here rather than at module scope:
+    this module also supplies ``sample_payload`` to ``scripts/export_fhir_sample.py``,
+    which has to run on a plain ``pip install -e .`` (that is what the CI
+    fhir-validation job installs) and has no reason to need a PDF reader.
+    """
+
+    from pypdf import PdfReader  # dev extra, imported on demand
 
     reader = PdfReader(io.BytesIO(raw))
     return "\n".join((page.extract_text() or "") for page in reader.pages)
