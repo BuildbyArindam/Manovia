@@ -26,7 +26,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, matchPath, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/AppShell";
@@ -70,6 +70,13 @@ const LOADERS = {
   "/settings": () => import("@/pages/SettingsPage"),
   "/calm": () => import("@/pages/CalmPage"),
   "/accessibility": () => import("@/pages/AccessibilityPage"),
+  "/shares": () => import("@/pages/SharePage"),
+  /**
+   * The public share viewer. Not reachable by `preloadRoute` (its address carries
+   * a token, which is not a lookup key), but kept here so both lazy pages come
+   * from one table.
+   */
+  "/s": () => import("@/pages/ShareViewerPage"),
 } as const;
 
 /**
@@ -103,6 +110,8 @@ const InsightsPage = lazyPage(LOADERS["/insights"], "InsightsPage");
 const SettingsPage = lazyPage(LOADERS["/settings"], "SettingsPage");
 const CalmPage = lazyPage(LOADERS["/calm"], "CalmPage");
 const AccessibilityPage = lazyPage(LOADERS["/accessibility"], "AccessibilityPage");
+const SharePage = lazyPage(LOADERS["/shares"], "SharePage");
+const ShareViewerPage = lazyPage(LOADERS["/s"], "ShareViewerPage");
 
 /**
  * Shown while a page chunk downloads. It reserves the height of a screen, so
@@ -182,6 +191,27 @@ function Page({ children }: { children: ReactNode }): ReactElement {
 function AppRoutes(): ReactElement {
   const { isComplete } = useOnboarding();
   const location = useLocation();
+
+  /**
+   * `/s/<token>` is a document somebody shared, not a screen of the app. It is
+   * matched before the onboarding gate and rendered without the shell, because
+   * the person opening it has no Manovia account and no reason to make one:
+   * a professional reading a summary their patient prepared.
+   */
+  if (matchPath("/s/:token", location.pathname) !== null) {
+    return (
+      <Routes>
+        <Route
+          path="/s/:token"
+          element={
+            <Page>
+              <ShareViewerPage />
+            </Page>
+          }
+        />
+      </Routes>
+    );
+  }
 
   if (!isComplete) {
     if (location.pathname === "/accessibility") {
@@ -301,6 +331,14 @@ function AppRoutes(): ReactElement {
           element={
             <Page>
               <AccessibilityPage />
+            </Page>
+          }
+        />
+        <Route
+          path="/shares"
+          element={
+            <Page>
+              <SharePage />
             </Page>
           }
         />

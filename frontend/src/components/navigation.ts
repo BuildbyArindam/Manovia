@@ -78,6 +78,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     hint: () => t("nav.insightsHint"),
   },
   {
+    to: "/shares",
+    label: () => t("sharing.navLabel"),
+    icon: "journal",
+    hint: () => t("sharing.navHint"),
+  },
+  {
     to: "/settings",
     label: () => t("nav.settings"),
     icon: "settings",
@@ -93,6 +99,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
 export function routeTitle(pathname: string): string {
   if (pathname === "/accessibility") {
     return t("a11y.title");
+  }
+  // The public share viewer is not one of the app's surfaces and must not be
+  // titled "Page not found" for a professional who has just clicked a link.
+  if (pathname.startsWith("/s/")) {
+    return t("sharing.viewerTitle");
   }
   const match = NAV_ITEMS.find((item) =>
     item.end === true

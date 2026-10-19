@@ -1,0 +1,158 @@
+{
+  "generated_by": "app/services/sharing/crypto.py + tests/sharing_helpers.sample_payload()",
+  "secret": "Ay4bAOTPhYzWins211LH0fPSir2SnRdu2RMNnKxhMu8",
+  "passcode": "483920",
+  "token": "fxShareToken0123456789abcdef",
+  "key_hex": "a9d8ae157fe4eea9d5d2990bc08194e30e57218971e4cddb458cf5a935ce897f",
+  "share_path": "/s/fxShareToken0123456789abcdef",
+  "documents": [
+    {
+      "name": "payload",
+      "ciphertext": "mOOemEk3_TGhoACRqaVItQ12YSHb455gwp_fVuH727kYcBhKkUf3vZksvzoNeoQM8IwZmUl73cjwrnX2XfOZhuUzxf2qZM3oulYLfdhNJWLQEwBWCa53sgZnmtn7ie0YlGtDUOOVSfqJaoMTxg4d4t_eAa4eyBqnF8ztIfSSlqh5REc0Cy9qb3Kp7uDk1sqKmV6LSn7S1wldZSnHW6J56dyyT6M3qQU4ZrRkXdAAnIexTA9LS3GK11YzJh0QYaWwJ20z2x0PuoSV_F2-u3Em5mC6B8hpPzQATk7Nw1ngFsbUirU3tbkB1UVGHb_wPhjHWY2kXOX76ootG4RRusSrExGaaLC6ModZZedc_YEqzAO7wJ-mqh-cBYYyyFivJPGT35lMIInLqtnN3AhQfdRiiLvCRJ-qf0BUNaECouJSjP3hCCtUPlNE1GAdv0UZ9ZvFcRo2-mfAkiGtxoukq0RkiAx-7BnOahJibFIt8I1Kk78u_xWHI7qQ0m1Pe0V060A2BqbVAdAoIstD0TnME61Vsg6CC7H1CeGVhmvo9EgK1cbIACe5N54rkgIcw09cLFOtNqEMIe5eclxV2AZ3Flb3uz7lNPVt74-Csp-mztrrgkDmVfMyLmkkh4upHGjPE2qBg3cZT8R_PbHF4D7Ez9dcszg-1R39g3WovCUs4a5nL634V5reoRpo5Ixv6aJ_t0nDdb_87jbb85Ntx4qJ-jxRdtC1Konq7x6dwa4G3-7fHnG7hxmlWO_no5Vx4Sti_qd58f5936FhqeqB171RsJgcXrqzAFmQUeF4B4bJoLk_4SGPMksjJ0s_lVBMlWwBACrQ9QeiyaUnaBv0EAArmI89ILSMhBBXDUPpF4O5SJBiGybI1KTiqSeW-1YWXf0GeDy9Bb5WRceUTpl4qZ_iuVksrXA4plgpSByt-TgMEXz1RSET47rgEqNrs1aoFyA_fgWTbdDAifaXDSDVyjUf3nuO1lGqn46zcmKg4w1yKj43L2PYbZ3Dd8CKxPtom7pOmPeY5kylY33fyKc-OYd1MM-56tWbueOEuT4rbcupuI6ISl2T5Gr1yECxyeiH2h-FAcjGyjuJV5VZVlz8trjn52zAhN46O8Gf325SmNUmg4RU1gjJKBR8RGDleMad0C-6muQ5bge6ZRF4AivHbOmWxBRqQcNVIzpzDOqhBDIT5tEQD3daIrAwxT21ZagIVcJmBq_TJazMPAKMQjIYzkxKKGISw7TE2bFo5FObn1Obi4UIE3ikorE-RghdJT3Lf47iXBtF11qDCc9zJCPo7TjJidt5cNG7-PVn42DZamqmTnDoeoY9B2CO76LHasIxAq4VjofeDlv9s3KyvSOJ-3iJ_KMgD4OTnWZITRKdgd3O0KUDGJxg2aHxY5EZJu3wDTz_M2pBmddYsOxiEba3wg1LAZQJZKxBIBOEZuOJId5ou77isq6tlMys-zSBEWF7aDs77ScXJKFqPAurEhekfl0Rgi28hnkUpQrC1keRGbkp4M_mYBhgcflpF_zJjthQs3SozN10zORv_xt_W7BsaZKNHsOzTjcopdlJ_OKtKfA4U7d0RK_bpd-4oEw2ZYuihymc_Wv9rWY_7Ne6IjtM-A1gjg2NJ7nUi4JOPqNffLOI7SmztHbXMOOrpGR8dNQRyZjeJOV2dRfTIsC_oBY1q8ZPfSg_HSVTszXkF8edsuZF0y9Lkn4G57SliBlcBlYcj5XfANmAUYw-I95SvpAHjEnEkqetnDN1WDG0KXrW4AtMUAUoA0rnze6NgF4VzMOBlovZjKsrmBBVbGH_ntLqRGT6YKQHKdxAsCKvwHlDL4MwBVPFtq0FT5LT_D8RxcMgWzCgJCyR4AGfxrjsjlDbhEdwBIuxGQ5q_2UuJlBLo8rZpkJTtiNuXGFpzAfSf4Tla5VTPZdVnmIgGaRsJ6BXW-_aMBrgqLai6DXg2zF48nOSrAL4JhvPudhfza1ZnRY2iTf6VtZxk8UkEID-0bg9l2GXzt-E5vzg-Xh9P3K1XO9nXWLyZXp1Al6MhHZrpW2ZR-m2qzi3YcxJHQkXH8ZyO1XWZZosKLHWFr01GKooyh8-VeBqx90Sq0l9EUwEUbfve44_S_tw8sijUGmAmGtSXmeSQpk8sCptpWY6H0w1A3Af67kWsDWYtVD9AyZ6It8OQcrVNhayCuWh-06tWr7cnex5kyijGcpOMc-cTQeGyzQ_P6FYQ4mIHetNp9tqLkgdaNKxjihI_2Brt55ayeqb30JrH22O6Cxf8G1wglgfWNlK0Jnc3e1K02ozzp1rKsIuts9kQOtIOmpJuUniyBlhlNskNbS91EB-2e1vDT0MFAOkKxo0ahCdxp07lt262GGXcQG9NHWHyiHXClg1LgJF5l5qb3NK7LFu0SuFmy4iJYfCDwxCZIU3dxkn3v4C1T2CUglxFnlyPPQyOdi8E0kJoHdp0n5J41-MXgZu3S29EkC5FSxgapeD2v5TeUBsH9_kKYbKgLCG_czOcjlVuAiF_q037C0ndc6Ds8TBulOTZGccTQNUrefjqI9HYCBOVaElujgd1xjOx_mR7IQrQGog-KW8vOC5VVXJOIuISeS7XaeZFvLiv3Zy1ga0HnOtriwdINrC34Kjuvtp3K148uZqvLmCD-bpsQr0z2MGMZoyRgtD5HVAXGDV6hgkss4ogll7bS-me50saVl8y78tvWx50dfXtfJ3_jz4LbZHhtI9JXrLpHSpqxYrhrHDr1vn7ODWtE2MSzjWzYbuhCEL9Jhk0hAcof4CWhx9l77uKpRxRqGYQsJqQ0zVXj41336lxgri4sQTwqZmJ6C7X-VKGaybOYPS6ovzaqz_PYTo2zflD3aO_4__PpFVNs5EigDsWw5Z8asr5ElhgF0Yvz7kF_Scg0cb341hL9ImRjGE6gmDY4habfm79BbUdQ5Xk_otMrxjWIeSRUHUTHXyPjSBgrK6BR6npxEsM3nrGjwhz4GFdab3n3xe5COaelt-bt7aSjuRPNEyURiLNGOIr7tcDtnoMMq0WjipzPjbVx858lgB-spF6-iN7Wv7YOpQlKo-eV0n9z5jUTPoC_RdySOqplNEB8NdFP6WE4f8TNI69mikQhz3yL5KkuDCTARi8ZewlxWF9NUQ-emFYsPeQaxE2I0K9av9W6BNfQV55nRhkPe1XlwAesQRXxeJ3AxX-pSvtNuYPCKBqAcgyLu9kMFPFnwtVGqiMKXHjYm3NqfNPF8MZYHxRZ8sbzDUV9ma_D9WcoEyU7xs7rKaOJXFZ8USB0Hbi5QBYP-hX4RMCbRgRSx70Q2PD1QQ4BfoAD4tMHZc4YjtsNY7DtvQ0pkyn-JRkr-kWHNViHDkNvh3Qw8NPHAh6gJgx3ru_AYT6AxbOsDQ_6HnY5rjVRtmdpiDShz6gtwoHmxgbeld5IQgJ4zDcG6U_Z0HsLjbQW0B_GEPUNBj0Pgh_BmjpjeNwRhB33jeMuOqBnI4hmGzIc7K_mfaPlJ2fM85TbeGYMI_RkmgOgXfT05Dbj_2jsTHtZldCgrqMSTQqwbP1mmzvfoCxuz8DGXG4DlNU0iFWV5j5EOj7ZdCemoFDWfWnosdToJl93PX-RIFHNUl_O3a5AKGLiGq-s3OiJkagTXJIYTSN2QTuRoyZb5STxNj0FtUBcRywIS4497t_axAiDW6sCwEBF3dHonQTrEitI-OM1wEH1w3oIUEvqg6nnnGc-d1JUWh7FuUQ8UdrkSYxB7ok1TveEbtgFjHAylzIjEL928B18cw2A5aWWC85fdjwgXy8RD8v7922jmxFDXvEOWq2443ExJPjN8b8aLpwlYoFB1IvimgK4QrCY8aMC3IiYF9si36EuWVLa2c9_ytcsrABgvXJE2oqrUFhyStpsSErBdtWcWlIo_HfCjSWmho31UqsiEPz3elz8vheJEi2MPxQ7u8w0RvCq20uBDYzPICCupJ_fFLnoqNi6n6fSnm5L4yZaCNoE2nIv_C9k35-co015s0FSwlSkDc8WTAtDU0DnhjKwi2RH3q2_wx9x_7IwUdcPpVk6bmUAwAyUZtqnHrkqFU_FX7Wm33ZoIZm6k6RAZl1daUZpqfluMMGD_Rh-y66V6BOaiGX1ykigR59Jl7Km7-TpGANtwv2XZJn44LJwcKZ6sjIWkw2nVIOzUAgbin1AxODUb66hnhtwmvSgkTDDw7wf_mce_mivo89q8K7JswjuSYCoFPVgclcuJMiM4Sm_sZAqp7Znp6G1wX62rRaJ6DeddIas_UtuMpCXz11oGOdIkktVHnUZfHpdkJBFlvYxuEaNfbHSUglpEAypRjv2T5zQkickyOOGzc--UP2LIU7_zA4H5ZIKRlX8nYp9OSoiPN0uXlpgBU01_01yAlzMSl1tJa8tFXcnw3nFzR3Co4fMWb4UgfSUGCYGOYabu3hnidii4wVA5M5akNszsp_PXl_2h7lDfENF1xEGe7PWJQEaXfshboO3tPd431QmZvOcIr8Jvqzmb2LeAn_rLPvQ6xJF_rvE2iFCERscUVmRwiIYNl3nHlMUa2Gwj_5BKHYYU0LSBP8AwEmUC_9Pw7IqqeUGhRrVnyPkv94RE4m5LN_F7xg--4",
+      "nonce": "-YmatnKoq2IgGJHt",
+      "algorithm": "A256GCM",
+      "content_type": "application/json",
+      "aad": "manovia.share.v1.fxShareToken0123456789abcdef.payload",
+      "byte_length": 3431
+    },
+    {
+      "name": "pdf",
+      "ciphertext": "H2Bt57bSfJljdVjzxNgdrYnChwB8HL49vB6wr0k93UMr6Yo1JP0sBnnFJ999IvH7UQCaZ4h5dhcUjEKrVkzzKu87IFbK2n4CHN5HKxCmepdYsrmzYlN_66hOU3ql7QPOh0E43wZ-ipOrFKvoGyjX4pXVUVSJvTEyY_IppJo47rXBjdUqtX7MZF5zGXBG41InGijQ9nVlki27OpLUgHvZs0SM04TUDsq0875x5nn1FGJdJWy8x8dOQR3sb4X7w_3x9u4fya9ZqhqCxSCKOwiApgI48JgqYvGlP9VkQHba31rkeCPODXpFD2cdzgzjlNqc9NNNdrFgVuVCSiDBvWhqgNmcTIKnyPft-iLogM0fu5fVPkpXPcFozIiGEpn4XokojsBZXX2C1rMmMYWwod5z0HbJeF6zcAgg3jAt6t1avAbJEXDHqqQx44VEn_kbdDlFRujKpHhH6AorQkkPPhYJ8HTXajk4ubZi7d4WEgiToP6ljXN6I_H3_qbwO1c04_jVQMvPXdw2RlWSbOww77l0GrsEIG3kc3S7bXr9pIrRB2iajpnAKbJ3m8-UwqEdVTsqdm1vVFbkHv4W1wzcQIKLUhvcoxrajx91cNrOnZF2-3eMGIbeIzkCPpQYdbVB2CPNHrDbGmFsFFY7Iu6cbi4eoJhKDTZAaQ8FV1d3HlGhH_k4TyUDm8AiJ7a6vVz5NTbQh-XrYnh8MdKs7EvHLsFCRjAaADBlUbmITZL2UiujFGwr4PcYoPFs5gwt9rTkv9XbAcp-qt_PKd_erp9wS7Fwg7vcnYf52pRJ2HsScZ0MIK5MYfDfI7PRFfCTpl3WO-PoAAgABMYWz8SPzU7_je9YiGCUmIi9Bco_haXUp6ehnd2MYMfhfCxtYfV4QOIFm3dFpkZ7ai2cQAka1NEh-eDqcvN7fsk4UMKayD_XX3bcI8rU7TxIJRYLrsar5sdy-FD_31X6G2MkxjNuu4BLv-MVCvDqbW5ZNCnXMig6P-rR8X9sg6A7hKmu8iQB_-XK4wIa9pbao0FdFf3w1JYFetXBi4tYSAdvDv04lkcz6HWksR95tf0RwlT1RMd9Htff3QoSjtNen48HYEUOf0HsfDIz-gNpKrouwpVo6Xg6RamiEV9OEVMftxVq7k5HhhCSX5LOdJfTD7UxGjOjPSZ3zCXwpcvhnihFDSS3OdW3QG8Qbfn_eHOh6YEUfxGporJzQwniMxGFpxrwHb9rofBo9yFspT0fFsyxUP_fPwSeLGqJgwD-AUIOPtjW-ZzT5kvFnTOOPnFC7nlEZAZ5kDzJ4KQk_OxxQMemXLX_inxjAYcIQ_5IrZUloslSlvCqdbZk5NeY7Kw0n0sAuALTwCswFDS5ypqHuLTWbfTU0uDhcVylUoqCKTfEHxZdUhZxGyLbsXWHWr4UGurXToghJWE-HiVRE9H1tUPLOQvKwiaqwT83Ob0M3Wt5sWDIX4NVERUW_PL702ItAfNkNGw9dm_tZdU3990QjORszovcyG5GybYfMMT5cbd-fs7UN8__vK7Yqp6Wac-SIk8kzElROW-1OP57Zcd4SEJV4ELMIXc9qlPP7EtLgntixdrrlHqDs0LdUyKH8EFrapD21JnzuaODATTXgZd-S9InmsG4AGx3EBSwYks5GMlEzQXLgq3OdWMlisFe-gIDzdDKgOFvII5P_yo-6Zi_c5bRNITqG2_lkrtKm65ZGJDNeCc795NIs2rcyA_8nAiQcBZvaFnpZmsr6b22O3ZPqaQ8kB4ti4N2-i2aM9xrIcA5sn2WXXm1RTCtb-Kdt4gqpFGrpJe_S7ajQ9NhKDIyYJWap98FVKqvB2E9qeG9TXAV-4AlRxpNzasYqQxMZ5DCmpXDlM7AQHtnyNP0pNUfXJa_uNkkLqFUAO1rjZXGXQvwi2Wzz6a6eIcqXV7065t6zqciKut4fjp8fFMH_p1SPFpMRywjs99FvHHtpxDvs7j31bwIRX9NYoDntPlTUIsByM4_v2C7iPPY3ang49JeH3wOPijXqGExd3s1ERrCcQjY-RwSxprAfNmYj2bA5EbQRQ9R8scq5Ro7QneF0M1o18LOopHERBzD6aX-MkaA-i8K_V-XwwI0LBDReLQrBUe_pkhSW-KVXDyVAYe4bgFR0kz8ynwLPQyFCSpsW1TJrM6OQ2x_1_2HMQOWJ_LXmA3bnKXc_1eT0HVds7uBiTr9gcs4xqJWbUu2Xzlu6mIILezvdvSoWTptzNy475mf1aSDGYdeJbJjkCvwrL6RGnJh_V0ZRRLdymCv0ww7vSODYDRFq9M_Ly_MQQBJ85vRnSo70e3lEjR2JxOuPLZRY5E9ZuNsZuFIl21nD2mPecNqPAV-FLH7NUIaCSZjGT2ted_8RtBkiTJGFN7zOdn5Vi7nGlqnFRmR4O30yY-BtMKhDslahrVgUm7sqXEY7Uvmyk4__2Q7bNYqE6_2teSBSSm1ozbKD_wrN-y7fI9GFFye__DmE80awkUmnYIsiaeR-m_y_H7XByia7KaHY5y0ON9jTRkDQ39BauCh2B_16c0UcSLYOaC8Guy89F4xECAIcuyTPhQvh0BSMVeOptfWpmj0uJW_Uof68aWti2yBFTMG8FfZ1i0Z5msPCL_Pl48UZeqOjF-IfyVLJmsIfr6_hHjaD_FEVKR1QMTvz6IyWjCd_yDie80dZO75MZevm9u2bOqda4hNUmoRIbEaRfCdL_2WxIFBEV4d5977IwEba5pLbX9i39gkJGP0RHJijUwrTd-ZJKbrIeePluQUNbxHmIjII4eqg_1D0zzbm6FT-7VMKeM92O_dlyzYqf4FcbcjCOf-LbHNc2So4yTz7mQAsFPgmq37BVSuCRNwopszbETMAT8SAfx2FKnQDXEa_ead3ggyGO_q8uvK_Ch-Qn0UlJWVIsRe4am31G9WMjLv806kf9kZ6JVtSKzoPOEFCg1AbRXw2FtNlmtszvsKtVM8NyeqFZyjuLQzu8Pb6CQ4DkBi5kSPCEa7n4pEYRLT3SFKXzB-2X3DoTJzKjOqyNLH89H8WpF3qVhfjVCWE_tv0CwyCBI_Ju5KIfaMMHNNE1KLYHh5Ajb_DZ8l3TZlp41NmvPNw06Hs7IszTpTP1Vs9oHXM5SIgceRztxaZKMApT8eFJURX3LC2MXWqYW_U1X_xeNN7d8y4qWMSRXtUZyWmmcv7hS8ULtMKPG696KsJFppo8iSLcZ9AXp8P3aKQhchMfyu2fVa1EvX-uwKObLw3F33tuie7zvIbyqBwQYyot95QlzGw62E-QegvXZzammDrQezsmHsCPNTcAnnD8lXbP-xaQmASnqpmS7yEmVTAiuUBClOvrGMNhAK5WrPfjB6c_H7XCYYUHHwiomtcQKcH20HDimokwLaL837UD6MyxIcCKL7RfWSmcgQ35vUcc9jmVxSnJ7iky-V43L2c38S20K_EFVWqR5eQ3diIK4OfuqSTu6DTr4piBrT3AlFVCjvHyAk5Tg3XMQ4aYtVaplETJw_e5373FE7mtNrld_W4avMT9nqcNLKB6p9OZDPRP4hMzcSsHiPUV2b_u-PreGxsWrHHuLp4C0D3SoUlsTkAket5DIeUDCN4GbU_NimMg7XVZmki4JL6rMRwU03DPt3wygKZO0bumO2NY-tddl9oaw3rOrVVTY9jVhsISeUp7guYxnUrUqDMQtykbMd6uLnQeap9ysWZMDI-oaVLuRC_X2EMdbXchVqcJhHiMAzG9CBQ7kYvy8jDgh3IjacN4MMWyEmTKoC4RBIBtsi2iytMyz4EjYgMjqTTwgp2pLRHNfYdrdv-eorU43-CWHFqwQD2jbsof7UZ-pakMiMcfcwc73dqoNun2uL0n6CfJkPi8aNKMXnlWohQLEDH_CABe2P2D-dt9R08RwV1swv-a_UayiTptgdRKLFI6EF67LYpTcVuP7yjm6aBAIsCeHQyZ67j7bb8xL8XOIsFKOXsQrHQ-xf5fi1feEWUtVOOzCAIs6uORdA7SaLN6wm2s4zXj80nbO1I9jka69-O3DFlZs9wqXt9OrVID39BWWggcaku03tykiZb5NG3LFHs9AcK5-9oDEO5fEHzbemV6IQQG5rxMVy9paeFeToH_EtZv_ax8m5OSkmF69hnaajnUP5Q82a0-1HFKEzm1baGVisMJQBYWRzFK8qyEi7hIlax0CE3LdbVNsDQAmHjQbIIyK2VK4qo12LyyJC6QVcbgTKyuMImP3_EYQ0rLoGd9xSjU9atGAJ09cRQLlzC8lBwdV4HzuSY8d9ZEpJqjRAkHUJdY_KswWL6KvmnmQ6j0LTCZBiaugIAGssQ6BINuX51atAyegsKtFC6ncdeee6uBaHwo1QK6hQ4dso4WNj8vJmIYYLw0WPh47oaWvXO753sApcaAuJ0rgrb6IeNJjR4-F4-bG9xZPZwnojN37htiI7vk212ZEEAJQErLU7epD4KvY4R_qzj80elHPEr5InzWvcr-3XBwJD4TkeALJjD7KAY_M2PWB9Nl4xJsIf2cCuaJ73zG8hnCeQ2ykwz8EeRZmGAbDv9qHhvgN1aBTamUEMKIaKKXmG_v_fv119VxpaGLVEtGh96PwW8My70GgQdC8m3Rb9CfTQfEJj1Smb6kZ4hw9VjxXkLmsgYymmRWTQZwLxXtuWZXuAwI419wiXfakD9H9qUow_7EcCKc0Sr14xZdPn1TpnlcLJQ5ermk_pJm-K8LJ_UGkd_VT4U9sn8DvaWLGdhb6ocyCzrHaN8xdG2ipbL4FgMU4GAIHkwLgJnbUgQCQRILY7G5pmp4-ddPDwUDgke4n8-GQ7_6k-R-MTmrO0zRr3QWMwt_tYN-y0Bjln8R9gxp0Yl1H1SLjCvimLnNwU4WP2Pn39PsUZX9TfcS0Ugic5YHLlry7dUL8UqmaS37eqvRbADrmqI0gXp18hbDyp7Cn2t7YAJPpWHl8dHhhvaW5GMVAPtO-d4E2R7R4fbuYpra7WZ-yraVfUHJE1xc9BbGJitUTxx1O21S_TZ5NP0ez3Qh4f5L-Zfy3_N4-BGHYF7Nha7pi-xYOq7vfHSqIJqwiWqZ4JBNGSv44NxySSlRmjii__wOtC1CrUT0sO6GyJB2aEljlG59SnDKnEy_K16A4za2xrgIzzGXBU-DuaQYEUnUbk4q0lxu8iOZAItX2TRdxjeM9udw1-vPE5Eh0SN7Eu7_lsjSZeSvC5neVSPmoh2oOuHzHwOvzjji0i8xagkfyrCqsM0iAKw66-t0zQEmRlEMrrNHom_RGq-08GN953TN0l0sc3TlCyliV3FwuaS0hKZLzFmf8aSndFF1F-GSgR5KmXP4yNZy33BAcwQHvvhbZDLe0_5UcCJpqFcXGh3_SSWlZXj_CebuGLf3OfT3s8nqNi0jYHqUCx64mcb2XNX1ducyEAmlSDsBZPcBkAppTyMMCPxha62o_hfd1PJoWnchrVi6rQUYda28qMoPettmVftsSD5IG4i0SjX93khsukeynxjzEo3U_oR5cyX7AFxGdc5B3FMcjtk4WVK5lZr1UKWFQ_CtJKulMOBTuEG07p5wtrWXX9bdIldJ3t5pwD5wxU1BA5-XsbDSwpamgem-_TF1rNLj8l5EUZf7ZMchh4TOVwkP6KV5QJy2z3-W8_vkt6auLhrD6EHzknp-74MkyiSuN7kKYtpFjvq1AGAw1ocAeol_FlxHii53TuWW4l2wu2J8vFZlwOQXrL9j4gcsmgy54Ck_3AxijnY1cjgoSzc4WffaZLJvbQMjQjp-_7VGIKPJkYnwRAnWEG4ykpO3eI8gkMKcR9Ykr3RAcNt7g8z8VIQvSeDvB3WFnZuSI_PA8zuNPeA7Havvfgry6Eo13rIU9vBRexDoTZWqLezAZfoMJ8KGSUX_yvXxKEVYl-vyBNrqNZB6Agp_X8jPT6XhCj4eP0G2Cd5JgiI7D6fbDO1yXY-DoTFE6casorgKweveGaxfr7une8zsaHODedWis3Ooel6YDKgJH25PznJYfHkiU7AxV1JWHkiSaDLa7Ihd2HeGz13EytRi7p3eQlKZFowu0bDGdNMDCQAnJ_PojPUseQLlXqijJr5IifKQourZcFMBY5kHr6615Ut05BV8-8vI7arlQekABGbnUaC99_ZygV61aCSw54MHwBnyCS18KL22tvlVVNcc-xFmB7oKVZMs2o6MUfdn_abnTVKUEnn14fkxT_OzomYHeIxKiScfIpNMyQvuWTxFLQspZt85zxNDmLexWUqbIMfFdvOeJM_mRfArF7QJK-ql-P4MebgMY91HGSQzFclmgyKRoP4Xyi8PTjM5b1CGAlUmBNMMJfFZU29ydVkRP_bbdaHUPYuCCSxGwcm__wYCZ51nnEQcxVCn5Vp5VaThbJzi8g9s1LkElqbQ71ia3FoyViyQ7WAlVn5sRn0pjMSVWZd2WcZelcbhC5JCETBMKBzyGo-0bCvO8saqENOxDN7Gu8dh_opUnL5mMyRt9yMD_WEi6FF4OUI3n3Ad7ZCsJcGi44tQe1dqGLMlk3Ptpkk5JX2daUO1JD5JFlKVyKn42Q77bmtFOOy-C9_KoemMghq17L8B88hpoLHxmyGkr_gFc4vgj3JSOjqVRnn79d_uU8aSyqhE5PTjZazC-v8QfHP3K418fxdPbI2WotFaKHrvK11fQ4XG0xg5tZifHbHr5FJtFhAV-7z73b83V_lvpu9IU_hCfzvp0WSztOFo4kTimmozD-OK3W3mD-d4WOgmT0OsyFySE_W-K-5_3dQfujIo_algmPVM6rjBh5pZ8Dktekg0eC9kcZ94NN12e9oW48IAifGeyR9fYxzZSzFJIyMZEpS3mppIOKIh95OFRDRyrBkELiZBCIvJQKehoidDMHtKd5Yr2d8R5EFPRA76Y0ZnvfMEuM7V9m5TpwNn--2jqgM-KfFDdKkzBLqwdcQ7kNgekY8v9FQ9WQ_2uVIrUzeemKW4yGBJKAeHwJKUz1qcVgxi5V7KRrymOBEMyCKpP7qwJc7tlGOTHoFzxKseX-qxTTRhWfowlBJdLlCZVx3udEuX9Cfvrnqo1gvney1NGrRiEcWlk6yminSE59ziaTsAYxntPI42-Blu_GqndawEx__B6obldusevx8vf4O0UBHl86fSA1KBu8_Lemc0AEUC4aIBLdqUAXPIxTnuxBREF7QO9NIbIGAsX8RKcdBcE-EEiAPw2cCAijl0cT4l9gVXxPMjmYcPFSuZoBdz94i6NfiNDcrlwF48eiqEPAFEOZvk4YKTdRTlZgCVDdTjQLrGjfi2etqWlww_DCrZ0evSul7h5VW7AGLKkMtBjvDNB53AC0CcDOHD5eIiSJ7bNsO1GeMOvDP0dUprYBvGb3HsfA1fMSzIo-qIGLlIFLEEeRze7TNQ9M2QbTlxIZHsYWCqLzzrwvXvdjUGll8CPncLcG1ujr9GA7Bku_eRMuMoMbS8WW-TvSYRNA14sd73CDWCrBChag83OE2P2HWTdM5fTH3AOKZZk_Efae5ynYHjK2R5t05LdovUsM5ZlbhXm3j_6jF8PRNlAeKvMGTL2yU8GsymxtUGIBVyl-HmuFmqmK9uvXZF-SaI_rEU9CX3khhnFHKcPvb_V1vRDAIL1_x2Y2kUbK0fC9t0XyGw-I0OEEsAEOmVqb10o3FZpWxG-QD7Jkj4cgTFt4uxcB6vxvwpcXebaTmCNndORxxjbuWnpcvBt0gpwhPv4SxIrMkVlHRxjrn1Bpu4fZpI2a0iKniYAHVZqPAWd-jAdlHC20g9wXnMu4mCzy_TkKViSunLY5llt_0g7qHQOg3KMoIG5V_q26D55EUiOMmJiJkoRQunfaJ842KehxWunl2VyjpgfxIA2y1Qq2s_fWpaIwZU02paJE9cklZmtfYZ729GUArtTorcayugyTvLUHd5hM4GZzdEQWBNF11ViS7HXOIoJEjTeBObKLmLS9mw6dNYITOG54Sml3U4FyAkZ3arwsvAAWet4KE1SEZYc9odbLEBN_NBkaeSkgDrqMK2vmdCbm5tVkv1bE_EPCx-4QZMLwINzCNE01siePsxNyK8sXXSU7-SSrV6H8kteTaKUm_c5ihi55jXk63FBaogSkX1eb",
+      "nonce": "MTmZBRn56Zhy_Pzu",
+      "algorithm": "A256GCM",
+      "content_type": "application/pdf",
+      "aad": "manovia.share.v1.fxShareToken0123456789abcdef.pdf",
+      "byte_length": 6056
+    }
+  ],
+  "payload": {
+    "schema_version": 1,
+    "kind": "manovia.appointment-summary",
+    "generated_at": "2026-10-19T12:00:00Z",
+    "window_days": 30,
+    "items": [
+      "mood_trend",
+      "assessments",
+      "thought_records",
+      "exercise_helpfulness",
+      "note",
+      "questions",
+      "identity"
+    ],
+    "disclaimer_title": "Patient-generated, not a diagnosis",
+    "disclaimer": "This summary was generated by Manovia, a self-help companion, from entries the person made about themselves. It is patient-generated information: it is not a diagnosis, not a clinical assessment, and not a medical record. Screening scores are self-report labels for reflection only. Manovia is not an electronic health record and is not connected to one. If this document mentions risk of harm, treat it as a reason to ask, not as a triage score.",
+    "never_included": [
+      "chat conversations with Manovia",
+      "journal entries",
+      "the notes attached to mood check-ins",
+      "your password, email or account identifiers (unless you tick 'Identify me')",
+      "anything you did not tick"
+    ],
+    "identity": "someone@example.test",
+    "mood_trend": {
+      "window_days": 30,
+      "window_start": "2026-09-19T12:00:00Z",
+      "entries": 6,
+      "first_check_in": "2026-09-24T12:00:00Z",
+      "last_check_in": "2026-10-18T12:00:00Z",
+      "mean_valence": 3.0,
+      "mean_energy": 3.5,
+      "earlier_mean_valence": 2.33,
+      "recent_mean_valence": 3.67,
+      "direction": "higher",
+      "direction_note": "Mood ratings in the second half of this window were higher than in the first half.",
+      "scale": "1 (low) to 5 (high)",
+      "top_emotions": [
+        {
+          "label": "calm",
+          "count": 3
+        },
+        {
+          "label": "anxious",
+          "count": 3
+        }
+      ],
+      "top_factors": [
+        {
+          "label": "sleep",
+          "count": 6
+        },
+        {
+          "label": "work",
+          "count": 3
+        }
+      ],
+      "notes_included": false
+    },
+    "assessments": [
+      {
+        "instrument": "gad7",
+        "instrument_name": "GAD-7",
+        "completed_at": "2026-10-12T12:00:00Z",
+        "total": 9,
+        "band": "mild",
+        "band_label": "Mild",
+        "band_is_a_diagnosis": false,
+        "loinc_code": "70274-6",
+        "loinc_display": "Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]",
+        "loinc_source_url": "https://loinc.org/70274-6",
+        "ucum_unit": "{score}",
+        "item_answers_included": false
+      },
+      {
+        "instrument": "phq9",
+        "instrument_name": "PHQ-9",
+        "completed_at": "2026-10-11T12:00:00Z",
+        "total": 12,
+        "band": "moderate",
+        "band_label": "Moderate",
+        "band_is_a_diagnosis": false,
+        "loinc_code": "44261-6",
+        "loinc_display": "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]",
+        "loinc_source_url": "https://loinc.org/44261-6",
+        "ucum_unit": "{score}",
+        "item_answers_included": false
+      }
+    ],
+    "thought_records": [
+      {
+        "id": "7b1f0d5e-9c3a-4a1e-9f2b-6d0c1e2f3a4b",
+        "created_at": "2026-10-16T12:00:00Z",
+        "emotion": "anxiety",
+        "intensity_before": 80,
+        "intensity_after": 45,
+        "what_helped": ["looking at evidence"],
+        "situation": "An exam is tomorrow",
+        "automatic_thought": "I will fail and everyone will think I am stupid",
+        "evidence_for": "I missed one question in practice",
+        "evidence_against": "I studied and passed the other practice tests",
+        "balanced_thought": "I might not know every answer, but I prepared"
+      }
+    ],
+    "exercise_helpfulness": {
+      "window_days": 30,
+      "window_start": "2026-09-19T12:00:00Z",
+      "completions": 3,
+      "rated_completions": 3,
+      "exercises": [
+        {
+          "title": "Box breathing",
+          "times": 3,
+          "mean_before": 2.33,
+          "mean_after": 4.0,
+          "mean_change": 1.67
+        }
+      ],
+      "most_helpful": "Box breathing",
+      "rating_scale": "1 (very low) to 5 (very good), rated before and after",
+      "change_caveat": "A rating that moved is an association, not proof that the exercise caused it."
+    },
+    "note": "I have been sleeping badly and I would like to talk about it.",
+    "questions": ["Is this normal?", "What should I try next?"],
+    "counts": {
+      "mood_check_ins": 6
+    },
+    "app": "Manovia",
+    "app_version": "1.0.0"
+  }
+}
