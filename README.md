@@ -32,6 +32,8 @@ Manovia is a self-help companion. It has not been reviewed by a licensed clinici
 - **Daily plan.** A transparent rule table that suggests at most three things a day, each with a "why this?" explanation. It respects quiet hours and drops to support-only after a positive item 9 ([ADR 0021](docs/adr/0021-daily-plan-and-week-3-review.md)).
 - **Privacy controls.** Export everything, delete everything, and set retention ([ADR 0022](docs/adr/0022-privacy-controls-and-data-export.md)).
 - **Offline and accessible.** An installable PWA where "Need help now" and the breathing exercises work without a connection, and check-ins made offline are sent when the device is back online. The app aims for WCAG 2.2 AA and includes an in-app accessibility statement ([ADR 0025](docs/adr/0025-pwa-accessibility-low-bandwidth.md)).
+- **A calm space, in VR or without it.** `/calm` is a seated, still, low-poly evening lake with an orb that follows a six-breaths-a-minute cue, optional procedural audio, and WebXR where the browser and a headset support it. There is no artificial locomotion, the horizon never moves, nothing flashes, any controller button ends the session, a break prompt appears after ten minutes, and the page states who VR is not recommended for. With no WebXR the same scene runs as a 2D canvas, which is the path most people get. The renderer is 36 triangles and a few hundred lines, with no 3D library and no assets ([ADR 0046](docs/adr/0046-xr-calm-space-and-sensory-profile.md), [verification](docs/verification/day46-xr-sensory.md)).
+- **A sensory profile, applied everywhere.** Settings → Sensory profile sets motion (none/low/normal), sound (off/low), density (simple/standard), colours (calm/high-contrast) and text size, stored in this browser only. One tap on "I'm overwhelmed" hides charts, badges and secondary copy across the app and leaves breathing, grounding, chat and help. If several recent check-ins were activated and unpleasant, the app may *offer* the simpler view — never switch it on by itself ([ADR 0046](docs/adr/0046-xr-calm-space-and-sensory-profile.md)).
 
 ## Screenshots
 
@@ -44,6 +46,12 @@ Captured from the production build in Chromium, with a fresh guest account and s
 | Settings in high contrast | Exercises in dark high contrast | The accessibility statement |
 | --- | --- | --- |
 | <img src="docs/assets/day25-settings-high-contrast-desktop-1280x800.png" width="320" alt="Settings at desktop width with High contrast selected: palette and contrast choices as large radio cards, and a line saying text pairs are at least 7:1."> | <img src="docs/assets/day25-exercises-dark-high-contrast-desktop-1280x800.png" width="320" alt="The Exercises page in the dark high-contrast palette: a note that exercises work offline, the optional suggestions form, and exercise cards with large Try buttons."> | <img src="docs/assets/day25-accessibility-statement-desktop-1280x800.png" width="320" alt="The Accessibility page: what Manovia aims for (WCAG 2.2 AA and beyond) and a list of what it does, such as keyboard use, landmarks, labelled forms and 44 pixel targets."> |
+
+| The calm space (2D fallback) |
+| --- |
+| <img src="docs/assets/day46-calm-space.png" width="480" alt="The calm space: a still evening lake with three layers of low-poly hills, four small firs, a pale reflection band on the water and a large soft orb above the horizon."> |
+
+The calm-space image is **not** a browser screenshot. No browser can run in the Day-46 build sandbox, so `frontend/scripts/render-calm-preview.mjs` executes the product's own `drawCalmFrame` painter against an SVG-writing context; the layout, palette and breath position come from the shipping code, and only the rasterisation is ours. Regenerate it with `node scripts/render-calm-preview.mjs` in `frontend/`.
 
 The Day 12 chat screenshots (light, dark and the crisis card, at both sizes) are in [docs/assets](docs/assets/README.md).
 

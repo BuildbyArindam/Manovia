@@ -1,5 +1,143 @@
 # Manovia — Progress
 
+## Day 46 — Immersive WebXR calm space and adaptive, low-stimulation UI
+
+Built and verified on 2026-10-19 on the Arena-pinned branch
+`arena/51d18eee-manovia` (the requested `day-46-immersive-webxr-calm-space`
+name cannot replace the session branch, same as Days 38–45). No main push, no
+merge. The pull request is opened and intentionally left unmerged.
+
+### Completed
+
+- **Calm space** (`frontend/src/features/calm/`, route `/calm`, lazy and ~5.8 KB
+  gzip): a seated, still, low-poly evening lake. The orb follows a six-breaths-
+  a-minute cycle (4 s in, 6 s out) on one continuous cosine, and the phase is
+  always written in words as well as drawn.
+  - **2D canvas fallback is the primary path.** No WebGL, WebXR, audio or
+    network is needed for it. It draws through a structurally typed context, so
+    the same code is measurable in Node and testable without a GPU.
+  - **WebXR where the browser says yes.** `detectVRSupport()` distinguishes
+    "no API" from "API says no" from "API threw"; all three fall back honestly.
+    The session is `immersive-vr` + `"local"` (seated) only. Any `select` or
+    `squeeze` ends it in one press, the page has its own "Leave VR", and every
+    listener/frame handle is removed exactly once.
+  - **Own 36-triangle WebGL renderer**, no Three.js/A-Frame, no assets, no CDN.
+    One static buffer, one program, one constant clear colour; the headset pose
+    is the only camera input, so artificial locomotion cannot creep in.
+  - **Procedural audio**: three detuned sines through a low-pass filter; the
+    breath modulates one gain with `setTargetAtTime`. Opt-in, below 0.06 master
+    gain, context closed on stop, disabled entirely when the profile says
+    `sound: off`.
+  - **Comfort**: stable horizon `HORIZON_FRACTION` (2D) / fixed seated eye
+    height (3D); no flashing (constant colours, no `clearRect` per 2D frame);
+    no sudden motion (zero-slope breath curve, largest 60 fps step < 0.5 %);
+    ten-minute break prompt (non-blocking; ends VR so it is visible); and a
+    who-VR-is-not-for note (pregnancy, motion sickness/migraine,
+    epilepsy/photosensitivity, headset age limits) printed before the button.
+- **Sensory profile** (`frontend/src/features/sensory/`, Settings → Sensory
+  profile): motion (none/low/normal), sound (off/low), density
+  (simple/standard), colours (calm/high-contrast), text size
+  (normal/large/larger). Applied app-wide by the provider writing *effective*
+  values as `<html>` attributes (`data-sensory-*`), which the existing tokens
+  and CSS react to. Stored in `localStorage`, versioned and repaired field by
+  field, never sent to a server. The OS reduced-motion request always wins.
+- **"I'm overwhelmed"**: one tap in the header. Hides charts and badges in
+  React (so they are not fetched or measured) with a CSS rule as second line of
+  defence, hides secondary copy, and replaces the full navigation with four
+  destinations: breathe (`/calm`), ground (`/exercises`), talk (`/chat`), help
+  (helplines). The current page is not yanked away; the crisis button stays.
+  Session-scoped, so closing the tab restores the normal interface.
+- **Optional suggestion**: three activated-and-unpleasant check-ins (energy
+  ≥ 4 and valence ≤ 2) in 14 days offers a card; it is never applied
+  automatically, and "Not now" silences it for 30 days. Only timestamps are
+  stored locally — no labels, tags, notes or identifiers.
+- **Accessibility fix found on the way**: `useMediaQuery` now reads the media
+  query synchronously for the first paint. Previously a reduced-motion reader
+  got one animated frame before an effect corrected it — a real defect that the
+  calm-space tests caught.
+- **Tests and tooling**: 13 new test files (78 tests) for the feature plus small
+  edits to the token/contrast guards; `scripts/measure-frame-time.mjs`
+  (`npm run measure:frames`, with an optional `--browser` rAF mode) and
+  `scripts/render-calm-preview.mjs` (the README image, generated from the real
+  painter). Two Playwright specs (`e2e/sensory.spec.ts`, `e2e/calm.spec.ts`)
+  cover the browser-only assertions and axe.
+
+### Evidence
+
+- **Frame time (2D fallback, this machine, Node + recording context):**
+  `npm run measure:frames` — 1200 frames at 800×480, p50 **0.004 ms**, p5
+  **0.003 ms**, p95 **0.013 ms**. These are CPU draw-call costs, **not** GPU or
+  vsync frame rates; the `--browser` mode is the one that reports rAF intervals
+  and needs a Playwright browser, which this sandbox cannot download.
+- **Budget:** `/calm` adds **5.8 KB gzip** (25 KB route budget); precache
+  **674.0 KB** of the 800 KB allowance; 36 triangles; under 80 KB of TypeScript
+  in the feature (source-level test).
+- **Tests:** see the final numbers below, run at the end of the day.
+- Full command output, the comfort checklist and the sandbox boundary are in
+  [`docs/verification/day46-xr-sensory.md`](docs/verification/day46-xr-sensory.md).
+
+### Decisions
+
+- **ADR [0046](docs/adr/0046-xr-calm-space-and-sensory-profile.md)** — no 3D
+  library (36-triangle hand-written renderer); the 2D fallback is the primary
+  path, not the degraded one; comfort rules are structural (no position state to
+  animate); sound is procedural and opt-in; one profile applied through
+  `<html>` attributes and existing tokens; overwhelmed mode hides in React first;
+  the suggestion counts timestamps only and is never forced.
+- **Colours reuse the Day-25 high-contrast palette** under a second selector
+  rather than adding a third palette; a test asserts both selectors resolve to
+  the same tokens, so they cannot drift.
+- **Text size multiplies `max(100%, 16px)`** rather than replacing it, so the
+  browser's own setting still wins and text can never shrink.
+- **Overwhelmed mode is session-scoped**, not a profile change: it must not
+  permanently rewrite somebody's choices made on a calmer day.
+
+### Known issues
+
+1. **No headset, GPU, audio device or downloadable browser in this sandbox.**
+   The XR path is verified against a fake `XRSession`, WebGL against a recording
+   context, audio against a fake `AudioContext`. The two Playwright specs and
+   browser axe have **not** been run here. Real-device comfort is untested.
+2. **The frame-time p50/p5 above are CPU-side.** They prove the painter is not
+   the bottleneck; they are not an FPS claim for a phone. Use
+   `npm run measure:frames -- --browser` on a real device.
+3. **`renderWebGL.ts` is not a general renderer.** It draws this scene and
+   nothing else; adding geometry means editing `buildSceneTriangles()` and
+   updating the pinned triangle budget deliberately.
+4. **The calm-space README image is generated, not a screenshot** (no browser
+   here). The caption and `docs/assets/README.md` say so; replacing it with a
+   real capture is on the human checklist.
+5. **VR remains an enhancement.** Nothing in the product depends on it, and the
+   2D path is what every test and every reader without a headset sees.
+
+### Parking lot (out of scope for Day 46)
+
+- A real headset pass: comfort, IPD, hand-tracking repulsion radius, and whether
+  ten minutes of this scene is actually pleasant.
+- Optional gentle day/night variation and a "warmer/cooler" palette choice —
+  only if it can be done without introducing per-frame colour changes.
+- A shared, signed scene description so the XR and 2D renderers read one file
+  instead of two hand-kept-in-step modules.
+- Per-surface density overrides (e.g. keep full hints on Settings but simple
+  everywhere else), and a preview thumbnail per sensory option.
+- Syncing the sensory profile across a person's devices, if it can be done
+  without turning a display preference into an account-level sensitivity record.
+- WebXR hand/controller visuals and any form of interaction beyond "leave" —
+  interactions are how locomotion gets added by accident.
+
+### First three steps for Day 47
+
+1. Read the actual Day-47 brief, `AGENTS.md`, this handoff and ADR 0046 before
+   choosing scope; keep the calm space's comfort rules and the safety ordering
+   untouched.
+2. Run the two Day-46 Playwright specs (`e2e/sensory.spec.ts`,
+   `e2e/calm.spec.ts`) and browser axe on a machine with a browser, plus
+   `npm run measure:frames -- --browser` on a mid-range phone; record the real
+   rAF p50/p5 and fix anything they reveal at the root.
+3. Do the manual headset pass (ten-minute prompt, one-gesture exit, audio level)
+   and write down what felt uncomfortable — before adding anything new to the
+   scene.
+
 ## Day 45 — Generative calm: personalised meditations and adaptive soundscapes
 
 Built and verified on 2026-10-17 on the Arena-pinned branch

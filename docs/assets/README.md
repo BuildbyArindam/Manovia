@@ -112,3 +112,20 @@ verification after its copy was corrected (see PROGRESS.md).
 original flat design generated for the launch and resized to GitHub's
 recommended dimensions. Upload it by hand: repository **Settings → General →
 Social preview → Edit** (the API does not expose this setting).
+
+## Day 46 calm-space preview — generated from the app's own painter
+
+`day46-calm-space.svg` is produced by running the product's `drawCalmFrame`
+painter (the 2D fallback in `frontend/src/features/calm/render2d.ts`) against an
+SVG-writing context; `day46-calm-space.png` is that SVG rasterised with resvg.
+It is **not** a browser screenshot — no browser can run in the Day 46 sandbox.
+The layout, palette and breath position come from the shipping code.
+
+```bash
+cd frontend
+node scripts/render-calm-preview.mjs          # writes ../docs/assets/day46-calm-space.svg
+```
+
+Replacing it with a real screenshot (recommended when a browser is available):
+run `npm run test:e2e` with the Day 46 specs, or open `/calm` in the production
+build and capture at 960 × 540. Keep the caption honest about which it is.
