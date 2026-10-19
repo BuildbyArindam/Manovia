@@ -31,6 +31,12 @@ Rule sources, cited where each is used:
   Patient or a Device, and ``agent.type`` binds to
   ``provenance-participant-type``, whose ``author`` and ``assembler`` codes are
   what make "patient-generated, assembled by software" machine-readable.
+* R4 resource definitions, e.g.
+  https://hl7.org/fhir/R4/questionnaireresponse.html — ``QuestionnaireResponse``
+  has no ``note`` element, so prose about it belongs in ``DomainResource.text``.
+  ``UNDEFINED_PROPERTIES`` holds the properties the official validator has
+  already rejected on this bundle, each learned from a real CI failure rather
+  than from a reading of the spec.
 * This project's terminology policy (``docs/adr/0047-clinician-share-bridge.md``):
   a code is either verified — the LOINC totals pinned in
   ``app/content/sharing/loinc.json`` with their loinc.org source URLs — or it is
@@ -104,6 +110,22 @@ REQUIRED_ELEMENTS: dict[str, tuple[str, ...]] = {
     "Patient": ("active",),
     "Provenance": ("target", "recorded", "agent"),
     "QuestionnaireResponse": ("status", "subject", "authored"),
+}
+
+#: Properties this builder has actually tried and FHIR 4.0.1 does not define.
+#: Every entry was learned from a real official-validator error, not guessed —
+#: the validator stays the authority and CI runs it on this same file. The table
+#: exists so the same mistake fails the offline suite (and a local ``make test``)
+#: instead of waiting for a JVM and a 204 MB download to say it.
+#:
+#: * ``QuestionnaireResponse.note`` — ``validator_cli.jar`` 7.0.2 against FHIR
+#:   4.0.1, ``-tx n/a``: "Error @ Bundle.entry[7].resource: Unrecognized property
+#:   'note'" (the ``fhir-validation`` job on PR #55, 2026-10-19). R4 puts prose
+#:   about a resource in ``DomainResource.text``; of the types emitted here only
+#:   ``Observation`` has a ``note``, and ``DocumentReference`` carries the same
+#:   sentence in ``description``.
+UNDEFINED_PROPERTIES: dict[str, tuple[str, ...]] = {
+    "QuestionnaireResponse": ("note",),
 }
 
 
@@ -276,6 +298,12 @@ def check_bundle(bundle: Any) -> list[str]:
         for element in REQUIRED_ELEMENTS.get(kind, ()):
             if element not in resource:
                 failures.append(f"{kind} {resource.get('id')}: missing required {element}")
+        for element in UNDEFINED_PROPERTIES.get(kind, ()):
+            if element in resource:
+                failures.append(
+                    f"{kind} {resource.get('id')}: {element} is not an element of {kind} in "
+                    "FHIR 4.0.1 — the official validator rejects it as an unrecognized property"
+                )
         if kind not in REQUIRED_ELEMENTS:
             failures.append(f"{kind}: not a resource type Manovia's share builder emits")
 
@@ -357,6 +385,40 @@ def check_bundle(bundle: Any) -> list[str]:
             failures.append(f"{where}: content[0].attachment needs a contentType")
         elif not attachment.get("data"):
             failures.append(f"{where}: content[0].attachment carries no data")
+
+    # -- QuestionnaireResponses: the disclaimer in the narrative -----------
+    # R4 gives QuestionnaireResponse no `note`, so the sentence that qualifies
+    # the answers travels in DomainResource.text — which has to be one valid
+    # XHTML div, because the official validator parses it strictly. The
+    # namespace is written out here rather than imported from the builder: it is
+    # what the specification requires, and a builder that got it wrong should
+    # not make this check agree with it.
+    xhtml_div = '<div xmlns="http://www.w3.org/1999/xhtml">'
+    for response in by_kind.get("QuestionnaireResponse", []):
+        where = f"QuestionnaireResponse {response.get('id')}"
+        narrative = response.get("text")
+        if not isinstance(narrative, dict):
+            failures.append(f"{where}: narrative is required — R4 has no note element here")
+            continue
+        if narrative.get("status") != "generated":
+            failures.append(
+                f"{where}: text.status must be 'generated', got {narrative.get('status')!r}"
+            )
+        div = narrative.get("div")
+        if not isinstance(div, str) or not div.startswith(xhtml_div) or not div.endswith("</div>"):
+            failures.append(f"{where}: text.div must be a single XHTML div with the FHIR namespace")
+            continue
+        if PATIENT_GENERATED_NOTE not in div:
+            failures.append(f"{where}: narrative must carry the patient-generated sentence")
+        if "Individual item answers are not shared" not in div:
+            failures.append(f"{where}: narrative must say item answers are not shared")
+        inner = div.removeprefix(xhtml_div).removesuffix("</div>")
+        if "<" in inner.replace("<p>", "").replace("</p>", "") or ">" in inner.replace(
+            "<p>", ""
+        ).replace("</p>", ""):
+            failures.append(
+                f"{where}: narrative text is not escaped — only <p> tags may appear in the div"
+            )
 
     # -- Composition: the document's face ---------------------------------
     for composition in by_kind.get("Composition", []):

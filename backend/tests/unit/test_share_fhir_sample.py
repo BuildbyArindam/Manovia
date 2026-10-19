@@ -287,6 +287,48 @@ def test_an_observation_without_the_disclaimer_note_is_refused(
     )
 
 
+def test_a_questionnaire_response_note_is_refused_offline(
+    offline_check: ModuleType, bundle: dict[str, Any]
+) -> None:
+    """The property that failed the official validator fails here too, offline.
+
+    ``validator_cli.jar`` 7.0.2 on FHIR 4.0.1 rejected ``note`` on a
+    ``QuestionnaireResponse`` ("Unrecognized property") and exited 1. This suite
+    has no JVM, so ``UNDEFINED_PROPERTIES`` is what makes the same mistake a
+    local failure rather than a CI surprise.
+    """
+
+    response = _entry_of(bundle, "QuestionnaireResponse")["resource"]
+    response["note"] = [{"text": "Total score, self-administered."}]
+
+    failures = _failures(offline_check, bundle)
+    assert any("not an element of QuestionnaireResponse" in failure for failure in failures)
+
+
+def test_a_questionnaire_response_without_narrative_is_refused_offline(
+    offline_check: ModuleType, bundle: dict[str, Any]
+) -> None:
+    """Removing the note is not enough; the sentence has to land somewhere."""
+
+    response = _entry_of(bundle, "QuestionnaireResponse")["resource"]
+    del response["text"]
+
+    assert any("narrative is required" in failure for failure in _failures(offline_check, bundle))
+
+
+def test_an_unescaped_narrative_is_refused_offline(
+    offline_check: ModuleType, bundle: dict[str, Any]
+) -> None:
+    """The validator parses narrative as XHTML, so raw markup must not survive."""
+
+    response = _entry_of(bundle, "QuestionnaireResponse")["resource"]
+    response["text"]["div"] = (
+        '<div xmlns="http://www.w3.org/1999/xhtml"><p>Mild <b>band</b></p></div>'
+    )
+
+    assert any("not escaped" in failure for failure in _failures(offline_check, bundle))
+
+
 def test_a_document_reference_without_the_disclaimer_is_refused(
     offline_check: ModuleType, bundle: dict[str, Any]
 ) -> None:

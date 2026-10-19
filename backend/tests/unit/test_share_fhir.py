@@ -26,6 +26,7 @@ import base64
 import json
 import re
 import uuid
+import xml.etree.ElementTree as ElementTree
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -456,8 +457,68 @@ def test_the_questionnaire_response_is_attributed_to_the_patient() -> None:
         assert response["source"] == {"reference": f"urn:uuid:{patient}"}
         assert response["subject"] == response["author"]
         assert response["authored"] in {"2026-10-12T12:00:00Z", "2026-10-11T12:00:00Z"}
-        assert "Individual item answers are not shared" in response["note"][0]["text"]
+        assert "Individual item answers are not shared" in response["text"]["div"]
         assert len(response["item"]) == 1, "the total, never the ten questions"
+
+
+def test_a_questionnaire_response_has_no_note_because_r4_has_no_such_element() -> None:
+    """The property the official validator rejected, asserted absent.
+
+    ``validator_cli.jar`` 7.0.2 against FHIR 4.0.1 answered this bundle with
+    "Error @ Bundle.entry[7].resource: Unrecognized property 'note'" and exited
+    1, which is what turned the CI ``fhir-validation`` job red. R4 puts prose
+    about a resource in ``DomainResource.text``; of the types emitted here only
+    ``Observation`` has a ``note``. ``scripts/fhir_offline_check.py`` carries the
+    same rule in ``UNDEFINED_PROPERTIES`` so it fails offline too.
+    """
+
+    bundle = build()
+    responses = resources(bundle, "QuestionnaireResponse")
+    assert responses, "the sample payload has two screening results"
+    for response in responses:
+        assert "note" not in response
+        assert PATIENT_GENERATED_NOTE in response["text"]["div"]
+    # The Observation that derives from each response still carries its own note,
+    # so the sentence reaches a reader who opens either resource.
+    for observation in resources(bundle, "Observation"):
+        if observation.get("derivedFrom"):
+            assert PATIENT_GENERATED_NOTE in observation["note"][0]["text"]
+
+
+def test_the_questionnaire_response_narrative_is_escaped_xhtml() -> None:
+    """Narrative is parsed as XHTML by the validator, so it must be well-formed.
+
+    The instrument name and band label come from assessment content files rather
+    than from a person, but the escaping is what keeps a stray ``<`` in either
+    from producing a document the validator rejects — or one that renders as
+    markup in a clinician's viewer.
+    """
+
+    payload = sample_payload()
+    assessments = payload.assessments
+    assert assessments is not None, "the sample payload carries both screening results"
+    hostile = [
+        assessment.model_copy(
+            update={
+                "instrument_name": 'PHQ-9 & <b id="x">',
+                "band_label": "<script>alert('x')</script>",
+            }
+        )
+        for assessment in assessments
+    ]
+    bundle = build(payload.model_copy(update={"assessments": hostile}))
+    for response in resources(bundle, "QuestionnaireResponse"):
+        narrative = response["text"]
+        assert narrative["status"] == "generated"
+        div: str = narrative["div"]
+        assert div.startswith('<div xmlns="http://www.w3.org/1999/xhtml">')
+        assert div.endswith("</div>")
+        # Well-formed XML, and the only elements in it are the paragraphs.
+        parsed = ElementTree.fromstring(div)
+        assert {child.tag.rpartition("}")[2] for child in parsed} == {"p"}
+        assert "<script>" not in div and "&lt;script&gt;" in div
+        assert 'PHQ-9 &amp; &lt;b id="x"&gt;' in div, "quotes stay literal in text content"
+        assert PATIENT_GENERATED_NOTE in div
 
 
 def test_the_loinc_codes_are_the_verified_ones_and_agree_with_the_content_files() -> None:

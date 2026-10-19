@@ -426,6 +426,10 @@
       "resource": {
         "resourceType": "QuestionnaireResponse",
         "id": "e1ba06a9-a372-565a-940a-0f6d9062872d",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>GAD-7 total score, self-administered in Manovia. The band label (Mild) is a self-help label for reflection, not a diagnosis. Individual item answers are not shared. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.</p></div>"
+        },
         "status": "completed",
         "subject": {
           "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
@@ -446,11 +450,6 @@
                 "valueInteger": 9
               }
             ]
-          }
-        ],
-        "note": [
-          {
-            "text": "GAD-7 total score, self-administered in Manovia. The band label (Mild) is a self-help label for reflection, not a diagnosis. Individual item answers are not shared. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
           }
         ]
       }
@@ -522,6 +521,10 @@
       "resource": {
         "resourceType": "QuestionnaireResponse",
         "id": "08c1f58a-88d1-5661-9ec0-ad6bbc869477",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>PHQ-9 total score, self-administered in Manovia. The band label (Moderate) is a self-help label for reflection, not a diagnosis. Individual item answers are not shared. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.</p></div>"
+        },
         "status": "completed",
         "subject": {
           "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
@@ -542,11 +545,6 @@
                 "valueInteger": 12
               }
             ]
-          }
-        ],
-        "note": [
-          {
-            "text": "PHQ-9 total score, self-administered in Manovia. The band label (Moderate) is a self-help label for reflection, not a diagnosis. Individual item answers are not shared. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
           }
         ]
       }

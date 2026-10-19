@@ -30,9 +30,11 @@ Terminology policy, in one rule: **a code is either verified or it is ours.**
 Provenance is the point of the exercise: ``Provenance.agent[0]`` is the **Patient**
 as ``author`` and ``agent[1]`` is the Manovia app as ``assembler``, so a reader can
 see patient-generated data assembled by software rather than a clinician's
-observation. The Composition title, every Observation note and every
-DocumentReference description repeat the same sentence: patient-generated, not a
-diagnosis.
+observation. The Composition title, every Observation note, every
+DocumentReference description and both QuestionnaireResponse narratives repeat
+the same sentence: patient-generated, not a diagnosis. (Narrative rather than a
+note on the last two: R4 defines no ``note`` element on ``QuestionnaireResponse``,
+and the official validator rejects the property outright.)
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+from xml.sax.saxutils import escape
 
 from app.models.base import as_utc, utcnow
 from app.services.sharing.items import (
@@ -115,6 +118,24 @@ def _text_data(data: str) -> str:
     """Inline ``text/plain`` attachment data, base64-encoded as FHIR requires."""
 
     return base64.b64encode(data.encode("utf-8")).decode("ascii")
+
+
+def _narrative(*paragraphs: str) -> dict[str, str]:
+    """R4 human-readable narrative, for a resource that has no ``note`` element.
+
+    ``DomainResource.text`` is where R4 puts prose about a resource, and it must
+    be a single valid XHTML ``div``: the official validator parses it and errors
+    on anything malformed, which is why the text is escaped rather than
+    interpolated. ``QuestionnaireResponse`` is what this exists for — R4 gives it
+    no ``note``, so the patient-generated sentence would otherwise have nowhere
+    to travel with the answers it qualifies.
+    """
+
+    body = "".join(f"<p>{escape(text)}</p>" for text in paragraphs if text)
+    return {
+        "status": "generated",
+        "div": f'<div xmlns="http://www.w3.org/1999/xhtml">{body}</div>',
+    }
 
 
 def _coding(system: str, code: str, display: str) -> dict[str, str]:
@@ -536,6 +557,19 @@ def _assessment_entries(builder: _BundleBuilder, assessments: list[Any]) -> list
             response_id,
             {
                 "resourceType": "QuestionnaireResponse",
+                # R4 defines no `note` on QuestionnaireResponse, and the official
+                # validator says so outright ("Unrecognized property 'note'") —
+                # which is how this bundle first failed its own CI gate. The
+                # sentence travels in the narrative instead: that is the element
+                # R4 reserves for prose about a resource, it is what a FHIR
+                # viewer renders, and it reaches anybody who opens this resource
+                # without the Observation derived from it.
+                "text": _narrative(
+                    f"{assessment.instrument_name} total score, self-administered in "
+                    f"Manovia. The band label ({assessment.band_label}) is a self-help "
+                    "label for reflection, not a diagnosis. Individual item answers are "
+                    f"not shared. {PATIENT_GENERATED_NOTE}"
+                ),
                 "status": "completed",
                 "subject": _reference(builder.patient_id),
                 "authored": _instant(assessment.completed_at),
@@ -548,16 +582,6 @@ def _assessment_entries(builder: _BundleBuilder, assessments: list[Any]) -> list
                         "linkId": assessment.loinc_code,
                         "text": assessment.loinc_display,
                         "answer": [{"valueInteger": assessment.total}],
-                    }
-                ],
-                "note": [
-                    {
-                        "text": (
-                            f"{assessment.instrument_name} total score, self-administered in "
-                            f"Manovia. The band label ({assessment.band_label}) is a self-help "
-                            "label for reflection, not a diagnosis. Individual item answers are "
-                            f"not shared. {PATIENT_GENERATED_NOTE}"
-                        )
                     }
                 ],
             },
