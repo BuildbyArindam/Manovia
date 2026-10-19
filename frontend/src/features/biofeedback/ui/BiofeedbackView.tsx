@@ -106,19 +106,44 @@ export function BiofeedbackView({ source, now }: BiofeedbackViewProps): ReactEle
   const connectionRef = useRef<{ disconnect(): Promise<void> } | null>(null);
   const csvSectionRef = useRef<HTMLDivElement | null>(null);
 
+  /**
+   * The trend read outlives the view. `refreshTrend` opens IndexedDB from an
+   * effect, and when the view unmounts while that read is in flight the promise
+   * still settles — in tests it settles after vitest has torn the jsdom
+   * environment down, so there is no `window` left and React's update path
+   * (which reads `window.event`) threw `ReferenceError: window is not defined`.
+   * CI run 39337225868 failed the frontend job that way, pointing at the
+   * `setTrend([])` in the catch below. Late settlements are now ignored.
+   * Assigned in the effect body rather than only at `useRef` initialisation so
+   * StrictMode's mount-unmount-remount still leaves the view able to load.
+   */
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const refreshTrend = useCallback(() => {
     void (async () => {
       try {
         const store = await openSummaryStore();
         const entries = await store.loadAll();
+        if (!mountedRef.current) {
+          return;
+        }
         setTrend(
           trendPoints(
             entries.map((entry) => entry.summary as Parameters<typeof trendPoints>[0][number]),
           ),
         );
       } catch {
-        // Storage may be unavailable (private mode, locked-down browser);
-        // the session itself must keep working regardless.
+        // Storage may be unavailable (private mode, locked-down browser, or the
+        // environment is already gone); the session itself must keep working.
+        if (!mountedRef.current) {
+          return;
+        }
         setTrend([]);
       }
     })();
