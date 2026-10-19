@@ -39,6 +39,10 @@ dist/
 
 # Local verification logs, browser runtimes, and scratch artifacts
 .cache/
+# Day 47: the official HL7 FHIR validator jar (204 MB) that `make fhir-validate`
+# downloads on demand. CI fetches it fresh in the `fhir-validation` job; the
+# committed artifact it validates is backend/tests/fixtures/fhir/.
+backend/.fhir-validator/
 
 # Model and ML caches
 .cache/huggingface/
