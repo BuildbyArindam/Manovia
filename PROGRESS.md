@@ -126,6 +126,18 @@ intentionally unmerged.
    real capture is on the human checklist.
 5. **VR remains an enhancement.** Nothing in the product depends on it, and the
    2D path is what every test and every reader without a headset sees.
+6. **Header layout, fixed after the first CI run.** With three header controls
+   the row no longer fits 320 px, and the brand's `min-w-0` let it shrink to
+   zero width while its link kept its own width — so the link's box sat on top
+   of the controls beside it. The Accessibility & Lighthouse job caught it as
+   `home: focus-obscured — a "Manovia" under span.sm:hidden` at 400 % zoom.
+   The row now wraps and nothing shrinks below its content, plus a new
+   Playwright regression (`e2e/day25/zoom.spec.ts`, "header controls never
+   overlap…") asserts that no two header controls overlap and each control's
+   centre is its own topmost pixel at 360 × 640 and at 320 × 200 @4x. The fix
+   itself is verified in Node (typecheck, lint, 126 tests, production build,
+   budgets); whether the browser job is green is only knowable from CI, since
+   this sandbox cannot run Playwright.
 
 ### Parking lot (out of scope for Day 46)
 
