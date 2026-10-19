@@ -19,10 +19,10 @@ transcript line use the complete values; only the prose shortens them.
 
 | Not available | Consequence | Covered instead by |
 | --- | --- | --- |
-| A JVM (`java` is not installed) and egress to GitHub release downloads | The **official HL7 validator** cannot execute here | The `fhir-validation` CI job runs it on every push and PR (jar sha256-pinned, temurin 17, `-version 4.0.1 -tx n/a`); locally `make fhir-validate` runs `backend/scripts/fhir_offline_check.py`, whose 25 tests include 16 mutations it must catch |
+| A JVM (`java` is not installed) and egress to GitHub release downloads | The **official HL7 validator** cannot execute here | The `fhir-validation` CI job runs it on every push and PR (jar sha256-pinned, temurin 17, `-version 4.0.1 -tx n/a`) and **has run**: run `39337225868`, job success, `Success: 0 errors, 52 warnings, 6 notes` (§8). Locally `make fhir-validate` runs `backend/scripts/fhir_offline_check.py`, whose 28 tests include 23 mutations it must catch |
 | A browser | The viewer page is never rendered by a real engine | 14 jsdom tests drive `ShareViewer` through the real WebCrypto path against a committed ciphertext vector; 2 `App.test.tsx` tests pin the routing rules |
 | A downloadable Playwright browser | No end-to-end click-through of create → open | Listed in "What you should test by hand" below |
-| `tx.fhir.org` | No live terminology lookup | LOINC codes are pinned with their loinc.org source URLs in `backend/app/content/sharing/loinc.json` (read 2026-10-19) and enforced by the offline checker; the CI job has a non-blocking run against the real server |
+| `tx.fhir.org` | No live terminology lookup from this machine | LOINC codes are pinned with their loinc.org source URLs in `backend/app/content/sharing/loinc.json` (read 2026-10-19) and enforced by the offline checker; the CI job's second run connects to the real server and reported `Success: 0 errors, 43 warnings, 2 notes` with no LOINC finding of any kind (§8) |
 
 ## 1. Sharing is off until the person turns it on
 
@@ -266,7 +266,7 @@ What ran **here**, for real:
 
 ```
 $ python scripts/export_fhir_sample.py --check
-fhir sample up to date (backend/tests/fixtures/fhir/sample_share_bundle.json, 30348 bytes)
+fhir sample up to date (backend/tests/fixtures/fhir/sample_share_bundle.json, 30494 bytes)
 
 $ python scripts/fhir_offline_check.py
 tests/fixtures/fhir/sample_share_bundle.json: ok — 16 entries (1 Composition, 1 Device,
@@ -281,7 +281,7 @@ $ make fhir-validate        # root target, delegates to backend/
 …same two, and it prints that the official validator is not available here
 ```
 
-What runs in **CI** and has not executed on this machine: the
+What runs in **CI**, because this machine has no JVM: the
 `fhir-validation` job downloads `validator_cli.jar` 7.0.2 from
 `hapifhir/org.hl7.fhir.core` (sha256
 `e3e50f06b806437821b7aef8189a1b790415cb96c5036e0812ed62981452b377`, verified
@@ -294,11 +294,60 @@ java -jar validator_cli.jar tests/fixtures/fhir/sample_share_bundle.json -versio
 
 and gates on the exit code (`ValidateCommand.call()` returns 1 when
 `SystemExitManager.getError() > 0`; `ValidatorCli.main()` calls
-`System.exit(exitCode)` — read in the 7.0.2 sources). A non-blocking second run
-uses the default terminology server so the LOINC lookups appear in the log.
+`System.exit(exitCode)` — read in the 7.0.2 sources). A second, non-blocking run
+uses the default terminology server so the LOINC codes are resolved for real.
 
-**Status: the official validator's verdict is pending its first CI run.** It is
-recorded as not-run-here rather than claimed as passed.
+**Status: both runs have now executed in CI, and both are clean.** CI run
+`39337225868` (head `b4158fb`), job *FHIR — official R4 validator on the share
+bundle*: **success**. Quoted from that job's own output:
+
+```
+FHIR Validation tool Version 7.0.2 (Git# de3463393298)
+Sources to validate: tests/fixtures/fhir/sample_share_bundle.json
+Loading FHIR v4.0.1 from hl7.fhir.r4.core#4.0.1
+
+# the gate — no terminology server
+Terminology server null - Version n/a: No Terminology Server (00:00.004)
+Success: 0 errors, 52 warnings, 6 notes
+
+# the second run — the real terminology server
+Terminology server https://tx.fhir.org - Version Connected to Terminology Server at https://tx.fhir.org (00:02.866)
+Success: 0 errors, 43 warnings, 2 notes
+```
+
+Both runs name the sample in `Sources to validate:`, and the workflow now asserts
+that it does: a validator pointed at a wrong path exits 0 having checked nothing,
+which is a bug this branch carried for one commit (`b2bcf1e` built the path twice,
+so `tests/fixtures/fhir/tests/fixtures/fhir/sample_share_bundle.json` was
+"validated" by the non-blocking run). `b4158fb` corrected it and added the guard —
+if the validator's `Sources to validate:` line does not name the sample, the step
+emits `::error::the terminology run did not validate the sample bundle`.
+
+**Nothing in the output mentions LOINC.** Grepping the full job output for
+`loinc`, `44261`, `70274`, `Unknown code`, `not a valid code` and `Error @`
+returns no hits at all — the only two lines containing `error` are the
+`Success: 0 errors` totals. So `44261-6` and `70274-6` on `http://loinc.org`, and
+the UCUM unit `{score}` that LOINC itself assigns to both totals, are accepted as
+written, including by the run that could actually ask a terminology server.
+
+The warnings that remain, and where each comes from (counts verified against the
+bundle, not estimated from the log):
+
+| Warning family | Where it comes from |
+| --- | --- |
+| `dom-6: A resource should have narrative for robust management` | the 14 resources that are not QuestionnaireResponses (6 Observation, 4 DocumentReference, 1 each Composition/Patient/Device/Provenance). Narrative is hand-written prose; only the two QuestionnaireResponses carry it, because that is where the "patient-generated, not a diagnosis" disclaimer has to live in R4 (ADR 0047 §9) |
+| `A definition for CodeSystem 'https://manovia.app/fhir/CodeSystem/…' could not be found` | 19 codings use Manovia's own namespaces (`share-document-kind` 10, `mood-summary` 5, `share-document-type` 2, `assessment-band` 2). They are documented in `docs/clinical-sharing.md` but not published as a FHIR package, so the validator cannot fetch a definition. Publishing them is in the parking lot |
+| `In general, all observations should have a performer` | 6 Observations. Authorship is asserted more strongly by the Provenance resource — Patient = author, Device = assembler — over all 15 targets |
+| `None of the codings provided are in the value set 'Observation Interpretation Codes'` | 2 assessment bands. PHQ-9/GAD-7 severity bands are not in that extensible HL7 set, so they use `assessment-band` |
+| `UCUM Codes that contain human readable annotations like {score} can be misleading` | 2 — the two assessment totals. `{score}` is the unit loinc.org assigns to both; kept deliberately, matching the source of truth |
+| `Unable to validate code … because the validator is running without a terminology server` | 5 UCUM quantities (three mood totals in unit `1`, two in `{score}`) plus the `urn:ietf:bcp:47` attachment languages. These exist only in the `-tx n/a` gate run and are why it reports more warnings than the tx.fhir.org run |
+
+Notes, not warnings: `No questionnaire is identified, so no validation can be
+performed against the base questionnaire` on both QuestionnaireResponses —
+`QuestionnaireResponse.questionnaire` is a canonical URL to a *published*
+Questionnaire resource and Manovia publishes none, so the element is omitted
+rather than invented — and `'text/plain' could not be validated` on attachment
+content types, which likewise needs a terminology server.
 
 ## 9. Security scenarios
 
@@ -378,16 +427,16 @@ PROGRESS.md "Known issues").
 
 | Suite | Command | Result |
 | --- | --- | --- |
-| Backend | `python -m pytest -q -p no:warnings` | **5444 passed, 4 skipped** (was 5113 before Day 47; +331) |
+| Backend | `python -m pytest -q -p no:warnings` | **5458 passed, 4 skipped** (was 5113 before Day 47; +345) |
 | Backend lint | `ruff check app tests scripts` | All checks passed |
 | Backend format | `ruff format --check app tests scripts` | clean |
 | Backend types | `mypy app tests` (strict) | Success: no issues found |
-| Frontend | `npx vitest run` | **2915 passed, 3 skipped** (was 2858; +57) |
+| Frontend | `npx vitest run` | **2917 passed, 3 skipped** (was 2858; +59, of which 2 are the biofeedback regression test below) |
 | Frontend types | `npm run typecheck` | clean |
 | Frontend lint | `npm run lint` | clean |
 | Frontend build | `npm run build` | succeeds |
-| Share-feature tests | backend 196 + 25 artifact = **221**, frontend **55** | all passing |
-| FHIR official validator | CI `fhir-validation` | **pending first run** (no JVM here) |
+| Share-feature tests | backend 198 + 28 artifact = **226**, frontend **55** | all passing |
+| FHIR official validator | CI `fhir-validation`, run `39337225868` | **PASS — 0 errors** twice: 52 warnings / 6 notes with `-tx n/a`, 43 / 2 against tx.fhir.org |
 
 ## 13. PASS / FAIL against the Day-47 brief
 
@@ -398,7 +447,7 @@ PROGRESS.md "Known issues").
 | 3 | Clean printable PDF | PASS | §7 — 6056 bytes, 2 pages, 106 text lines, banner + per-page footer |
 | 4 | FHIR R4 Bundle: Observations for assessments, QuestionnaireResponses, patient-generated Provenance | PASS | §8 — 16 entries, Composition first, Provenance last with Patient=author / Device=assembler |
 | 5 | LOINC codes for PHQ-9/GAD-7 totals looked up and verified on the official LOINC site | PASS | §8 table — `44261-6`, `70274-6`, loinc.org URLs, read 2026-10-19, pinned in `loinc.json` |
-| 6 | Validate with an official FHIR validator in CI | PARTIAL — job written, not yet executed | §8: `fhir-validation` job with the sha256-pinned hapifhir 7.0.2 jar; offline fallback ran here and passes; the official run happens on the PR |
+| 6 | Validate with an official FHIR validator in CI | PASS | §8: CI run `39337225868`, `fhir-validation` job **success** — sha256-pinned hapifhir `validator_cli.jar` 7.0.2 on temurin 17, FHIR 4.0.1, `Success: 0 errors, 52 warnings, 6 notes` (`-tx n/a`) and `Success: 0 errors, 43 warnings, 2 notes` against `https://tx.fhir.org`; no LOINC finding of any kind |
 | 7 | Time-limited links, default 7 days | PASS | §3 `expires_at` = create + 7 days; §9 expiry tests |
 | 8 | Revocable, including "revoke everything" | PASS | §10 `revoke-all` → both public endpoints 404 |
 | 9 | Passcode-protected | PASS | §5–6; PBKDF2-HMAC-SHA256 210 000 iterations; lockout after 5 |
@@ -414,15 +463,57 @@ PROGRESS.md "Known issues").
 | 19 | PROGRESS.md updated | PASS | Day 47 entry, prepended |
 | 20 | Real end-to-end run in a browser | NOT DONE HERE | no browser/Playwright in this sandbox — hand-test list below |
 
-Nothing in this table was marked PASS without a run behind it; the one PARTIAL is
-partial because of this machine, and the CI job that completes it is committed.
+Nothing in this table was marked PASS without a run behind it. Row 6 was PARTIAL
+only while the official validator had not yet executed; it ran in CI on run
+`39337225868` with 0 errors under both terminology configurations, and §8 now
+quotes that job's output instead of describing what it would do. Row 20 stays
+NOT DONE HERE — this sandbox has no browser — so hand checks 2 to 10 below are
+still yours.
+
+### A flake this verification exposed (Day-42 code, not Day-47)
+
+The same run's **frontend** job failed while the FHIR job passed, on a commit
+(`b4158fb`) that changed nothing but `ci.yml`:
+
+```
+Unhandled error :: ReferenceError: window is not defined
+ ❯ getCurrentEventPriority node_modules/react-dom/cjs/react-dom.development.js
+ ❯ src/features/biofeedback/ui/BiofeedbackView.tsx:122
+"This error originated in BiofeedbackView.test.tsx ... while it was running."
+```
+
+The job had passed on `2e3effd`, `da1c357` and `b2bcf1e`, so it was a race rather
+than a regression — but a real one, and it would have reddened this PR on any
+later push. Every render of `BiofeedbackView` opens IndexedDB from an effect; when
+the last test in a file finishes, vitest tears the jsdom environment down while
+that read is still in flight, the read rejects (no storage left), and the `catch`
+branch called `setTrend([])` with no `window` in scope. React's update path reads
+`window.event`.
+
+Fixed at the root in `a983071`: a `mountedRef` that the effect keeps current,
+checked before either `setTrend` (assigned in the effect body, not only at
+`useRef` initialisation, so StrictMode's mount-unmount-remount still loads the
+trend; the save and delete handlers reach the same code through `refreshTrend()`).
+`BiofeedbackView.unmount.test.tsx` reproduces the teardown exactly — render, let
+the read get in flight, unmount, `delete globalThis.window`, reject the read,
+flush microtasks — and was verified both ways: guards removed → exit 1 with
+`Unhandled Rejection: ReferenceError: window is not defined`; guards in place →
+exit 0 with no such error. A second test pins the other half, that a settlement
+while mounted still renders `trend-table`, so the guard cannot quietly disable
+the trend. No test was weakened, deleted or skipped.
 
 ## What you should test by hand
 
-1. **The official FHIR validator.** Push the branch (or open the PR) and read the
-   `fhir-validation` job: the sha256 check, the freshness check, the offline
-   check, then the validator's own output and exit code. This is the one item in
-   the table above that no local run could complete.
+1. ~~**The official FHIR validator.**~~ **Done in CI** — run `39337225868`,
+   `fhir-validation` job, success: the pinned jar's sha256 verified, the sample
+   regenerated and byte-identical, the offline check green, then
+   `Success: 0 errors, 52 warnings, 6 notes` with `-tx n/a` and
+   `Success: 0 errors, 43 warnings, 2 notes` against `https://tx.fhir.org` (§8
+   quotes the job output). Nothing is left to do here unless you want to read the
+   warnings yourself. If you ever re-run it, check that `Sources to validate:`
+   names `tests/fixtures/fhir/sample_share_bundle.json` — the workflow annotates
+   an error if it does not, because a validator pointed at the wrong path exits 0
+   having checked nothing.
 2. **Create a share in a real browser.** Sign in, Settings → sharing on,
    `/shares`: tick items, watch the live preview change, confirm the consent
    lines, create. Check the link panel shows the key once and says it cannot be

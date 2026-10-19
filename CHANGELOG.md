@@ -61,29 +61,58 @@ here by their respective sessions.
   audit trail, never a ciphertext, token or passcode hash.
 - **FHIR validation, both halves**: a deterministic committed sample bundle
   (`backend/scripts/export_fhir_sample.py`), a dependency-free structural checker
-  (`backend/scripts/fhir_offline_check.py`, 25 tests including 16 mutations it
+  (`backend/scripts/fhir_offline_check.py`, 28 tests including 23 mutations it
   must catch), `make fhir-validate` / `make fhir-validator`, and a CI
   `fhir-validation` job that runs the **official HL7 validator**
   (`hapifhir/org.hl7.fhir.core` 7.0.2 `validator_cli.jar`, sha256-pinned,
   temurin 17, `-version 4.0.1 -tx n/a`) on the regenerated sample and gates on its
-  exit code.
+  exit code — **and has run**: CI run `39337225868`, job success,
+  `Success: 0 errors, 52 warnings, 6 notes`, plus a second non-blocking
+  invocation against the real terminology server at `https://tx.fhir.org`
+  (`0 errors, 43 warnings, 2 notes`). No line of either output mentions LOINC.
 - **Twelve new routes** (86 API operations in `docs/api.md`, from 74), twelve
   `SHARE_*` settings validated at startup, migration `0012_clinician_shares`, and
   137 `sharing.*` strings in English, Hindi and Bengali.
-- **Tests**: backend 5 113 → **5 444 passed, 4 skipped**; frontend 2 858 →
-  **2 915 passed, 3 skipped**; 221 of the backend tests are share tests
-  (14 integration, 18 security, 189 unit and artifact), 57 of the frontend ones
-  are share tests. `ruff check`, `ruff format --check` and strict `mypy` are clean.
+- **Tests**: backend 5 113 → **5 458 passed, 4 skipped**; frontend 2 858 →
+  **2 917 passed, 3 skipped**; 226 of the backend tests are share tests
+  (14 integration, 18 security, 194 unit and artifact) and 57 of the frontend ones
+  are share tests — the remaining +2 frontend tests are the biofeedback
+  regression below. `ruff check`, `ruff format --check` and strict `mypy` are
+  clean, as are `npm run lint`, `npm run typecheck` and `npm run build`.
 - **Docs**: [docs/clinical-sharing.md](docs/clinical-sharing.md) (the data flow,
   the limits, and the three sentences about what this is *not* — not an EHR
   integration, not for emergencies, not a diagnosis) and
   [docs/verification/day47-clinician-share-bridge.md](docs/verification/day47-clinician-share-bridge.md).
 
+### Fixed — Day 47
+
+- **`BiofeedbackView` no longer updates state after unmount** (Day-42 code, found
+  by Day-47's CI runs). Every render opened IndexedDB from an effect; when a test
+  file finished, vitest tore jsdom down while that read was in flight, it
+  rejected, and the `catch` called `setTrend([])` with no `window` left — which
+  React's update path reads. CI reported
+  `Unhandled error :: ReferenceError: window is not defined` and failed the
+  frontend job on a commit that had changed nothing but `ci.yml`. A `mountedRef`
+  the effect keeps current (StrictMode-safe) now guards both `setTrend` calls, and
+  `BiofeedbackView.unmount.test.tsx` reproduces the teardown deterministically —
+  verified to exit 1 with that ReferenceError when the guard is removed and 0 with
+  it in place. No test was weakened, deleted or skipped.
+- **`scripts/export_fhir_sample.py` printed a character count as a byte count.**
+  The sample's 10 em dashes are 3 bytes each in UTF-8, so the reported size was 20
+  bytes short of `wc -c`. It now reports the encoded size.
+
 ### Known limitation — Day 47
 
 - The official HL7 validator could not execute in the development sandbox (no
-  JVM, no release download); the CI job that runs it is committed and its first
-  verdict lands on the branch's PR. Everything else above was verified by a real
+  JVM, no release download), so it ran in CI instead and reported **0 errors**
+  twice over. It is not silent, though: 52 warnings remain, and each is a
+  deliberate choice rather than an oversight — 14 resources carry no narrative,
+  19 codings use Manovia's own CodeSystem namespaces which are not published
+  anywhere a validator can fetch, 6 Observations have no `performer`, and the two
+  assessment bands are not in HL7's extensible interpretation value set. They are
+  itemised with their reasons in §8 of the
+  [verification note](docs/verification/day47-clinician-share-bridge.md), and
+  cutting them is Day-48 step 3. Everything else above was verified by a real
   local run.
 - This is **encryption at rest with an ephemeral, fragment-delivered key**, not
   end-to-end encryption: the server assembles the plaintext from rows it can

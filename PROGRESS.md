@@ -103,7 +103,9 @@ Reference: [docs/clinical-sharing.md](docs/clinical-sharing.md). Decisions:
   official validator when java and the jar are present and the fallback when they
   are not, and prints which it used; `make fhir-validator` fetches the
   sha256-pinned jar. The CI job `fhir-validation` regenerates the sample, fails
-  on drift, runs both checks and gates on the official validator's exit code.
+  on drift, runs both checks and gates on the official validator's exit code —
+  and it has now run: CI run `39337225868`, job **success**,
+  `Success: 0 errors, 52 warnings, 6 notes`.
 - **i18n**: 137 new `sharing.*` keys in en, hi and bn, with the parity suite
   asserting identical key sets and identical `{{placeholders}}` across the three.
 
@@ -113,30 +115,56 @@ Real runs on this machine, 2026-10-20:
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Backend suite | `python -m pytest -q -p no:warnings` | **5 444 passed, 4 skipped** in 4 m 57 s (5 113 before Day 47 → **+331**) |
+| Backend suite | `python -m pytest -q -p no:warnings` | **5 458 passed, 4 skipped** in 3 m 38 s (5 113 before Day 47 → **+345**) |
 | Backend lint | `ruff check app tests scripts` | All checks passed |
-| Backend format | `ruff format --check app tests scripts` | 457 files already formatted |
-| Backend types | `mypy app tests` (strict) | Success: no issues found in **404** source files |
-| Share tests | security + integration + 7 unit suites + artifact suite | **221** (integration 14, security 18, terminology 25, crypto 33, passcode 16, items 41, fhir 29, pdf 20, artifact 25) |
-| Frontend suite | `npx vitest run` | **2 915 passed, 3 skipped** (2 858 before → **+57**) |
+| Backend format | `ruff format --check app tests scripts` | 458 files already formatted |
+| Backend types | `mypy app tests` (strict) | Success: no issues found in **405** source files |
+| Share tests | security + integration + 7 unit suites + artifact suite | **226** (integration 14, security 18, terminology 25, crypto 33, passcode 16, items 41, fhir 31, pdf 20, artifact 28) |
+| Frontend suite | `npx vitest run` | **2 917 passed, 3 skipped** in 2 m 21 s (2 858 before → **+59**, of which 2 are the biofeedback regression test described below) |
 | Frontend types/lint/build | `npm run typecheck`, `npm run lint`, `npm run build` | clean, clean, succeeds |
 | Frontend share tests | `npx vitest run src/features/sharing src/App.test.tsx` | **66 passed** (crypto 15, builder 15, links 7, viewer 14, endpoints 4, App 11) |
 | Formatting | `npx prettier --check .` | every Day-47 file clean |
 | Wheel packaging | `pip wheel --no-deps --no-build-isolation` | `app/content/sharing/loinc.json` inside; `Requires-Dist: reportlab==5.0.1`, `pypdf==6.21.1; extra == "dev"` |
 | Dependency audit | `pip-audit` on reportlab 5.0.1, pypdf 6.21.1, pillow 13.0.0, charset-normalizer 3.5.2 | No known vulnerabilities found |
-| FHIR sample freshness | `python scripts/export_fhir_sample.py --check` | up to date (30 348 bytes) |
+| FHIR sample freshness | `python scripts/export_fhir_sample.py --check` | up to date (30 494 bytes — the printed size is the UTF-8 byte count, so it matches `wc -c`; the text is 30 474 characters because the disclaimer's 10 em dashes are 3 bytes each) |
 | FHIR offline check | `make fhir-validate` | ok — 16 entries; both LOINC totals with their verified displays |
+| **Official FHIR validator (CI)** | `fhir-validation` job, run `39337225868` | **job success** — `Success: 0 errors, 52 warnings, 6 notes` with `-tx n/a`, and `Success: 0 errors, 43 warnings, 2 notes` against `https://tx.fhir.org`. No line of output mentions LOINC, `44261-6`, `70274-6` or an unknown code; every remaining warning is accounted for in §8 of the verification note |
+| **Secrets scan (CI)** | `secrets-scan` job, same run | **job success** — gitleaks 8.24.3 with the committed `.gitleaks.toml`; `tests/unit/test_gitleaks_config.py` (8 tests) pins the config to the schema that version actually parses, since the pinned action silently ignores the newer plural `[[allowlists]]` form |
 | Ciphertext-only proof | end-to-end walk-through transcript | 23 columns, none named `key`; each ciphertext = plaintext + 16 (GCM tag); note, question, token, secret and passcode found nowhere in the row |
 | Audit log | same transcript | `'Opened 2 times of 5 allowed.'`, counts `{'created': 1, 'opened': 2}`, 3 rows |
 | Enumeration | same transcript | expired / unknown / revoked envelopes identical (`request_id` aside) |
 
-The **official HL7 validator did not run here** — no JVM and no egress to GitHub
-release downloads in this sandbox. The job that runs it
-(`hapifhir/org.hl7.fhir.core` 7.0.2 `validator_cli.jar`, sha256
-`e3e50f06b806437821b7aef8189a1b790415cb96c5036e0812ed62981452b377`, temurin 17,
-`-version 4.0.1 -tx n/a`) is committed and its first execution is on this
-branch's PR. That is the only requirement in the Day-47 brief not completed by a
-local run, and it is recorded as pending rather than passed.
+The **official HL7 validator could not run on this machine** — no JVM and no
+egress to GitHub release downloads in this sandbox — so it ran in CI instead, and
+it has now reported. Run `39337225868`, job *FHIR — official R4 validator on the
+share bundle*, **success**: `hapifhir/org.hl7.fhir.core` 7.0.2
+`validator_cli.jar` (sha256
+`e3e50f06b806437821b7aef8189a1b790415cb96c5036e0812ed62981452b377`, verified
+against the digest GitHub publishes on the release asset), temurin 17, FHIR
+4.0.1, on `tests/fixtures/fhir/sample_share_bundle.json`. Two invocations:
+`Success: 0 errors, 52 warnings, 6 notes` with `-tx n/a` (the gate) and
+`Success: 0 errors, 43 warnings, 2 notes` against the real terminology server at
+`https://tx.fhir.org` (non-blocking). Nothing in either output mentions LOINC:
+`44261-6`, `70274-6` and the UCUM unit `{score}` are accepted as written,
+including by the run that could ask a terminology server. Every requirement in
+the Day-47 brief is now backed by a real run; what is left is the browser
+click-through, which this sandbox has no browser for.
+
+**One unrelated fix rode along.** That same run's *frontend* job failed on
+`b4158fb` — a commit that changed nothing but `ci.yml` — with
+`ReferenceError: window is not defined` pointing at
+`BiofeedbackView.tsx:122`. The job had passed on the three previous commits, so it
+was a race in Day-42 code: every render of `BiofeedbackView` opens IndexedDB from
+an effect, and when a test file finishes, vitest tears jsdom down while that read
+is in flight; it rejects, and the `catch` called `setTrend([])` with no `window`
+left, which React's update path reads. Fixed at the root in `a983071` with a
+`mountedRef` the effect keeps current (StrictMode-safe: assigned in the effect
+body), plus `BiofeedbackView.unmount.test.tsx`, which reproduces the teardown
+exactly — unmount, `delete globalThis.window`, reject the in-flight read, flush
+microtasks — and was verified both ways (guards removed → exit 1 with that
+ReferenceError; guards in place → exit 0). A second test pins that a settlement
+while mounted still renders `trend-table`, so the guard cannot quietly disable the
+trend. No test was weakened, deleted or skipped.
 
 ### Decisions
 
@@ -180,9 +208,15 @@ form:
 
 ### Known issues
 
-1. **The official FHIR validator has not executed.** No JVM and no release
-   download in this sandbox. The CI job is committed; its verdict is the first
-   thing to read on the PR, and §8 of the verification note is where it belongs.
+1. **The official validator's 52 warnings are accepted, not eliminated.** It ran
+   in CI (run `39337225868`) with **0 errors**, but it is not silent: 14
+   resources have no narrative (`dom-6`), 19 codings use Manovia's own CodeSystem
+   namespaces which are not published anywhere a validator can fetch, 6
+   Observations have no `performer`, and the two assessment bands are not in
+   HL7's extensible interpretation value set. Each is a deliberate choice with a
+   reason in §8 of the verification note — but "deliberate" is not the same as
+   "resolved", and an importer may still trip over the missing CodeSystem
+   definitions.
 2. **Not end-to-end encryption.** See Decision 2. A database dump is useless
    without the secret and passcode; a server compromise during document assembly
    is not covered, and neither is a recipient who forwards the whole link.
@@ -236,6 +270,11 @@ form:
   share into an identity claim about the recipient.
 - **Signed documents**: `Provenance.signature` plus a document signing key, so a
   recipient can verify the bundle was not edited after export.
+- **CI hygiene noticed while reading run `39337225868`**: `actions/setup-java` v4
+  reports itself deprecated in favour of v5; two actions still emit Node.js 20
+  deprecation warnings; and vitest suggests creating jsdom once per worker
+  (`pool: 'vmThreads'`) instead of 135 times, which is 36 s of the frontend
+  suite's 2 m 21 s. None of it affects a verdict.
 - **A shared limiter store** (Redis) for the public share routes, which is the
   same carried-over item as the session store and matters more for
   unauthenticated endpoints.
@@ -253,22 +292,32 @@ The Day-48 brief was not in the workspace when this was written
 these are the three things Day 47 leaves behind that should happen first whatever
 Day 48 turns out to be:
 
-1. **Read the `fhir-validation` job on the PR and paste the official validator's
-   output into §8 of
-   [docs/verification/day47-clinician-share-bridge.md](docs/verification/day47-clinician-share-bridge.md)**,
-   then flip row 6 of that note's PASS/FAIL table from PARTIAL to PASS — or fix
-   what it found. Ten minutes, no code, and it closes the only requirement not
-   completed by a local run.
-2. **Work through the hand-test list** in the same note in a real browser (create
-   → open in a private window → lose the key → break the ciphertext → five wrong
-   passcodes → revoke everything), and turn the two most valuable steps into a
-   committed Playwright spec so the flow stops depending on a human remembering
-   to do it.
-3. **Fix the PDF's non-Latin glyphs** by embedding a licensed Devanagari and
+The first draft of this list began with "read the `fhir-validation` job on the PR
+and paste the validator's output into §8 of the verification note, then flip row 6
+from PARTIAL to PASS". **That one is done** — run `39337225868`, 0 errors under
+both terminology configurations, output quoted in §8, row 6 now PASS. What is
+left:
+
+1. **Work through the hand-test list** in
+   [docs/verification/day47-clinician-share-bridge.md](docs/verification/day47-clinician-share-bridge.md)
+   in a real browser (create → open in a private window → lose the key → break the
+   ciphertext → five wrong passcodes → revoke everything), and turn the two most
+   valuable steps into a committed Playwright spec so the flow stops depending on
+   a human remembering to do it. Items 2 to 10 of that list are the outstanding
+   ones; item 1 closed with the CI run above.
+2. **Fix the PDF's non-Latin glyphs** by embedding a licensed Devanagari and
    Bengali TrueType font, since Hindi and Bengali are shipped languages and a
    printed summary full of `?` is the one user-visible defect this day knowingly
    left in. Keep the substitution note as the fallback path and keep
    `tests/unit/test_share_pdf.py` asserting both.
+3. **Cut the validator's warning count from 52**, now that the numbers are known:
+   publish Manovia's four CodeSystems (`share-document-type`,
+   `share-document-kind`, `mood-summary`, `assessment-band`) somewhere the
+   validator can resolve them, add `Observation.performer` (the Patient — the
+   Provenance already says so, the Observations do not), and decide whether the
+   other 14 resources should carry generated narrative. Re-run
+   `make fhir-validate` and the CI job after each change; the sample is
+   freshness-gated, so a bundle change that is not regenerated fails the build.
 
 ## Day 46 — Immersive WebXR calm space and adaptive, low-stimulation UI
 

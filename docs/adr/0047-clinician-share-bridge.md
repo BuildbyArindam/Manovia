@@ -161,6 +161,18 @@ the R4 invariants but does not look codes up; code existence is guaranteed by
 the log without making the gate depend on somebody else's service.
 `make fhir-validate` does the same locally and prints which validator it used.
 
+Both CI invocations also assert that the validator's own `Sources to validate:`
+line names the sample bundle. A validator given a path that does not exist exits 0
+having checked nothing, and this step is `continue-on-error`, so a mistyped path
+would have produced a permanently green step that proved nothing — which is
+exactly what one commit of this branch did. The check is the tool's own statement
+of what it read, not a guess about its log format.
+
+*Outcome:* run `39337225868` — job success, `Success: 0 errors, 52 warnings,
+6 notes` with `-tx n/a` and `Success: 0 errors, 43 warnings, 2 notes` against
+`tx.fhir.org`. The 52 warnings are accepted deliberately and itemised in §8 of
+the verification note; cutting them is Day-48 step 3.
+
 ### 11. A share token is half a credential
 
 Tokens are redacted from access logs, unhandled-exception logs and Sentry URLs
@@ -199,9 +211,12 @@ worse than an honest note; embedding a licensed font is parked.
 * The bridge adds unauthenticated endpoints to the attack surface, mitigated by
   rate limiting, uniform refusals, a view budget, a passcode budget and a
   deployment kill switch.
-* The official validator's first real execution happens in CI, not on the
-  development machine: this sandbox has no JVM and cannot download the jar. That
-  is recorded as unrun-here rather than claimed as passed.
+* The official validator's real execution happens in CI, not on the development
+  machine: this sandbox has no JVM and cannot download the jar. While it had not
+  run, that was recorded as unrun-here rather than claimed as passed; it has now
+  run (CI run `39337225868`) and reports 0 errors under both terminology
+  configurations, so the consequence that remains is the 52 accepted warnings, not
+  an unexecuted gate.
 
 ## Rejected alternatives
 

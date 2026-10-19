@@ -341,7 +341,17 @@ is guaranteed instead by `loinc.json` and by the offline checker's rule that
 every coding system in the bundle must be LOINC-as-verified, UCUM, one of the two
 terminology.hl7.org systems used here, or Manovia's own namespace. The job also
 re-runs against `tx.fhir.org` as a **non-blocking** step so the terminology result
-is in the log without making the gate depend on a third-party service.
+is in the log without making the gate depend on a third-party service. Both steps
+assert that the validator's own `Sources to validate:` line names the sample: a
+validator pointed at a wrong path exits 0 having checked nothing, so "the step
+passed" is not evidence on its own.
+
+**It has run.** CI run `39337225868`, `fhir-validation` job: **success**, with
+`Success: 0 errors, 52 warnings, 6 notes` from the `-tx n/a` gate and
+`Success: 0 errors, 43 warnings, 2 notes` from the `tx.fhir.org` run. No line of
+either output mentions LOINC, `44261-6`, `70274-6` or an unknown code. The
+warnings are itemised, with the reason each one is accepted, in §8 of
+[the Day-47 verification note](verification/day47-clinician-share-bridge.md).
 
 ---
 
@@ -399,8 +409,8 @@ create one. The owner's builder is `/shares`.
 They live in `backend/tests/security/test_share_security.py` (18 tests) and
 `backend/tests/integration/test_sharing_flow.py` (14), with the unit suites under
 `backend/tests/unit/test_share_*.py` (terminology 25, crypto 33, passcode 16,
-items 41, fhir 29, pdf 20) and the artifact suite in
-`backend/tests/unit/test_share_fhir_sample.py` (25). The frontend adds 55 tests
+items 41, fhir 31, pdf 20) and the artifact suite in
+`backend/tests/unit/test_share_fhir_sample.py` (28). The frontend adds 55 tests
 under `frontend/src/features/sharing/` and 2 routing tests in
 `frontend/src/App.test.tsx`.
 
