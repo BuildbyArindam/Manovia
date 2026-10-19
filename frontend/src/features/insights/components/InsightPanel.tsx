@@ -26,6 +26,8 @@
  * as larger than its confidence interval says it is.
  */
 
+import { useSensory } from "@/features/sensory/SensoryProvider";
+
 import { useId, useState, type ReactElement, type ReactNode } from "react";
 
 import { INSIGHTS_COPY } from "../copy";
@@ -66,6 +68,9 @@ export function InsightPanel({
   const statusId = useId();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  // Overwhelmed mode hides the picture, not the sentences or the table: the
+  // numbers stay reachable, the chart is not fetched or measured.
+  const { overwhelmed } = useSensory();
 
   const exportCsv = (): void => {
     setStatus(
@@ -94,7 +99,7 @@ export function InsightPanel({
         {note === undefined ? null : <p className="text-ink-muted">{note}</p>}
       </div>
 
-      {chart === undefined ? null : (
+      {chart === undefined || overwhelmed ? null : (
         <div
           className="relative mt-4 overflow-x-auto"
           tabIndex={0}
@@ -104,13 +109,13 @@ export function InsightPanel({
           {/* Hidden from assistive technology as a whole: the sentences above and
               the table below carry the same numbers, and a chart cannot be
               summarised by a label without losing the data. */}
-          <div aria-hidden="true" className="min-w-fit">
+          <div aria-hidden="true" className="min-w-fit" data-sensory="chart">
             {chart}
           </div>
         </div>
       )}
 
-      {chart === undefined ? null : (
+      {chart === undefined || overwhelmed ? null : (
         <p className="mt-2 text-xs text-ink-muted">{INSIGHTS_COPY.chartDecorative}</p>
       )}
 

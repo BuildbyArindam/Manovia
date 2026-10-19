@@ -110,7 +110,8 @@
  * `src/styles/tokens.test.ts`. The selectors carry `:root` so they outrank the
  * `prefers-color-scheme` block above whatever order a future edit puts them in.
  */
-:root[data-contrast="more"] {
+:root[data-contrast="more"],
+:root[data-sensory-colours="high-contrast"] {
   --manovia-bg: #fffdf8;
   --manovia-surface: #ffffff;
   --manovia-surface-muted: #efe8dc;
@@ -133,7 +134,8 @@
   --manovia-focus: #000000;
 }
 
-:root[data-theme="dark"][data-contrast="more"] {
+:root[data-theme="dark"][data-contrast="more"],
+:root[data-theme="dark"][data-sensory-colours="high-contrast"] {
   --manovia-bg: #000000;
   --manovia-surface: #0f0d0a;
   --manovia-surface-muted: #1e1a16;
@@ -168,7 +170,10 @@
    * header and the fixed bottom navigation (WCAG 2.4.11, focus not obscured).
    */
   html {
-    font-size: max(100%, 16px);
+    /* Day 46: the reader's browser size, floored at 16px, times the sensory
+       profile's text-size choice. A multiplier of 1 leaves the old behaviour
+       exactly; the setting can only make text larger. */
+    font-size: calc(max(100%, 16px) * var(--manovia-font-scale, 1));
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
     scroll-padding-top: 5.5rem;
@@ -481,6 +486,52 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+
+  /*
+   * Sensory profile (Day 46).
+   *
+   * `data-sensory-motion` is the *effective* value the provider computes, so
+   * "none" also covers an OS reduced-motion request and overwhelmed mode.
+   * "Low" keeps short state changes (a focus ring, a pressed button) but stops
+   * anything that loops or drifts on its own.
+   */
+  [data-sensory-motion="none"] *,
+  [data-sensory-motion="none"] *::before,
+  [data-sensory-motion="none"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-sensory-motion="low"] .motion-loop,
+  [data-sensory-motion="low"] .exercise-orb,
+  [data-sensory-motion="low"] .motion-drift {
+    animation: none !important;
+  }
+
+  /* "Simple" density drops secondary copy; headings and actions remain. */
+  [data-sensory-density="simple"] [data-sensory="secondary"],
+  [data-sensory-density="simple"] .sensory-secondary {
+    display: none !important;
+  }
+
+  /*
+   * Overwhelmed mode's structural hiding is done in React, so charts are never
+   * fetched or measured. These rules are the second line of defence for markup
+   * rendered outside the provider, and they are what a person inspecting the
+   * page will see doing the work.
+   */
+  [data-overwhelmed="true"] [data-sensory="chart"],
+  [data-overwhelmed="true"] [data-sensory="badge"],
+  [data-overwhelmed="true"] .sensory-secondary {
+    display: none !important;
+  }
+
+  /* The calm-space canvas is decoration; the phase word carries the cue. */
+  .calm-canvas {
+    touch-action: manipulation;
   }
 }
 

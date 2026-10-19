@@ -15,6 +15,8 @@
 
 import type { ReactElement } from "react";
 
+import { useSensory } from "@/features/sensory/SensoryProvider";
+
 import { MOOD_COPY, streakDetail, streakHeadline } from "../copy";
 import type { MoodStreak } from "../types";
 
@@ -23,9 +25,17 @@ export interface StreakIndicatorProps {
   loading?: boolean;
 }
 
-export function StreakIndicator({ streak, loading = false }: StreakIndicatorProps): ReactElement {
+export function StreakIndicator({
+  streak,
+  loading = false,
+}: StreakIndicatorProps): ReactElement | null {
   const headingId = "mood-streak-heading";
   const detail = streak === undefined ? null : streakDetail(streak);
+  // A streak is a badge about the past. It can wait; overwhelmed mode hides it.
+  const { overwhelmed } = useSensory();
+  if (overwhelmed) {
+    return null;
+  }
 
   return (
     <section

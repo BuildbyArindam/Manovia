@@ -54,6 +54,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     hint: () => t("nav.meditationHint"),
   },
   {
+    to: "/calm",
+    label: () => t("nav.calm"),
+    icon: "meditation",
+    hint: () => t("nav.calmHint"),
+  },
+  {
     to: "/assessments",
     label: () => t("nav.assessments"),
     icon: "assessments",

@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import { deleteChatMemory, fetchChatMemory } from "@/features/chat/endpoints";
 import { useMoodHintPreference } from "@/features/chat/useMoodHint";
 import { PlanSettingsSection } from "@/features/plan/PlanSettingsSection";
+import { SensorySettingsSection } from "@/features/sensory/SensorySettingsSection";
 import { PrivacySection } from "@/features/privacy/PrivacySection";
 import { signOut } from "@/lib/endpoints";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -176,6 +177,8 @@ export function SettingsPage(): ReactElement {
           </Link>
         </p>
       </section>
+
+      <SensorySettingsSection />
 
       <InstallSection />
 

@@ -28,6 +28,8 @@ import { Header } from "@/components/Header";
 import { SideNav } from "@/components/SideNav";
 import { routeTitle } from "@/components/navigation";
 import { OutboxSync } from "@/features/mood/OutboxSync";
+import { OverwhelmedBar } from "@/features/sensory/OverwhelmedBar";
+import { useSensory } from "@/features/sensory/SensoryProvider";
 import { t } from "@/lib/i18n/i18n";
 import { useI18nState } from "@/lib/i18n/I18nProvider";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -67,6 +69,7 @@ function useRouteAnnouncements(): void {
 export function AppShell({ children }: { children: ReactNode }): ReactElement {
   // The first paint assumes desktop (the wider layout), then corrects itself.
   const isDesktop = useMediaQuery(DESKTOP_QUERY, true);
+  const { overwhelmed } = useSensory();
   useRouteAnnouncements();
 
   return (
@@ -80,14 +83,18 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
       <UpdateNotice />
       <OutboxSync />
 
+      {overwhelmed ? <OverwhelmedBar /> : null}
+
       <div className="app-content mx-auto flex w-full max-w-6xl gap-8 px-4 pb-28 pt-6 md:pb-14">
-        {isDesktop ? <SideNav /> : null}
+        {/* Overwhelmed mode removes the full navigation and leaves only the
+            four destinations in the bar above. The current page stays put. */}
+        {isDesktop && !overwhelmed ? <SideNav /> : null}
         <main id="main" tabIndex={-1} className="min-w-0 flex-1">
           {children}
         </main>
       </div>
 
-      {isDesktop ? null : <BottomNav />}
+      {isDesktop || overwhelmed ? null : <BottomNav />}
 
       <footer className="border-t border-border bg-surface" data-print="hide">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted">

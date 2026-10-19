@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { ReactElement } from "react";
 
 import { CrisisHelpButton } from "@/components/CrisisHelpButton";
+import { OverwhelmedButton } from "@/features/sensory/OverwhelmedButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t } from "@/lib/i18n/i18n";
 
@@ -31,7 +32,8 @@ export function Header(): ReactElement {
             {t("app.betaLabel")}
           </span>
         </span>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <OverwhelmedButton />
           <LanguageSwitcher />
           <CrisisHelpButton openFromUrl />
         </div>
