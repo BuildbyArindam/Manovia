@@ -30,12 +30,11 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from manovia_ml.hashing import sha256_file
-from manovia_ml.paths import resolve
+from manovia_ml.paths import ml_root, resolve
 from manovia_ml.training.safety.augment import ExpansionConfig, expand
 from manovia_ml.training.safety.data import (
     assign_splits,
@@ -57,6 +56,27 @@ __all__ = ["build", "main"]
 #: change, because a corpus built by ``fake-v1`` and one built by ``fake-v2`` are
 #: different corpora even if the row counts match.
 GENERATOR_VERSION = "fake-v1"
+
+
+def _display_path(path: str | Path) -> str:
+    """The path a manifest records: relative to ``ml/``, never absolute.
+
+    A manifest is a DVC output, so its bytes are what ``dvc.lock`` pins. An
+    absolute path made the hash depend on the checkout directory, which meant
+    two machines building identical rows disagreed about the lock — found on
+    Day 49 by running ``dvc repro`` on a fresh clone. Paths inside ``ml/`` are
+    recorded relative to it; the evaluation corpora live one level up in
+    ``evals/`` and are recorded as ``../evals/...``; anything else keeps its
+    resolved form rather than pretending to be relative.
+    """
+
+    resolved = Path(path).resolve()
+    for base, prefix in ((ml_root(), ""), (ml_root().parent, "../")):
+        try:
+            return prefix + resolved.relative_to(base).as_posix()
+        except ValueError:
+            continue
+    return resolved.as_posix()
 
 
 def build(
@@ -106,7 +126,11 @@ def build(
 
     refs = {name: dataset_ref(name, path) for name, path in paths.items()}
     manifest = {
-        "built": datetime.now(UTC).date().isoformat(),
+        # No "built" timestamp on purpose: this file is a DVC output, so a date
+        # in it rewrote the lock every single day and `dvc status` could never be
+        # clean. Provenance is the seed hashes, the generator version and the
+        # MLflow run, none of which move without the data moving. When the build
+        # happened is in the CI log and in `mlruns/`.
         "generator": f"{GENERATOR_VERSION}:{paraphraser.name}",
         "provider": provider,
         "seed": seed,
@@ -118,7 +142,7 @@ def build(
         "rules_filter": "backend" if assessor is not None else "unavailable",
         "seed_files": [
             {
-                "path": str(Path(path).resolve()),
+                "path": _display_path(path),
                 "sha256": sha256_file(Path(path)),
                 "rows": len(load_seed_split(path)),
             }
@@ -155,13 +179,17 @@ def _build_toy(*, out_dir: str | Path, seed: int, test_share: float = 0.15) -> d
     paths = {name: write_examples(target / f"{name}.jsonl", rows) for name, rows in splits.items()}
     refs = {name: dataset_ref(name, path) for name, path in paths.items()}
     manifest = {
-        "built": datetime.now(UTC).date().isoformat(),
+        # See the note in `build()`: no wall-clock date in a hashed artefact.
         "generator": "hand-written fixture (ml/data/toy/safety_toy.jsonl)",
         "seed": seed,
         "expansion": {"paraphrases_per_seed": 0, "adversarial_per_row": 0},
         "rules_filter": "not applied (fixture is hand-labelled)",
         "seed_files": [
-            {"path": str(fixture), "sha256": sha256_file(fixture), "rows": len(examples)}
+            {
+                "path": _display_path(fixture),
+                "sha256": sha256_file(fixture),
+                "rows": len(examples),
+            }
         ],
         "stats": {"seeds": len(examples), "kept": len(examples), "dropped": 0, "drop_reasons": {}},
         "drop_reasons": {},

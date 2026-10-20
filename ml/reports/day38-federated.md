@@ -1,6 +1,6 @@
 # Day 38 — synthetic smoke evidence (not real-user training)
 
-MLflow run: `a45a78eaa2d64ac5b90298a8a7fc4da9`. Seed: `38`. Clients: 50.
+MLflow run: `aba1806ad18e48a8959065639f04e14d`. Seed: `38`. Clients: 50.
 Data SHA256: `78a729e3f329137481e1c6436260411f33a12c9af70d92db5b8b875a8f9cd5cc`; train/test pairs: 655/253.
 Client mean-target SD (normalised): 0.2288.
 Persistence held-out MASE: 1.1150; training persistence denominator (normalised mood): 0.2588.

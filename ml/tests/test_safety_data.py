@@ -301,25 +301,39 @@ def test_apportion_rejects_degenerate_shares() -> None:
         apportion(10, [0.0, 0.0])
 
 
+# Both splitter tests below read the *committed* fixture, not the generated
+# `data/safety_toy/train.jsonl`. That generated file is a DVC output (gitignored,
+# written by `dvc repro`) and, on a fresh clone where `dvc repro` has not run,
+# these two tests died with FileNotFoundError — a red `make ml-test` out of the
+# box. Reading it was also the weaker test: the builder had already split those
+# rows, so "re-splitting a train-only file gives no test slice" was partly
+# circular. The committed 80-row fixture covers all five risk levels and all four
+# languages, so the same property is now proven on the input the builder starts
+# from. Regression: Day 49, fresh clone, `make ml-test` (see PROGRESS.md).
+
+
 def test_the_split_has_no_test_split_by_default() -> None:
     """The held-out split is the frozen Day-9 file, not a splitter's output."""
 
-    examples = load_examples(Path("data/safety_toy/train.jsonl"))
+    examples = load_examples(Path("data/toy/safety_toy.jsonl"))
+    assert len(examples) >= 80
 
     splits = assign_splits(examples, seed=20261013)
 
     assert set(splits) == {"train", "dev", "calibration"}
     assert "test" not in splits
+    assert sum(len(rows) for rows in splits.values()) == len(examples)
 
 
 def test_the_toy_fixture_can_ask_for_a_fourth_slice() -> None:
     """The one exception, used only by the smoke config."""
 
-    examples = load_examples(Path("data/safety_toy/train.jsonl"))
+    examples = load_examples(Path("data/toy/safety_toy.jsonl"))
 
     splits = assign_splits(examples, seed=20261013, train_share=0.7, dev_share=0.15, test_share=0.1)
 
     assert set(splits) == {"train", "dev", "calibration", "test"}
+    assert splits["test"], "the explicit fourth slice must contain rows"
     total = sum(len(rows) for rows in splits.values())
     assert total == len(examples)
 
@@ -426,3 +440,36 @@ def test_the_jsonl_is_valid_json_per_line(tmp_path: Path) -> None:
     for line in path.read_text(encoding="utf-8").splitlines():
         payload = json.loads(line)
         assert set(payload) >= {"id", "text", "lang", "label", "category", "provenance"}
+
+
+def test_the_built_manifest_is_byte_stable(tmp_path: Path) -> None:
+    """Two builds of the same fixture must agree byte for byte.
+
+    Regression, Day 49: the manifest carried ``"built": <today>`` and an
+    absolute ``seed_files[].path``. Both are DVC outputs, so ``dvc.lock``
+    changed on every calendar day and on every checkout directory —
+    ``dvc status`` was never clean, and a lock that moves without the data
+    moving cannot be a reproducibility gate. Checked here rather than only in
+    CI because the bug is invisible on the day the lock was written.
+    """
+
+    from manovia_ml.training.safety.build_data import _build_toy
+
+    out = tmp_path / "build"
+    _build_toy(out_dir=out, seed=20261013)
+    first = (out / "manifest.json").read_bytes()
+    _build_toy(out_dir=out, seed=20261013)
+    second = (out / "manifest.json").read_bytes()
+
+    assert first == second, "the same build twice must produce the same bytes"
+
+    manifest = json.loads(first)
+    assert "built" not in manifest, "a wall-clock date in a hashed artefact breaks the lock"
+    assert not Path(manifest["seed_files"][0]["path"]).is_absolute()
+    assert manifest["seed_files"][0]["path"].endswith("data/toy/safety_toy.jsonl")
+
+    # Split refs are relative too, so the lock does not depend on the checkout
+    # directory. Checked on a committed fixture under ml/ (the pipeline's own
+    # `data/safety_toy` out_dir is the same shape).
+    ref = dataset_ref("toy", ml_root() / "data/toy/safety_toy.jsonl")
+    assert ref.path == "data/toy/safety_toy.jsonl", ref.path

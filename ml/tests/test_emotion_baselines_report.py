@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import types
 from pathlib import Path
 from typing import Any
 
@@ -111,12 +112,19 @@ def test_available_baselines_admits_a_checkpoint_it_cannot_reach(
     crashed with a traceback from inside the Hugging Face loader on any offline
     machine — which is every machine this pipeline is built for.
 
-    Written in two branches because the first version failed on CI: the `ml` job
-    installs `ml/`, not the backend, so the backend import fails *first* and the
-    cache probe is never reached. Whichever machine this runs on, one of the two
-    branches is the truth, and where the backend *is* importable the probe is
-    what decides.
+    The two imports the function branches on are stubbed, so *this test* decides
+    which path runs. An earlier version branched on `availability["keyword"] == ""`
+    instead, which is not the same question: on a machine with the backend
+    installed and no `nlp` extra (this repository's own dev venv after
+    `pip install -e "ml[ml,dev]"`, and the Day-49 sandbox) the function correctly
+    answers "transformers is missing" and the test failed — a machine-dependent
+    test rather than a wrong behaviour. Day 49, fresh clone.
     """
+
+    monkeypatch.setitem(sys.modules, "transformers", types.ModuleType("transformers"))
+    hf_stub = types.ModuleType("app.services.nlp.hf")
+    hf_stub.HFEmotionAnalyzer = object  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "app.services.nlp.hf", hf_stub)
 
     def cached(*args: Any, **kwargs: Any) -> str:
         return ""
@@ -126,18 +134,29 @@ def test_available_baselines_admits_a_checkpoint_it_cannot_reach(
 
     availability = available_baselines()
     assert set(availability) == {"keyword", "sentiment", "baseline"}
-    if availability["keyword"] == "":
-        # Backend importable: the lexicon chain is local by construction, so it
-        # is runnable, and the checkpoint's verdict is the cache probe's alone.
-        monkeypatch.setattr(baselines_module, "checkpoint_is_cached", cached)
-        assert available_baselines()["baseline"] == ""
-        monkeypatch.setattr(baselines_module, "checkpoint_is_cached", not_cached)
-        assert available_baselines()["baseline"].endswith("Hugging Face cache")
-    else:
-        # No backend on this machine — CI's `ml` job installs `ml/`, not the
-        # backend, so the import fails before the probe is ever consulted. Then
-        # every verdict has to name what is missing instead of going blank.
-        assert "backend" in availability["baseline"]
+
+    # With both imports satisfied, the cache probe is what decides.
+    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", cached)
+    assert available_baselines()["baseline"] == ""
+    monkeypatch.setattr(baselines_module, "checkpoint_is_cached", not_cached)
+    assert available_baselines()["baseline"].endswith("Hugging Face cache")
+
+
+def test_available_baselines_names_transformers_when_the_extra_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The branch a dev venv without the `nlp` extra takes has to name the fix.
+
+    Day 49 regression: this is the combination the sandbox hit (backend
+    importable, no `transformers`), and no test pinned the message it produces.
+    """
+
+    monkeypatch.setitem(sys.modules, "transformers", None)
+
+    baseline = available_baselines()["baseline"]
+
+    assert "transformers" in baseline
+    assert "nlp" in baseline
 
 
 def test_available_baselines_explains_a_backend_it_cannot_import(

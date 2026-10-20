@@ -9,6 +9,7 @@ Thresholds come from ``ml/configs/release_gates.yaml`` fairness section.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 from collections.abc import Callable
@@ -22,6 +23,19 @@ from .templates import TEMPLATES
 PredictFn = Callable[[str], float]
 
 
+def _normalise_category(name: str) -> str:
+    """One spelling for a category: lower case, hyphens.
+
+    The config writes ``max_gap_code_mixing`` (a YAML key cannot sensibly be
+    ``max_gap_code-mixing`` when the sibling keys are underscored) while the
+    templates call the category ``code-mixing``. Before this, those two strings
+    never met, so the per-dimension ceiling was silently replaced by the global
+    default — a gate that looks stricter on paper than it is in a run. Day 49.
+    """
+
+    return name.strip().lower().replace("_", "-")
+
+
 def _load_thresholds(config_path: str | pathlib.Path | None = None) -> dict[str, float]:
     if config_path is None:
         config_path = pathlib.Path(__file__).parents[3] / "configs" / "release_gates.yaml"
@@ -32,17 +46,15 @@ def _load_thresholds(config_path: str | pathlib.Path | None = None) -> dict[str,
     thresholds: dict[str, float] = {"__default__": default}
     for k, v in fairness.items():
         if k.startswith("max_gap_"):
-            cat = k[len("max_gap_") :]
-            thresholds[cat] = float(v)
-        elif k not in ("max_gap",):
-            # also support per-category dict like {"language": 0.10}
-            if isinstance(v, (int, float)):
-                thresholds[k] = float(v)
+            thresholds[_normalise_category(k[len("max_gap_") :])] = float(v)
+        # also support a flat per-category entry like {"language": 0.10}
+        elif k != "max_gap" and isinstance(v, (int, float)):
+            thresholds[_normalise_category(k)] = float(v)
     return thresholds
 
 
 def _threshold_for(category: str, thresholds: dict[str, float]) -> float:
-    return thresholds.get(category, thresholds.get("__default__", 0.15))
+    return thresholds.get(_normalise_category(category), thresholds.get("__default__", 0.15))
 
 
 def audit_model(
@@ -99,16 +111,32 @@ def _fake_predict_factory(seed: str) -> PredictFn:
     """
 
     # base per-model, stable across variants
-    base = 0.35 + (hash(seed) % 200) / 1000.0  # 0.35 - 0.55
+    base = 0.35 + (_stable_int(seed) % 200) / 1000.0  # 0.35 - 0.55
 
     def predict(text: str) -> float:
         # Tiny bias from text length so max_gap is non-zero and measurable
         bias = (len(text) % 7) * 0.004  # max 0.024
         # Even tinier template-specific nudge to differentiate categories but stay under 0.08
-        nud = (hash(text) % 5) * 0.002  # max 0.008
+        nud = (_stable_int(text) % 5) * 0.002  # max 0.008
         return base + bias + nud
 
     return predict
+
+
+def _stable_int(text: str) -> int:
+    """A process-independent integer for ``text``.
+
+    Built-in ``hash()`` on ``str`` is salted per process (PEP 456), so the
+    stand-in scores — and therefore ``ml/reports/fairness.json`` — changed on
+    every run. Day 48 replaced ``hash((seed, text))`` with two separate
+    ``hash()`` calls and the report looked reproducible because it was compared
+    against itself in one process. A release gate whose numbers move between
+    identical runs is not a gate; blame hashes, not randomness, for the
+    difference (ML ground rule 5: the same config and seed must reproduce).
+    """
+
+    digest = hashlib.sha256(text.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big")
 
 
 def audit_all_fake(*, config_path: str | pathlib.Path | None = None) -> dict[str, Any]:

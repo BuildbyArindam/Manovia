@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 990" width="1400" height="990" role="img" aria-labelledby="title desc">
+  <title id="title">Manovia v2.0 architecture poster</title>
+  <desc id="desc">Three columns: the device with the app shell, the compiled safety bundle and the on-device Private Mode path; the FastAPI server with the deterministic crisis gate, the ML backstop that may only raise caution, retrieval, the LLM chain and the output guard; and the ML platform with the catalogue, DVC data, training, MLflow, release gates, cards and the serving seam. A footer states the guarantees, the measured numbers and what is research only.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrowdash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font: 700 34px/1.1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0f172a; }
+      .sub { font: 400 16px/1.35 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #334155; }
+      .colhead { font: 700 17px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0f172a; }
+      .box { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; rx: 8; }
+      .boxsafety { fill: #fef2f2; stroke: #b91c1c; stroke-width: 2; rx: 8; }
+      .boxml { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; rx: 8; }
+      .boxdevice { fill: #ecfdf5; stroke: #047857; stroke-width: 1.5; rx: 8; }
+      .label { font: 600 13px/1.25 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0f172a; }
+      .small { font: 400 11.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #334155; }
+      .tiny { font: 400 10.5px/1.25 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #475569; }
+      .arw { stroke: #334155; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .arwd { stroke: #7c3aed; stroke-width: 1.8; fill: none; stroke-dasharray: 6 4; marker-end: url(#arrowdash); }
+      .arl { font: 500 10.5px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #475569; }
+      .band { fill: #0f172a; }
+      .bandtext { font: 600 12.5px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #e2e8f0; }
+      .pill { font: 600 11px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #7c3aed; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="990"/>
+
+  <text class="title" x="40" y="52">Manovia v2.0 — architecture</text>
+  <text class="sub" x="40" y="80">Privacy-first, safety-first self-help companion. Portfolio demo — not a clinical service. Not therapy, not a diagnosis, not a crisis service.</text>
+
+  <line x1="40" y1="96" x2="1360" y2="96" stroke="#e2e8f0" stroke-width="2"/>
+
+  <!-- ======================= COLUMN A: DEVICE ======================= -->
+  <rect x="30" y="120" width="420" height="700" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text class="colhead" x="50" y="150">Device — the browser (and nothing else)</text>
+
+  <rect class="boxdevice" x="50" y="168" width="380" height="64"/>
+  <text class="label" x="66" y="192">React + Vite + TypeScript PWA</text>
+  <text class="small" x="66" y="212">Lazy routes; initial JS 133.1 KB gzip of a 135 KB budget.</text>
+
+  <rect class="boxsafety" x="50" y="248" width="380" height="96"/>
+  <text class="label" x="66" y="272">Compiled safety bundle (statically imported)</text>
+  <text class="small" x="66" y="292">normalise + crisis rules + escalation + output guard,</text>
+  <text class="small" x="66" y="309">built from backend/app/content/** and gated by --check.</text>
+  <text class="tiny" x="66" y="329">Parity with Python: 500/500 phrases, 0 mismatches.</text>
+
+  <rect class="boxdevice" x="50" y="360" width="380" height="120"/>
+  <text class="label" x="66" y="384">Private Mode (lazy chunk, 30.9 KB gzip)</text>
+  <text class="small" x="66" y="404">Same rules engine in the browser; reply from a local</text>
+  <text class="small" x="66" y="421">model if one is pinned, otherwise from templates.</text>
+  <text class="small" x="66" y="438">Messages encrypted with AES-GCM into IndexedDB;</text>
+  <text class="small" x="66" y="455">key derived from a passphrase the server never sees.</text>
+  <text class="tiny" x="66" y="472">No request is made for the whole conversation.</text>
+
+  <rect class="box" x="50" y="496" width="380" height="96"/>
+  <text class="label" x="66" y="520">Service worker + local outbox</text>
+  <text class="small" x="66" y="540">Precache 744.5 KB of an 800 KB budget. Offline:</text>
+  <text class="small" x="66" y="557">"Need help now" and breathing exercises; pending</text>
+  <text class="small" x="66" y="574">check-ins replay with client_id when back online.</text>
+
+  <rect class="box" x="50" y="608" width="380" height="86"/>
+  <text class="label" x="66" y="632">Microphone, WebXR, camera-free calm space</text>
+  <text class="small" x="66" y="652">Voice opens on a button, not a listener. The calm</text>
+  <text class="small" x="66" y="669">space is 36 triangles, 5.8 KB gzip, 2D without WebXR.</text>
+
+  <rect class="box" x="50" y="710" width="380" height="90" fill="#fff7ed" stroke="#c2410c"/>
+  <text class="label" x="66" y="734">Sensory profile + "I'm overwhelmed"</text>
+  <text class="small" x="66" y="754">Motion, sound, density, contrast and text size, stored</text>
+  <text class="small" x="66" y="771">in this browser only; the app may offer, never switch.</text>
+  <text class="tiny" x="66" y="790">prefers-reduced-motion respected everywhere.</text>
+
+  <!-- ======================= COLUMN B: SERVER ======================= -->
+  <rect x="480" y="120" width="440" height="700" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text class="colhead" x="500" y="150">Server — FastAPI (the only write path)</text>
+
+  <rect class="box" x="500" y="168" width="400" height="56"/>
+  <text class="label" x="516" y="192">Auth, consent gate, owner-only lookup, rate limit</text>
+  <text class="tiny" x="516" y="211">Guest → consent → session; deletion is re-authenticated.</text>
+
+  <rect class="boxsafety" x="500" y="240" width="400" height="78"/>
+  <text class="label" x="516" y="264">1. Crisis gate — deterministic rules, first</text>
+  <text class="small" x="516" y="284">High or imminent risk: pre-written card + helplines,</text>
+  <text class="small" x="516" y="301">and no language model is called at all.</text>
+
+  <rect class="boxsafety" x="500" y="330" width="400" height="72"/>
+  <text class="label" x="516" y="354">2. ML backstop — may only raise caution</text>
+  <text class="small" x="516" y="374">Calibrated TF-IDF + rules ensemble; it can never lower</text>
+  <text class="small" x="516" y="391">a level, never writes the card, never sees identifiers.</text>
+
+  <rect class="box" x="500" y="414" width="400" height="66"/>
+  <text class="label" x="516" y="438">3. Redaction + emotion → retrieval</text>
+  <text class="small" x="516" y="458">Curated knowledge base, hybrid BM25 + dense + rerank,</text>
+  <text class="small" x="516" y="474">with a calibrated "no good answer" floor.</text>
+
+  <rect class="box" x="500" y="492" width="400" height="66"/>
+  <text class="label" x="516" y="516">4. LLM chain (provider-abstracted)</text>
+  <text class="small" x="516" y="536">anthropic → ollama → canned supportive reply; a Fake</text>
+  <text class="small" x="516" y="552">provider keeps the whole suite offline and deterministic.</text>
+
+  <rect class="boxsafety" x="500" y="570" width="400" height="66"/>
+  <text class="label" x="516" y="594">5. Output guard — every reply, before it is stored</text>
+  <text class="small" x="516" y="614">No diagnosis, no medication dose, no promise, no</text>
+  <text class="small" x="516" y="630">prompt leak; a failed reply is replaced, not shown.</text>
+
+  <rect class="box" x="500" y="648" width="191" height="66"/>
+  <text class="label" x="516" y="672">Encrypted storage</text>
+  <text class="tiny" x="516" y="690">AES-GCM field + envelope</text>
+  <text class="tiny" x="516" y="705">keys; raw text never logged.</text>
+
+  <rect class="box" x="709" y="648" width="191" height="66"/>
+  <text class="label" x="725" y="672">Operator controls</text>
+  <text class="tiny" x="725" y="690">12 kill switches, flip with</text>
+  <text class="tiny" x="725" y="705">no restart; privacy-only drift.</text>
+
+  <rect class="box" x="500" y="726" width="400" height="74" fill="#f0fdfa" stroke="#0f766e"/>
+  <text class="label" x="516" y="750">Consented, time-limited clinician share</text>
+  <text class="small" x="516" y="770">Ciphertext + key in the URL fragment; the server holds</text>
+  <text class="small" x="516" y="787">no key, only a token hash. PDF and HL7 FHIR R4.</text>
+
+  <!-- ======================= COLUMN C: ML PLATFORM ======================= -->
+  <rect x="940" y="120" width="430" height="700" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text class="colhead" x="960" y="150">ML platform — ml/ (research; deploys nothing)</text>
+
+  <rect class="boxml" x="960" y="168" width="390" height="60"/>
+  <text class="label" x="976" y="192">Dataset catalogue + licences</text>
+  <text class="small" x="976" y="211">17 datasets, 10 marked restricted; "DO NOT USE" is a verdict.</text>
+
+  <rect class="boxml" x="960" y="242" width="390" height="62"/>
+  <text class="label" x="976" y="266">DVC-versioned splits (no bytes in Git)</text>
+  <text class="small" x="976" y="285">Byte-stable manifests; dvc.lock is a reproducibility gate.</text>
+
+  <rect class="boxml" x="960" y="318" width="390" height="72"/>
+  <text class="label" x="976" y="342">Training — configs as data</text>
+  <text class="small" x="976" y="362">Linear, LoRA (XLM-R) and sequence models; seeds pinned;</text>
+  <text class="small" x="976" y="379">unknown config keys are errors, not warnings.</text>
+
+  <rect class="boxml" x="960" y="404" width="390" height="66"/>
+  <text class="label" x="976" y="428">MLflow file store — every run</text>
+  <text class="small" x="976" y="448">commit (+dirty flag), dataset hashes, resolved config,</text>
+  <text class="small" x="976" y="464">seed, library versions, metrics and artefacts.</text>
+
+  <rect class="boxml" x="960" y="484" width="390" height="86"/>
+  <text class="label" x="976" y="508">Release gates (CI fails, not warns)</text>
+  <text class="small" x="976" y="528">Reproducibility vs committed baselines · size and INT8</text>
+  <text class="small" x="976" y="545">ratios · fairness across 11 identity dimensions (largest</text>
+  <text class="small" x="976" y="562">gap 0.026 of a 0.10 ceiling) · DP budget · licence verdicts.</text>
+
+  <rect class="boxml" x="960" y="584" width="390" height="66"/>
+  <text class="label" x="976" y="608">Reports and cards (committed)</text>
+  <text class="small" x="976" y="628">Every number in the README has a report and a run id;</text>
+  <text class="small" x="976" y="644">a model without a card is an anecdote, not a claim.</text>
+
+  <rect class="box" x="960" y="664" width="390" height="62" fill="#f5f3ff" stroke="#6d28d9"/>
+  <text class="label" x="976" y="688">Serving seam — the only door to the product</text>
+  <text class="small" x="976" y="707">SAFETY_ML · EMOTION_ANALYZER · RETRIEVER · PRIVATE_LLM_MODEL_ID</text>
+
+  <rect class="box" x="960" y="738" width="390" height="62" fill="#fffbeb" stroke="#a16207"/>
+  <text class="label" x="976" y="762">Research only — not served</text>
+  <text class="small" x="976" y="781">Federated + DP, contextual bandit, neural forecast.</text>
+
+  <!-- ======================= ARROWS ======================= -->
+  <path class="arw" d="M 450 200 L 480 200"/>
+  <text class="arl" x="452" y="192">/api/v1</text>
+
+  <path class="arwd" d="M 940 400 L 900 400"/>
+  <path class="arwd" d="M 760 470 L 760 492"/>
+  <text class="arl" x="798" y="486">gated release</text>
+
+  <path class="arwd" d="M 440 400 L 476 400"/>
+  <text class="arl" x="432" y="392">no network</text>
+
+  <path class="arw" d="M 700 240 L 700 232 L 900 232 L 900 240" fill="none" stroke="none"/>
+  <path class="arw" d="M 700 168 L 700 160 L 900 160 L 900 168" fill="none" stroke="none"/>
+
+  <!-- ======================= FOOTER BAND ======================= -->
+  <rect class="band" x="0" y="840" width="1400" height="150"/>
+  <text class="bandtext" x="40" y="868">Guarantees, in the order they are enforced: rules decide risk before any model call · a model may only raise caution · every reply passes the output guard.</text>
+  <text class="bandtext" x="40" y="886">Raw text is never logged · identifiers never enter a prompt · the share key never reaches the server · no clinical claim is made or implied.</text>
+  <text class="bandtext" x="40" y="904">Measured 2026-10-20 (v2.0.0): crisis recall 1.000 / precision 0.543 (dev split) · emotion macro-F1 0.804 · retrieval MRR 0.658 · response 60/60 · agent 40/40.</text>
+  <text class="bandtext" x="40" y="922">5,516 backend tests at 94.26% statements · 2,917 frontend tests · initial JS 133.1 KB gzip of 135 KB · precache 744.5 KB of 800 KB · fairness gap 0.026 of 0.10.</text>
+  <text class="bandtext" x="40" y="940">Research only, labelled as such everywhere: the mood sequence models (they lost to a 7-day moving average), federated learning with DP, the contextual bandit.</text>
+  <text class="bandtext" x="40" y="958" style="fill:#94a3b8">Solid arrows: a request or a gated release. Dashed violet: the on-device path and the research-to-serving seam. Argument: docs/technical-report.md.</text>
+  <text class="bandtext" x="40" y="976" style="fill:#94a3b8">Before real users rely on this: clinical review · native-speaker review (Hindi, Bengali) · ethics and legal review · security review by someone else · user research.</text>
+</svg>

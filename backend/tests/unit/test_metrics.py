@@ -120,6 +120,30 @@ def test_path_template_without_a_route_is_a_fixed_label() -> None:
     assert path_template_for_scope({}) == UNMATCHED_PATH
 
 
+def test_path_template_survives_a_router_that_hides_the_matched_route() -> None:
+    """Starlette >= 1.0 no longer writes ``scope["route"]``.
+
+    The label then has to come from the app's own templates, matched against
+    the request path. Reproducing the *absence* here keeps the day-49 defect
+    from coming back: before this test, the middleware exported the fixed
+    ``:unmatched`` label for every request on a plain-Starlette app, and the
+    two end-to-end tests above failed on a fresh install.
+    """
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+
+    async def handler(request: Any) -> None:  # pragma: no cover - never called
+        raise AssertionError
+
+    app: Any = Starlette(routes=[Route("/items/{item_id:int}", handler)])
+    scope: dict[str, Any] = {"path": "/items/42", "app": app, "type": "http"}
+    assert path_template_for_scope(scope) == "/items/{item_id:int}"
+
+    # A path that only *looks* templated stays out of the labels.
+    unmatched: dict[str, Any] = {"path": "/items/42/extra", "app": app, "type": "http"}
+    assert path_template_for_scope(unmatched) == UNMATCHED_PATH
+
+
 # --- middleware end to end (privacy property included) -----------------------
 
 

@@ -130,7 +130,15 @@ def checkpoint_is_cached(model_id: str = BASELINE_MODEL_ID) -> str:
     try:
         from huggingface_hub import try_to_load_from_cache
     except ImportError as exc:  # pragma: no cover - depends on the extra
-        return f"off-the-shelf checkpoint needs `huggingface_hub` ({type(exc).__name__})"
+        # Names the checkpoint *and* the cache: this line is what a report reader
+        # sees, and "needs huggingface_hub" alone does not say which download is
+        # missing or where it would go. Regression: Day 49, a dev venv with the
+        # backend installed and no `nlp` extra hit this branch, and the report
+        # line (and its test) did not mention the checkpoint.
+        return (
+            f"off-the-shelf checkpoint {model_id} is not in the local Hugging Face cache, and "
+            f"`huggingface_hub` is not installed to check ({type(exc).__name__})"
+        )
 
     try:
         cached = try_to_load_from_cache(model_id, "config.json")

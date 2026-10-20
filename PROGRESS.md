@@ -1,5 +1,206 @@
 # Manovia — Progress
 
+## Day 49 — v2.0 integration, technical report and release
+
+Built and verified on 2026-10-20 on the Arena-pinned branch
+`arena/44600a6a-manovia` (the requested `day-49-v2-0-integration-technical`
+name cannot replace the session branch, same as Days 38–48). No push to `main`,
+no merge; one PR opened at the end and intentionally left unmerged.
+
+Reference: [docs/verification/day49-verification.md](docs/verification/day49-verification.md),
+[docs/technical-report.md](docs/technical-report.md),
+[docs/performance.md](docs/performance.md),
+[docs/releases/v2.0.0.md](docs/releases/v2.0.0.md),
+[ADR 0048](docs/adr/0048-release-verification-and-reproducible-reports.md).
+
+### Completed
+
+- **Integration and verification.** Fresh environment twice: a backend venv
+  (`pip install -e "backend[dev,nlp,serving,rag]"`, which pulled torch 2.14 /
+  transformers 5.20 / starlette 1.9 / fastapi 0.143) plus `npm ci`, and earlier
+  a wider venv with `ml[ml,dev]`, `peft`, `flwr` and `opacus` so the paths that
+  are normally skipped actually executed. Ran the backend suite with the coverage
+  gate and the safety-module floors, the frontend suite, `make lint` on both
+  sides, the ML suite, `make eval` (safety, emotion, response), `make eval-agent`,
+  `make ml-smoke`, `make ml-retrieval-smoke`, `make ml-mood-forecast`,
+  `make ml-jitai-sim`, `make ml-federated-sim`, `make ml-distill-smoke`,
+  `make ml-emotion-smoke`, the safety smoke run, `make parity` and the fairness
+  gate.
+- **Nine real defects found and fixed at the root**, each with a regression test
+  (details under Decisions): non-reproducible fairness report (salted `hash()`),
+  a fairness ceiling that never applied (`code-mixing` vs `code_mixing`),
+  `dvc.lock` churn from a wall-clock date and absolute paths in the safety
+  manifests, two tests that read a gitignored DVC output, an
+  environment-dependent baseline-availability test, `ml` missing its PEP 561
+  marker (which broke `make lint` in `backend/`), Prometheus route labels that
+  collapsed to `:unmatched` on Starlette 1.x (a fresh install regression that
+  only appears with today's dependency resolution), and an exact-float assertion
+  in the emotion pipeline test that failed on some model initialisations. The
+  last two were found by the *final* full-suite run, after the documentation was
+  written — which is why the numbers below were re-measured and updated rather
+  than kept from the earlier run — and a ninth (an `int | None` embedding
+  dimension that made `make ml/lint` fail only when the extras were installed)
+  was found by running the ML lint in the full environment. Three of the nine
+  exist only in a fresh/full install: that is the argument for verifying from
+  zero rather than in the venv that already worked.
+- **Elapsed-time reality check**: `make eval` needs no GPU and no network; the
+  ML research runs need torch but no GPU; three things genuinely need hardware
+  this sandbox does not have (browser, microphone/headset/WebGPU, Hugging Face
+  egress) and are listed as NOT RUN rather than guessed.
+- **Performance.** Measured the production build's real import graph:
+  **initial JS 133.1 KB gzip of a 135 KB budget**, initial CSS 6.7 KB of 10 KB,
+  **precache 744.5 KB of 800 KB**, slowest route `/insights` 256.5 KB (~1.73 s on
+  Lighthouse's mobile profile). Confirmed every heavy module is a lazy route
+  chunk: WebXR/calm 5.8 KB increment, WebLLM/transformers private-mode chunk
+  30.9 KB (not precached), charts 107.8 KB on `/insights` only, patterns 9.3 KB.
+  Documented in [docs/performance.md](docs/performance.md) with the startup budget
+  table, the CI enforcement points, and the honest gap: **Lighthouse and CWV could
+  not run here** (the Playwright/Lighthouse browser CDN is unreachable).
+- **README v2.** New "AI and ML" section: an 18-row results table where every
+  number links to the committed report (and MLflow run id where one exists); a
+  "what we chose NOT to build, and why" section; an architecture poster
+  ([docs/assets/v2-architecture-poster.svg](docs/assets/v2-architecture-poster.svg))
+  with the ML platform and the on-device path; and an extended, honest limitations
+  section (recall-first precision cost with a live example, the neural model that
+  lost, unmeasured Lighthouse, unpinned Private Mode model, four helplines still
+  unverified).
+- **Technical report.** [docs/technical-report.md](docs/technical-report.md) in
+  paper style — Abstract, Introduction, System design, Safety architecture,
+  Models and data, Evaluation, Privacy and responsible AI, Limitations, Future
+  work, References — with every claim tied to a repo artefact, plus the one-page
+  poster (SVG).
+- **Release.** `CHANGELOG.md` v2.0.0 section, [docs/releases/v2.0.0.md](docs/releases/v2.0.0.md)
+  release notes, a local annotated `v2.0.0` tag (not pushed: publishing it runs
+  the release workflow and is the owner's action), and the demo label verified in
+  all three locales and in the built bundle.
+- **Career material** ([docs/career/](docs/career/)): ten resume bullets that use
+  only measured numbers (with a mapping table to the command and report behind
+  each, and a list of phrases removed because they were not true), a 2-minute
+  pitch, a 5-minute walkthrough with the question each block invites, a blog-post
+  outline, and 30 deep-dive interview questions with answers covering model
+  calibration, why rules-first, conformal abstention, federated vs centralised,
+  bandit safety constraints, privacy attacks, evaluation limits and what would
+  change with real clinical data.
+
+### Evidence (real commands, this machine, 2026-10-20)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Backend suite + gate | `pytest --cov=app --cov-branch` | **5,524 passed, 2 skipped**; 94.28 % statements / 85.50 % branches; gate all rules satisfied |
+| Frontend suite | `npx vitest run` | **2,917 passed, 3 skipped** (134 files passed, 1 skipped) |
+| Lint / types | `make lint` | backend ruff + `ruff format --check` (488 files) + mypy (418) clean; frontend ESLint + `tsc --noEmit` clean |
+| ML suite | `make ml-test` | **553 passed, 1 skipped** with the training/ONNX/federated extras; **497 passed, 7 skipped** in the leaner venv |
+| Safety / emotion / response | `make eval` | recall 1.000 [1.000, 1.000]; precision 0.543; emotion macro-F1 0.804; responses 60/60 |
+| Agent navigator | `make eval-agent` | **40/40** scenarios |
+| Fairness gate | `python ml/scripts/check_fairness_gates.py` | PASS, 5 models, largest gap **0.026** (region, ceiling 0.10), byte-stable across processes |
+| Retrieval smoke | `make ml-retrieval-smoke` | `hybrid_rerank` MRR 0.547 / R@1 0.272 on the dev split, p95 6.1 ms |
+| Mood forecast (full) | `make ml-mood-forecast` | transformer MAE 0.561 vs moving-average 0.554 — **neural did not win** (run `37eebe38…`) |
+| Bandit | `make ml-jitai-sim` | LinUCB 193.795 [186.693, 200.897] vs random −73.388 (run `e3aa0567…`) |
+| Federated + DP | `make ml-federated-sim` | DP σ=3.2 C=1.0: ε 0.8417, MASE 1.2754 vs centralised 1.3372 (run `aba1806a…`) |
+| Distillation | `make ml-distill-smoke` | student/teacher 0.073 (max 0.5); INT8/fp32 0.292 (max 1.1) |
+| Bundle budget | `npm run build && npm run budget` | all budgets met (numbers above) |
+| Smoke test | `SMOKE_SKIP_COMPOSE=1 ./scripts/smoke.sh` | PASS (Docker unavailable; ran against uvicorn + `vite preview`) |
+| Full journey | `python3 scripts/verify_day49_journey.py` | **13/13** steps |
+| Kill switches | `GET/POST /api/v1/feature-flags` | 12 flags; flip → off + `overridden`; reset → default; unknown → 404; history records actor |
+| Transparency page | built bundle + backend tests | 14 components (c1–c14), reachable pre-onboarding, en/hi/bn key parity |
+| Demo label | `grep "Portfolio demo" dist/assets/index-*.js` | present; hi/bn strings in their lazy chunks |
+| Helplines / directory | `pytest -k "helpline or directory"` | 51 passed; 34 helpline entries (4 still `needs_verification`), 27 directory entries, `last_verified` 2026-10-09 / 2026-10-16 |
+
+### Decisions
+
+Full reasoning in [ADR 0048](docs/adr/0048-release-verification-and-reproducible-reports.md);
+short form:
+
+1. **"Verified" has three states — PASS, FAIL, NOT RUN.** Browser journeys,
+   Lighthouse/CWV and real-device voice/XR/WebGPU paths are NOT RUN here, with the
+   reason and the command a human should run. To shrink that gap, the HTTP
+   contract behind the journey is driven for real by
+   `scripts/verify_day49_journey.py` (13 steps, one throwaway guest account,
+   deleted at the end).
+2. **A number is published only with a committed report and a run id.** The
+   README's AI/ML table was built row by row from reports; nothing was carried
+   over from memory. MLflow stays a local file store (publishing it is a
+   deployment decision), so the report header quotes the run id.
+3. **Reproducibility is fixed in the artefact, not documented as a caveat.**
+   Manifests lost their wall-clock date and absolute paths; the fairness
+   predictors lost `hash()`; category names are normalised and a test asserts
+   every template category has a configured ceiling; a test runs the fairness
+   script in two processes with different `PYTHONHASHSEED` values and compares
+   bytes.
+4. **A test may not depend on an artefact the pipeline has not produced.** The
+   two splitter tests now read the committed fixture — a stronger check, and
+   `make ml-test` is green in a fresh clone.
+5. **The tag is prepared locally, published by the owner.** Publishing triggers
+   `release.yml` (migration round-trip, GHCR images, GitHub release); the exact
+   commands are in the verification note.
+6. **Research that loses is reported as a result.** The neural forecaster lost to
+   a moving average and every public document says so, in the same table as the
+   wins.
+7. **Re-measure after the last test run, then edit the numbers everywhere.** The
+   final suite found two more defects; re-running it changed the headline from
+   5,516/4-skipped to 5,524/2-skipped, because installing the `nlp`+`serving`
+   extras enables the HF and ONNX paths that are skipped without them. Every
+   document that quoted the old figure was updated in the same commit (README,
+   technical report, release notes, career bullets, this file), and the verified
+   note records which numbers depend on which extras.
+
+### Known issues
+
+1. **Not clinically reviewed; no native-speaker review** of Hindi or Bengali. This
+   is unchanged from v1.0 and is the top blocker for real users.
+2. **Recall-first costs precision** (0.543 on dev); in the live journey
+   *"I had a long day and I am tired."* produced the crisis card via the ML
+   backstop (`ml.crisis_mass` 0.372). Recalibration needs consented real text and
+   a clinical view of the trade.
+3. **No browser-based verification for this release**: Playwright browsers and
+   the Lighthouse/Chromium download are blocked in the sandbox, so the E2E,
+   accessibility and Lighthouse checks are CI-only claims, not runs.
+4. **Private Mode still has no pinned model** (`npm run models:pin` needs
+   Hugging Face egress); on-device inference remains unmeasured.
+5. **Fairness evidence is synthetic**: the audited models are stand-in scorers on
+   this machine; the harness is real, the models are not.
+6. **`PROGRESS.md` still carries the historical duplication** (five "Day 39 —
+   Voice journaling" blocks and a stray "Next steps (Day 30)") noted on Day 41;
+   this entry appends rather than rewriting history.
+7. **Two extra packages changed the venv for this run** (`torch` pulled a CUDA
+   build; `flwr` pins `fastapi<0.139`). Backend pins were restored afterwards
+   (`pip install -e "backend[dev]"`), but the federated extra and the backend
+   cannot share one environment without a conflict — CI installs them in
+   separate jobs, and that is the honest state.
+
+### Parking lot (out of scope for Day 49)
+
+- **Per-endpoint kill-switch branches** for all 12 flags with a contract test per
+  fallback (carried from Day 48).
+- **Recalibrate the safety operating point** against consented real text, with a
+  second "check in with me" intermediate state instead of a binary card.
+- **A browser job that runs the three-state verification** on the tagged commit
+  and attaches Lighthouse/Playwright results to the release.
+- **Publisher/consent UX for a public demo deployment** (Netlify + Fly), with the
+  demo label asserted by a smoke check after deploy.
+- **Verify the four `needs_verification` helplines** and add an aged-out
+  `last_verified` CI check.
+- **Publish MLflow** (or export the runs as a static artefact) so run ids resolve
+  for a reader without the repo.
+- **Render and review the poster** on a machine with a browser (it was authored
+  and XML-validated here, not visually inspected).
+- **Fix the PROGRESS.md historical duplication** in a dedicated commit.
+
+### First three steps for the next release
+
+1. **Get the human reviews started**: open the clinical-review checklist, the
+   native-speaker review for Hindi/Bengali, and a security review by someone who
+   did not write the code — each is a prerequisite, not a task that can be
+   parallelised with more features.
+2. **Recalibrate the safety ensemble** on consented real text (or the closest
+   proxy: a licensed, consented corpus added to `ml/data/CATALOGUE.md`), and
+   report precision, per-stratum coverage and the escalation rate with intervals —
+   the precision number is the biggest user-facing defect in v2.0.
+3. **Close the browser gap in the release gate**: make Playwright + Lighthouse run
+   on the exact commit that is tagged, attach the artefacts to the GitHub release,
+   and delete "NOT RUN" rows from the verification note only when they are green.
+
+
 ## Day 48 — Responsible-AI audit, drift monitoring and kill switches
 
 Built and verified on 2026-10-20 on the Arena-pinned branch
