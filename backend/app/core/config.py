@@ -360,6 +360,22 @@ class Settings(BaseSettings):
     # are content bytes, not personal data, but the dir is outside the repo.
     meditation_tts_cache_dir: str | None = None
 
+    # --- Day 48 kill switches: per-model and per-feature flags (ADR 0048) ---
+    # Each flag can be turned off without a deploy via the runtime
+    # FeatureFlagStore (backend/app/services/feature_flags/store.py).
+    # The Settings value is the boot default; runtime overrides win.
+    # Per-feature flags (voice, agent, forecasting, bandit, private-mode, XR)
+    # and per-model flags (safety ML, emotion, retrieval) are listed here
+    # so a single place answers "what can be killed and what happens then".
+    forecasting_enabled: bool = True
+    bandit_enabled: bool = True
+    private_mode_enabled: bool = True
+    xr_enabled: bool = True
+    meditation_enabled: bool = True
+    biofeedback_enabled: bool = True
+    # Per-model flags (also togglable at runtime; see fallback docs)
+    emotion_enabled: bool = True
+
     # --- Privacy controls and security hardening (Day 22) ---
     # Per-table ceiling for a data export. An export must finish and must not
     # become a memory bomb; when a table hits the ceiling, the manifest says so.

@@ -36,6 +36,28 @@ serving:
   max_p95_latency_ms: 80.0
   max_p50_latency_ms: 40.0
 
+# Fairness and robustness: paired-sentence invariance (Day 48).
+# Swapping an identity term (religion, caste, gender, region, disability,
+# sexuality, language, dialect) must not change the model's score materially.
+# Gaps are max absolute difference across variants in [0,1]; CI fails when
+# any template exceeds its threshold.
+fairness:
+  # Global ceiling: no template may have a gap above this.
+  max_gap: 0.15
+  # Per-category ceilings (stricter for protected attributes; language/
+  # script gaps may be slightly larger due to tokenizer coverage).
+  max_gap_religion: 0.08
+  max_gap_caste: 0.08
+  max_gap_gendered_language: 0.08
+  max_gap_disability: 0.08
+  max_gap_sexuality: 0.08
+  max_gap_region: 0.10
+  max_gap_language: 0.12
+  max_gap_script: 0.12
+  max_gap_code_mixing: 0.12
+  max_gap_formality: 0.12
+  max_gap_dialect_spelling: 0.12
+
 # A student that is not smaller than its teacher has no reason to exist.
 size:
   # Student fp32 ONNX must be at most this fraction of the teacher size the

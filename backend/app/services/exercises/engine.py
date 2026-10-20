@@ -102,7 +102,7 @@ class ExerciseContentError(ValueError):
     """Missing, ambiguous, or invalid declarative exercise content."""
 
 
-class _UniqueKeyLoader(yaml.SafeLoader):
+class _UniqueKeyLoader(yaml.SafeLoader):  # type: ignore[misc]
     """SafeLoader otherwise silently overwrites a repeated YAML key."""
 
     def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[Any, Any]:
@@ -119,7 +119,7 @@ class _UniqueKeyLoader(yaml.SafeLoader):
                 raise yaml.constructor.ConstructorError(
                     None, None, "YAML mapping keys must be scalar", key_node.start_mark
                 ) from exc
-        return super().construct_mapping(node, deep=deep)
+        return super().construct_mapping(node, deep=deep)  # type: ignore[no-any-return]
 
 
 class ExerciseCatalog:

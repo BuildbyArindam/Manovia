@@ -19,7 +19,9 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.crisis import router as crisis_router
 from app.api.v1.dev import router as dev_router
+from app.api.v1.drift import router as drift_router
 from app.api.v1.exercises import router as exercises_router
+from app.api.v1.feature_flags import router as feature_flags_router
 from app.api.v1.health import router as health_router
 from app.api.v1.insights import router as insights_router
 from app.api.v1.journal import router as journal_router
@@ -255,6 +257,16 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     # LLM_PROVIDER=fake the generator is curated-only by design.
     app.state.meditation_service = build_meditation_service(app_settings)
 
+    # Day 48: drift monitor (privacy-preserving aggregates only) and
+    # feature-flag store (kill switches without deploy). Both are
+    # process-wide singletons; the flag store starts from Settings defaults
+    # and can be overridden at runtime via /api/v1/feature-flags.
+    from app.services.drift.monitor import DriftMonitor
+    from app.services.feature_flags.store import get_flag_store
+
+    app.state.drift_monitor = DriftMonitor()
+    app.state.flag_store = get_flag_store()
+
     # Middleware added last runs first (outermost), so the request ID wraps
     # every response, including error responses. Rate limiting sits just inside
     # the security headers so even a 429 is fully dressed; it is skipped when
@@ -322,6 +334,8 @@ def create_app(settings: Settings | None = None, *, database: Database | None = 
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(privacy_router, prefix="/api/v1")
     app.include_router(voice_router, prefix="/api/v1")
+    app.include_router(drift_router, prefix="/api/v1")
+    app.include_router(feature_flags_router, prefix="/api/v1")
     # Day 47: the owner side of the share bridge, and the public viewer side.
     # The public router only answers for tokens that are live, and only with
     # ciphertext.

@@ -62,6 +62,23 @@ class SizeGates(StrictModel):
     max_int8_fp32_ratio: float = Field(gt=0.0)
 
 
+class FairnessGates(StrictModel):
+    """Paired-sentence invariance gaps (Day 48). Extra=forbid, all optional with defaults."""
+
+    max_gap: float = Field(default=0.15, ge=0.0, le=1.0)
+    max_gap_religion: float = Field(default=0.08, ge=0.0, le=1.0)
+    max_gap_caste: float = Field(default=0.08, ge=0.0, le=1.0)
+    max_gap_gendered_language: float = Field(default=0.08, ge=0.0, le=1.0)
+    max_gap_disability: float = Field(default=0.08, ge=0.0, le=1.0)
+    max_gap_sexuality: float = Field(default=0.08, ge=0.0, le=1.0)
+    max_gap_region: float = Field(default=0.10, ge=0.0, le=1.0)
+    max_gap_language: float = Field(default=0.12, ge=0.0, le=1.0)
+    max_gap_script: float = Field(default=0.12, ge=0.0, le=1.0)
+    max_gap_code_mixing: float = Field(default=0.12, ge=0.0, le=1.0)
+    max_gap_formality: float = Field(default=0.12, ge=0.0, le=1.0)
+    max_gap_dialect_spelling: float = Field(default=0.12, ge=0.0, le=1.0)
+
+
 class ReleaseGates(StrictModel):
     """The validated contents of ``release_gates.yaml``."""
 
@@ -69,6 +86,7 @@ class ReleaseGates(StrictModel):
     emotion: EmotionGates
     serving: ServingGates
     size: SizeGates
+    fairness: FairnessGates | None = None
 
 
 def load_release_gates(path: str | Path | None = None) -> ReleaseGates:

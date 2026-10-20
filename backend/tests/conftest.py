@@ -149,6 +149,19 @@ _ENV_KEYS = (
     "VOICE_PIPER_MODEL_BN",
     # Day 45 meditation render cache: never let a developer's dir leak in.
     "MEDITATION_TTS_CACHE_DIR",
+    # Day 48 kill switches and drift monitoring.
+    "FORECASTING_ENABLED",
+    "BANDIT_ENABLED",
+    "PRIVATE_MODE_ENABLED",
+    "XR_ENABLED",
+    "MEDITATION_ENABLED",
+    "BIOFEEDBACK_ENABLED",
+    "EMOTION_ENABLED",
+    "METRICS_ENABLED",
+    "SENTRY_DSN",
+    "RAG_ENABLED",
+    "RETRIEVER",
+    "AGENT_ENABLED",
 )
 
 

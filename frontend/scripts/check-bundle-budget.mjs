@@ -31,7 +31,7 @@ const MANIFEST = join(DIST, ".vite", "manifest.json");
 
 /** Budgets in bytes, gzip unless named raw. */
 export const BUDGETS = {
-  initialJsGzip: 130 * 1024,
+  initialJsGzip: 135 * 1024, // Day 48: +5 KB for Transparency page i18n (132 keys)
   initialCssGzip: 10 * 1024,
   routeIncrementGzip: 25 * 1024,
   /** Insights carries the chart library; it is lazy and not precached. */
@@ -56,6 +56,7 @@ const ROUTES = {
   "src/pages/AccessibilityPage.tsx": "/accessibility",
   // Day 46: the calm space is lazy and tiny (no 3D library, no assets).
   "src/pages/CalmPage.tsx": "/calm",
+  "src/pages/TransparencyPage.tsx": "/transparency",
 };
 
 function sizes(file) {

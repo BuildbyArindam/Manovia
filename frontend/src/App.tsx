@@ -70,6 +70,7 @@ const LOADERS = {
   "/settings": () => import("@/pages/SettingsPage"),
   "/calm": () => import("@/pages/CalmPage"),
   "/accessibility": () => import("@/pages/AccessibilityPage"),
+  "/transparency": () => import("@/pages/TransparencyPage"),
   "/shares": () => import("@/pages/SharePage"),
   /**
    * The public share viewer. Not reachable by `preloadRoute` (its address carries
@@ -110,6 +111,7 @@ const InsightsPage = lazyPage(LOADERS["/insights"], "InsightsPage");
 const SettingsPage = lazyPage(LOADERS["/settings"], "SettingsPage");
 const CalmPage = lazyPage(LOADERS["/calm"], "CalmPage");
 const AccessibilityPage = lazyPage(LOADERS["/accessibility"], "AccessibilityPage");
+const TransparencyPage = lazyPage(LOADERS["/transparency"], "TransparencyPage");
 const SharePage = lazyPage(LOADERS["/shares"], "SharePage");
 const ShareViewerPage = lazyPage(LOADERS["/s"], "ShareViewerPage");
 
@@ -214,11 +216,13 @@ function AppRoutes(): ReactElement {
   }
 
   if (!isComplete) {
-    if (location.pathname === "/accessibility") {
+    if (location.pathname === "/accessibility" || location.pathname === "/transparency") {
+      const PageForPath =
+        location.pathname === "/transparency" ? TransparencyPage : AccessibilityPage;
       return (
         <main id="main" tabIndex={-1} className="mx-auto max-w-3xl px-4 py-8">
           <Page>
-            <AccessibilityPage />
+            <PageForPath />
           </Page>
         </main>
       );
@@ -331,6 +335,14 @@ function AppRoutes(): ReactElement {
           element={
             <Page>
               <AccessibilityPage />
+            </Page>
+          }
+        />
+        <Route
+          path="/transparency"
+          element={
+            <Page>
+              <TransparencyPage />
             </Page>
           }
         />
