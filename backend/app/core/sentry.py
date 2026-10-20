@@ -29,7 +29,7 @@ from typing import Any, Final
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
-from app.core.logging import SENSITIVE_LOG_FIELDS
+from app.core.logging import SENSITIVE_LOG_FIELDS, redact_path
 from app.services.nlp.redaction import Redactor
 
 #: Request headers that may leave the process. Identity, session material and
@@ -111,11 +111,13 @@ def _scrub_request(request: Any) -> Any:
             if str(key).lower() in _ALLOWED_REQUEST_HEADERS
         }
     # The URL minus its query: the path is what an engineer needs; the query
-    # string can carry anything a person (or a broken client) put there.
+    # string can carry anything a person (or a broken client) put there. The
+    # path itself is redacted too, because a share token in a path is half of a
+    # credential (Day 47).
     for url_key in ("url",):
         url = cleaned.get(url_key)
-        if isinstance(url, str) and "?" in url:
-            cleaned[url_key] = url.split("?", 1)[0]
+        if isinstance(url, str):
+            cleaned[url_key] = redact_path(url.split("?", 1)[0])
     if "query_string" in cleaned:
         cleaned["query_string"] = ""
     return _drop_blocked_keys(cleaned)

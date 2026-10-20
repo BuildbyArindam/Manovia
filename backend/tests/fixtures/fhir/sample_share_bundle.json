@@ -1,0 +1,871 @@
+{
+  "resourceType": "Bundle",
+  "id": "fd2130f8-eada-5497-a07e-d10392e863d7",
+  "identifier": {
+    "system": "https://manovia.app/fhir/share-bundle",
+    "value": "fd2130f8-eada-5497-a07e-d10392e863d7"
+  },
+  "type": "document",
+  "timestamp": "2026-10-19T09:30:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:5e5bdcb1-ef19-5ee5-8fbb-5fa23e8498b3",
+      "resource": {
+        "resourceType": "Composition",
+        "id": "5e5bdcb1-ef19-5ee5-8fbb-5fa23e8498b3",
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/share-document-type",
+              "code": "appointment-summary",
+              "display": "Appointment summary (patient-generated)"
+            }
+          ],
+          "text": "Appointment summary prepared by the patient in Manovia"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "date": "2026-10-19T12:00:00Z",
+        "author": [
+          {
+            "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+          }
+        ],
+        "title": "Patient-generated, not a diagnosis: appointment summary prepared in Manovia",
+        "section": [
+          {
+            "title": "Mood summary",
+            "code": {
+              "coding": [
+                {
+                  "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                  "code": "mood-summary",
+                  "display": "Mood summary"
+                }
+              ],
+              "text": "Mood summary"
+            },
+            "author": [
+              {
+                "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+              }
+            ],
+            "entry": [
+              {
+                "reference": "urn:uuid:0256c256-dcc7-5e17-af5f-79feb7f60ab3"
+              },
+              {
+                "reference": "urn:uuid:0b386990-dffe-50de-99ec-4aa69e540237"
+              },
+              {
+                "reference": "urn:uuid:3c1db586-57af-5d2b-9a28-171949913021"
+              },
+              {
+                "reference": "urn:uuid:6275d0fc-fce8-5ef4-98d9-c63878e9a1a2"
+              }
+            ]
+          },
+          {
+            "title": "Screening history",
+            "code": {
+              "coding": [
+                {
+                  "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                  "code": "assessments",
+                  "display": "Screening history"
+                }
+              ],
+              "text": "Screening history"
+            },
+            "author": [
+              {
+                "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+              }
+            ],
+            "entry": [
+              {
+                "reference": "urn:uuid:e1ba06a9-a372-565a-940a-0f6d9062872d"
+              },
+              {
+                "reference": "urn:uuid:d3cc67ec-4ddf-507a-9dad-bd162b28b6d8"
+              },
+              {
+                "reference": "urn:uuid:08c1f58a-88d1-5661-9ec0-ad6bbc869477"
+              },
+              {
+                "reference": "urn:uuid:3a0b4bef-41ca-5fa2-a884-98d39a283592"
+              }
+            ]
+          },
+          {
+            "title": "Thought records",
+            "code": {
+              "coding": [
+                {
+                  "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                  "code": "thought-records",
+                  "display": "Thought records"
+                }
+              ],
+              "text": "Thought records"
+            },
+            "author": [
+              {
+                "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+              }
+            ],
+            "entry": [
+              {
+                "reference": "urn:uuid:76a7d116-f113-5a8e-bdc2-3d4792e2ec23"
+              }
+            ]
+          },
+          {
+            "title": "Exercise helpfulness",
+            "code": {
+              "coding": [
+                {
+                  "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                  "code": "exercise-helpfulness",
+                  "display": "Exercise helpfulness"
+                }
+              ],
+              "text": "Exercise helpfulness"
+            },
+            "author": [
+              {
+                "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+              }
+            ],
+            "entry": [
+              {
+                "reference": "urn:uuid:8639b07d-43c8-54ec-83ad-b4e8d81900c0"
+              }
+            ]
+          },
+          {
+            "title": "Note for the appointment",
+            "code": {
+              "coding": [
+                {
+                  "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                  "code": "note",
+                  "display": "Note for the appointment"
+                }
+              ],
+              "text": "Note for the appointment"
+            },
+            "author": [
+              {
+                "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+              }
+            ],
+            "entry": [
+              {
+                "reference": "urn:uuid:2d66f99a-6b5a-53ca-83f3-90ea1a23f779"
+              }
+            ]
+          },
+          {
+            "title": "Questions to ask",
+            "code": {
+              "coding": [
+                {
+                  "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                  "code": "questions",
+                  "display": "Questions to ask"
+                }
+              ],
+              "text": "Questions to ask"
+            },
+            "author": [
+              {
+                "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+              }
+            ],
+            "entry": [
+              {
+                "reference": "urn:uuid:18eaae12-c0b4-573d-a4c6-5d2aa099e856"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "341de804-d36a-503d-9c24-ec95ad5a3d2b",
+        "active": true,
+        "telecom": [
+          {
+            "system": "email",
+            "value": "someone@example.test"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:341e15e3-3223-5118-80fc-c160e57b2789",
+      "resource": {
+        "resourceType": "Device",
+        "id": "341e15e3-3223-5118-80fc-c160e57b2789",
+        "status": "active",
+        "deviceName": [
+          {
+            "name": "Manovia",
+            "type": "user-friendly-name"
+          }
+        ],
+        "type": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/share-document-type",
+              "code": "self-help-app",
+              "display": "Self-help companion app"
+            }
+          ],
+          "text": "Self-help companion application (not a medical device, not an EHR)"
+        },
+        "version": [
+          {
+            "value": "1.0.0"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:0256c256-dcc7-5e17-af5f-79feb7f60ab3",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "0256c256-dcc7-5e17-af5f-79feb7f60ab3",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ],
+            "text": "Patient-reported survey data"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/mood-summary",
+              "code": "mean-valence",
+              "display": "Mean mood rating"
+            }
+          ],
+          "text": "Mean self-rated mood over the shared window (1 low to 5 high)"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "effectiveDateTime": "2026-10-19T12:00:00Z",
+        "note": [
+          {
+            "text": "6 mood check-ins over 30 days, self-rated 1 (low) to 5 (high). Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
+          }
+        ],
+        "valueQuantity": {
+          "value": 3.0,
+          "unit": "1",
+          "system": "http://unitsofmeasure.org",
+          "code": "1"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:0b386990-dffe-50de-99ec-4aa69e540237",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "0b386990-dffe-50de-99ec-4aa69e540237",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ],
+            "text": "Patient-reported survey data"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/mood-summary",
+              "code": "mean-energy",
+              "display": "Mean energy rating"
+            }
+          ],
+          "text": "Mean self-rated energy over the shared window (1 low to 5 high)"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "effectiveDateTime": "2026-10-19T12:00:00Z",
+        "note": [
+          {
+            "text": "6 mood check-ins over 30 days, self-rated 1 (low) to 5 (high). Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
+          }
+        ],
+        "valueQuantity": {
+          "value": 3.5,
+          "unit": "1",
+          "system": "http://unitsofmeasure.org",
+          "code": "1"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:3c1db586-57af-5d2b-9a28-171949913021",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "3c1db586-57af-5d2b-9a28-171949913021",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ],
+            "text": "Patient-reported survey data"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/mood-summary",
+              "code": "check-in-count",
+              "display": "Number of mood check-ins"
+            }
+          ],
+          "text": "How many mood check-ins this summary is based on"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "effectiveDateTime": "2026-10-19T12:00:00Z",
+        "note": [
+          {
+            "text": "6 mood check-ins over 30 days, self-rated 1 (low) to 5 (high). Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
+          }
+        ],
+        "valueQuantity": {
+          "value": 6,
+          "unit": "1",
+          "system": "http://unitsofmeasure.org",
+          "code": "1"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:6275d0fc-fce8-5ef4-98d9-c63878e9a1a2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "6275d0fc-fce8-5ef4-98d9-c63878e9a1a2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ],
+            "text": "Patient-reported survey data"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/mood-summary",
+              "code": "direction",
+              "display": "Direction of mood ratings"
+            }
+          ],
+          "text": "Whether the second half of the window was higher, lower or much the same as the first"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "effectiveDateTime": "2026-10-19T12:00:00Z",
+        "note": [
+          {
+            "text": "6 mood check-ins over 30 days, self-rated 1 (low) to 5 (high). Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
+          }
+        ],
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "https://manovia.app/fhir/CodeSystem/mood-summary",
+              "code": "higher",
+              "display": "higher"
+            }
+          ],
+          "text": "Mood ratings in the second half of this window were higher than in the first half."
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:e1ba06a9-a372-565a-940a-0f6d9062872d",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "e1ba06a9-a372-565a-940a-0f6d9062872d",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>GAD-7 total score, self-administered in Manovia. The band label (Mild) is a self-help label for reflection, not a diagnosis. Individual item answers are not shared. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.</p></div>"
+        },
+        "status": "completed",
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "authored": "2026-10-12T12:00:00Z",
+        "author": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "source": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "item": [
+          {
+            "linkId": "70274-6",
+            "text": "Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]",
+            "answer": [
+              {
+                "valueInteger": 9
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:d3cc67ec-4ddf-507a-9dad-bd162b28b6d8",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "d3cc67ec-4ddf-507a-9dad-bd162b28b6d8",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ],
+            "text": "Patient-reported survey data"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "70274-6",
+              "display": "Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]"
+            }
+          ],
+          "text": "Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "effectiveDateTime": "2026-10-12T12:00:00Z",
+        "note": [
+          {
+            "text": "Total score reported by the person in Manovia; LOINC term verified at https://loinc.org/70274-6. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
+          }
+        ],
+        "valueQuantity": {
+          "value": 9,
+          "unit": "{score}",
+          "system": "http://unitsofmeasure.org",
+          "code": "{score}"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "https://manovia.app/fhir/CodeSystem/assessment-band",
+                "code": "mild",
+                "display": "Mild"
+              }
+            ],
+            "text": "Mild — self-help band label, not a diagnosis"
+          }
+        ],
+        "derivedFrom": [
+          {
+            "reference": "urn:uuid:e1ba06a9-a372-565a-940a-0f6d9062872d"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:08c1f58a-88d1-5661-9ec0-ad6bbc869477",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "08c1f58a-88d1-5661-9ec0-ad6bbc869477",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>PHQ-9 total score, self-administered in Manovia. The band label (Moderate) is a self-help label for reflection, not a diagnosis. Individual item answers are not shared. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.</p></div>"
+        },
+        "status": "completed",
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "authored": "2026-10-11T12:00:00Z",
+        "author": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "source": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "item": [
+          {
+            "linkId": "44261-6",
+            "text": "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]",
+            "answer": [
+              {
+                "valueInteger": 12
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:3a0b4bef-41ca-5fa2-a884-98d39a283592",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "3a0b4bef-41ca-5fa2-a884-98d39a283592",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ],
+            "text": "Patient-reported survey data"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "44261-6",
+              "display": "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]"
+            }
+          ],
+          "text": "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]"
+        },
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "effectiveDateTime": "2026-10-11T12:00:00Z",
+        "note": [
+          {
+            "text": "Total score reported by the person in Manovia; LOINC term verified at https://loinc.org/44261-6. Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation."
+          }
+        ],
+        "valueQuantity": {
+          "value": 12,
+          "unit": "{score}",
+          "system": "http://unitsofmeasure.org",
+          "code": "{score}"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "https://manovia.app/fhir/CodeSystem/assessment-band",
+                "code": "moderate",
+                "display": "Moderate"
+              }
+            ],
+            "text": "Moderate — self-help band label, not a diagnosis"
+          }
+        ],
+        "derivedFrom": [
+          {
+            "reference": "urn:uuid:08c1f58a-88d1-5661-9ec0-ad6bbc869477"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:76a7d116-f113-5a8e-bdc2-3d4792e2ec23",
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "76a7d116-f113-5a8e-bdc2-3d4792e2ec23",
+        "status": "current",
+        "docStatus": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                "code": "thought-record",
+                "display": "Thought record — anxiety (2026-10-16)"
+              }
+            ],
+            "text": "Thought record — anxiety (2026-10-16)"
+          }
+        ],
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "date": "2026-10-19T09:30:00Z",
+        "author": [
+          {
+            "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+          }
+        ],
+        "description": "Thought record — anxiety (2026-10-16) — Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.",
+        "content": [
+          {
+            "attachment": {
+              "contentType": "text/plain",
+              "language": "en",
+              "data": "RGF0ZTogMjAyNi0xMC0xNgpFbW90aW9uOiBhbnhpZXR5CkludGVuc2l0eSBiZWZvcmU6IDgwLzEwMApJbnRlbnNpdHkgYWZ0ZXI6IDQ1LzEwMApXaGF0IGhlbHBlZDogbG9va2luZyBhdCBldmlkZW5jZQoKU2l0dWF0aW9uOgpBbiBleGFtIGlzIHRvbW9ycm93CgpBdXRvbWF0aWMgdGhvdWdodDoKSSB3aWxsIGZhaWwgYW5kIGV2ZXJ5b25lIHdpbGwgdGhpbmsgSSBhbSBzdHVwaWQKCkV2aWRlbmNlIGZvcjoKSSBtaXNzZWQgb25lIHF1ZXN0aW9uIGluIHByYWN0aWNlCgpFdmlkZW5jZSBhZ2FpbnN0OgpJIHN0dWRpZWQgYW5kIHBhc3NlZCB0aGUgb3RoZXIgcHJhY3RpY2UgdGVzdHMKCkJhbGFuY2VkIHRob3VnaHQ6CkkgbWlnaHQgbm90IGtub3cgZXZlcnkgYW5zd2VyLCBidXQgSSBwcmVwYXJlZAoKVGhpcyBzdW1tYXJ5IHdhcyBnZW5lcmF0ZWQgYnkgTWFub3ZpYSwgYSBzZWxmLWhlbHAgY29tcGFuaW9uLCBmcm9tIGVudHJpZXMgdGhlIHBlcnNvbiBtYWRlIGFib3V0IHRoZW1zZWx2ZXMuIEl0IGlzIHBhdGllbnQtZ2VuZXJhdGVkIGluZm9ybWF0aW9uOiBpdCBpcyBub3QgYSBkaWFnbm9zaXMsIG5vdCBhIGNsaW5pY2FsIGFzc2Vzc21lbnQsIGFuZCBub3QgYSBtZWRpY2FsIHJlY29yZC4gU2NyZWVuaW5nIHNjb3JlcyBhcmUgc2VsZi1yZXBvcnQgbGFiZWxzIGZvciByZWZsZWN0aW9uIG9ubHkuIE1hbm92aWEgaXMgbm90IGFuIGVsZWN0cm9uaWMgaGVhbHRoIHJlY29yZCBhbmQgaXMgbm90IGNvbm5lY3RlZCB0byBvbmUuIElmIHRoaXMgZG9jdW1lbnQgbWVudGlvbnMgcmlzayBvZiBoYXJtLCB0cmVhdCBpdCBhcyBhIHJlYXNvbiB0byBhc2ssIG5vdCBhcyBhIHRyaWFnZSBzY29yZS4=",
+              "title": "Thought record — anxiety (2026-10-16)",
+              "creation": "2026-10-19T09:30:00Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:8639b07d-43c8-54ec-83ad-b4e8d81900c0",
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "8639b07d-43c8-54ec-83ad-b4e8d81900c0",
+        "status": "current",
+        "docStatus": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                "code": "exercise-helpfulness",
+                "display": "Exercise helpfulness summary"
+              }
+            ],
+            "text": "Exercise helpfulness summary"
+          }
+        ],
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "date": "2026-10-19T09:30:00Z",
+        "author": [
+          {
+            "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+          }
+        ],
+        "description": "Exercise helpfulness summary — Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.",
+        "content": [
+          {
+            "attachment": {
+              "contentType": "text/plain",
+              "language": "en",
+              "data": "V2luZG93OiB0aGUgbGFzdCAzMCBkYXlzIChmcm9tIDIwMjYtMDktMTkpCkNvbXBsZXRpb25zOiAzICgzIHdpdGggYm90aCByYXRpbmdzKQpSYXRpbmcgc2NhbGU6IDEgKHZlcnkgbG93KSB0byA1ICh2ZXJ5IGdvb2QpLCByYXRlZCBiZWZvcmUgYW5kIGFmdGVyCgotIEJveCBicmVhdGhpbmc6IDMgdGltZShzKSwgbWVhbiBiZWZvcmUgMi4zMywgbWVhbiBhZnRlciA0LjAwLCBtZWFuIGNoYW5nZSArMS42NwoKTGFyZ2VzdCBhdmVyYWdlIGltcHJvdmVtZW50OiBCb3ggYnJlYXRoaW5nCgpBIHJhdGluZyB0aGF0IG1vdmVkIGlzIGFuIGFzc29jaWF0aW9uLCBub3QgcHJvb2YgdGhhdCB0aGUgZXhlcmNpc2UgY2F1c2VkIGl0LgoKVGhpcyBzdW1tYXJ5IHdhcyBnZW5lcmF0ZWQgYnkgTWFub3ZpYSwgYSBzZWxmLWhlbHAgY29tcGFuaW9uLCBmcm9tIGVudHJpZXMgdGhlIHBlcnNvbiBtYWRlIGFib3V0IHRoZW1zZWx2ZXMuIEl0IGlzIHBhdGllbnQtZ2VuZXJhdGVkIGluZm9ybWF0aW9uOiBpdCBpcyBub3QgYSBkaWFnbm9zaXMsIG5vdCBhIGNsaW5pY2FsIGFzc2Vzc21lbnQsIGFuZCBub3QgYSBtZWRpY2FsIHJlY29yZC4gU2NyZWVuaW5nIHNjb3JlcyBhcmUgc2VsZi1yZXBvcnQgbGFiZWxzIGZvciByZWZsZWN0aW9uIG9ubHkuIE1hbm92aWEgaXMgbm90IGFuIGVsZWN0cm9uaWMgaGVhbHRoIHJlY29yZCBhbmQgaXMgbm90IGNvbm5lY3RlZCB0byBvbmUuIElmIHRoaXMgZG9jdW1lbnQgbWVudGlvbnMgcmlzayBvZiBoYXJtLCB0cmVhdCBpdCBhcyBhIHJlYXNvbiB0byBhc2ssIG5vdCBhcyBhIHRyaWFnZSBzY29yZS4=",
+              "title": "Exercise helpfulness summary",
+              "creation": "2026-10-19T09:30:00Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:2d66f99a-6b5a-53ca-83f3-90ea1a23f779",
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "2d66f99a-6b5a-53ca-83f3-90ea1a23f779",
+        "status": "current",
+        "docStatus": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                "code": "note",
+                "display": "Note for the appointment"
+              }
+            ],
+            "text": "Note for the appointment"
+          }
+        ],
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "date": "2026-10-19T09:30:00Z",
+        "author": [
+          {
+            "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+          }
+        ],
+        "description": "Note for the appointment — Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.",
+        "content": [
+          {
+            "attachment": {
+              "contentType": "text/plain",
+              "language": "en",
+              "data": "SSBoYXZlIGJlZW4gc2xlZXBpbmcgYmFkbHkgYW5kIEkgd291bGQgbGlrZSB0byB0YWxrIGFib3V0IGl0Lg==",
+              "title": "Note for the appointment",
+              "creation": "2026-10-19T09:30:00Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:18eaae12-c0b4-573d-a4c6-5d2aa099e856",
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "18eaae12-c0b4-573d-a4c6-5d2aa099e856",
+        "status": "current",
+        "docStatus": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "https://manovia.app/fhir/CodeSystem/share-document-kind",
+                "code": "questions",
+                "display": "Questions to ask"
+              }
+            ],
+            "text": "Questions to ask"
+          }
+        ],
+        "subject": {
+          "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+        },
+        "date": "2026-10-19T09:30:00Z",
+        "author": [
+          {
+            "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+          }
+        ],
+        "description": "Questions to ask — Patient-generated data from Manovia, a self-help companion. Not a diagnosis and not a clinical observation.",
+        "content": [
+          {
+            "attachment": {
+              "contentType": "text/plain",
+              "language": "en",
+              "data": "LSBJcyB0aGlzIG5vcm1hbD8KLSBXaGF0IHNob3VsZCBJIHRyeSBuZXh0Pw==",
+              "title": "Questions to ask",
+              "creation": "2026-10-19T09:30:00Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7dbe313e-9106-5a91-a2dd-3e34b015d3ca",
+      "resource": {
+        "resourceType": "Provenance",
+        "id": "7dbe313e-9106-5a91-a2dd-3e34b015d3ca",
+        "target": [
+          {
+            "reference": "urn:uuid:5e5bdcb1-ef19-5ee5-8fbb-5fa23e8498b3"
+          },
+          {
+            "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+          },
+          {
+            "reference": "urn:uuid:341e15e3-3223-5118-80fc-c160e57b2789"
+          },
+          {
+            "reference": "urn:uuid:0256c256-dcc7-5e17-af5f-79feb7f60ab3"
+          },
+          {
+            "reference": "urn:uuid:0b386990-dffe-50de-99ec-4aa69e540237"
+          },
+          {
+            "reference": "urn:uuid:3c1db586-57af-5d2b-9a28-171949913021"
+          },
+          {
+            "reference": "urn:uuid:6275d0fc-fce8-5ef4-98d9-c63878e9a1a2"
+          },
+          {
+            "reference": "urn:uuid:e1ba06a9-a372-565a-940a-0f6d9062872d"
+          },
+          {
+            "reference": "urn:uuid:d3cc67ec-4ddf-507a-9dad-bd162b28b6d8"
+          },
+          {
+            "reference": "urn:uuid:08c1f58a-88d1-5661-9ec0-ad6bbc869477"
+          },
+          {
+            "reference": "urn:uuid:3a0b4bef-41ca-5fa2-a884-98d39a283592"
+          },
+          {
+            "reference": "urn:uuid:76a7d116-f113-5a8e-bdc2-3d4792e2ec23"
+          },
+          {
+            "reference": "urn:uuid:8639b07d-43c8-54ec-83ad-b4e8d81900c0"
+          },
+          {
+            "reference": "urn:uuid:2d66f99a-6b5a-53ca-83f3-90ea1a23f779"
+          },
+          {
+            "reference": "urn:uuid:18eaae12-c0b4-573d-a4c6-5d2aa099e856"
+          }
+        ],
+        "occurredDateTime": "2026-10-19T12:00:00Z",
+        "recorded": "2026-10-19T09:30:00Z",
+        "agent": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+                  "code": "author",
+                  "display": "Author"
+                }
+              ],
+              "text": "The person the data is about entered it themselves"
+            },
+            "who": {
+              "reference": "urn:uuid:341de804-d36a-503d-9c24-ec95ad5a3d2b"
+            }
+          },
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+                  "code": "assembler",
+                  "display": "Assembler"
+                }
+              ],
+              "text": "Software assembled the document from stored entries"
+            },
+            "who": {
+              "reference": "urn:uuid:341e15e3-3223-5118-80fc-c160e57b2789"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

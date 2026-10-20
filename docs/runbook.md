@@ -244,6 +244,74 @@ distil → export → gate check (exit 0) → `register` → `promote
 `production_crisis_only`. Skipping the gate flag makes promotion refuse
 (`GateRejectedError`), by design.
 
+## Shared documents (Day 47)
+
+A share is a document somebody handed to a professional. Two properties shape
+every procedure below: **the server cannot read it** (the key is derived in the
+browser from a secret delivered in the URL fragment and is never stored), and
+**every unusable link answers the same 404** on purpose, so a support request
+cannot be triaged from the error message alone.
+
+Reference: [docs/clinical-sharing.md](clinical-sharing.md).
+
+### Turn the whole feature off
+
+Set `SHARE_ENABLED=false` and restart. Both routers stop being mounted, so every
+`/api/v1/shares` and `/api/v1/public/shares` request 404s, existing links
+included. No migration, no data change, and turning it back on restores the links
+that have not expired. Do this rather than deleting rows: deletion destroys a
+record of what the person consented to.
+
+### "My link doesn't work"
+
+The public endpoints will not tell you why, and neither should you guess in front
+of the user. Ask them to sign in and open the share list (`/shares`), or read it
+yourself with their consent:
+
+1. `GET /api/v1/shares` — the `status` and the summary sentence ("Opened 2 times
+   of 5 allowed.") say whether it expired, was revoked, or ran out of views.
+2. `GET /api/v1/shares/{id}/audit` — the event kinds in order: `created`,
+   `opened`, `passcode_failed`, `locked`, `revoked`, `expired`,
+   `view_limit_reached`, `access_after_revoke`.
+3. If the status is `active` and the audit shows no `opened`, the problem is on
+   the reader's side and is almost always one of: the `#k=…` fragment was
+   stripped (some chat apps and email clients remove fragments), the passcode was
+   mistyped, or the recipient's browser blocked WebCrypto (a non-secure context —
+   the fragment key requires `https://` or `localhost`).
+
+There is no recovery path for a lost fragment, and no supported way to build one.
+The answer is: revoke that link and create a new one.
+
+### A link may have been forwarded or leaked
+
+1. `POST /api/v1/shares/{id}/revoke` for one, or `POST /api/v1/shares/revoke-all`
+   for everything that person has live. Revocation takes effect on the next
+   request; the attempt is audited as `access_after_revoke`.
+2. Do **not** try to assess what was read from the ciphertext or from the audit
+   log: the log records that a link was opened by `viewer`, never by whom, from
+   where, or what they saw. Say that plainly instead of implying precision.
+3. Nothing needs rotating. The share key never existed server-side, the field
+   encryption key (see "Key rotation" above) is unrelated to it, and the stored
+   ciphertext is safe to leave in a backup.
+
+### What NOT to do
+
+* Do not edit `expires_at`, `view_count`, `locked_until` or `revoked_at` by hand
+  to "fix" a link. The view budget and the lockout are safety controls; extending
+  them silently widens the window a forwarded link stays usable. Revoke and
+  recreate instead.
+* Do not add logging of share tokens, secrets, passcodes or the `#k=…` fragment —
+  `redact_path()` and `SENSITIVE_LOG_FIELDS` exist because a token in a log is
+  half a credential, and `tests/security/test_share_security.py` fails if a secret
+  reaches a log line.
+* Do not paste a decrypted document into a ticket, a chat or an issue. If a
+  document's contents must be discussed, the person who owns it decides that.
+* Do not "validate" a FHIR bundle by hand-editing
+  `backend/tests/fixtures/fhir/sample_share_bundle.json`. Regenerate it with
+  `backend/scripts/export_fhir_sample.py`; the CI job fails on drift, and a
+  hand-edited artifact means the official validator is blessing a document the
+  code does not emit.
+
 ## Appendix: what NOT to do (checklist)
 
 - Do not log or paste user text anywhere during an incident.

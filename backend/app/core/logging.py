@@ -1,10 +1,11 @@
 """Structured JSON logging and the request-ID middleware."""
 
 import logging
+import re
 import sys
 import uuid
 from collections.abc import MutableMapping
-from typing import Any
+from typing import Any, Final
 
 import structlog
 from starlette.datastructures import Headers, MutableHeaders
@@ -47,8 +48,44 @@ SENSITIVE_LOG_FIELDS: frozenset[str] = frozenset(
         "dek",
         "wrapped_dek",
         "data_key_encrypted",
+        # Day 47 share bridge: the passcode is part of the key derivation, the
+        # ciphertext is the document, and the token is half of a credential.
+        "passcode",
+        "passcode_hash",
+        "share_token",
+        "share_secret",
+        "content_key",
+        "ciphertext",
+        "fragment",
     }
 )
+
+#: Request-path shapes that carry a bearer secret instead of an identifier.
+#:
+#: A public share token is half of a credential: the other half (the key) lives
+#: in the URL fragment and never reaches this server, so a token in a log line
+#: is not a readable document. It is still the half that identifies the share,
+#: it is enough to burn the link's view budget or to lock its passcode, and an
+#: access log is read by far more people than the database is. It is replaced
+#: here, in the one function every logged path goes through.
+# Not anchored at the start: Sentry reports a full URL, the access log a bare
+# path, and one rule has to cover both.
+_SECRET_PATH_PATTERNS: Final[tuple[tuple[re.Pattern[str], str], ...]] = (
+    (re.compile(r"(/api/v1/public/shares/)[^/?#]+"), r"\1<share_token>"),
+)
+
+
+def redact_path(path: str | None) -> str:
+    """A request path with any bearer secret replaced by a typed placeholder.
+
+    Used by the access log, by the unhandled-exception log and by the Sentry
+    scrubber, so the three places a URL can escape all apply one rule.
+    """
+
+    text = path or ""
+    for pattern, replacement in _SECRET_PATH_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
 
 
 def _strip_sensitive_fields(value: Any) -> Any:
@@ -143,11 +180,12 @@ class RequestIDMiddleware:
         try:
             await self.app(scope, receive, send_with_request_id)
         finally:
-            # Path only — never the query string, which may contain user text.
+            # Path only — never the query string, which may contain user text —
+            # and with any bearer secret in the path replaced (Day 47).
             logger.info(
                 "http_request",
                 method=scope.get("method"),
-                path=scope.get("path"),
+                path=redact_path(scope.get("path")),
                 status_code=status_code,
             )
             structlog.contextvars.clear_contextvars()

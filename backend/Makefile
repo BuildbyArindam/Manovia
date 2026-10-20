@@ -1,4 +1,4 @@
-.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response voice-sim parity parity-casefold parity-corpus parity-output-guard parity-crisis-plans
+.PHONY: dev test coverage-gate lint format migrate migrate-down migrate-check revision ingest eval eval-safety eval-emotion eval-response voice-sim parity parity-casefold parity-corpus parity-output-guard parity-crisis-plans fhir-validate fhir-validator fhir-sample
 
 PYTHON ?= $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 
@@ -119,3 +119,45 @@ parity-corpus:
 	$(PYTHON) ../evals/parity/build_corpus.py
 	$(PYTHON) ../evals/parity/export_python_expected.py
 	$(PYTHON) ../evals/parity/export_normalisation.py
+
+# Day 47 clinician-share bridge: the FHIR document the share endpoint emits.
+#
+# The *official* HL7 validator is the authority — hapifhir/org.hl7.fhir.core's
+# validator_cli.jar, FHIR 4.0.1 — and CI always runs it on the committed sample
+# (the `fhir-validation` job in .github/workflows/ci.yml). It needs a JVM and a
+# 204 MB download, neither of which every environment has, so `make fhir-validate`
+# falls back to scripts/fhir_offline_check.py: a dependency-free structural check
+# of the same file, covering the R4 document invariants, reference resolution and
+# the "verified terminology or ours" rule. It says out loud which of the two it
+# ran, because "validated" means different things in each case.
+FHIR_VALIDATOR_VERSION ?= 7.0.2
+# The release asset's published sha256 (GitHub reports it on the release; pinned
+# here so a tampered download fails before java ever runs).
+FHIR_VALIDATOR_SHA256 ?= e3e50f06b806437821b7aef8189a1b790415cb96c5036e0812ed62981452b377
+FHIR_VALIDATOR_URL ?= https://github.com/hapifhir/org.hl7.fhir.core/releases/download/$(FHIR_VALIDATOR_VERSION)/validator_cli.jar
+FHIR_VALIDATOR_JAR ?= .fhir-validator/validator_cli-$(FHIR_VALIDATOR_VERSION).jar
+FHIR_SAMPLE ?= tests/fixtures/fhir/sample_share_bundle.json
+
+# Validate the committed sample: official validator when it is available,
+# structural fallback when it is not.
+fhir-validate: fhir-sample
+	@if command -v java >/dev/null 2>&1 && [ -f "$(FHIR_VALIDATOR_JAR)" ]; then \
+		echo "official HL7 validator $(FHIR_VALIDATOR_VERSION) on $(FHIR_SAMPLE)"; \
+		java -jar $(FHIR_VALIDATOR_JAR) $(FHIR_SAMPLE) -version 4.0.1 -tx n/a; \
+	else \
+		echo "official HL7 validator not available here (needs java and $(FHIR_VALIDATOR_JAR);"; \
+		echo "run 'make fhir-validator' to fetch it — CI runs it in the fhir-validation job)"; \
+		echo "running the offline structural fallback on $(FHIR_SAMPLE)"; \
+		$(PYTHON) scripts/fhir_offline_check.py $(FHIR_SAMPLE); \
+	fi
+
+# Fetch the official validator once, into a gitignored directory, and verify it.
+fhir-validator:
+	@mkdir -p $(dir $(FHIR_VALIDATOR_JAR))
+	curl -fsSL -o $(FHIR_VALIDATOR_JAR) $(FHIR_VALIDATOR_URL)
+	echo "$(FHIR_VALIDATOR_SHA256)  $(FHIR_VALIDATOR_JAR)" | sha256sum -c -
+
+# Fail if the committed sample is not what the current builder produces. A stale
+# artifact would mean CI validating a document shape the code no longer emits.
+fhir-sample:
+	$(PYTHON) scripts/export_fhir_sample.py --check

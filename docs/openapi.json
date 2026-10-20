@@ -878,6 +878,67 @@
         "title": "AudioRequest",
         "type": "object"
       },
+      "AuditEventOut": {
+        "additionalProperties": false,
+        "description": "One audit line. Kind, who, when — nothing else was ever stored.",
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "actor",
+          "created_at"
+        ],
+        "title": "AuditEventOut",
+        "type": "object"
+      },
+      "AuditOut": {
+        "additionalProperties": false,
+        "description": "The history of one link.",
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEventOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "share": {
+            "$ref": "#/components/schemas/ShareSummaryOut"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "share",
+          "events",
+          "counts",
+          "summary"
+        ],
+        "title": "AuditOut",
+        "type": "object"
+      },
       "BandSummary": {
         "description": "A band as the chart and the history list need it.",
         "properties": {
@@ -1065,6 +1126,57 @@
           "captions"
         ],
         "title": "CaptionsOut",
+        "type": "object"
+      },
+      "CatalogueItemOut": {
+        "additionalProperties": false,
+        "description": "One line of the \"what can be shared\" catalogue.",
+        "properties": {
+          "blurb": {
+            "title": "Blurb",
+            "type": "string"
+          },
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "excludes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Excludes",
+            "type": "array"
+          },
+          "includes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Includes",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "needs_selection": {
+            "title": "Needs Selection",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "blurb",
+          "includes",
+          "excludes",
+          "default",
+          "needs_selection"
+        ],
+        "title": "CatalogueItemOut",
         "type": "object"
       },
       "ChatMemoriesOut": {
@@ -1618,6 +1730,107 @@
         "title": "ConsentResponse",
         "type": "object"
       },
+      "CreateIn": {
+        "additionalProperties": false,
+        "description": "The create body: the selection plus the link's own settings.",
+        "properties": {
+          "consent_sha256": {
+            "description": "The hash returned by POST /shares/preview, echoed back.",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Consent Sha256",
+            "type": "string"
+          },
+          "expires_in_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In Days"
+          },
+          "formats": {
+            "description": "Which exports to build.",
+            "items": {
+              "$ref": "#/components/schemas/ShareFormat"
+            },
+            "minItems": 1,
+            "title": "Formats",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ShareItem"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "passcode": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passcode"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "thought_record_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Thought Record Ids",
+            "type": "array"
+          },
+          "view_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Limit"
+          },
+          "window_days": {
+            "default": 30,
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "consent_sha256"
+        ],
+        "title": "CreateIn",
+        "type": "object"
+      },
       "CreateSessionIn": {
         "description": "Optional body for ``POST /chat/sessions``.",
         "properties": {
@@ -1628,6 +1841,110 @@
           }
         },
         "title": "CreateSessionIn",
+        "type": "object"
+      },
+      "CreatedShareOut": {
+        "additionalProperties": false,
+        "description": "The only response that ever carries the key or the passcode.",
+        "properties": {
+          "consent_lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Consent Lines",
+            "type": "array"
+          },
+          "consent_sha256": {
+            "title": "Consent Sha256",
+            "type": "string"
+          },
+          "document_bytes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Document Bytes",
+            "type": "object"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Formats",
+            "type": "array"
+          },
+          "fragment": {
+            "title": "Fragment",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "passcode": {
+            "title": "Passcode",
+            "type": "string"
+          },
+          "passcode_generated": {
+            "title": "Passcode Generated",
+            "type": "boolean"
+          },
+          "payload_sha256": {
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "share_id": {
+            "format": "uuid",
+            "title": "Share Id",
+            "type": "string"
+          },
+          "share_path": {
+            "title": "Share Path",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "view_limit": {
+            "title": "View Limit",
+            "type": "integer"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "string"
+          }
+        },
+        "required": [
+          "share_id",
+          "share_path",
+          "token",
+          "secret",
+          "fragment",
+          "passcode",
+          "passcode_generated",
+          "expires_at",
+          "view_limit",
+          "formats",
+          "items",
+          "consent_sha256",
+          "payload_sha256",
+          "document_bytes",
+          "consent_lines",
+          "warning"
+        ],
+        "title": "CreatedShareOut",
         "type": "object"
       },
       "CrisisResource": {
@@ -4385,6 +4702,169 @@
         "title": "MoodOutlookOut",
         "type": "object"
       },
+      "OpenIn": {
+        "additionalProperties": false,
+        "description": "The passcode. Nothing else is accepted from an anonymous viewer.",
+        "properties": {
+          "passcode": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Passcode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "passcode"
+        ],
+        "title": "OpenIn",
+        "type": "object"
+      },
+      "OpenOut": {
+        "additionalProperties": false,
+        "description": "The ciphertext bundle the viewer decrypts locally.",
+        "properties": {
+          "algorithm": {
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "disclaimer_title": {
+            "title": "Disclaimer Title",
+            "type": "string"
+          },
+          "documents": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Formats",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "key_derivation": {
+            "title": "Key Derivation",
+            "type": "string"
+          },
+          "share_id": {
+            "title": "Share Id",
+            "type": "string"
+          },
+          "token_prefix": {
+            "title": "Token Prefix",
+            "type": "string"
+          },
+          "views_remaining": {
+            "title": "Views Remaining",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "share_id",
+          "token_prefix",
+          "generated_at",
+          "expires_at",
+          "views_remaining",
+          "formats",
+          "items",
+          "algorithm",
+          "key_derivation",
+          "disclaimer_title",
+          "disclaimer",
+          "documents"
+        ],
+        "title": "OpenOut",
+        "type": "object"
+      },
+      "OptionsOut": {
+        "additionalProperties": false,
+        "description": "Everything the builder page needs before the person decides anything.",
+        "properties": {
+          "defaults": {
+            "additionalProperties": true,
+            "title": "Defaults",
+            "type": "object"
+          },
+          "deployment_enabled": {
+            "title": "Deployment Enabled",
+            "type": "boolean"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "disclaimer_title": {
+            "title": "Disclaimer Title",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogueItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "title": "Limits",
+            "type": "object"
+          },
+          "never_included": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Never Included",
+            "type": "array"
+          },
+          "thought_records": {
+            "items": {
+              "$ref": "#/components/schemas/ThoughtRecordChoice"
+            },
+            "title": "Thought Records",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "deployment_enabled",
+          "defaults",
+          "items",
+          "thought_records",
+          "never_included",
+          "disclaimer_title",
+          "disclaimer",
+          "limits"
+        ],
+        "title": "OptionsOut",
+        "type": "object"
+      },
       "OutlookFactorOut": {
         "description": "A small, non-causal association from closed check-in tags.",
         "properties": {
@@ -4725,6 +5205,87 @@
         "title": "PolicyOut",
         "type": "object"
       },
+      "PreferenceIn": {
+        "additionalProperties": false,
+        "description": "Turn sharing on or off.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "PreferenceIn",
+        "type": "object"
+      },
+      "PreferenceOut": {
+        "additionalProperties": false,
+        "description": "The state of the switch.",
+        "properties": {
+          "deployment_enabled": {
+            "title": "Deployment Enabled",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "enabled",
+          "deployment_enabled"
+        ],
+        "title": "PreferenceOut",
+        "type": "object"
+      },
+      "PreviewOut": {
+        "additionalProperties": false,
+        "description": "What would be shared, and the sentence to confirm.",
+        "properties": {
+          "consent_lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Consent Lines",
+            "type": "array"
+          },
+          "consent_sha256": {
+            "title": "Consent Sha256",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "payload_sha256": {
+            "title": "Payload Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payload",
+          "consent_lines",
+          "consent_sha256",
+          "payload_sha256"
+        ],
+        "title": "PreviewOut",
+        "type": "object"
+      },
       "PrivacySettingsOut": {
         "description": "The person's effective privacy choices, plus the vocabulary to render them.",
         "properties": {
@@ -4828,6 +5389,49 @@
           }
         },
         "title": "PrivacySettingsPatch",
+        "type": "object"
+      },
+      "PublicStatusOut": {
+        "additionalProperties": false,
+        "description": "What the viewer may show before anybody types a passcode.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "disclaimer_title": {
+            "title": "Disclaimer Title",
+            "type": "string"
+          },
+          "formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Formats",
+            "type": "array"
+          },
+          "requires_passcode": {
+            "title": "Requires Passcode",
+            "type": "boolean"
+          },
+          "token_prefix": {
+            "title": "Token Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "requires_passcode",
+          "token_prefix",
+          "formats",
+          "disclaimer_title",
+          "disclaimer"
+        ],
+        "title": "PublicStatusOut",
         "type": "object"
       },
       "Recommendation": {
@@ -5274,6 +5878,57 @@
         "title": "ResponseType",
         "type": "string"
       },
+      "RevokeAllOut": {
+        "additionalProperties": false,
+        "description": "Confirmation that every live link is dead.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "revoked": {
+            "title": "Revoked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revoked",
+          "ids"
+        ],
+        "title": "RevokeAllOut",
+        "type": "object"
+      },
+      "RevokeOut": {
+        "additionalProperties": false,
+        "description": "Confirmation that a link is dead.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "revoked_at": {
+            "format": "date-time",
+            "title": "Revoked At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revoked_at",
+          "status"
+        ],
+        "title": "RevokeOut",
+        "type": "object"
+      },
       "RiskLevel": {
         "description": "Risk tier for a message or a safety event.\n\n``0`` is the safe default: a row that has not been triaged carries no risk.\n``CRISIS`` is the only tier that must be answered with the deterministic\nhelpline response before any LLM call (AGENTS.md rule 1).",
         "enum": [
@@ -5633,6 +6288,192 @@
         "title": "SettingsOut",
         "type": "object"
       },
+      "ShareFormat": {
+        "description": "The export formats a clinician share can carry.\n\n``pdf`` is the printable human document; ``fhir`` is the HL7 FHIR R4 Bundle\n(see :mod:`app.services.sharing.fhir`). A share always carries at least one.",
+        "enum": [
+          "pdf",
+          "fhir"
+        ],
+        "title": "ShareFormat",
+        "type": "string"
+      },
+      "ShareItem": {
+        "description": "What a person may choose to include in a share, one item at a time.\n\nThe set is closed and stored by value, so a row written today still means\nthe same thing after a rename. Everything *not* in this list is never shared\n— chat messages, journal entries and mood check-in notes cannot be selected\nbecause there is no member for them.",
+        "enum": [
+          "mood_trend",
+          "assessments",
+          "thought_records",
+          "exercise_helpfulness",
+          "note",
+          "questions",
+          "identity"
+        ],
+        "title": "ShareItem",
+        "type": "string"
+      },
+      "ShareRequest": {
+        "additionalProperties": false,
+        "description": "What the builder sends: a selection, a window, and the typed items.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ShareItem"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "thought_record_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Thought Record Ids",
+            "type": "array"
+          },
+          "window_days": {
+            "default": 30,
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ShareRequest",
+        "type": "object"
+      },
+      "ShareSummaryOut": {
+        "additionalProperties": false,
+        "description": "One link as the owner sees it in their list.",
+        "properties": {
+          "consent_sha256": {
+            "title": "Consent Sha256",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Formats",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "locked_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked Until"
+          },
+          "opened_count": {
+            "title": "Opened Count",
+            "type": "integer"
+          },
+          "passcode_failures": {
+            "title": "Passcode Failures",
+            "type": "integer"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "token_prefix": {
+            "title": "Token Prefix",
+            "type": "string"
+          },
+          "view_count": {
+            "title": "View Count",
+            "type": "integer"
+          },
+          "view_limit": {
+            "title": "View Limit",
+            "type": "integer"
+          },
+          "views_remaining": {
+            "title": "Views Remaining",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "expires_at",
+          "status",
+          "token_prefix",
+          "formats",
+          "items",
+          "view_count",
+          "view_limit",
+          "views_remaining",
+          "opened_count",
+          "passcode_failures",
+          "consent_sha256",
+          "summary"
+        ],
+        "title": "ShareSummaryOut",
+        "type": "object"
+      },
       "StoredMessageOut": {
         "properties": {
           "created_at": {
@@ -5884,6 +6725,61 @@
           "preference_tags"
         ],
         "title": "ThemesOut",
+        "type": "object"
+      },
+      "ThoughtRecordChoice": {
+        "additionalProperties": false,
+        "description": "One selectable thought record, as metadata only.\n\nNo text here on purpose: this list is fetched before the person confirms\nanything, and the browser does not need the words to draw a checkbox.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "emotion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotion"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intensity_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity After"
+          },
+          "intensity_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity Before"
+          }
+        },
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "ThoughtRecordChoice",
         "type": "object"
       },
       "TranscriptionResponse": {
@@ -9550,6 +10446,102 @@
         ]
       }
     },
+    "/api/v1/public/shares/{token}": {
+      "get": {
+        "description": "Is this link usable, and what will it ask for?\n\nReveals existence for a live link and nothing else. Every other answer is\nthe same 404, whether the token was never issued, was revoked, has expired\nor has run out of views.",
+        "operationId": "share_status_api_v1_public_shares__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Status",
+        "tags": [
+          "sharing-public"
+        ]
+      }
+    },
+    "/api/v1/public/shares/{token}/open": {
+      "post": {
+        "description": "Hand over the ciphertext, or refuse.\n\nOrder of refusals matters for the audit log, not for the caller: an unusable\nlink is 404, a locked link is 423 with a retry hint, a wrong passcode is 403\nwith the number of tries left.",
+        "operationId": "open_share_api_v1_public_shares__token__open_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Share",
+        "tags": [
+          "sharing-public"
+        ]
+      }
+    },
     "/api/v1/ready": {
       "get": {
         "description": "Readiness probe: configuration loads and the database answers.\n\nEvery check is reported in ``checks``; the probe fails closed with 503 when\nany of them fails, so an orchestrator never routes traffic to a process that\ncannot persist data. Only the outcome is exposed — never a DSN, a driver\nerror, or any other detail that could describe the deployment.",
@@ -9629,6 +10621,352 @@
         "summary": "Put Settings",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/v1/shares": {
+      "get": {
+        "description": "The person's own links, newest first.",
+        "operationId": "list_shares_api_v1_shares_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShareSummaryOut"
+                  },
+                  "title": "Response List Shares Api V1 Shares Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Shares",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "description": "Create one time-limited, passcode-protected, encrypted share link.",
+        "operationId": "create_share_api_v1_shares_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedShareOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Share",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/options": {
+      "get": {
+        "description": "The catalogue, the defaults, and the entries that can be selected.",
+        "operationId": "share_options_api_v1_shares_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Share Options",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/preferences": {
+      "get": {
+        "description": "Read the switch (no row yet means off).",
+        "operationId": "get_share_preference_api_v1_shares_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Share Preference",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "description": "Turn sharing on or off. Off by default; turning it on is the person's act.",
+        "operationId": "set_share_preference_api_v1_shares_preferences_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Share Preference",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/preview": {
+      "post": {
+        "description": "Build the document without storing it, so the person can read it first.",
+        "operationId": "preview_share_api_v1_shares_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Share",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/revoke-all": {
+      "post": {
+        "description": "One click: every live link stops working.",
+        "operationId": "revoke_all_shares_api_v1_shares_revoke_all_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeAllOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke All Shares",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/{share_id}": {
+      "get": {
+        "description": "One link, with its open count.",
+        "operationId": "share_detail_api_v1_shares__share_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "share_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Share Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Detail",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/{share_id}/audit": {
+      "get": {
+        "description": "The audit log the owner can read: what happened, and when.",
+        "operationId": "share_audit_api_v1_shares__share_id__audit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "share_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Share Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Audit",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/shares/{share_id}/revoke": {
+      "post": {
+        "description": "Revoke one link. Idempotent.",
+        "operationId": "revoke_share_api_v1_shares__share_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "share_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Share Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Share",
+        "tags": [
+          "sharing"
         ]
       }
     },

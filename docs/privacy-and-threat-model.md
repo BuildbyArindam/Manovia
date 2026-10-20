@@ -432,6 +432,50 @@ pre-written crisis copy with helplines, exactly as on the server. Because Privat
 Mode has no region source, the helplines shown are the international set (112,
 Find A Helpline, Befrienders Worldwide) rather than a country-specific list.
 
+## 6c. Day 47: the clinician-share bridge — what the ciphertext protects, and what it does not
+
+Sharing a summary with a professional creates a second copy of somebody's
+self-help data on a path that leaves the app, so it gets its own section. The
+feature is described in [docs/clinical-sharing.md](clinical-sharing.md) and
+decided in [ADR 0047](adr/0047-clinician-share-bridge.md); this is only the
+threat view.
+
+**What is stored.** `clinician_shares` holds, per share: three AES-256-GCM
+ciphertexts with their 12-byte nonces (payload JSON, PDF, FHIR bundle), the
+SHA-256 of the URL token plus its first 8 characters, a PBKDF2-HMAC-SHA256
+passcode hash (210 000 iterations, 16-byte salt), the passcode-failure counter
+and lockout instant, expiry and revocation instants, the view budget and count,
+the format and item *names*, and the hash of the consent lines that were shown.
+23 columns, **no key column, no plaintext token**. `share_access_events` has
+five columns — id, share, kind, actor, timestamp — so the audit log can say
+"opened 2 times" and cannot say by whom or from where. `share_preferences` is one
+boolean per person, defaulting to off.
+
+**Key handling.** The content key is HKDF-SHA256 over
+`secret || 0x00 || passcode` with `salt = SHA-256(token)` and
+`info = "manovia.share.v1.key"`. The 32-byte secret is generated per share,
+returned **once** in the create response, delivered to the reader in the URL
+**fragment** (`/s/<token>#k=…`) — which browsers do not send to a server — and
+never persisted, logged or re-derivable by Manovia. Each document's AAD is
+`manovia.share.v1.<token>.<document>`, so a ciphertext cannot be replayed into
+another share or another document slot. Every decryption failure — wrong key,
+wrong passcode, one flipped byte, wrong nonce, wrong AAD — raises the same error
+with the same message, because a distinguishable failure is an oracle.
+
+| Threat | Covered? | How, and the limit |
+| --- | --- | --- |
+| Database or backup disclosure | **Yes** | The documents are ciphertext under a key that is not in the database. Without the secret *and* the passcode the share is unreadable, and GCM means it is also unforgeable. |
+| Reading a share from the link alone, after the fact | **Yes** | Nobody — including the operator — can recover the key. Losing the fragment means the share is unreadable; the answer is revoke and recreate. |
+| Link enumeration | **Yes** | 16 random bytes of token, only its hash stored; unknown, expired, revoked and view-exhausted tokens all answer the identical `404 share_unavailable`; the public routes are rate limited per address and per (address, token) *before* any token comparison. |
+| Passcode brute force | **Yes** | 5 failures lock the link for 15 minutes and the lock beats the correct passcode; the passcode is also key material, so a guess that is wrong decrypts nothing. |
+| A forwarded link | **Partly** | Whoever holds `/s/<token>#k=<secret>` plus the passcode holds a complete credential. The mitigations are the view budget (default 5), the TTL (default 7 days) and revocation — not the encryption. Browsers keep the fragment in the *recipient's* history. |
+| Server compromise **while a share is being built** | **No** | This is the honest gap. The server decrypts the person's own rows with the Day-17 field key to assemble the payload, then encrypts it under the share key. A server that can read the entries can read the plaintext document at build time. Calling this end-to-end encryption would be false, so nothing in the code, docs or UI does. Browser-side assembly is parked in [PROGRESS.md](../PROGRESS.md). |
+| Secrets in logs or error reporting | **Yes** | Share tokens and secrets are redacted from access logs, unhandled-exception logs and Sentry URLs (`redact_path()`); passcode, secret, key and fragment fields are in `SENSITIVE_LOG_FIELDS`. A test asserts no secret reaches a log line, with httpx's own URL-printing client logger silenced so the assertion stays about Manovia's output. |
+| A recipient who is not a professional | **No** | Manovia cannot identify the reader. The audit actor is `viewer`. The documents carry "patient-generated, not a diagnosis" and the app never claims to know who opened them. |
+| A share mistaken for a clinical record or a triage channel | **Mitigated** | Banner on every PDF page and at the top of the viewer, `band_is_a_diagnosis: false` on every screening row, item answers never included, Provenance naming the Patient as author and the Device as assembler, and the explicit statements that this is not an EHR integration and not for emergencies. |
+| Feature-level exposure | **Yes** | `SHARE_ENABLED=false` unmounts both routers, so every share route 404s — an operator kill switch that needs no migration. Per-person sharing is off until switched on. Account deletion removes shares, audit lines and the preference; retention removes expired rows; the export carries decisions and audit but never ciphertext, a token or a passcode hash. |
+| A view budget overdrawn by concurrent opens | **Yes** | The view is claimed by an atomic conditional UPDATE, not by a read-then-write, and a test drives five sequential claims against a budget of one. |
+
 ## 7. Manual checks this sandbox could not perform
 
 Stated because an unverified control presented as verified is worse than a known

@@ -59,6 +59,7 @@ from app.models.mood import MoodEntry
 from app.models.plan import PlanItem
 from app.models.privacy import PrivacySetting
 from app.models.safety_event import SafetyEvent
+from app.models.share import ClinicianShare, ShareAccessEvent
 from app.models.user import User
 from app.models.user_settings import UserSettings
 from app.services.plan.daily_plan import DEFAULT_QUIET_END, DEFAULT_QUIET_START
@@ -79,12 +80,18 @@ This archive is everything Manovia stores about you, decrypted for you:
 your chat history (only the conversations you chose to save), journal
 entries, mood check-ins, self-screening results, guided-exercise history,
 thought records, daily-plan rows, your planner preferences (including whether
-Mood Outlook is enabled), and your consent history.
+Mood Outlook is enabled), your consent history, and the history of any
+appointment summaries you chose to share with a professional.
 
 What is NOT in here:
   * your password (only a one-way Argon2id hash is stored, and it never
     leaves the server),
   * your encryption keys,
+  * the documents inside a share link. Those are stored as ciphertext, and the
+    key lived only in the link's URL fragment — it was never saved here. If a
+    link is still live, open it to read the document; 'clinician-shares.json'
+    tells you which links you made, what was in them, when they expired,
+    whether you revoked them, and how many times they were opened,
   * anything about anyone else.
 
 About the numbers: 'valence' and 'energy' are the 1-5 scales from a mood
@@ -600,6 +607,73 @@ async def build_user_export(
                         "note": "Metadata only — Manovia never stores your words in this table.",
                     }
                     for row in events
+                ]
+            ),
+        )
+    )
+
+    # --- clinician shares (Day 47): decisions and audit trail, no ciphertext -
+    shares, shares_cut = await _scalars(
+        session,
+        select(ClinicianShare)
+        .where(ClinicianShare.user_id == uid)
+        .order_by(ClinicianShare.created_at, ClinicianShare.id),
+        max_rows=max_rows_per_table,
+    )
+    export.counts["clinician_shares"] = len(shares)
+    if shares_cut:
+        export.truncated["clinician_shares"] = max_rows_per_table
+    share_ids = [row.id for row in shares]
+    share_events: list[ShareAccessEvent] = []
+    if share_ids:
+        events_rows, events_cut = await _scalars(
+            session,
+            select(ShareAccessEvent)
+            .where(ShareAccessEvent.share_id.in_(share_ids))
+            .order_by(ShareAccessEvent.created_at, ShareAccessEvent.id),
+            max_rows=max_rows_per_table,
+        )
+        share_events = list(events_rows)
+        if events_cut:
+            export.truncated["share_access_events"] = max_rows_per_table
+    export.counts["share_access_events"] = len(share_events)
+    events_by_share: dict[uuid.UUID, list[dict[str, Any]]] = {}
+    for event in share_events:
+        events_by_share.setdefault(event.share_id, []).append(
+            {
+                "kind": event.kind.value,
+                "actor": event.actor,
+                "created_at": _iso(event.created_at),
+            }
+        )
+    export.files.append(
+        ExportFile(
+            "clinician-shares.json",
+            _dump(
+                [
+                    {
+                        "id": str(row.id),
+                        "created_at": _iso(row.created_at),
+                        "expires_at": _iso(row.expires_at),
+                        "revoked_at": _iso(row.revoked_at),
+                        "status": row.status,
+                        "token_prefix": row.token_prefix,
+                        "formats": list(row.format_list()),
+                        "items": [member.value for member in row.item_list()],
+                        "view_count": int(row.view_count),
+                        "view_limit": int(row.view_limit),
+                        "passcode_failures": int(row.passcode_failures),
+                        "locked_until": _iso(row.locked_until),
+                        "cipher": row.cipher.value,
+                        "consent_summary_sha256": row.consent_summary_sha256,
+                        "events": events_by_share.get(row.id, []),
+                        "note": (
+                            "The shared document itself is not in this archive: it is stored as "
+                            "ciphertext and its key was never saved. 'items' is what you chose "
+                            "to include; 'events' is the audit trail you could see in the app."
+                        ),
+                    }
+                    for row in shares
                 ]
             ),
         )

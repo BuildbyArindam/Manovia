@@ -164,6 +164,7 @@ async def test_a_payload_in_a_journal_entry_survives_as_text(
         "assessment_results",
         "cbt_records",
         "chat_sessions",
+        "clinician_shares",
         "consents",
         "deletion_receipts",
         "exercise_completions",
@@ -174,6 +175,8 @@ async def test_a_payload_in_a_journal_entry_survives_as_text(
         "privacy_settings",
         "refresh_tokens",
         "safety_events",
+        "share_access_events",
+        "share_preferences",
         "user_settings",
         "users",
     }

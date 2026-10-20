@@ -1,0 +1,70 @@
+# Gitleaks configuration.
+#
+# gitleaks looks for `.gitleaks.toml` in the scanned directory before falling
+# back to its built-in defaults, and the `secrets-scan` CI job also names this
+# file through GITLEAKS_CONFIG so the choice does not depend on the working
+# directory the action happens to run in.
+#
+# VERSION THIS FILE IS WRITTEN FOR: gitleaks 8.24.3.
+#
+# The CI job runs gitleaks through gitleaks/gitleaks-action@ff98106e (v2), which
+# pins its own default: `process.env.GITLEAKS_VERSION || "8.24.3"` in
+# src/index.js. That version's config struct (config/config.go, ViperConfig) has
+# a *singular* `Allowlist struct{...}` and no plural `[[allowlists]]`, and viper
+# ignores keys it cannot map — so a plural `[[allowlists]]` block is dropped
+# silently, the scan falls back to the built-in rules with no allowlist at all,
+# and the file looks like it is doing nothing. That is exactly what happened on
+# 2026-10-19: ten findings before this file existed and ten after. The singular
+# form below is read by 8.24.3 and is still read by 8.30.x as a documented
+# backwards-compatibility shim, so it is the form that works on both.
+#
+# `backend/tests/unit/test_gitleaks_config.py` asserts the parts of this file
+# that a silent version drift would break: the singular form, the extend, and
+# that nothing is allowlisted except the values and the directory listed here.
+
+[extend]
+# Without this the rules below would *replace* the built-in rule set, which
+# would turn the scan off. Extending keeps all 208 default rules in force.
+useDefault = true
+
+[allowlist]
+# One allowlist, for the Day 47 clinician-share test vectors: synthetic
+# cryptographic material that has to be a stable literal for the tests to mean
+# anything. Nothing else is allowlisted — no rule, no commit, no other path — so
+# every other file and every other rule is still scanned in full.
+#
+# `paths` skips a whole file (gitleaks applies it before scanning a fragment);
+# `regexes` is matched against the *secret* and every entry is anchored with
+# ^...$, so each one permits exactly one string and cannot widen later.
+paths = ['''frontend/src/features/sharing/testSupport/''']
+regexes = [
+  # --- the cross-language crypto vector (frontend/src/features/sharing/crypto.test.ts) ---
+  #
+  # The TypeScript HKDF/AES-GCM implementation has to be proven to agree with
+  # backend/app/services/sharing/crypto.py byte for byte, which needs one fixed
+  # secret, passcode and token rather than values generated per run. This is the
+  # base64url of the phrase "manovia-share-vector-secret-key!" — it is a URL
+  # fragment that decrypts a fixture built in a throwaway test database, and it
+  # protects nothing.
+  '''^bWFub3ZpYS1zaGFyZS12ZWN0b3Itc2VjcmV0LWtleSE$''',
+  # The key derive_key() produces from that secret, passcode "483920" and token
+  # "vectorToken0123456789"; the test asserts the TypeScript derivation matches.
+  '''^f9349a15e94dd7e149f33b5abd6e6cc1a3e1b803533610c3912089a92e516eb3$''',
+
+  # --- literals that were later removed from the tree but stay in this branch's history ---
+  #
+  # gitleaks scans the commit range, not just the final tree, so deleting a
+  # literal in a later commit does not clear the finding. Each of these is a
+  # synthetic value from a throwaway test database; the share it belonged to was
+  # revoked in the same session and the database no longer exists.
+  #
+  # A token-shaped literal used to assert share-URL building and export
+  # scrubbing (frontend/src/features/sharing/endpoints.test.ts,
+  # backend/tests/privacy/test_export.py; removed in 2e3effd).
+  '''^Zk9xT7vLmQ2sRbNcWf1YdA$''',
+  # The share token and the URL secret from the Day 47 evidence transcript,
+  # quoted in docs/verification/day47-clinician-share-bridge.md when it was
+  # first committed (b8e7565) and abbreviated there in c646aa1.
+  '''^0UgdAHl-3yfp9t6zlen3CA$''',
+  '''^ff4Ai5n1S-KnR1kd0dHk8GiWT1b3vSen0e6vBMY5jI0$''',
+]

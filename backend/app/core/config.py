@@ -446,6 +446,39 @@ class Settings(BaseSettings):
     # no weights: a feature vector and a coefficient per feature.
     rag_reranker_dir: str = "app/ml_artifacts/retrieval_v1"
 
+    # --- Clinician share bridge (Day 47) ---
+    # Sharing a summary with a professional is a *feature of the deployment* as
+    # well as of the person: an operator can turn the whole bridge off (the
+    # endpoints then answer 404 for everyone) without a redeploy of the schema.
+    # Per-person sharing is off by default on top of this — see
+    # app.models.share.SharePreference.
+    share_enabled: bool = True
+    # The link lifetime. Seven days is the default the brief asks for: long
+    # enough to cover "I made this before my appointment on Thursday", short
+    # enough that a forwarded link does not outlive the appointment.
+    share_default_ttl_days: int = 7
+    share_min_ttl_days: int = 1
+    share_max_ttl_days: int = 30
+    # How many times the ciphertext may be handed out. A share is for one
+    # professional opening it on one device, not for circulation.
+    share_default_view_limit: int = 5
+    share_max_view_limit: int = 25
+    # Live shares per person. A pile of unexpired links is a pile of things to
+    # forget about; the UI offers "revoke everything" as the answer.
+    share_max_active_per_user: int = 10
+    # Passcode policy. The passcode is part of the key derivation, so its length
+    # floor is a cryptographic setting and not just a UI preference.
+    share_passcode_min_length: int = 6
+    share_passcode_max_failures: int = 5
+    share_lockout_seconds: int = 900
+    # Requests per minute per (address, token) on the *public* endpoints. The
+    # global limiter still applies; this one is tighter because those endpoints
+    # are unauthenticated by design.
+    share_rate_limit_per_minute: int = 10
+    # Ceiling on one built document, in bytes, before the share is refused.
+    # A summary is a few pages; this is the memory-bomb guard.
+    share_max_document_bytes: int = 4_000_000
+
     @model_validator(mode="after")
     def _require_secrets_in_production(self) -> "Settings":
         if self.app_env.strip().lower() != "production":
@@ -485,6 +518,34 @@ class Settings(BaseSettings):
         lock_ok = lock_ok and self.login_lockout_max_seconds >= self.login_lockout_seconds
         if not lock_ok:
             raise ValueError("lockout windows must be positive and ordered")
+        return self
+
+    @model_validator(mode="after")
+    def _check_share_settings(self) -> "Settings":
+        """Fail at startup on a share configuration that cannot work.
+
+        A default outside its own bounds, or a lockout of zero seconds, would
+        otherwise be discovered by the first person who creates a link.
+        """
+
+        if self.share_min_ttl_days < 1:
+            raise ValueError("SHARE_MIN_TTL_DAYS must be at least 1")
+        if not self.share_min_ttl_days <= self.share_default_ttl_days <= self.share_max_ttl_days:
+            raise ValueError("SHARE_DEFAULT_TTL_DAYS must sit between the min and max TTL")
+        if not 1 <= self.share_default_view_limit <= self.share_max_view_limit:
+            raise ValueError("SHARE_DEFAULT_VIEW_LIMIT must sit between 1 and the maximum")
+        if self.share_max_active_per_user < 1:
+            raise ValueError("SHARE_MAX_ACTIVE_PER_USER must be at least 1")
+        if self.share_passcode_min_length < 4:
+            raise ValueError("SHARE_PASSCODE_MIN_LENGTH must be at least 4")
+        if self.share_passcode_max_failures < 1:
+            raise ValueError("SHARE_PASSCODE_MAX_FAILURES must be at least 1")
+        if self.share_lockout_seconds < 1:
+            raise ValueError("SHARE_LOCKOUT_SECONDS must be at least 1")
+        if self.share_rate_limit_per_minute < 1:
+            raise ValueError("SHARE_RATE_LIMIT_PER_MINUTE must be at least 1")
+        if self.share_max_document_bytes < 1024:
+            raise ValueError("SHARE_MAX_DOCUMENT_BYTES must be at least 1024")
         return self
 
     @model_validator(mode="after")

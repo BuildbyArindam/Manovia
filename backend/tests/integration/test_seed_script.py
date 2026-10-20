@@ -49,6 +49,12 @@ SEEDED_COUNTS = {
     # (or by their own deletion), never by a demo fixture.
     "privacy_settings": 0,
     "deletion_receipts": 0,
+    # Day 47: a share is a live link with a key that exists nowhere else. A demo
+    # fixture must not create one — not even a revoked one — because the point of
+    # the feature is that only a person can decide to make their data leave.
+    "clinician_shares": 0,
+    "share_access_events": 0,
+    "share_preferences": 0,
 }
 
 

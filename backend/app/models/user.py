@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from app.models.plan import PlanItem
     from app.models.privacy import PrivacySetting
     from app.models.safety_event import SafetyEvent
+    from app.models.share import ClinicianShare
     from app.models.user_settings import UserSettings
 
 
@@ -78,6 +79,13 @@ class User(Base, CreatedAtMixin):
     )
 
     plan_items: Mapped[list[PlanItem]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    #: Day 47 clinician shares. The cascade is the database's own
+    #: (``ON DELETE CASCADE``); this relationship exists so a deletion test can
+    #: see the rows it is about to lose.
+    clinician_shares: Mapped[list[ClinicianShare]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
 

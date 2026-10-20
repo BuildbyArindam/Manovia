@@ -220,6 +220,9 @@ async def test_export_zip_contains_every_feature_decrypted(
         "cbt.json",
         "plan.json",
         "safety-events.json",
+        # Day 47: the decisions and the audit trail of any share link, never the
+        # document inside one (it is ciphertext, and its key was never stored).
+        "clinician-shares.json",
     }
 
     manifest = files["manifest.json"]
@@ -480,3 +483,92 @@ async def test_a_thought_record_saved_through_the_api_exports_decrypted(
     )
     manifest = files["manifest.json"]
     assert manifest["unreadable_rows"]["cbt_records"] == 0
+
+
+async def test_a_share_is_exported_as_decisions_not_as_its_document(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """The archive tells the owner what they shared; it cannot leak the document.
+
+    A share row holds ciphertext, a token hash and a passcode hash. The export
+    carries the *decisions* — which items, which formats, when it expired, how
+    many times it was opened — and must carry none of the cryptographic
+    material, because the archive is a plain-text file that gets emailed to
+    people and left on desktops.
+    """
+
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.enums import ShareCipher, ShareEventKind
+    from app.models.share import ClinicianShare, ShareAccessEvent
+    from app.services.sharing import crypto
+
+    person = await guest(client, kinds=("terms", "privacy"))
+    plaintext = b'{"note": "Export sentinel: the document itself must not appear."}'
+    # A real token, generated rather than typed: the point of the test is that a
+    # token-shaped string cannot leak into the archive, so it should have the
+    # shape the product actually produces.
+    token = crypto.new_token()
+    share = ClinicianShare(
+        id=uuid.uuid4(),
+        user_id=person.id,
+        token_hash="c" * 64,
+        token_prefix=token[:8],
+        passcode_hash=b"d" * 32,
+        passcode_salt=b"e" * 16,
+        expires_at=datetime.now(UTC) + timedelta(days=7),
+        view_limit=5,
+        view_count=2,
+        formats=["pdf", "fhir"],
+        items=["mood_trend", "note"],
+        payload_ciphertext=plaintext,
+        payload_nonce=b"f" * 12,
+        pdf_ciphertext=plaintext,
+        pdf_nonce=b"f" * 12,
+        cipher=ShareCipher.A256GCM,
+        consent_summary_sha256="a" * 64,
+    )
+    session.add(share)
+    await session.flush()
+    for kind in (ShareEventKind.CREATED, ShareEventKind.OPENED, ShareEventKind.OPENED):
+        session.add(ShareAccessEvent(share_id=share.id, kind=kind, actor="viewer"))
+    await session.commit()
+
+    response = await client.get(EXPORT, headers=person.headers)
+    assert response.status_code == 200
+    files = _zip_entries(response.content)
+    assert "clinician-shares.json" in files
+
+    shares = files["clinician-shares.json"]
+    assert isinstance(shares, list)
+    assert len(shares) == 1
+    row = shares[0]
+    assert row["id"] == str(share.id)
+    assert row["status"] == "active"
+    assert row["formats"] == ["pdf", "fhir"]
+    assert row["items"] == ["mood_trend", "note"]
+    assert row["view_count"] == 2
+    assert row["view_limit"] == 5
+    assert row["token_prefix"] == token[:8]
+    assert [event["kind"] for event in row["events"]] == ["created", "opened", "opened"]
+    assert all(set(event) == {"kind", "actor", "created_at"} for event in row["events"])
+    assert "ciphertext" in row["note"], "the file says why the document is not there"
+
+    # Nothing cryptographic leaves the database, anywhere in the archive.
+    archive_text = "\n".join(
+        value if isinstance(value, str) else json.dumps(value) for value in files.values()
+    )
+    for forbidden in (
+        "Export sentinel: the document itself",
+        plaintext.decode("utf-8"),
+        token,
+        "c" * 64,
+        "payload_ciphertext",
+        "passcode_hash",
+        "passcode_salt",
+        "secret",
+    ):
+        assert forbidden not in archive_text, forbidden
+    # The manifest counts the rows it exported, so an owner can see the number.
+    assert files["manifest.json"]["counts"]["clinician_shares"] == 1
+    assert files["manifest.json"]["counts"]["share_access_events"] == 3

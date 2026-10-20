@@ -129,10 +129,165 @@ jobs:
       # stand-in for machines that cannot run the binary is
       # `python scripts/scan_secrets.py` (same rule set, weaker engine — read
       # its docstring before trusting it).
+      #
+      # GITLEAKS_VERSION: this action installs "whatever it defaults to"
+      # (`process.env.GITLEAKS_VERSION || "8.24.3"` in its src/index.js) when the
+      # variable is unset. Pinning it makes the scan reproducible and makes
+      # `.gitleaks.toml` meaningful, because that file is written for one
+      # version's config schema — see the header comment in it, and
+      # backend/tests/unit/test_gitleaks_config.py, which fails if the pin and
+      # the config form drift apart. Bumping the version is a deliberate change
+      # that has to re-read that file.
+      #
+      # GITLEAKS_CONFIG: gitleaks' own fallback is `<source>/.gitleaks.toml`,
+      # where `<source>` is the directory it was started in. Naming the file by
+      # absolute path stops the action's working directory from deciding whether
+      # the allowlist exists at all.
+      #
+      # GITLEAKS_ENABLE_COMMENTS="false": the action tries to post one review
+      # comment per finding, which needs `pull-requests: write`. This workflow
+      # keeps least privilege (`contents: read`, see the top of the file), so
+      # every attempt failed with "Resource not accessible by integration" and left
+      # a warning per finding instead — noise that hid the verdict. The step
+      # below reports the findings on the check itself, where they belong.
       - name: gitleaks
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+      # Not a gate — the step above decides. This makes that decision readable:
+      # the action's report is a SARIF artifact plus PR comments, and neither is
+      # available to a reviewer without log/artifact access. Re-running the same
+      # binary over the same commit range with a JSON report and re-emitting each
+      # finding as an annotation puts rule id, file, line, commit and the
+      # `.gitleaksignore` fingerprint on the check run itself.
+      #
+      # Secrets stay redacted (`--redact=90` keeps 10% of the characters, enough
+      # to tell two synthetic vectors apart, not enough to reconstruct one).
+      # `--exit-code=0` guarantees this step can never change the job's verdict.
+      #
+      # It scans twice — once letting gitleaks find `.gitleaks.toml` the way the
+      # action does (no `--config`), once naming it explicitly — and reports both
+      # counts, so "config never loaded" and "config loaded but does not match"
+      # are distinguishable instead of guessable.
+      - name: Report findings as annotations (always)
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          gl=gitleaks
+          if ! command -v "$gl" >/dev/null 2>&1; then
+            echo "::notice::gitleaks is not on PATH — fetching the pinned release"
+            ver="${GITLEAKS_VERSION:-8.24.3}"
+            curl -fsSL -o /tmp/gitleaks.tar.gz \
+              "https://github.com/zricethezav/gitleaks/releases/download/v${ver}/gitleaks_${ver}_linux_x64.tar.gz" \
+              || echo "::error::could not download gitleaks ${ver}"
+            mkdir -p /tmp/gitleaks-bin
+            tar xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks-bin || true
+            gl=/tmp/gitleaks-bin/gitleaks
+          fi
+          echo "::notice::gitleaks version: $("$gl" version 2>&1 | head -1)"
+
+          # Where the action wrote its own report says which directory it ran in,
+          # which decides whether it could ever find `.gitleaks.toml` by itself.
+          { find "$HOME" "$GITHUB_WORKSPACE" -maxdepth 3 -name results.sarif 2>/dev/null \
+            | sed -n '1,3p' | while IFS= read -r f; do
+                printf '::notice::action wrote its report at %s\n' "$f"
+              done; } || true
+
+          # Same range the action scans: the PR's first commit and everything
+          # after it. Named SHAs, never HEAD — on a pull_request event GitHub
+          # checks out a synthetic merge commit, and `--first-parent` from there
+          # walks back into the base branch, so a HEAD-relative range scans
+          # nothing at all and reports a confident zero. The first version of
+          # this step did exactly that.
+          head="${{ github.event.pull_request.head.sha }}"
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$head" ]; then head=$(git rev-parse HEAD); fi
+          if [ -z "$base" ]; then base=$(git rev-parse "${head}^" 2>/dev/null || echo "$head"); fi
+          first=$(git rev-list --reverse --no-merges "${base}..${head}" 2>/dev/null | sed -n '1p')
+          [ -n "$first" ] || first="$head"
+          range="--no-merges --first-parent ${first}^..${head}"
+          out="$RUNNER_TEMP/gitleaks-diag"
+          mkdir -p "$out"
+
+          # One scan per way the binary can find its configuration, because the
+          # gate uses the first and the other two explain why it might not have.
+          # The mode is an argument rather than a `VAR=x run_scan` prefix: bash
+          # makes an assignment in front of a *function* persistent, which would
+          # have leaked GITLEAKS_CONFIG into the scans meant to do without it.
+          run_scan() {  # run_scan <label> <report> <env|flag|discovery> [args...]
+            label="$1"; report="$2"; mode="$3"; shift 3
+            if [ "$mode" = env ]; then
+              export GITLEAKS_CONFIG="$GITHUB_WORKSPACE/.gitleaks.toml"
+            else
+              unset GITLEAKS_CONFIG
+            fi
+            "$gl" detect --redact=90 -v --exit-code=0 --no-banner --log-level=debug \
+              --report-format json --report-path "$out/$report" --log-opts="$range" \
+              "$@" > "$out/$report.log" 2>&1 || true
+            count=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" \
+              "$out/$report" 2>/dev/null || echo "unreadable")
+            printf '::notice::gitleaks[%s] findings: %s\n' "$label" "$count"
+            grep -Ei "using .*config|no gitleaks config|extending config" "$out/$report.log" \
+              | sed -n '1,4p' | while IFS= read -r line; do
+                  printf '::notice::gitleaks[%s] log: %s\n' "$label" "${line//%/%25}"
+                done || true
+          }
+          run_scan env findings-env.json env
+          run_scan flag findings-flag.json flag --config .gitleaks.toml
+          run_scan discovery findings-discovered.json discovery
+
+          # Findings from all three scans, labelled, so a disagreement between
+          # the way the gate loads its config and the ways this step does is
+          # visible instead of hidden behind a zero.
+          python3 - "$range" \
+            "$out/findings-env.json:env" \
+            "$out/findings-flag.json:flag" \
+            "$out/findings-discovered.json:discovery" <<'PY'
+          import json
+          import sys
+
+          def esc(value: object) -> str:
+              return (
+                  str(value)
+                  .replace("%", "%25")
+                  .replace("\r", "%0D")
+                  .replace("\n", "%0A")
+              )
+
+          print(f"::notice title=gitleaks range::{esc(sys.argv[1])}")
+          for spec in sys.argv[2:]:
+              path, _, label = spec.rpartition(":")
+              try:
+                  with open(path, encoding="utf-8") as handle:
+                      findings = json.load(handle)
+              except Exception as exc:  # a diagnostic must not fail the job
+                  print(f"::error::could not read the {label} report: {esc(exc)}")
+                  continue
+
+              for finding in findings:
+                  print(
+                      f"::error title=gitleaks[{label}] {esc(finding.get('RuleID'))}::"
+                      + esc(
+                          "\n".join(
+                              (
+                                  f"fingerprint: {finding.get('Fingerprint')}",
+                                  f"file: {finding.get('File')}",
+                                  f"line: {finding.get('StartLine')}",
+                                  f"commit: {str(finding.get('Commit'))[:12]}",
+                                  f"entropy: {finding.get('Entropy')}",
+                                  f"secret: {finding.get('Secret')}",
+                                  f"rule: {finding.get('Description')}",
+                              )
+                          )
+                      )
+                  )
+          PY
+
 
   dependency-audit:
     name: Dependency audit — fail on high
@@ -368,4 +523,212 @@ jobs:
               cat "$report"
               echo '```'
             done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Day 47 — the share endpoint emits an HL7 FHIR R4 document bundle, and the
+  # brief asks for it to be validated with the official validator. This job runs
+  # the reference CLI the HL7 project publishes (hapifhir/org.hl7.fhir.core's
+  # validator_cli.jar, release 7.0.2) against the committed sample bundle with
+  # `-version 4.0.1`.
+  #
+  # What is pinned, and why:
+  #   * The jar is 204 MB and its sha256 is checked before java runs. The digest
+  #     is the one GitHub publishes on the release asset (fetched 2026-10-20 via
+  #     the releases API), so a tampered artifact fails here rather than being
+  #     executed — the same reasoning as the SHA-pinned actions at the top of
+  #     this file.
+  #   * `-tx n/a` means "no terminology server" (the flag's own help text: "To
+  #     run without terminology, specify 'n/a' as the URL"). The bundle's codes
+  #     come from two places only: LOINC terms pinned with their loinc.org source
+  #     URLs in backend/app/content/sharing/loinc.json, and Manovia's own
+  #     CodeSystems. Neither needs a live lookup, and a validation gate that
+  #     depends on a third-party service is a flaky gate.
+  #   * The exit code is the gate: ValidateCommand.call() returns 1 when
+  #     SystemExitManager.getError() > 0 and ValidatorCli.main() exits with it
+  #     (both read in the 7.0.2 sources), so a document with errors fails the
+  #     job. No output-string matching, which would be guessing at log format.
+  #
+  # What this job does NOT prove: that 44261-6 and 70274-6 exist in LOINC. That
+  # is what loinc.json pins (read off loinc.org on 2026-10-19, URLs beside each
+  # code), what scripts/fhir_offline_check.py enforces as a rule ("verified or
+  # ours"), and what the best-effort terminology step below reports on.
+  fhir-validation:
+    name: FHIR — official R4 validator on the share bundle
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Set up Java 17 (the validator is a jar)
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download the official validator (sha256-pinned)
+        run: |
+          set -euo pipefail
+          mkdir -p .fhir-validator
+          curl -fsSL --retry 3 -o .fhir-validator/validator_cli.jar \
+            "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/7.0.2/validator_cli.jar"
+          echo "e3e50f06b806437821b7aef8189a1b790415cb96c5036e0812ed62981452b377  .fhir-validator/validator_cli.jar" \
+            | sha256sum -c -
+          ls -l .fhir-validator/validator_cli.jar
+
+      - name: Sample bundle is what the current code emits
+        run: |
+          set -euo pipefail
+          # Validating a stale artifact would bless a document shape the code no
+          # longer produces, so regenerate and compare bytes first.
+          python scripts/export_fhir_sample.py --check
+          git diff --exit-code -- tests/fixtures/fhir/sample_share_bundle.json
+
+      - name: Offline structural check (the make fhir-validate fallback)
+        run: python scripts/fhir_offline_check.py tests/fixtures/fhir/sample_share_bundle.json
+
+      - name: Validate with the official HL7 validator (FHIR 4.0.1)
+        run: |
+          # GitHub runs every `run:` block under `bash -e`, so the validator's
+          # non-zero exit has to be *captured*: left alone it ends the step right
+          # there and the annotations below never run, which is how this job
+          # managed to fail with nothing readable attached to it.
+          set -uo pipefail
+          set +e
+          # The validator's own exit code is the gate: ValidateCommand.call()
+          # returns 1 when it recorded any error, and ValidatorCli.main() hands
+          # that to System.exit(). Nothing here infers a verdict from log text.
+          java -jar .fhir-validator/validator_cli.jar \
+            tests/fixtures/fhir/sample_share_bundle.json \
+            -version 4.0.1 -tx n/a > /tmp/fhir-validator.txt 2>&1
+          status=$?
+          cat /tmp/fhir-validator.txt
+          # Annotations are the part of a job a reviewer can read on the check
+          # itself, so the validator's own words are re-emitted verbatim as
+          # workflow-command annotations, chunked to stay inside the message
+          # limit. The level follows the exit code, never the wording.
+          python - "$status" <<'PY'
+          import sys
+
+          status = int(sys.argv[1])
+          with open("/tmp/fhir-validator.txt", encoding="utf-8", errors="replace") as handle:
+              text = handle.read()
+          level = "error" if status != 0 else "notice"
+
+          def esc(value: str) -> str:
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          limit, chunks, buf = 6000, [], ""
+          for line in text.splitlines():
+              if buf and len(buf) + len(line) + 1 > limit:
+                  chunks.append(buf)
+                  buf = ""
+              buf += line + "\n"
+          if buf:
+              chunks.append(buf)
+          if len(chunks) > 12:
+              chunks = chunks[:12] + ["(output truncated for annotations — see the log)\n"]
+          total = len(chunks) or 1
+          for index, chunk in enumerate(chunks, start=1):
+              print(f"::{level} title=FHIR validator output ({index}/{total})::" + esc(chunk))
+          print(f"::{level} title=FHIR validator exit code::{status}")
+          PY
+          exit "$status"
+
+      - name: Terminology check against tx.fhir.org (best-effort, non-blocking)
+        # Same document, same validator, but with the default terminology server
+        # so LOINC's own copy of 44261-6 and 70274-6 is consulted. Left
+        # non-blocking on purpose: tx.fhir.org is somebody else's service, and
+        # this job must not go red because it is slow or down. The blocking
+        # guarantees are the run above plus the pinned terminology file.
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          set +e
+          java -jar .fhir-validator/validator_cli.jar \
+            tests/fixtures/fhir/sample_share_bundle.json \
+            -version 4.0.1 -txLog /tmp/tx.log > /tmp/fhir-tx.txt 2>&1
+          status=$?
+          tail -40 /tmp/fhir-tx.txt
+          # A non-blocking step that quietly validates nothing is worse than no
+          # step at all: this one passed a whole run with a doubled path in it, so
+          # the validator never opened the file. Say so as an annotation — still
+          # without failing the job, because tx.fhir.org is somebody else's
+          # service and the blocking guarantee is the run above.
+          if ! grep -q "Sources to validate: tests/fixtures/fhir/sample_share_bundle.json" \
+            /tmp/fhir-tx.txt; then
+            echo "::error::the terminology run did not validate the sample bundle"
+          fi
+          python - "$status" <<'PY'
+          import sys
+
+          status = int(sys.argv[1])
+          with open("/tmp/fhir-tx.txt", encoding="utf-8", errors="replace") as handle:
+              text = handle.read()
+
+          def esc(value: str) -> str:
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          limit, chunks, buf = 6000, [], ""
+          for line in text.splitlines():
+              if buf and len(buf) + len(line) + 1 > limit:
+                  chunks.append(buf)
+                  buf = ""
+              buf += line + "\n"
+          if buf:
+              chunks.append(buf)
+          if len(chunks) > 8:
+              chunks = chunks[:8] + ["(output truncated for annotations — see the log)\n"]
+          total = len(chunks) or 1
+          for index, chunk in enumerate(chunks, start=1):
+              print(f"::notice title=tx.fhir.org terminology run ({index}/{total})::" + esc(chunk))
+          print(f"::notice title=tx.fhir.org terminology exit code::{status} (non-blocking)")
+          PY
+          exit 0
+
+      - name: Summarise (always)
+        if: always()
+        run: |
+          {
+            echo
+            echo '### FHIR R4 validation (Day 47)'
+            echo
+            echo 'Artifact: `backend/tests/fixtures/fhir/sample_share_bundle.json`'
+            echo 'Validator: hapifhir/org.hl7.fhir.core `validator_cli.jar` 7.0.2, `-version 4.0.1 -tx n/a`'
+            echo
+            echo '#### Validator output (tail)'
+            echo '```'
+            tail -25 /tmp/fhir-validator.txt 2>/dev/null || echo "(validator step did not produce output)"
+            echo '```'
+            echo
+            echo '#### Verified LOINC codes in the bundle'
+            echo
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          terms = json.loads(Path("app/content/sharing/loinc.json").read_text())
+          print(f"Read off loinc.org on {terms['verified_on']}:")
+          for code in terms["codes"]:
+              print(
+                  f"- `{code['code']}` — {code['display']} "
+                  f"([{code['source_url']}]({code['source_url']})); "
+                  f"unit `{code['ucum_unit']}`, panel `{code['panel_code']}` recorded but unused"
+              )
+          PY
           } >> "$GITHUB_STEP_SUMMARY"

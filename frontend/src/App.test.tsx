@@ -12,10 +12,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { App } from "@/App";
+import { routeTitle } from "@/components/navigation";
 import { fetchCrisisResources } from "@/lib/endpoints";
 import { TEST_RESPONSE } from "@/test/crisisFixtures";
 import { ONBOARDING_STORAGE_KEY } from "@/onboarding/storage";
 import { stubMatchMedia } from "@/test/matchMedia";
+import { VECTOR_SECRET, VECTOR_TOKEN } from "@/test/sharingFakes";
 
 vi.mock("@/lib/endpoints", { spy: true });
 
@@ -26,6 +28,9 @@ const ROUTES: ReadonlyArray<{ path: string; heading: string }> = [
   { path: "/exercises", heading: "Exercises" },
   { path: "/insights", heading: "Insights" },
   { path: "/settings", heading: "Settings" },
+  // Day 47: the share builder is one of the app's own surfaces, so it gets the
+  // same checks as every other page — including "Need help now?" in the header.
+  { path: "/shares", heading: "Prepare for my appointment" },
 ];
 
 function completeOnboarding(): void {
@@ -173,5 +178,29 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Journal" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Journal/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("renders the public share viewer with no account and no shell", async () => {
+    // Deliberately *not* calling completeOnboarding(): a professional opening a
+    // shared link has no Manovia account and must not be asked to make one.
+    renderApp(`/s/${VECTOR_TOKEN}#k=${VECTOR_SECRET}`);
+
+    expect(await screen.findByTestId("share-viewer-page")).toBeInTheDocument();
+    // No onboarding flow and none of the shell's chrome: no primary navigation
+    // to get lost in, and no crisis button routing a reader into an account they
+    // do not have.
+    expect(screen.queryByRole("heading", { name: "Welcome to Manovia" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Primary" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /need help now/i })).not.toBeInTheDocument();
+    // The one banner on the page is the shared document's own header.
+    expect(screen.getByRole("banner")).toHaveTextContent("A summary shared with you");
+    expect(screen.queryByRole("heading", { level: 1 })).toHaveTextContent(
+      "A summary shared with you",
+    );
+  });
+
+  it("titles a shared document rather than calling it a missing page", () => {
+    expect(routeTitle("/s/vectorToken0123456789")).toBe("A summary shared with you");
+    expect(routeTitle("/shares")).toBe("Share");
   });
 });
