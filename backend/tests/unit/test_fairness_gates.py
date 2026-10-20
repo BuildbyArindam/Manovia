@@ -10,8 +10,8 @@ SRC = ROOT / "ml" / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from manovia_ml.fairness.audit import audit_all_fake, audit_model  # noqa: E402
-from manovia_ml.fairness.metrics import compute_gap  # noqa: E402
+from manovia_ml.fairness.audit import audit_all_fake, audit_model  # type: ignore[import-not-found, unused-ignore]  # noqa: E402
+from manovia_ml.fairness.metrics import compute_gap  # type: ignore[import-not-found, unused-ignore]  # noqa: E402
 
 
 def test_compute_gap_zero_when_identical() -> None:

@@ -26,7 +26,7 @@ async def _auth_headers(client: AsyncClient) -> dict[str, str]:
 
 
 @pytest.mark.asyncio
-async def test_feature_flags_list_and_toggle_without_restart(client: AsyncClient):
+async def test_feature_flags_list_and_toggle_without_restart(client: AsyncClient) -> None:
     headers = await _auth_headers(client)
     # list
     r = await client.get("/api/v1/feature-flags", headers=headers)
@@ -58,7 +58,7 @@ async def test_feature_flags_list_and_toggle_without_restart(client: AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_each_kill_switch_has_safe_fallback_description(client: AsyncClient):
+async def test_each_kill_switch_has_safe_fallback_description(client: AsyncClient) -> None:
     headers = await _auth_headers(client)
     r = await client.get("/api/v1/feature-flags", headers=headers)
     flags = r.json()["flags"]
@@ -97,7 +97,7 @@ async def test_each_kill_switch_has_safe_fallback_description(client: AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_drift_monitor_records_and_fires_alerts(client: AsyncClient):
+async def test_drift_monitor_records_and_fires_alerts(client: AsyncClient) -> None:
     headers = await _auth_headers(client)
     # baseline window
     for _ in range(50):
@@ -157,7 +157,7 @@ async def test_drift_monitor_records_and_fires_alerts(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_drift_snapshot_privacy_no_text(client: AsyncClient):
+async def test_drift_snapshot_privacy_no_text(client: AsyncClient) -> None:
     headers = await _auth_headers(client)
     await client.post(
         "/api/v1/drift/record",
@@ -182,7 +182,7 @@ async def test_drift_snapshot_privacy_no_text(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_kill_switch_unknown_rejected(client: AsyncClient):
+async def test_kill_switch_unknown_rejected(client: AsyncClient) -> None:
     headers = await _auth_headers(client)
     r = await client.post(
         "/api/v1/feature-flags/unknown_flag", headers=headers, json={"enabled": False}
