@@ -97,7 +97,12 @@ def test_every_schema_operation_is_documented(
     # GET /shares/{share_id}/audit, POST /shares/{share_id}/revoke) and two
     # anonymous viewer routes (GET /public/shares/{token},
     # POST /public/shares/{token}/open).
-    assert len(operations) == 86
+    # 93 after the Day-48 Responsible-AI audit: four drift routes
+    # (POST /drift/record, GET /drift/snapshot/{window}, GET /drift/alerts,
+    # GET /drift/report) and three feature-flag routes
+    # (GET /feature-flags, POST /feature-flags/{flag},
+    # POST /feature-flags/{flag}/reset).
+    assert len(operations) == 93
     for path, method in operations:
         row = f"| `{method.upper()}` | `{path}` |"
         assert row in markdown, f"missing from api.md: {method.upper()} {path}"
