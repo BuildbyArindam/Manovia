@@ -100,7 +100,9 @@ def _render_markdown(report: dict) -> str:
         lines.append("| — | — | — | none | No drift detected |")
     else:
         for a in report["alerts"]:
-            lines.append(f"| {a['metric']} | {a['psi']:.3f} | {a['ks']:.3f} | {a['severity']} | {a['message']} |")  # noqa: E501
+            lines.append(
+                f"| {a['metric']} | {a['psi']:.3f} | {a['ks']:.3f} | {a['severity']} | {a['message']} |"  # noqa: E501
+            )
     lines.extend(
         [
             "",
@@ -134,7 +136,9 @@ def main() -> None:
         args.window = "2026-W42"
     else:
         # try to load from existing snapshots if any? For now demo is required for sandbox
-        print("No live snapshots — use --demo to generate a report with synthetic aggregates (privacy-safe).")  # noqa: E501
+        print(
+            "No live snapshots — use --demo to generate a report with synthetic aggregates (privacy-safe)."  # noqa: E501
+        )
         _demo_populate(monitor)
 
     report = monitor.weekly_report(args.window, baseline_window=args.baseline)
@@ -148,12 +152,16 @@ def main() -> None:
     print(f"Wrote {json_path} ({report['alert_count']} alerts, critical={report['has_critical']})")
     print(f"Wrote {md_path}")
     for a in report["alerts"]:
-        print(f"  ALERT {a['severity']:8s} {a['metric']:28s} PSI={a['psi']:.3f} KS={a['ks']:.3f}  {a['message']}")  # noqa: E501
+        print(
+            f"  ALERT {a['severity']:8s} {a['metric']:28s} PSI={a['psi']:.3f} KS={a['ks']:.3f}  {a['message']}"  # noqa: E501
+        )
 
     # Also emit metrics-like lines for verification
     print("\nMetrics that would fire:")
     for a in report["alerts"]:
-        print(f"  manovia_drift_alerts_total{{metric=\"{a['metric']}\",severity=\"{a['severity']}\"}} 1")  # noqa: E501
+        print(
+            f'  manovia_drift_alerts_total{{metric="{a["metric"]}",severity="{a["severity"]}"}} 1'
+        )
 
 
 if __name__ == "__main__":
