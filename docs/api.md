@@ -2,7 +2,7 @@
 
 > **Generated file — do not edit by hand.** Run `python backend/scripts/export_openapi.py` from the repository root (or `cd backend && python scripts/export_openapi.py`) after changing a route. A test fails when this file is out of date.
 
-Manovia API **1.0.0** · 86 operations across 74 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
+Manovia API **1.0.0** · 93 operations across 81 paths. The machine-readable schema is [`docs/openapi.json`](openapi.json). The same schema is served live at `/openapi.json`, with interactive docs at `/docs`, when the API runs.
 
 ## Conventions
 
@@ -39,6 +39,8 @@ Manovia API **1.0.0** · 86 operations across 74 paths. The machine-readable sch
 - [Agent](#agent)
 - [Meditation](#meditation)
 - [Voice](#voice)
+- [Drift](#drift)
+- [Feature-Flags](#feature-flags)
 - [Sharing](#sharing)
 - [Sharing-Public](#sharing-public)
 
@@ -212,6 +214,23 @@ These routes exist only when `APP_ENV` is not `production`. They are for local d
 | `POST` | `/api/v1/voice/transcribe` | Transcribe | yes | 200, 422 | Day 39 compatibility endpoint; live audio uses the documented WebSocket runtime. |
 | `GET` | `/api/v1/voice/voices` | Get Voices | yes | 200 | List reviewed local language choices without exposing model paths. |
 | `POST` | `/api/v1/voice/synthesize` | Synthesize | yes | 200, 422 | Legacy local TTS endpoint; sentence streaming uses the WebSocket runtime. |
+
+## Drift
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `POST` | `/api/v1/drift/record` | Record Drift | yes | 200, 422 |  |
+| `GET` | `/api/v1/drift/alerts` | Drift Alerts | yes | 200, 422 |  |
+| `GET` | `/api/v1/drift/report` | Drift Report | yes | 200, 422 |  |
+| `GET` | `/api/v1/drift/snapshot/{window}` | Drift Snapshot | yes | 200, 422 |  |
+
+## Feature-Flags
+
+| Method | Path | Summary | Session | Status codes | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `GET` | `/api/v1/feature-flags` | List Flags | yes | 200 |  |
+| `POST` | `/api/v1/feature-flags/{flag_name}` | Set Flag | yes | 200, 422 |  |
+| `POST` | `/api/v1/feature-flags/{flag_name}/reset` | Reset Flag | yes | 200, 422 |  |
 
 ## Sharing
 
