@@ -466,7 +466,17 @@ class SentenceTransformerEncoder:
                     "ml/notebooks/colab_retrieval_finetune.ipynb and point encoder.model_id "
                     "at the local directory."
                 ) from exc
-            self.dim = int(self._model.get_sentence_embedding_dimension())
+            dimension = self._model.get_sentence_embedding_dimension()
+            if dimension is None:
+                # Newer sentence-transformers stubs type this as `int | None`
+                # (a model can be loaded without a configured pooling head).
+                # An unknown width would silently produce zero-column vectors,
+                # so treat it as an unavailable encoder.
+                raise EncoderUnavailable(
+                    f"{self.model_id!r} reports no embedding dimension; its pooling layer "
+                    "is not configured, so it cannot produce usable vectors."
+                )
+            self.dim = int(dimension)
         return self._model
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
