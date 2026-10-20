@@ -8,12 +8,102 @@ note for each. Releases are cut by pushing a `v*` tag, which runs
 `.github/workflows/release.yml` (migration round-trip on Postgres 16, images
 to GHCR, GitHub release).
 
-## Unreleased
+## [2.0.0] — 2026-10-20
 
-Days 28–34 and 42–46 are not recorded in this file — pre-existing gaps; their
-changes are in [PROGRESS.md](PROGRESS.md) and their decision records in
-[docs/adr/README.md](docs/adr/README.md). Days 35, 36, 41 and 47 are recorded
-here by their respective sessions.
+The v2.0 release: the deep-learning and advanced-features track (Days 31–49), a
+technical report, an ML platform with release gates, and a release label that
+keeps telling the truth — **portfolio demo, not a clinical service**.
+
+Highlights, with the artefact that backs each one:
+
+- **ML platform** (`ml/`, [ADR 0031](docs/adr/0031-ml-platform.md)): licensed
+  dataset catalogue (17 datasets, 10 restricted), DVC-versioned splits with
+  byte-stable manifests, config-as-data training (`pydantic`, unknown keys are
+  errors), MLflow tracking (commit, data hashes, config, seed, versions), release
+  gates (reproducibility, size/INT8, fairness, DP budget, licences) and committed
+  model/dataset cards. `make ml-test` → 553 passed.
+- **Safety ML that never takes the wheel** ([ADR 0009](docs/adr/0009-safety-ml-ensemble.md)):
+  a calibrated TF-IDF backstop that may raise caution and never lower it; rules
+  still decide and still write the crisis card. Distilled student + ONNX serving
+  path behind `SAFETY_ML` ([ADR 0033](docs/adr/0033-safety-trained-classifier.md),
+  [ADR 0034](docs/adr/0034-compression-serving-rollout.md)).
+- **Retrieval** ([ADR 0035](docs/adr/0035-fine-tuned-retrieval.md)): hybrid BM25 +
+  dense + cross-encoder with a calibrated "no good answer" floor; MRR 0.658,
+  Recall@1 0.354 on the frozen 52-query split for +5.5 ms p95.
+- **Research that reports its own negative result**: mood forecasting
+  ([ADR 0036](docs/adr/0036-mood-forecasting.md)) where the best neural model lost
+  to a seven-day moving average (MAE 0.561 vs 0.554) and was not shipped; a
+  contextual-bandit policy ([ADR 0037](docs/adr/0037-personalised-intervention-policy.md))
+  with a hard 20 % exploration cap, not shipped; federated learning with
+  differential privacy ([ADR 0038](docs/adr/0038-privacy-preserving-ml.md)),
+  ε 0.8417 at δ 1e-5 in simulation, not shipped.
+- **Private Mode** ([ADR 0040](docs/adr/0040-in-browser-private-ai.md)): the same
+  safety engine compiled to JavaScript, 500/500 phrase parity with Python, a lazy
+  30.9 KB chunk, AES-GCM ciphertext in IndexedDB, and **no network** for the
+  conversation. Ships without a pinned model, so replies are templates and the
+  badge says so.
+- **New tools, each with a safety story**: real-time voice with barge-in
+  ([ADR 0039](docs/adr/0039-realtime-voice-companion.md); p95 first-audio 98.6 ms
+  on fake stages), HRV-paced breathing ([ADR 0041](docs/adr/0041-biofeedback-hrv.md)),
+  a local personal-patterns graph ([ADR 0042](docs/adr/0042-local-personal-patterns.md)),
+  an agentic care navigator with read-only tools and confirmation gating
+  ([ADR 0043](docs/adr/0043-agentic-care-navigator.md),
+  [ADR 0044](docs/adr/0044-directory-mcp-server.md); 40/40 scenarios), generative
+  calm audio ([ADR 0045](docs/adr/0045-personalised-meditations.md)), a WebXR calm
+  space with a 2D fallback and a sensory profile
+  ([ADR 0046](docs/adr/0046-xr-calm-space-and-sensory-profile.md)), and a
+  clinician-share bridge ([ADR 0047](docs/adr/0047-clinician-share-bridge.md))
+  whose key the server never holds.
+- **Responsible AI** (Day 48): 21-risk register with gates, privacy-only drift
+  monitoring, **12 kill switches** (flip without restart, audited), a user-facing
+  `/transparency` page (14 components × 5 headings, en/hi/bn), fairness gates over
+  eleven identity dimensions, and a red-team pass with regression tests.
+- **Performance** (Day 49): every heavy module lazy (WebXR 5.8 KB route increment,
+  WebLLM/transformers in a 30.9 KB chunk that is not precached, charts 107.8 KB on
+  `/insights` only); initial JS **133.1 KB gzip** of a 135 KB budget; precache
+  744.5 KB of 800 KB. Budgets and what is *not* measured:
+  [docs/performance.md](docs/performance.md).
+- **Release engineering**: a one-page architecture poster, a paper-style
+  [technical report](docs/technical-report.md), an API-level journey verifier
+  (`scripts/verify_day49_journey.py`, 13/13), and a fresh-clone verification note
+  (`docs/verification/day49-verification.md`).
+
+### Fixed in 2.0.0 — found by the release verification
+
+- **Fairness report was not reproducible.** Stand-in predictors seeded from
+  Python's salted `hash()`, so `ml/reports/fairness.json` changed on every run.
+  Now SHA-256-seeded, with a cross-process byte-stability test.
+- **A fairness ceiling that never applied.** `max_gap_code_mixing` could not match
+  the `code-mixing` category, so that dimension ran against the global 0.15
+  default instead of 0.12. Category names are normalised and a test asserts every
+  template category has a configured ceiling.
+- **`dvc.lock` moved every day.** Safety manifests carried a wall-clock date and
+  absolute seed paths. Both removed; manifests have a byte-stability test.
+- **Two splitter tests read a gitignored DVC output**, so `make ml-test` failed in
+  a fresh clone. They now read the committed fixture (a stronger check).
+- **A baseline-availability test branched on the wrong condition** (backend
+  importability instead of the imports the code branches on) and failed on a
+  machine with `ml` installed and no `nlp` extra. It now stubs the imports, and
+  `checkpoint_is_cached` names the checkpoint and the cache in every verdict.
+- **`manovia_ml` shipped no PEP 561 marker**, so `make lint` in `backend/` failed
+  wherever `ml` was installed. Added `py.typed` + package data.
+
+### Known issues at 2.0.0
+
+1. **Not clinically reviewed**, and no native-speaker sign-off on Hindi/Bengali.
+2. **Recall-first costs precision**: 31/51 benign dev cases escalate; in the live
+   journey *"I had a long day and I am tired."* produced the crisis card.
+3. **No pinned on-device model** (`npm run models:pin` has never run), so Private
+   Mode answers with templates.
+4. **No Lighthouse / Core Web Vitals / real-device numbers** for this release —
+   the build sandbox cannot install a browser.
+5. **Four helplines still `needs_verification`**; all entries last verified
+   2026-10-09.
+6. **Some days are not recorded in this file** (28–34, 42–46, 48–49): their detail
+   is in [PROGRESS.md](PROGRESS.md) and their ADRs. This file is being brought
+   back in line release by release, rather than rewritten after the fact.
+
+Days 35, 36, 41 and 47 keep their detailed entries below.
 
 ### Added — Day 47: clinician-share bridge (consented, time-limited, standards-based)
 

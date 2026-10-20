@@ -224,6 +224,78 @@ preferred exercise tags and quiet hours, stored in `user_settings` with strict
 `HH:MM` bounds — are the only settings the planner reads, managed at
 `GET/PUT /settings`.
 
+## The ML platform (Day 31 onward)
+
+`ml/` is a separate project with its own tests, install extras and CI job. It
+never deploys anything to users: it produces datasets, models, reports and gates,
+and the product only ever sees a model through the reviewed runtime seam
+(`app/services/safety/ml_classifier.py`, `app/services/nlp/`). The full reasoning
+is in [ADR 0031](adr/0031-ml-platform.md) and the ML ground rules in
+[AGENTS.md](../AGENTS.md).
+
+```mermaid
+flowchart LR
+    subgraph Data
+        CAT["data/CATALOGUE.md<br/>licences + verdicts"]
+        RAW["committed toy fixtures<br/>(hand-written, MIT)"]
+        DVC["DVC stages<br/>dvc.yaml + dvc.lock"]
+    end
+    subgraph Training
+        TRAIN["linear / LoRA / sequence<br/>configs/*.yaml (validated)"]
+        SEED["seed + thread pins"]
+    end
+    subgraph Tracking
+        MLF[("MLflow file store<br/>run: commit, data hashes, config, metrics")]
+        REP["reports/*.md + *.json<br/>(committed)"]
+    end
+    subgraph Gates
+        REPRO["reproducibility<br/>expected baselines"]
+        GATE["release gates<br/>size, INT8, fairness, DP"]
+        CARDS["model + dataset cards"]
+    end
+    SERVE["serving seam<br/>SAFETY_ML / EMOTION_ANALYZER / RETRIEVER"]
+    CAT --> DVC
+    RAW --> DVC
+    DVC --> TRAIN
+    SEED --> TRAIN
+    TRAIN --> MLF --> REP
+    TRAIN --> GATE
+    REP --> GATES2["CI: make ml-smoke, fairness-check, ml-test"]
+    GATE --> GATES2
+    CARDS --> GATES2
+    GATE -->|"only after every gate is green"| SERVE
+```
+
+What the diagram is trying to say in one line: **a number becomes a serving
+change only by way of a committed report, a card and a green gate** — there is no
+path from a notebook to the product.
+
+## The on-device path: Private Mode (Day 41)
+
+Private Mode is not "the backend with a smaller model". It is a second
+implementation of the same deterministic safety engine, compiled from the backend
+content, running beside an optional in-browser model. The parity suite is the
+contract; the network is not used at all.
+
+```mermaid
+flowchart LR
+    subgraph Browser["Browser (no network)"]
+        UI["Chat UI"] --> PROV["PrivateModeProvider<br/>(lazy chunk)"]
+        PROV --> BUNDLE["Compiled safety bundle<br/>normalise + rules + escalation + output guard"]
+        PROV --> MODELS["Model manager"]
+        MODELS -.->|"optional, if pinned + user consents"| WEBLLM["WebLLM / transformers.js<br/>weights in IndexedDB"]
+        PROV --> STORE[("IndexedDB<br/>AES-GCM ciphertext, key from passphrase")]
+        BUNDLE --> CARD["Crisis card + localised helplines"]
+    end
+    PY["Python: backend/app/content/**"] -->|"exporters --check"| BUNDLE
+    PY -->|"500-phrase expectation corpus"| PARITY{{"make parity<br/>500/500"}}
+    BUNDLE --> PARITY
+```
+
+The failure mode this design accepts: with no pinned model the reply slot is
+**templates**, and the badge says so. The failure mode it refuses: sending the
+message to the server "just this once".
+
 ## Offline: what the service worker may answer (Day 25)
 
 The production build registers a service worker (`frontend/src/sw/sw.ts`); the

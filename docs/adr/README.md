@@ -57,6 +57,7 @@ entry.
 | [0045](0045-personalised-meditations.md) | Personalised meditations: curated structure, linted passages, local render | Accepted | 2026-10-17 |
 | [0046](0046-xr-calm-space-and-sensory-profile.md) | A calm space that cannot surprise anyone, and a sensory profile app-wide | Accepted | 2026-10-19 |
 | [0047](0047-clinician-share-bridge.md) | Clinician-share bridge: a consented, time-limited document (PDF + FHIR R4) with a fragment-delivered key, not an EHR integration | Accepted | 2026-10-20 |
+| [0048](0048-release-verification-and-reproducible-reports.md) | Release verification with a three-state result, numbers published only with a committed report and run id, reproducible artefacts (no wall-clock dates, no salted `hash()`, no category-name drift), and the tag published by the owner | Accepted | 2026-10-20 |
 
 Adding a record: copy the layout of [0026](0026-deployment-platform.md) (Status,
 Date, Context, Decisions, Consequences, Verification). Take the next free number

@@ -129,7 +129,30 @@ cut a GitHub release with generated notes:
 `alembic upgrade head` (and a downgrade/upgrade round-trip) against a fresh
 Postgres 16 **before** images are published.
 
-## 6. What is deliberately NOT automated here
+## 6. The demo label (required on every deployment)
+
+Every deployment of this project is a **portfolio demo**, and the app says so on
+screen, not only in the repository. The string lives in
+`frontend/src/lib/i18n/locales/{en,hi,bn}.json` under `app.footerPortfolio`
+(*"Portfolio demo — not a clinical service. Clinical review is not complete."*)
+and is rendered in the app shell footer on every route, including the public
+share viewer, so it is compiled into the bundle rather than fetched from a config
+service that could be down.
+
+Check it after a deploy (no browser needed):
+
+```sh
+cd frontend && npm run build
+grep -c "Portfolio demo" dist/assets/*.js        # ≥ 1 (English is in the entry chunk)
+grep -c "पोर्टफ़ोलियो डेमो" dist/assets/hi-*.js   # Hindi lazy chunk
+grep -c "পোর্টফোলিও ডেমো" dist/assets/bn-*.js     # Bengali lazy chunk
+```
+
+If a deployment ever needs a different label (for example a hosted demo under a
+different name), change the three locale files — **not** the component — and
+update the test in `frontend/src/App.test.tsx` that asserts the footer text.
+
+## 7. What is deliberately NOT automated here
 
 - The first `fly launch` / `netlify init` (account-bound, interactive).
 - Custom domain DNS.
