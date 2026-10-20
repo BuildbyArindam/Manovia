@@ -12,7 +12,17 @@ from app.services.feature_flags.store import (
 
 
 def test_all_required_flags_exist() -> None:
-    required = {"voice", "agent", "forecasting", "bandit", "private_mode_models", "xr", "safety_ml", "emotion", "retrieval"}  # noqa: E501
+    required = {
+        "voice",
+        "agent",
+        "forecasting",
+        "bandit",
+        "private_mode_models",
+        "xr",
+        "safety_ml",
+        "emotion",
+        "retrieval",
+    }
     assert required.issubset(set(KNOWN_FLAGS.keys()))
 
 
@@ -62,7 +72,10 @@ def test_flag_history_audited() -> None:
 
 def test_voice_fallback_is_text_chat() -> None:
     FeatureFlagStore()
-    assert "text chat" in KNOWN_FLAGS["voice"]["fallback"].lower() or "text" in KNOWN_FLAGS["voice"]["fallback"].lower()  # noqa: E501
+    assert (
+        "text chat" in KNOWN_FLAGS["voice"]["fallback"].lower()
+        or "text" in KNOWN_FLAGS["voice"]["fallback"].lower()
+    )
 
 
 def test_private_mode_fallback_is_templates() -> None:

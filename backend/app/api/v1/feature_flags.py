@@ -59,9 +59,7 @@ def set_flag(
 
 
 @router.post("/{flag_name}/reset")
-def reset_flag(
-    flag_name: str, user: CurrentUser, request: Request
-) -> dict[str, Any]:
+def reset_flag(flag_name: str, user: CurrentUser, request: Request) -> dict[str, Any]:
     del request
     store = get_flag_store()
     actor = str(getattr(user, "id", "unknown"))

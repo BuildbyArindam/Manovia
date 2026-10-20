@@ -7,7 +7,14 @@ from app.services.drift.monitor import DriftMonitor
 
 def test_drift_stores_only_aggregates_never_text() -> None:
     m = DriftMonitor()
-    m.record("2026-W40", text_length=42, language="en", confidence=0.9, safety_level="none", embedding=[0.1, 0.2, 0.3, 0.4])  # noqa: E501
+    m.record(
+        "2026-W40",
+        text_length=42,
+        language="en",
+        confidence=0.9,
+        safety_level="none",
+        embedding=[0.1, 0.2, 0.3, 0.4],
+    )
     snap = m.snapshots["2026-W40"]
     # The snapshot must not contain raw text
     assert "text" not in snap.to_dict()
@@ -22,10 +29,25 @@ def test_drift_alert_fires_on_shifted_language_and_length() -> None:
     m = DriftMonitor()
     # baseline: mostly en, short
     for _ in range(100):
-        m.record("baseline", text_length=30, language="en", confidence=0.9, safety_level="none", embedding=[0.0, 0.0, 0.0, 0.0])  # noqa: E501
+        m.record(
+            "baseline",
+            text_length=30,
+            language="en",
+            confidence=0.9,
+            safety_level="none",
+            embedding=[0.0, 0.0, 0.0, 0.0],
+        )
     # current: mostly hi, long, lower confidence
     for _ in range(100):
-        m.record("current", text_length=300, language="hi", confidence=0.4, safety_level="medium", abstained=True, embedding=[0.5, 0.5, 0.5, 0.5])  # noqa: E501
+        m.record(
+            "current",
+            text_length=300,
+            language="hi",
+            confidence=0.4,
+            safety_level="medium",
+            abstained=True,
+            embedding=[0.5, 0.5, 0.5, 0.5],
+        )
     alerts = m.check_drift("current", baseline_window="baseline")
     assert len(alerts) >= 2
     metrics = {a.metric for a in alerts}

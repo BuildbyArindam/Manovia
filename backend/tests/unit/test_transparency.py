@@ -56,10 +56,16 @@ def test_transparency_localised_en_hi_bn_have_same_keys() -> None:
         assert "c1Name" in data["transparency"]
         assert "c14Name" in data["transparency"]
     # Check that placeholders match across locales
-    en_trans = json.loads((REPO / "frontend/src/lib/i18n/locales/en.json").read_text(encoding="utf-8"))["transparency"]  # noqa: E501
+    en_trans = json.loads(
+        (REPO / "frontend/src/lib/i18n/locales/en.json").read_text(encoding="utf-8")
+    )["transparency"]
     for lang in ["hi", "bn"]:
-        other = json.loads((REPO / f"frontend/src/lib/i18n/locales/{lang}.json").read_text(encoding="utf-8"))["transparency"]  # noqa: E501
-        assert set(en_trans.keys()) == set(other.keys()), f"parity mismatch {lang}: {set(en_trans.keys()) - set(other.keys())}"  # noqa: E501
+        other = json.loads(
+            (REPO / f"frontend/src/lib/i18n/locales/{lang}.json").read_text(encoding="utf-8")
+        )["transparency"]
+        assert set(en_trans.keys()) == set(other.keys()), (
+            f"parity mismatch {lang}: {set(en_trans.keys()) - set(other.keys())}"
+        )
 
 
 def test_transparency_route_registered() -> None:
