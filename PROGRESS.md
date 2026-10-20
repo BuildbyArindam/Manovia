@@ -26,7 +26,7 @@ Reference: [docs/verification/day49-verification.md](docs/verification/day49-ver
   `make ml-jitai-sim`, `make ml-federated-sim`, `make ml-distill-smoke`,
   `make ml-emotion-smoke`, the safety smoke run, `make parity` and the fairness
   gate.
-- **Eight real defects found and fixed at the root**, each with a regression test
+- **Nine real defects found and fixed at the root**, each with a regression test
   (details under Decisions): non-reproducible fairness report (salted `hash()`),
   a fairness ceiling that never applied (`code-mixing` vs `code_mixing`),
   `dvc.lock` churn from a wall-clock date and absolute paths in the safety
@@ -38,7 +38,11 @@ Reference: [docs/verification/day49-verification.md](docs/verification/day49-ver
   in the emotion pipeline test that failed on some model initialisations. The
   last two were found by the *final* full-suite run, after the documentation was
   written — which is why the numbers below were re-measured and updated rather
-  than kept from the earlier run.
+  than kept from the earlier run — and a ninth (an `int | None` embedding
+  dimension that made `make ml/lint` fail only when the extras were installed)
+  was found by running the ML lint in the full environment. Three of the nine
+  exist only in a fresh/full install: that is the argument for verifying from
+  zero rather than in the venv that already worked.
 - **Elapsed-time reality check**: `make eval` needs no GPU and no network; the
   ML research runs need torch but no GPU; three things genuinely need hardware
   this sandbox does not have (browser, microphone/headset/WebGPU, Hugging Face
@@ -85,7 +89,7 @@ Reference: [docs/verification/day49-verification.md](docs/verification/day49-ver
 | Backend suite + gate | `pytest --cov=app --cov-branch` | **5,524 passed, 2 skipped**; 94.28 % statements / 85.50 % branches; gate all rules satisfied |
 | Frontend suite | `npx vitest run` | **2,917 passed, 3 skipped** (134 files passed, 1 skipped) |
 | Lint / types | `make lint` | backend ruff + `ruff format --check` (488 files) + mypy (418) clean; frontend ESLint + `tsc --noEmit` clean |
-| ML suite | `make ml-test` | **553 passed, 1 skipped** |
+| ML suite | `make ml-test` | **553 passed, 1 skipped** with the training/ONNX/federated extras; **497 passed, 7 skipped** in the leaner venv |
 | Safety / emotion / response | `make eval` | recall 1.000 [1.000, 1.000]; precision 0.543; emotion macro-F1 0.804; responses 60/60 |
 | Agent navigator | `make eval-agent` | **40/40** scenarios |
 | Fairness gate | `python ml/scripts/check_fairness_gates.py` | PASS, 5 models, largest gap **0.026** (region, ceiling 0.10), byte-stable across processes |

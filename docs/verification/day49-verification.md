@@ -36,7 +36,7 @@ correct for their environments, and this note quotes the fuller one. A throwaway
 | 2 | Frontend suite | `npm run test:run` | **2,917 passed, 3 skipped** (134 files) |
 | 3 | Backend lint + types | `make lint` | ruff 488 files clean, `ruff format --check` clean, mypy **418 files** clean |
 | 4 | Frontend lint + types | `npm run lint && npm run typecheck` | ESLint + `tsc --noEmit` clean |
-| 5 | ML suite | `make ml-test` | **553 passed, 1 skipped** |
+| 5 | ML suite | `make ml-test` | **553 passed, 1 skipped** with the training/ONNX/federated extras installed; **497 passed, 7 skipped** in the leaner `ml[ml,dev]` venv, where the six extra skips are exactly those extras |
 | 6 | Safety eval | `make eval` | recall **1.000** [1.000, 1.000], precision **0.543** [0.441, 0.645], 31/51 benign escalated |
 | 7 | Emotion eval | `make eval` | macro-F1 **0.804** [0.739, 0.853] (162 cases, en/hi/bn) |
 | 8 | Response eval | `make eval` | **60/60** checks with `FakeLLMProvider` |
@@ -131,7 +131,7 @@ README's own "How to read this table" paragraph. MLflow is a local file store
 which is what makes the number checkable by someone without the store
 (ADR 0048 §2).
 
-## 4. Defects found by this verification (all fixed, each with a test)
+## 4. Defects found by this verification (nine, all fixed, each with a test)
 
 These are the reason a release verification exists. Every one was found by
 running something, not by reading it.
@@ -171,6 +171,14 @@ running something, not by reading it.
    roughly a third of random initialisations (nine labels can drift 4.5e-6). The
    tolerance now matches the rounding. A test that depends on the seed is not a
    test of the property it claims.
+
+9. **An ML type error that only appears with the extras installed** —
+   `make ml/lint` passed in a bare venv and failed once sentence-transformers
+   was present, because its stubs type `get_sentence_embedding_dimension()` as
+   `int | None`. An encoder that reports no width cannot produce vectors, so it
+   now raises the `EncoderUnavailable` the caller already handles. Same lesson
+   as item 7: CI installs the lean set, the release check must install the full
+   set, or the type gate is measuring the wrong environment.
 
 Items 1–6 were found and fixed before the documentation was written; 7–8 were
 found by the *final* full-suite run, after it. That ordering matters and is the

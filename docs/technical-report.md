@@ -389,7 +389,7 @@ points compared ([day41-browser-private-ai.md](verification/day41-browser-privat
 | Backend tests / coverage | **5,524 passed, 2 skipped**; 94.28 % statements, 85.50 % branches; safety gate green | `make test` |
 | Frontend tests | **2,917 passed, 3 skipped** (135 files) | `npm run test:run` |
 | Lint / types | ruff, ruff format (488 files), mypy (418), ESLint, `tsc --noEmit` — clean | `make lint` |
-| ML tests | **553 passed, 1 skipped** | `make ml-test` |
+| ML tests | **553 passed, 1 skipped** (497 / 7 without the training, ONNX and federated extras) | `make ml-test` |
 | Initial JS | **133.1 KB gzip** of 135 KB budget; precache 744.5 KB of 800 KB | `npm run budget` |
 | Journey | **13/13** API-level steps | `scripts/verify_day49_journey.py` |
 | Lighthouse / CWV | **not measured** — no browser installable in the build sandbox | `npm run lighthouse` (CI) |

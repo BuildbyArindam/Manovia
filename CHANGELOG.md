@@ -21,7 +21,7 @@ Highlights, with the artefact that backs each one:
   byte-stable manifests, config-as-data training (`pydantic`, unknown keys are
   errors), MLflow tracking (commit, data hashes, config, seed, versions), release
   gates (reproducibility, size/INT8, fairness, DP budget, licences) and committed
-  model/dataset cards. `make ml-test` → 553 passed.
+  model/dataset cards. `make ml-test` → 553 passed (497 without the training/ONNX/federated extras).
 - **Safety ML that never takes the wheel** ([ADR 0009](docs/adr/0009-safety-ml-ensemble.md)):
   a calibrated TF-IDF backstop that may raise caution and never lower it; rules
   still decide and still write the crisis card. Distilled student + ONNX serving
@@ -87,6 +87,16 @@ Highlights, with the artefact that backs each one:
   `checkpoint_is_cached` names the checkpoint and the cache in every verdict.
 - **`manovia_ml` shipped no PEP 561 marker**, so `make lint` in `backend/` failed
   wherever `ml` was installed. Added `py.typed` + package data.
+- **Prometheus route labels collapsed to `:unmatched` on Starlette 1.x.** Starlette
+  1.0 stopped writing the matched route to `scope["route"]`, so on a fresh install
+  (fastapi 0.143 accepts any starlette ≥ 0.46) every request lost its template.
+  Labels now resolve from the app's own route table, with a regression test.
+- **An exact-float assertion in the emotion pipeline test** (nine 6-decimal scores
+  summing to 1.0 ± 1e-6) failed on some model initialisations; the tolerance now
+  matches the rounding.
+- **`make ml/lint` failed once the extras were installed**: newer
+  sentence-transformers stubs return `int | None` for the embedding dimension.
+  An encoder with no width now raises the error the caller already handles.
 
 ### Known issues at 2.0.0
 
