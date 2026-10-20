@@ -98,7 +98,11 @@ def test_the_real_pipeline_loads_and_answers(tiny_model: str) -> None:
     assert analyzer.load_count == 1
     assert result.primary in EMOTIONS
     assert set(result.scores) == set(EMOTIONS)
-    assert sum(result.scores.values()) == pytest.approx(1.0, abs=1e-6)
+    # Scores are rounded to 6 decimals per label (``normalize_scores`` keeps
+    # cached JSON stable), so nine labels can drift by up to 4.5e-6 from 1.0.
+    # Asserting 1e-6 made this test pass or fail on the model's random init.
+    tolerance = len(EMOTIONS) * 5e-7
+    assert sum(result.scores.values()) == pytest.approx(1.0, abs=tolerance)
     assert -1.0 <= result.valence <= 1.0
     assert 0.0 <= result.arousal <= 1.0
     assert 0.0 <= result.confidence <= 1.0

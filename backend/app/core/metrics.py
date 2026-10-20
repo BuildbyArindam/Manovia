@@ -17,6 +17,7 @@ fresh ``Metrics`` per test and assert exact label values in isolation.
 
 from __future__ import annotations
 
+import re
 from typing import Final
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
@@ -221,6 +222,39 @@ def reset_metrics() -> Metrics:
     return _instance
 
 
+def _template_pattern(template: str) -> re.Pattern[str] | None:
+    r"""Compile a route template into a matcher for a concrete request path.
+
+    ``/api/v1/chat/{session_id}`` becomes ``^/api/v1/chat/[^/]+\Z`` and
+    ``{rest:path}`` becomes ``.+``. Only templates the app itself declares are
+    compiled, so a request can be labelled without its raw path (and every
+    identifier in it) reaching a metric label.
+    """
+    parts: list[str] = []
+    index = 0
+    for match in re.finditer(r"\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([a-zA-Z_]+))?\}", template):
+        parts.append(re.escape(template[index : match.start()]))
+        converter = match.group(2) or "str"
+        if converter == "path":
+            parts.append(".+")
+        elif converter == "int":
+            parts.append(r"\d+")
+        elif converter == "float":
+            parts.append(r"\d+(?:\.\d+)?")
+        elif converter == "uuid":
+            parts.append(
+                r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+            )
+        else:
+            parts.append("[^/]+")
+        index = match.end()
+    parts.append(re.escape(template[index:]))
+    try:
+        return re.compile("".join(parts) + r"\Z")
+    except re.error:  # pragma: no cover - templates come from the router
+        return None
+
+
 def _build_route_template_map(app: object) -> dict[int, str]:
     """Map original route objects to their full (prefix-included) template.
 
@@ -259,23 +293,50 @@ def _build_route_template_map(app: object) -> dict[int, str]:
     return mapping
 
 
+def _build_path_patterns(app: object) -> tuple[tuple[re.Pattern[str], str], ...]:
+    """``(matcher, template)`` pairs for every route the app declares.
+
+    Built lazily, in route order, so the first template that matches is the
+    one Starlette itself would have routed to. Only templates are compiled;
+    a request path is *tested against* them and never exported.
+    """
+    mapping = _build_route_template_map(app)
+    patterns: list[tuple[re.Pattern[str], str]] = []
+    seen: set[str] = set()
+    for template in mapping.values():
+        if template in seen:
+            continue
+        seen.add(template)
+        pattern = _template_pattern(template)
+        if pattern is not None:
+            patterns.append((pattern, template))
+    return tuple(patterns)
+
+
 def path_template_for_scope(scope: Scope) -> str:
     """The full route template for a request scope, or a fixed unmatched label.
 
-    Resolution order: the per-app template map (full path with mount prefix,
-    e.g. ``/api/v1/chat/{session_id}``), then ``scope[\"route\"].path`` for
-    plain Starlette routers, then the fixed ``:unmatched`` label. Exporting
-    the raw path would make one label value per conversation — that is an
-    identifier leak and a cardinality bomb, so it never happens.
+    Resolution order:
+
+    1. the per-app template map (full path with mount prefix, e.g.
+       ``/api/v1/chat/{session_id}``), keyed by the matched route object;
+    2. ``scope["route"].path`` itself (FastAPI sets it, see ``APIRoute``);
+    3. the request path matched against the app's declared templates. Starlette
+       1.0 stopped putting the matched route on the scope, so a plain
+       ``Router``/``Route`` app reaches this step with no ``scope["route"]``
+       at all. Matching is anchored and built from router templates, so a 404
+       that resembles a template can never smuggle an identifier into a label;
+    4. the fixed ``:unmatched`` label.
+
+    Exporting the raw path would make one label value per conversation — an
+    identifier leak and a cardinality bomb — so it never happens.
     """
     route: object | None = scope.get("route")
-    if route is None:
-        return UNMATCHED_PATH
     app = scope.get("app")
-    if app is not None:
-        state = getattr(app, "state", None)
-        mapping = getattr(state, "metrics_route_templates", None) if state is not None else None
-        if mapping is None and state is not None:
+    state = getattr(app, "state", None) if app is not None else None
+    if route is not None and state is not None:
+        mapping = getattr(state, "metrics_route_templates", None)
+        if mapping is None:
             # First request: build the map once and cache it on app.state.
             mapping = _build_route_template_map(app)
             state.metrics_route_templates = mapping
@@ -287,4 +348,13 @@ def path_template_for_scope(scope: Scope) -> str:
     path = getattr(route, "path", None)
     if isinstance(path, str) and path:
         return path
+    path = scope.get("path")
+    if state is not None and isinstance(path, str) and path:
+        patterns = getattr(state, "metrics_route_patterns", None)
+        if patterns is None:
+            patterns = _build_path_patterns(app)
+            state.metrics_route_patterns = patterns
+        for pattern, template in patterns:
+            if pattern.match(path):
+                return template
     return UNMATCHED_PATH
