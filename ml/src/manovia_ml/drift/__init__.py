@@ -2,4 +2,4 @@
 
 from .psi_ks import kolmogorov_smirnov, population_stability_index
 
-__all__ = ["population_stability_index", "kolmogorov_smirnov"]
+__all__ = ["kolmogorov_smirnov", "population_stability_index"]

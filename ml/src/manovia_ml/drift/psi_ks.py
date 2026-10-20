@@ -23,7 +23,7 @@ def population_stability_index(
     if exp_total == 0 or act_total == 0:
         return 0.0
     psi = 0.0
-    for e, a in zip(expected_counts, actual_counts):
+    for e, a in zip(expected_counts, actual_counts, strict=False):
         e_pct = max(e / exp_total, epsilon)
         a_pct = max(a / act_total, epsilon)
         psi += (a_pct - e_pct) * math.log(a_pct / e_pct)

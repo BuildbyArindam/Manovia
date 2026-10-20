@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import statistics
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -16,7 +17,7 @@ class GapResult:
     violation: bool
     threshold: float
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "template_id": self.template_id,
             "category": self.category,

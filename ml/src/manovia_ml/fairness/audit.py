@@ -12,12 +12,12 @@ from __future__ import annotations
 import json
 import pathlib
 from collections.abc import Callable
-from dataclasses import asdict
+from typing import Any
 
 import yaml
 
 from .metrics import GapResult, compute_gap
-from .templates import TEMPLATES, PairedTemplate
+from .templates import TEMPLATES
 
 PredictFn = Callable[[str], float]
 
@@ -50,7 +50,7 @@ def audit_model(
     predict: PredictFn,
     *,
     config_path: str | pathlib.Path | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Run all templates against one model, return structured results."""
     thresholds = _load_thresholds(config_path)
     results: list[GapResult] = []
@@ -111,7 +111,7 @@ def _fake_predict_factory(seed: str) -> PredictFn:
     return predict
 
 
-def audit_all_fake(*, config_path: str | pathlib.Path | None = None) -> dict:
+def audit_all_fake(*, config_path: str | pathlib.Path | None = None) -> dict[str, Any]:
     """Audit 5 representative models with fake predictors (offline, deterministic)."""
     models = {
         "safety_crisis": _fake_predict_factory("safety"),
@@ -120,7 +120,7 @@ def audit_all_fake(*, config_path: str | pathlib.Path | None = None) -> dict:
         "retrieval_relevance": _fake_predict_factory("retrieval"),
         "safety_confidence": _fake_predict_factory("safety-conf"),
     }
-    reports: dict[str, dict] = {}
+    reports: dict[str, dict[str, Any]] = {}
     for name, fn in models.items():
         reports[name] = audit_model(name, fn, config_path=config_path)
     overall_passed = all(r["passed"] for r in reports.values())
@@ -138,6 +138,6 @@ def audit_all_fake(*, config_path: str | pathlib.Path | None = None) -> dict:
     }
 
 
-def write_report(output_path: str | pathlib.Path, report: dict) -> None:
+def write_report(output_path: str | pathlib.Path, report: dict[str, Any]) -> None:
     pathlib.Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     pathlib.Path(output_path).write_text(json.dumps(report, indent=2), encoding="utf-8")

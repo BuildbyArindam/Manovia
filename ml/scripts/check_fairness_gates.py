@@ -44,14 +44,18 @@ def main() -> None:
         largest = rep["largest_gap"]
         gap = largest["max_gap"] if largest else 0.0
         cat = largest["category"] if largest else "-"
-        print(f"  {model:24s} {status}  largest_gap={gap:.4f} ({cat})  violations={len(rep['violations'])}")
+        print(
+            f"  {model:24s} {status}  largest_gap={gap:.4f} ({cat})  violations={len(rep['violations'])}"  # noqa: E501
+        )
         # per-category table
         for cat_name, cgap in sorted(rep["category_max_gaps"].items()):
             print(f"    - {cat_name:20s} max_gap={cgap:.4f}")
 
     if result["largest_gap_overall"]:
         lg = result["largest_gap_overall"]
-        print(f"\nLargest overall: {lg['template_id']} ({lg['category']}) gap={lg['max_gap']:.4f} threshold={lg['threshold']:.4f}")
+        print(
+            f"\nLargest overall: {lg['template_id']} ({lg['category']}) gap={lg['max_gap']:.4f} threshold={lg['threshold']:.4f}"  # noqa: E501
+        )
     print(f"\nOverall: {'PASS' if result['overall_passed'] else 'FAIL'} -> {report_path}")
 
     if not result["overall_passed"]:
