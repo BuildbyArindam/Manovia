@@ -1,6 +1,6 @@
 # Day 36 — Mood forecasting with sequence models and honest uncertainty
 
-Research run `94aec4c8845c4768b4138aad7c68299e`; generated 2026-10-15 from config `mood_forecast_sequence_models` (seed `20261015`).
+Research run `37eebe3842f3493cb252f4b0740c6711`; generated 2026-10-20 from config `mood_forecast_sequence_models` (seed `20261015`).
 
 > **Research only.** The panel is synthetic; these numbers do not describe Manovia users. No trained weights are served by the product. The user-facing Outlook uses a separate, deterministic personal-history baseline and remains opt-in.
 
@@ -14,7 +14,7 @@ Research run `94aec4c8845c4768b4138aad7c68299e`; generated 2026-10-15 from confi
 
 ## Baseline and sequence-model comparison
 
-Intervals were expanded to a nominal 80% using horizon-specific split-conformal scores from the separate calibration-user group. Coverage and width below are measured on the untouched held-out users. This is a descriptive calibration exercise: rolling-origin windows overlap, so repeated target scores are dependent. We do not claim a finite-sample conformal coverage guarantee.
+Intervals were calibrated at 80% on the separate calibration-user group using horizon-specific split-conformal expansion. Coverage and width below are measured on the untouched held-out users.
 
 | model | MAE ↓ | MASE vs seasonal naive ↓ | actual / nominal coverage | interval width | pinball loss ↓ | test targets |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -22,20 +22,47 @@ Intervals were expanded to a nominal 80% using horizon-specific split-conformal 
 | `moving_average_7d` | 0.554 | 0.915 | 78.3% / 80% | 1.609 | 0.175 | 1301 |
 | `seasonal_naive` | 0.641 | 1.024 | 92.5% / 80% | 1.869 | 0.195 | 1301 |
 | `exponential_smoothing` | 0.558 | 0.925 | 77.6% / 80% | 1.636 | 0.175 | 1301 |
+| `gru` | 0.584 | 1.082 | 93.5% / 80% | 3.043 | 0.201 | 1301 |
+| `lstm` | 0.621 | 1.212 | 87.4% / 80% | 3.016 | 0.210 | 1301 |
+| `transformer` | 0.561 | 1.024 | 89.0% / 80% | 2.820 | 0.193 | 1301 |
 
-**Neural result: not measured.** The configured GRU, LSTM and Transformer were not trained because PyTorch was unavailable. No claim that a neural model beats the baseline is possible from this run.
+**Result:** the best neural model (`transformer`, MAE 0.561) did not beat the best baseline (`moving_average_7d`, MAE 0.554) on held-out synthetic users. This is a synthetic benchmark, not a product-quality claim.
 
 ### Nominal vs actual interval coverage
 
-Nominal marginal coverage is 80%; see each table row for held-out actual coverage and mean interval width. Per-horizon values are recorded in the MLflow summary artifact. Coverage is an empirical result on this simulator, not a guarantee for an individual or a formal finite-sample coverage claim: overlapping rolling-origin windows induce dependent target scores.
+Nominal marginal coverage is 80%; see each table row for held-out actual coverage and mean interval width. Per-horizon values are recorded in the MLflow summary artifact. Coverage is an empirical result on this simulator, not a guarantee for an individual.
 
 ## Feature ablation
 
-Not evaluated: PyTorch is unavailable, so neural feature ablations could not run. Baselines do not consume those feature groups; their values would not be an informative ablation.
+| model | ablated group | MAE | change vs full model |
+| --- | --- | ---: | ---: |
+| `gru` | `context` | 0.598 | +0.013 |
+| `gru` | `day_of_week` | 0.605 | +0.021 |
+| `gru` | `energy` | 0.584 | -0.000 |
+| `lstm` | `context` | 0.632 | +0.011 |
+| `lstm` | `day_of_week` | 0.628 | +0.007 |
+| `lstm` | `energy` | 0.622 | +0.001 |
+| `transformer` | `context` | 0.570 | +0.009 |
+| `transformer` | `day_of_week` | 0.614 | +0.053 |
+| `transformer` | `energy` | 0.561 | +0.000 |
 
 ## Few-shot last-layer personalisation
 
-Not evaluated: neural weights were unavailable. The update code and optional tests are included.
+### `gru`
+
+Accepted 15 of 15 attempted held-out-user updates. Updates affected only the regularised, norm-bounded final linear layer and were reverted when a later guard block exceeded the loss tolerance.
+Base test MAE: 0.584; few-shot test MAE: 0.565. Test outcomes were used only after adaptation for scoring. The later guard block could reject an update but was never optimised on. Intervals are not claimed for personalised forecasts.
+
+### `lstm`
+
+Accepted 15 of 15 attempted held-out-user updates. Updates affected only the regularised, norm-bounded final linear layer and were reverted when a later guard block exceeded the loss tolerance.
+Base test MAE: 0.621; few-shot test MAE: 0.594. Test outcomes were used only after adaptation for scoring. The later guard block could reject an update but was never optimised on. Intervals are not claimed for personalised forecasts.
+
+### `transformer`
+
+Accepted 15 of 15 attempted held-out-user updates. Updates affected only the regularised, norm-bounded final linear layer and were reverted when a later guard block exceeded the loss tolerance.
+Base test MAE: 0.561; few-shot test MAE: 0.568. Test outcomes were used only after adaptation for scoring. The later guard block could reject an update but was never optimised on. Intervals are not claimed for personalised forecasts.
+
 
 ## Cold-start serving policy (separate from this research model)
 
@@ -43,7 +70,7 @@ The product Outlook requires explicit opt-in, at least 14 distinct numeric check
 
 ## Reproducibility and limitations
 
-- MLflow run: `94aec4c8845c4768b4138aad7c68299e`; config fingerprint and environment are logged.
+- MLflow run: `37eebe3842f3493cb252f4b0740c6711`; config fingerprint and environment are logged.
 - Dataset manifest: 82f956d8a8aef686c7be0e02fe50e6267bd018a28473700d4e430446cc290c3c (synthetic generated rows; no panel file or weights were written to Git).
 - Assumptions: weekly sine seasonality; individual slow trend and factor effects; user-specific AR(1) noise; logging missing-at-random given weekday/user rate.
 - Synthetic data cannot represent real variation, cultural context, measurement error, MNAR logging or clinical meaning. Valence is not a diagnosis or risk score.

@@ -82,6 +82,17 @@ dev = [
 where = ["src"]
 include = ["manovia_ml*"]
 
+[tool.setuptools.package-data]
+# PEP 561 marker (Day 49). `manovia_ml` is type-checked under `mypy --strict`
+# (see `make ml-lint`), so it is a typed package that simply had no marker. Without
+# the marker, a consumer that installs it *and* type-checks sees `import-untyped`
+# instead of the annotations it already has — which is how `make lint` in
+# `backend/` started failing for `tests/unit/test_fairness_gates.py` on a machine
+# where `pip install -e "ml[ml,dev]"` had run, while passing in CI where it had
+# not. The marker makes the local and CI results agree instead of pinning an
+# environment-dependent `type: ignore`.
+manovia_ml = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Marked tests need the network or a real corpus (GoEmotions download, Colab).

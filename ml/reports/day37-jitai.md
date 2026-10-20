@@ -58,4 +58,4 @@ Values are mean bounded reward per decision, averaged over seeds. `FLAG` means t
 - The linear feature model cannot represent every interaction. The population prior is empirical-Bayes warm-starting, not a universal treatment effect.
 - State and exploration ledgers are process-local. Durable per-user state, privacy review, native-language copy review, and deployment integration are prerequisites for product use.
 
-MLflow run id: `f329789262f64a4ab624e0e72dd1ca42`.
+MLflow run id: `e3aa0567709149068a55b5fb25defa40`.
