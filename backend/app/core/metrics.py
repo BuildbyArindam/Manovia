@@ -158,7 +158,7 @@ class Metrics:
         # --- Kill-switch fallback invocations (Day 48) --------------------
         self.feature_fallback_total = Counter(
             "feature_fallback_total",
-            "Times a killed feature served its safe fallback.",
+            "Times a disabled feature served its safe fallback.",
             labelnames=("feature",),
             namespace=namespace,
             registry=self.registry,
