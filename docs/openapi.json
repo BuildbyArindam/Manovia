@@ -2833,6 +2833,19 @@
         "title": "FactorReportOut",
         "type": "object"
       },
+      "FlagToggle": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "FlagToggle",
+        "type": "object"
+      },
       "GrantIn": {
         "properties": {
           "granted": {
@@ -5487,93 +5500,6 @@
         "title": "RecommendationResponse",
         "type": "object"
       },
-      "RecordInput": {
-        "properties": {
-          "automatic_thought": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Automatic Thought",
-            "type": "string"
-          },
-          "balanced_thought": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Balanced Thought",
-            "type": "string"
-          },
-          "emotion": {
-            "enum": [
-              "anxiety",
-              "sadness",
-              "anger",
-              "fear",
-              "shame",
-              "guilt",
-              "frustration",
-              "other"
-            ],
-            "title": "Emotion",
-            "type": "string"
-          },
-          "evidence_against": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Evidence Against",
-            "type": "string"
-          },
-          "evidence_for": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Evidence For",
-            "type": "string"
-          },
-          "intensity_after": {
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Intensity After",
-            "type": "integer"
-          },
-          "intensity_before": {
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Intensity Before",
-            "type": "integer"
-          },
-          "situation": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Situation",
-            "type": "string"
-          },
-          "what_helped": {
-            "items": {
-              "enum": [
-                "looking at evidence",
-                "another perspective",
-                "taking a pause",
-                "talking to someone",
-                "writing it down"
-              ],
-              "type": "string"
-            },
-            "maxItems": 5,
-            "title": "What Helped",
-            "type": "array"
-          }
-        },
-        "required": [
-          "situation",
-          "automatic_thought",
-          "evidence_for",
-          "evidence_against",
-          "balanced_thought",
-          "emotion",
-          "intensity_before",
-          "intensity_after"
-        ],
-        "title": "RecordInput",
-        "type": "object"
-      },
       "RecordView": {
         "properties": {
           "automatic_thought": {
@@ -7256,6 +7182,162 @@
         "title": "HistoryResponse",
         "type": "object"
       },
+      "app__api__v1__cbt__RecordInput": {
+        "properties": {
+          "automatic_thought": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Automatic Thought",
+            "type": "string"
+          },
+          "balanced_thought": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Balanced Thought",
+            "type": "string"
+          },
+          "emotion": {
+            "enum": [
+              "anxiety",
+              "sadness",
+              "anger",
+              "fear",
+              "shame",
+              "guilt",
+              "frustration",
+              "other"
+            ],
+            "title": "Emotion",
+            "type": "string"
+          },
+          "evidence_against": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Evidence Against",
+            "type": "string"
+          },
+          "evidence_for": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Evidence For",
+            "type": "string"
+          },
+          "intensity_after": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Intensity After",
+            "type": "integer"
+          },
+          "intensity_before": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Intensity Before",
+            "type": "integer"
+          },
+          "situation": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Situation",
+            "type": "string"
+          },
+          "what_helped": {
+            "items": {
+              "enum": [
+                "looking at evidence",
+                "another perspective",
+                "taking a pause",
+                "talking to someone",
+                "writing it down"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "What Helped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "situation",
+          "automatic_thought",
+          "evidence_for",
+          "evidence_against",
+          "balanced_thought",
+          "emotion",
+          "intensity_before",
+          "intensity_after"
+        ],
+        "title": "RecordInput",
+        "type": "object"
+      },
+      "app__api__v1__drift__RecordInput": {
+        "properties": {
+          "abstained": {
+            "default": false,
+            "title": "Abstained",
+            "type": "boolean"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding"
+          },
+          "guard_blocked": {
+            "default": false,
+            "title": "Guard Blocked",
+            "type": "boolean"
+          },
+          "language": {
+            "default": "en",
+            "title": "Language",
+            "type": "string"
+          },
+          "safety_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Level"
+          },
+          "text_length": {
+            "title": "Text Length",
+            "type": "integer"
+          },
+          "window": {
+            "title": "Window",
+            "type": "string"
+          }
+        },
+        "required": [
+          "window",
+          "text_length"
+        ],
+        "title": "RecordInput",
+        "type": "object"
+      },
       "app__api__v1__exercises__HistoryResponse": {
         "properties": {
           "count": {
@@ -8000,7 +8082,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecordInput"
+                "$ref": "#/components/schemas/app__api__v1__cbt__RecordInput"
               }
             }
           },
@@ -8723,6 +8805,213 @@
         ]
       }
     },
+    "/api/v1/drift/alerts": {
+      "get": {
+        "operationId": "drift_alerts_api_v1_drift_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": true,
+            "schema": {
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseline",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Baseline"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drift Alerts Api V1 Drift Alerts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drift Alerts",
+        "tags": [
+          "drift"
+        ]
+      }
+    },
+    "/api/v1/drift/record": {
+      "post": {
+        "operationId": "record_drift_api_v1_drift_record_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__api__v1__drift__RecordInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Record Drift Api V1 Drift Record Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Drift",
+        "tags": [
+          "drift"
+        ]
+      }
+    },
+    "/api/v1/drift/report": {
+      "get": {
+        "operationId": "drift_report_api_v1_drift_report_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": true,
+            "schema": {
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseline",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Baseline"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drift Report Api V1 Drift Report Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drift Report",
+        "tags": [
+          "drift"
+        ]
+      }
+    },
+    "/api/v1/drift/snapshot/{window}": {
+      "get": {
+        "operationId": "drift_snapshot_api_v1_drift_snapshot__window__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "window",
+            "required": true,
+            "schema": {
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drift Snapshot Api V1 Drift Snapshot  Window  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drift Snapshot",
+        "tags": [
+          "drift"
+        ]
+      }
+    },
     "/api/v1/exercises": {
       "get": {
         "operationId": "list_exercises_api_v1_exercises_get",
@@ -8949,6 +9238,127 @@
         "summary": "Complete Exercise",
         "tags": [
           "exercises"
+        ]
+      }
+    },
+    "/api/v1/feature-flags": {
+      "get": {
+        "operationId": "list_flags_api_v1_feature_flags_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Flags Api V1 Feature Flags Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Flags",
+        "tags": [
+          "feature-flags"
+        ]
+      }
+    },
+    "/api/v1/feature-flags/{flag_name}": {
+      "post": {
+        "operationId": "set_flag_api_v1_feature_flags__flag_name__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flag_name",
+            "required": true,
+            "schema": {
+              "title": "Flag Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagToggle"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Flag Api V1 Feature Flags  Flag Name  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Flag",
+        "tags": [
+          "feature-flags"
+        ]
+      }
+    },
+    "/api/v1/feature-flags/{flag_name}/reset": {
+      "post": {
+        "operationId": "reset_flag_api_v1_feature_flags__flag_name__reset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flag_name",
+            "required": true,
+            "schema": {
+              "title": "Flag Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reset Flag Api V1 Feature Flags  Flag Name  Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Flag",
+        "tags": [
+          "feature-flags"
         ]
       }
     },

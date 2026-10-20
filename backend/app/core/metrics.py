@@ -139,6 +139,31 @@ class Metrics:
             registry=self.registry,
         )
 
+        # --- Drift monitoring (Day 48): alerts fired, never raw inputs ----
+        self.drift_alerts_total = Counter(
+            "drift_alerts_total",
+            "Drift alerts fired, by metric and severity. No text, no ids.",
+            labelnames=("metric", "severity"),
+            namespace=namespace,
+            registry=self.registry,
+        )
+        self.drift_checks_total = Counter(
+            "drift_checks_total",
+            "Drift checks performed, by window.",
+            labelnames=("window",),
+            namespace=namespace,
+            registry=self.registry,
+        )
+
+        # --- Kill-switch fallback invocations (Day 48) --------------------
+        self.feature_fallback_total = Counter(
+            "feature_fallback_total",
+            "Times a disabled feature served its safe fallback.",
+            labelnames=("feature",),
+            namespace=namespace,
+            registry=self.registry,
+        )
+
     # --- recording helpers (used by services; keep call sites one-liners) --
 
     def observe_request(self, method: str, path: str, status: int, duration_seconds: float) -> None:
@@ -168,6 +193,15 @@ class Metrics:
         """One output-guard verdict; ``outcome`` is from the closed set."""
         self.output_guard_total.labels(outcome=outcome).inc()
 
+    def record_drift_alert(self, metric: str, severity: str) -> None:
+        self.drift_alerts_total.labels(metric=metric, severity=severity).inc()
+
+    def record_drift_check(self, window: str) -> None:
+        self.drift_checks_total.labels(window=window).inc()
+
+    def record_feature_fallback(self, feature: str) -> None:
+        self.feature_fallback_total.labels(feature=feature).inc()
+
 
 _instance: Metrics | None = None
 
@@ -191,7 +225,7 @@ def _build_route_template_map(app: object) -> dict[int, str]:
     """Map original route objects to their full (prefix-included) template.
 
     FastAPI ≥0.13 keeps included routers lazily mounted (``_IncludedRouter``):
-    the route Starlette writes to ``scope["route"]`` carries its *own* path
+    the route Starlette writes to ``scope[\"route\"]`` carries its *own* path
     (``/health``), not the mounted one (``/api/v1/health``). To label metrics
     with the path a person's browser actually called, the middleware needs the
     prefix too. This walks the app's route tree once, per app, and resolves
@@ -199,7 +233,7 @@ def _build_route_template_map(app: object) -> dict[int, str]:
 
     Defensive by design: every access goes through ``getattr``, and anything
     the walker cannot understand is simply absent from the map (the caller
-    falls back to ``scope["route"].path`` and then to the fixed unmatched
+    falls back to ``scope[\"route\"].path`` and then to the fixed unmatched
     label). The private types it reads are pinned by ``fastapi==0.143.0``.
     """
     mapping: dict[int, str] = {}
@@ -229,7 +263,7 @@ def path_template_for_scope(scope: Scope) -> str:
     """The full route template for a request scope, or a fixed unmatched label.
 
     Resolution order: the per-app template map (full path with mount prefix,
-    e.g. ``/api/v1/chat/{session_id}``), then ``scope["route"].path`` for
+    e.g. ``/api/v1/chat/{session_id}``), then ``scope[\"route\"].path`` for
     plain Starlette routers, then the fixed ``:unmatched`` label. Exporting
     the raw path would make one label value per conversation — that is an
     identifier leak and a cardinality bomb, so it never happens.

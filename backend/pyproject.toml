@@ -258,6 +258,7 @@ module = [
     # "manovia_worker.*" is checked here (it subclasses the untyped worker).
     "uvicorn_worker.*", "gunicorn.*", "prometheus_client.*", "sentry_sdk.*",
     "manovia_worker.*", "gunicorn.conf",
+    "webrtcvad.*", "webrtcvad",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"

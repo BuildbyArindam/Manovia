@@ -27,7 +27,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-import webrtcvad  # type: ignore[import-untyped]
+import webrtcvad
 
 from app.content.i18n import RenderedTemplate
 from app.core.config import Settings
