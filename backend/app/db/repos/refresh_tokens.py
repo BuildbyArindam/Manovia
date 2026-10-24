@@ -45,6 +45,25 @@ class RefreshTokenRepository:
         stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
         return (await self._session.execute(stmt)).scalars().one_or_none()
 
+    async def claim_for_rotation(self, token_id: uuid.UUID, *, revoked_at: datetime) -> bool:
+        """Atomically mark one token as spent. True only for the single winner.
+
+        Day 26: rotation used to read ``revoked_at`` and then write it as two
+        separate steps, so two simultaneous refreshes of the same token could
+        both pass the check and each mint a live successor. The conditional
+        ``UPDATE ... WHERE revoked_at IS NULL`` lets the database decide: exactly
+        one caller sees ``rowcount == 1``; every other caller has presented a
+        token that is already spent and is treated as reuse.
+        """
+        stmt = (
+            update(RefreshToken)
+            .where(RefreshToken.id == token_id, RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=revoked_at)
+        )
+        result = cast("CursorResult[int]", await self._session.execute(stmt))
+        await self._session.flush()
+        return int(result.rowcount) == 1
+
     async def family_is_active(self, family_id: uuid.UUID) -> bool:
         """True while the family still has an unrevoked token.
 

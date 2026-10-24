@@ -37,8 +37,11 @@ Two deliberate absences:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
-from datetime import UTC, datetime
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 import structlog
@@ -68,6 +71,38 @@ from app.services.safety.escalation import EscalationPlan, Escalator
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 _log = structlog.get_logger(__name__)
+
+# Day 26: a double-tap or a client retry must not record the same questionnaire
+# twice (it would double the history and distort the trend chart). Identical
+# answers from the same person for the same instrument inside this window are
+# one submission. The window is deliberately short so a person who really does
+# answer the same way again a minute later still gets a new result.
+DUPLICATE_SUBMISSION_WINDOW = timedelta(seconds=10)
+
+# One lock per (person, instrument) serialises concurrent submissions inside a
+# worker so the second one sees the first one's committed row. Across several
+# workers the same protection comes from the short window above plus the
+# database's read-committed view; the lock table is pruned as locks free up.
+_submit_locks: dict[tuple[uuid.UUID, str], tuple[asyncio.Lock, int]] = {}
+
+
+@asynccontextmanager
+async def _submission_lock(
+    user_id: uuid.UUID, instrument: AssessmentInstrument
+) -> AsyncIterator[None]:
+    key = (user_id, instrument.value)
+    lock, users = _submit_locks.get(key, (asyncio.Lock(), 0))
+    _submit_locks[key] = (lock, users + 1)
+    try:
+        async with lock:
+            yield
+    finally:
+        lock, users = _submit_locks[key]
+        if users <= 1:
+            del _submit_locks[key]
+        else:
+            _submit_locks[key] = (lock, users - 1)
+
 
 #: Assessments contain no free text, but the routes still require the same two
 #: agreements every other personal-data surface does (see ADR 0004).
@@ -523,27 +558,41 @@ async def submit_assessment(
 
     now = _now()
     repo = AssessmentRepository(session)
-    previous_rows = await repo.list_for_user(user.id, instrument=instrument, limit=1)
-    previous = previous_rows[0] if previous_rows else None
+    async with _submission_lock(user.id, instrument):
+        previous_rows = await repo.list_for_user(user.id, instrument=instrument, limit=2)
+        previous = previous_rows[0] if previous_rows else None
 
-    crisis: CrisisView | None = None
-    if scored.flagged_for_crisis and definition.safety is not None:
-        crisis = _crisis_view(
-            definition, _plan_for_item9(definition, user=user, escalator=escalator)
+        crisis: CrisisView | None = None
+        if scored.flagged_for_crisis and definition.safety is not None:
+            crisis = _crisis_view(
+                definition, _plan_for_item9(definition, user=user, escalator=escalator)
+            )
+
+        duplicate = (
+            previous is not None
+            and dict(previous.answers) == dict(scored.answers_document)
+            and timedelta(0) <= now - as_utc(previous.created_at) < DUPLICATE_SUBMISSION_WINDOW
         )
-
-    row = await repo.record(
-        user_id=user.id,
-        instrument=instrument,
-        answers=scored.answers_document,
-        total=scored.total,
-        band=scored.band_id,
-    )
-    # The API clock decides the ordering the history reads, not the database's
-    # default, so a pinned clock in a test is the clock the rows carry.
-    row.created_at = now
-    await session.commit()
-    await session.refresh(row)
+        if duplicate and previous is not None:
+            # Same answers a moment ago: return that result, store nothing new.
+            # The crisis view above is still computed, so an item-9 response is
+            # never swallowed by de-duplication.
+            row = previous
+            previous = previous_rows[1] if len(previous_rows) > 1 else None
+        else:
+            row = await repo.record(
+                user_id=user.id,
+                instrument=instrument,
+                answers=scored.answers_document,
+                total=scored.total,
+                band=scored.band_id,
+            )
+            # The API clock decides the ordering the history reads, not the
+            # database's default, so a pinned clock in a test is the clock the
+            # rows carry.
+            row.created_at = now
+            await session.commit()
+            await session.refresh(row)
 
     _log.info(
         "assessment_submitted",

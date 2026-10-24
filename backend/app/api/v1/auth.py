@@ -291,7 +291,17 @@ async def refresh(
     if user is None or user.is_deleted:
         raise ApiError(401, "account_deleted", "This account no longer exists.")
 
-    row.revoked_at = utcnow()
+    # Atomic claim (Day 26): only one concurrent caller may rotate this token.
+    # A caller that loses the race holds a token that is now spent, which is
+    # exactly the reuse case, so it burns the family like any other replay.
+    if not await repo.claim_for_rotation(row.id, revoked_at=utcnow()):
+        await repo.revoke_family(row.family_id, revoked_at=utcnow())
+        await session.commit()
+        raise ApiError(
+            401,
+            "refresh_token_reused",
+            "This session was already signed out. Please sign in again.",
+        )
     out = await _issue_session(session, tokens, user, family_id=row.family_id)
     await session.commit()
     return out

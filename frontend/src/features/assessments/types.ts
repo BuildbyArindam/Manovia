@@ -30,7 +30,7 @@ export interface InstrumentSummary {
 export interface ResponseOption {
   value: number;
   label: string;
-  detail: string | null;
+  detail?: string | null;
 }
 
 export interface AssessmentItem {
