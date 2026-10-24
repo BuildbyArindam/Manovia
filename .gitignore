@@ -87,3 +87,8 @@ data/
 # rather than the directory.
 backend/app/ml_artifacts/retrieval_v1/reranker_weights.json
 backend/app/ml_artifacts/retrieval_v1/reranker.json
+
+# Day 26 generated outputs
+backend/loadtest/out/
+backend/flaky-hunt/
+backend/mutants/
