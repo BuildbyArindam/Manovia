@@ -1,5 +1,60 @@
 # Manovia — Progress
 
+## Day 26 completion — test hardening, mutation testing, contract checks and load testing
+
+Done on 2026-10-24 as a catch-up for the parts of Day 26 that the 2026-10-21 audit
+found missing. Branch `day-26-completion-test-hardening` (not merged).
+Decision record: [ADR 0049](docs/adr/0049-test-hardening-and-load-testing.md).
+Mutation results: [docs/mutation-report.md](docs/mutation-report.md). Load test:
+[backend/loadtest/README.md](backend/loadtest/README.md).
+
+| Day 26 item | Result |
+|---|---|
+| Race tests (refresh rotation, double-submit) | **Two real bugs found and fixed.** 12 simultaneous refreshes of one token could each succeed; now exactly one does (atomic conditional `UPDATE`). A double-tapped questionnaire was stored twice; identical answers within 10 s are now one result (item-9 support options still returned). `tests/integration/test_concurrency_races.py`: 5 tests, 3 fail without the fixes. Re-checked on real Postgres 16 behind gunicorn: 1 of 12 refreshes won, 10 submissions stored once. |
+| Mutation testing on the safety rules | `backend/scripts/mutation_safety.py` (in-repo runner; mutmut cannot run this suite, see ADR 0049). 94 mutants in `ensemble`, `escalation`, `session_risk`: **64 killed at first (68.1%), 30 survived; 94/94 killed after 3 new test files** (62 tests). `rules.py`: 40-mutant sample, 26 to 39 killed, 1 left (judged equivalent). The rest of `rules.py` has not been mutated. |
+| OpenAPI contract check | `openapi-typescript` types generated from `docs/openapi.json`; `npm run api:check` and a compile-time contract (`src/lib/apiContract.ts`) run in the frontend CI job. First run found a real mismatch (the client typed `ResponseOption.detail` as required, the API treats it as optional); fixed. Verified: renaming a field in the spec fails `api:check` and then `tsc`. The contract covers 4 shapes, not the whole API. |
+| Locust load test, 100 users | `backend/loadtest/` (Locust scenario, `run.sh`). SQLite + uvicorn: 8,913 requests, 0 failures, mood p95 360 ms. **gunicorn + Postgres 16** (production shape): 9,587 requests, **0 failures, mood p95 34 ms**, chat (Fake LLM) p95 48 ms. Target p95 < 500 ms met for every non-LLM endpoint. |
+| Flaky-test hunt | Backend suite 5 consecutive times: **5596 passed, 4 skipped every time; 0 flaky tests.** `scripts/flaky_hunt.sh`. |
+
+Also: a Mermaid pipeline diagram in the README (Day 28 item), ADR 0049.
+
+### Verification run on 2026-10-24
+
+| Check | Result |
+|---|---|
+| `make test` (backend, with coverage gates) | 5596 passed, 4 skipped; overall 94.32% statements / 85.62% branches; all gates satisfied; ensemble, escalation, session_risk 100%/100% |
+| `ruff check`, `ruff format --check`, `mypy app tests` | clean |
+| Frontend `eslint`, `tsc --noEmit` (both configs), `vite build` | clean |
+| Frontend `vitest run` | 2912 passed, 3 skipped, **5 failed** — all five in `private/bundle/drift.test.ts`, see below |
+| `alembic upgrade head` / `downgrade base` / `upgrade head` on PostgreSQL 16 | all succeed |
+| `alembic check` on PostgreSQL 16 | **reports drift**: five JSON columns (`cbt_records.what_helped`, `clinician_shares.formats` and `.items`, `deletion_receipts.rows_deleted`, `user_settings.preferred_exercise_tags`) compare as `JSON(astext_type=Text())` vs `JSON()`. Cosmetic; nothing runs `alembic check` against Postgres in CI or the release workflow. Not fixed. |
+
+### Known issues found, not fixed
+
+1. **Private-bundle drift test fails on this machine's Node (22.22.0, Unicode 16.0).**
+   `safety-bundle.json` embeds Unicode lowercase overrides computed at build time,
+   so the committed file only matches the Node version that built it. It fails on
+   an untouched checkout too. CI uses `node-version: "22"` (a moving target): it
+   can turn red on its own whenever the runner's Node updates its Unicode tables.
+   Pin the Node patch version in CI or generate the overrides from a pinned data
+   file. I did not regenerate the bundle, because that would make it match this
+   machine and not CI.
+2. **Two earlier 500s on `POST /auth/guest`** (2 of 8,659 requests, first SQLite
+   load run) were not reproduced in two re-runs and their log was not captured.
+   Cause unknown; `run.sh` now keeps the server log.
+3. **Cross-worker double-submit:** the 10-second de-duplication window is not a
+   lock across workers. Production runs one worker by design, so this is
+   theoretical until that changes. A unique idempotency key would close it.
+4. `rules.py` is only sampled (40 of its mutation sites).
+
+### Still not done (cannot be done from this environment)
+
+Real hosted deployment and live demo; Playwright journeys and Lighthouse; real
+device voice, XR and WebGPU checks; the Day 1 `legacy/chatbot-1/` source and the
+49-day plan file (neither was ever supplied); the Day 28 hero GIF; a real on-device
+model for Private Mode (`PRIVATE_LLM_MODEL_ID` unset); the four helplines still marked
+`needs_verification`; and the human reviews (clinical, native-speaker, security).
+
 ## Day 49 — v2.0 integration, technical report and release
 
 Built and verified on 2026-10-20 on the Arena-pinned branch

@@ -106,6 +106,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: API contract (generated types match docs/openapi.json)
+        run: npm run api:check
+
       - name: TypeScript typecheck
         run: npm run typecheck
 

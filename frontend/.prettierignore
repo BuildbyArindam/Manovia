@@ -27,3 +27,4 @@ src/features/private/unicode/python-casefold.json
 # plus backend content. Its --check mode is part of `npm run private:check`, so a
 # formatter rewriting it would make the gate compare against the formatter.
 public/private/model-manifest.json
+src/lib/api-schema.d.ts

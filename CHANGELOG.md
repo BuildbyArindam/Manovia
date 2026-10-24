@@ -8,6 +8,19 @@ note for each. Releases are cut by pushing a `v*` tag, which runs
 `.github/workflows/release.yml` (migration round-trip on Postgres 16, images
 to GHCR, GitHub release).
 
+## [Unreleased]
+
+### Fixed
+- Refresh-token rotation is atomic: two simultaneous refreshes of one token can no longer both succeed (the loser is treated as reuse and the family is revoked).
+- A double-submitted questionnaire (same answers within 10 seconds) is stored once; the item-9 support options are still returned.
+- Frontend `ResponseOption.detail` is optional, matching the API.
+
+### Added
+- Safety mutation testing runner and report ([docs/mutation-report.md](docs/mutation-report.md)); 63 new boundary tests for the ensemble, escalation, session accumulator and long-message reading.
+- OpenAPI contract check for the frontend client (`npm run api:check`, run in CI).
+- Locust load test (`backend/loadtest/`) and a repeated-run flaky-test script.
+- [ADR 0049](docs/adr/0049-test-hardening-and-load-testing.md).
+
 ## [2.0.0] — 2026-10-20
 
 The v2.0 release: the deep-learning and advanced-features track (Days 31–49), a
