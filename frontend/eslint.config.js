@@ -10,6 +10,7 @@ export default tseslint.config(
     // not application source. Running e2e must not make the next lint fail.
     ignores: [
       "dist",
+      "src/lib/api-schema.d.ts",
       "coverage",
       "node_modules",
       "*.tsbuildinfo",

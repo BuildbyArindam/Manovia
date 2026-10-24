@@ -190,6 +190,19 @@ Manovia is a monorepo: a FastAPI backend, a React, Vite and TypeScript frontend,
 
 ![v2.0 architecture poster: the request path, the ML platform and the on-device path](docs/assets/v2-architecture-poster.svg)
 
+The order of a chat turn is the safety property: the crisis gate runs before anything that can call a model, and nothing generated reaches a person before the output guard accepts it.
+
+```mermaid
+flowchart LR
+    U["Message"] --> S["Safety: rules + ML ensemble"]
+    S -->|"HIGH / IMMINENT"| C["Pre-written crisis reply<br/>no model call"]
+    S -->|"NONE / LOW / MEDIUM"| R["Redact, then emotion + retrieval"]
+    R --> L["LLM provider chain"]
+    L --> G["Output guard"]
+    G -->|"pass"| A["Reply"]
+    G -->|"reject twice"| T["Safe local template"]
+```
+
 - [docs/technical-report.md](docs/technical-report.md): the paper-style account of the whole system — design, safety architecture, models, evaluation, privacy, limitations.
 - [docs/architecture.md](docs/architecture.md): the chat pipeline, sequence diagrams for a chat turn and a crisis turn, the ML platform, the on-device path and the offline model.
 - [docs/performance.md](docs/performance.md): bundle budgets, lazy-loading of the heavy modules, startup budgets and what is not measured.
