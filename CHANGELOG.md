@@ -11,6 +11,9 @@ to GHCR, GitHub release).
 ## [Unreleased]
 
 ### Fixed
+- The GitHub Pages deploy workflow can start again: `upload-pages-artifact` and `deploy-pages` were pinned to commit SHAs that do not exist, so the job failed while resolving actions (before any build ran). Both are now pinned to the matching v5 releases, and `dist/.nojekyll` is no longer dropped from the artifact.
+- The Pages deploy now skips with an actionable warning (instead of a red X nobody can act on) when the repository has not been switched to *Settings → Pages → Source: GitHub Actions*.
+- The app works when it is served from a subpath, as a GitHub Pages project site is (`/Manovia/`): the router basename, the static web-manifest URLs and the service-worker app-shell lookup all derive from Vite's base instead of assuming the origin root.
 - Refresh-token rotation is atomic: two simultaneous refreshes of one token can no longer both succeed (the loser is treated as reuse and the family is revoked).
 - A double-submitted questionnaire (same answers within 10 seconds) is stored once; the item-9 support options are still returned.
 - Frontend `ResponseOption.detail` is optional, matching the API.

@@ -2,9 +2,9 @@
   "name": "Manovia",
   "short_name": "Manovia",
   "description": "A private, safety-first self-help companion for everyday wellbeing. Not therapy, not a diagnosis, and not a crisis service.",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#faf6ef",
   "theme_color": "#2e6a4e",
@@ -13,19 +13,19 @@
   "categories": ["health", "lifestyle"],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/maskable-512.png",
+      "src": "./icons/maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -36,10 +36,10 @@
       "name": "Check in",
       "short_name": "Check in",
       "description": "Record how you are feeling right now.",
-      "url": "/mood",
+      "url": "./mood",
       "icons": [
         {
-          "src": "/icons/icon-192.png",
+          "src": "./icons/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -49,10 +49,10 @@
       "name": "Breathe",
       "short_name": "Breathe",
       "description": "Open a guided breathing exercise. It works offline.",
-      "url": "/exercises",
+      "url": "./exercises",
       "icons": [
         {
-          "src": "/icons/icon-192.png",
+          "src": "./icons/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -62,10 +62,10 @@
       "name": "Need help now?",
       "short_name": "Need help",
       "description": "Opens the crisis helplines for your region. They are saved on this device and work offline.",
-      "url": "/?help=1",
+      "url": "./?help=1",
       "icons": [
         {
-          "src": "/icons/icon-192.png",
+          "src": "./icons/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
