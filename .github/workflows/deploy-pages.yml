@@ -1,7 +1,9 @@
 # Manovia — fully free deploy to GitHub Pages (no Docker, no credit card)
 #
-# Triggers: push to main + manual dispatch.
+# Triggers: push to main, pull requests (build only) and manual dispatch.
 # Builds the frontend statically and publishes frontend/dist to GitHub Pages.
+# Pull requests run the build so a broken Pages build is caught *before* the
+# merge that would publish it; the deploy job is main/dispatch only.
 # Backend is NOT on Pages — the frontend talks to VITE_API_BASE_URL if you set
 # it (e.g. a Render backend), otherwise it runs in offline/PWA demo mode
 # (breathing exercises, helplines, PWA install still work).
@@ -34,6 +36,7 @@ name: Deploy frontend — GitHub Pages (fully free)
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
     inputs:
       api_base_url:
@@ -105,6 +108,9 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: build
+    # Build on pull requests, publish only from main (or a manual dispatch).
+    # A pull request ref would also fail the Pages OIDC claim check.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
