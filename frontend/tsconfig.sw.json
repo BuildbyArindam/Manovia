@@ -18,5 +18,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": []
   },
-  "include": ["src/sw", "src/pwa/swRoutes.ts"]
+  "include": ["src/sw", "src/pwa/swRoutes.ts", "src/lib/basePath.ts"]
 }

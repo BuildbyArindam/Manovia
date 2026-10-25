@@ -37,6 +37,7 @@ import { registerRoute } from "workbox-routing";
 import { NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
 import type { WorkboxPlugin } from "workbox-core/types";
 
+import { appShellUrl } from "../lib/basePath";
 import {
   CACHE_NAMES,
   EXERCISES_MAX_AGE_SECONDS,
@@ -68,7 +69,10 @@ cleanupOutdatedCaches();
 
 // ---------------------------------------------------------------------------
 // 2. Client-side routes answer with the precached document.
-const shellHandler = createHandlerBoundToURL("/index.html");
+// Resolved against the worker's own URL (`…/sw.js` → `…/index.html`) so it
+// matches the base-relative precache key: a hardcoded "/index.html" resolves
+// outside the scope on a /Manovia/ deployment and throws at install time.
+const shellHandler = createHandlerBoundToURL(appShellUrl(self.location));
 registerRoute(
   ({ request, url }) =>
     request.mode === "navigate" && isAppShellNavigation(url, self.location.origin),

@@ -31,6 +31,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/AppShell";
 import type { ApiClient } from "@/lib/api";
+import { routerBasename } from "@/lib/basePath";
 import { t } from "@/lib/i18n/i18n";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { OnboardingProvider, useOnboarding } from "@/onboarding/OnboardingProvider";
@@ -370,7 +371,13 @@ export function App(): ReactElement {
       <ThemeProvider>
         <SensoryProvider>
           <QueryClientProvider client={queryClient}>
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <BrowserRouter
+              // A GitHub Pages project site is served from `/Manovia/`, so the
+              // router has to strip that prefix before matching; at the origin
+              // root the basename is `/` and nothing changes.
+              basename={routerBasename(import.meta.env.BASE_URL)}
+              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            >
               <OnboardingProvider>
                 <AppRoutes />
               </OnboardingProvider>

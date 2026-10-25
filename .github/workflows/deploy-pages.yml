@@ -9,10 +9,20 @@
 # Setup (one time, 30 seconds):
 #   1. GitHub → repo Settings → Pages → Source: "GitHub Actions"
 #   2. Push to main (or Run workflow manually) → live at https://<user>.github.io/Manovia/
+# Until step 1 is done the build still runs (so a broken build is caught), and
+# the deploy job skips with a warning naming this setting — it cannot enable
+# Pages itself, because that needs repository administration rights.
+#
+# Actions are pinned to commit SHAs (a tag is mutable; this workflow runs on
+# every push to main). `actions/upload-pages-artifact` and `actions/deploy-pages`
+# must be a matching pair — both are on v5 here. Publishing a Pages site also
+# needs `pages: write` + `id-token: write` at the top of this file.
 #
 # Custom domain (optional, still free Pages):
 #   Settings → Pages → Custom domain → manovia.example.com → set ALLOWED_ORIGINS on backend.
 #   Then set VITE_BASE="/" in the workflow env below (or keep default).
+#   The app reads its base path at build time (router basename, static manifest
+#   URLs and service-worker scope), so "/" and "/Manovia/" both work.
 #
 # API wiring (optional):
 #   Repo → Settings → Secrets and variables → Actions → Variables:
@@ -84,9 +94,13 @@ jobs:
           fi
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d9d38f73ed63ff0f7aaf3395ff230e # v3
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: frontend/dist
+          # The build writes `dist/.nojekyll`. upload-pages-artifact v4+ drops
+          # dotfiles from the tarball unless asked, which would silently undo
+          # the step above.
+          include-hidden-files: true
 
   deploy:
     name: Deploy to Pages
@@ -96,9 +110,46 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # A Pages deploy needs the repository setting "Source: GitHub Actions".
+      # Without it `deploy-pages` fails with a message that does not say what to
+      # change, so check first and skip with an actionable warning instead of a
+      # red X nobody can act on. Reading the Pages site needs `pages: write`,
+      # which this workflow already grants.
+      - name: Check Pages settings
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pages" > "$RUNNER_TEMP/pages.json" 2>/dev/null; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=GitHub Pages is not enabled for this repository." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          build_type=$(jq -r '.build_type // "legacy"' "$RUNNER_TEMP/pages.json")
+          if [ "$build_type" != "workflow" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=GitHub Pages is published from a branch (build_type=$build_type), not from Actions." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Skip deploy — Pages is not configured for Actions
+        if: steps.pages.outputs.enabled != 'true'
+        run: |
+          {
+            echo "### Deploy skipped: GitHub Pages is not configured for Actions"
+            echo ""
+            echo "${{ steps.pages.outputs.reason }}"
+            echo ""
+            echo "Fix (repository admin, one click): **Settings → Pages → Build and deployment → Source: GitHub Actions**, then re-run this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning title=Pages deploy skipped::${{ steps.pages.outputs.reason }} Set Settings → Pages → Source: GitHub Actions, then re-run."
+
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@d6daaebac2ba57574e5b5191c537a221dafdfead # v4
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   # Optional: keep a11y check green — comment out if you don't want it on Pages
   # This reuses the same built artifact; skip if you want faster deploys.
