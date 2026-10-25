@@ -69,9 +69,16 @@ function manualChunks(id: string): string | undefined {
   return undefined;
 }
 
+// Base path for hosted sites.
+// - Cloudflare Pages / Netlify / custom domain: "/" (default)
+// - GitHub Pages project site (BuildbyArindam/Manovia → https://buildbyarindam.github.io/Manovia/): "/Manovia/"
+// Set via env VITE_BASE="/Manovia/" in the Pages workflow below.
+const viteBase = process.env.VITE_BASE ?? "/";
+
 const isVitest = process.env.VITEST !== undefined;
 
 export default defineConfig({
+  base: viteBase,
   plugins: [
     react(),
     // The PWA plugin only matters for `vite build`; the unit tests never load

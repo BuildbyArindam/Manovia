@@ -1,0 +1,77 @@
+# Manovia — Render blueprint (free forever, no Docker on laptop)
+#
+# One-click deploy: https://dashboard.render.com/blueprint/new
+# → Connect GitHub repo BuildbyArindam/Manovia → Apply → Render builds
+#   backend/Dockerfile REMOTELY (you don't install Docker).
+#
+# Docs: docs/publish-free.md  |  Frontend lives on GitHub Pages / Cloudflare Pages
+# This file only deploys the API. For a truly free forever DB, use Neon (see below)
+# instead of Render's Postgres (which expires after 90 days on free).
+#
+# After first deploy, set VITE_API_BASE_URL in GitHub repo vars to:
+#   https://manovia-api.onrender.com/api/v1
+# so the Pages frontend talks to this backend.
+#
+services:
+  - type: web
+    name: manovia-api
+    runtime: docker
+    plan: free
+    # Render builds this Dockerfile on its builder — no local Docker needed.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    # Health check: process alive (doesn't need DB). Render restarts unhealthy pods.
+    healthCheckPath: /api/v1/health
+    # Auto-deploy on push to main — turn off if you want manual deploys
+    autoDeploy: true
+    branch: main
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: RUN_MIGRATIONS
+        value: "false"
+      # Render runs migrations as preDeployCommand before traffic switches
+      - key: LOG_LEVEL
+        value: INFO
+      - key: EMOTION_ANALYZER
+        value: keyword
+      - key: LLM_PROVIDER
+        value: fake
+      - key: DATABASE_URL
+        # PASTE your Neon free Postgres URL here after creating neon.tech project:
+        # Example: postgres://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
+        # Render will interpolate it; keep `sync: false` so the real secret lives
+        # only in Render's dashboard (encrypted), never in git.
+        sync: false
+      - key: SECRET_KEY
+        # Generate once: python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+        sync: false
+      - key: FIELD_ENCRYPTION_KEY
+        # Generate once: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+        sync: false
+      - key: FIELD_ENCRYPTION_KEY_ID
+        value: v1
+      - key: ALLOWED_ORIGINS
+        # Add every frontend origin here (comma-separated, no trailing slash)
+        # GitHub Pages project site:
+        value: https://buildbyarindam.github.io
+      - key: RATE_LIMIT_AUTH_PER_MINUTE
+        value: "10"
+      - key: RATE_LIMIT_GLOBAL_PER_MINUTE
+        value: "120"
+    # Run migrations before new code goes live (same idea as fly.toml release_command)
+    preDeployCommand: alembic upgrade head
+    # Optional: scale to 0 on free? Render free spins down after 15m inactivity
+    # (30s cold start). That's fine for a portfolio demo and keeps it free forever.
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+
+# Alternative: if you want Render to host Postgres too (simple but expires after 90 days):
+# Uncomment below, set DATABASE_URL to ${manovia-db.DATABASE_URL} above, and comment sync:false line.
+# For lifetime free, keep Neon instead — it's always free (0.5 GB, 3 projects).
+
+# databases:
+#   - name: manovia-db
+#     plan: free
+#     ipAllowList: []  # only Render services can reach it
