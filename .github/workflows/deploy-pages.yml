@@ -1,0 +1,104 @@
+# Manovia — fully free deploy to GitHub Pages (no Docker, no credit card)
+#
+# Triggers: push to main + manual dispatch.
+# Builds the frontend statically and publishes frontend/dist to GitHub Pages.
+# Backend is NOT on Pages — the frontend talks to VITE_API_BASE_URL if you set
+# it (e.g. a Render backend), otherwise it runs in offline/PWA demo mode
+# (breathing exercises, helplines, PWA install still work).
+#
+# Setup (one time, 30 seconds):
+#   1. GitHub → repo Settings → Pages → Source: "GitHub Actions"
+#   2. Push to main (or Run workflow manually) → live at https://<user>.github.io/Manovia/
+#
+# Custom domain (optional, still free Pages):
+#   Settings → Pages → Custom domain → manovia.example.com → set ALLOWED_ORIGINS on backend.
+#   Then set VITE_BASE="/" in the workflow env below (or keep default).
+#
+# API wiring (optional):
+#   Repo → Settings → Secrets and variables → Actions → Variables:
+#     - VITE_API_BASE_URL = https://your-backend.onrender.com/api/v1  (or Fly URL)
+#     Leave unset for pure frontend offline demo (calls to /api/v1 will 404 gracefully).
+#
+name: Deploy frontend — GitHub Pages (fully free)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "Override VITE_API_BASE_URL (e.g. https://manovia-api.onrender.com/api/v1). Leave blank for offline demo."
+        required: false
+        default: ""
+
+# Least privilege for Pages deploy
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build frontend
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build (Vite)
+        working-directory: frontend
+        env:
+          # Project Pages live under /Manovia/ — set base so assets + router resolve.
+          # For a user/org Pages site ( <user>.github.io ) or custom domain, set "/" instead.
+          VITE_BASE: "/Manovia/"
+          # API: dispatch input wins, else repo variable, else fallback (offline demo)
+          VITE_API_BASE_URL: ${{ inputs.api_base_url || vars.VITE_API_BASE_URL || '' }}
+        run: |
+          echo "VITE_BASE=$VITE_BASE"
+          echo "VITE_API_BASE_URL=${VITE_API_BASE_URL:-<empty — offline demo>}"
+          npm run build
+          # SPA fallback on GitHub Pages: 404.html serves index.html via JS
+          cp dist/index.html dist/404.html
+          # Bypass Jekyll processing (ensures _next, dotfiles, etc. are served)
+          touch dist/.nojekyll
+          # Verify portfolio footer survived tree-shaking (required)
+          if ! grep -q "Portfolio demo" dist/assets/*.js 2>/dev/null; then
+            echo "::warning::Portfolio demo footer not found in bundle — check locales"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d9d38f73ed63ff0f7aaf3395ff230e # v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6daaebac2ba57574e5b5191c537a221dafdfead # v4
+
+  # Optional: keep a11y check green — comment out if you don't want it on Pages
+  # This reuses the same built artifact; skip if you want faster deploys.
